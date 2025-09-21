@@ -3,37 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <!-- Основные -->
-<title>RecountPro — пересчет это просто</title>
-<meta name="description" content="Мобильное приложение для быстрой инвентаризации. Telegram-отчёты, PDF-экспорт, умный ввод, интеграция с 1С.">
-<meta name="keywords" content="RecountPro, инвентаризация, пересчёт, остатки, склад, ревизия, 1С, мобильное приложение, Telegram, PDF, учет, ритейл, автоматизация, ревизор, пересчёт остатков, складской учёт, торговля, бизнес, приложение для склада">
-<meta name="author" content="Артём Руднев">
-<meta name="robots" content="index, follow">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RecountPro — пересчет это просто</title>
+  <meta name="description" content="Мобильное приложение для быстрой инвентаризации. Telegram-отчёты, PDF-экспорт, умный ввод, интеграция с 1С.">
+  <meta name="keywords" content="RecountPro, инвентаризация, пересчёт, остатки, склад, ревизия, 1С, мобильное приложение, Telegram, PDF, учет, ритейл, автоматизация, ревизор, пересчёт остатков, складской учёт, торговля, бизнес, приложение для склада">
+  <meta name="author" content="Артём Руднев">
+  <meta name="robots" content="index, follow">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- Open Graph (для соцсетей и Telegram) -->
-<meta property="og:title" content="RecountPro — инвентаризация без Excel">
-<meta property="og:description" content="Ускорьте пересчёт остатков. Telegram-отчёты, PDF-экспорт, интеграция с 1С.">
-<meta property="og:image" content="https://recount-pro.ru/preview.jpg">
-<meta property="og:url" content="https://recount-pro.ru">
-<meta property="og:type" content="website">
+  <!-- Open Graph (для соцсетей и Telegram) -->
+  <meta property="og:title" content="RecountPro — инвентаризация без Excel">
+  <meta property="og:description" content="Ускорьте пересчёт остатков. Telegram-отчёты, PDF-экспорт, интеграция с 1С.">
+  <meta property="og:image" content="https://recount-pro.ru/preview.jpg">
+  <meta property="og:url" content="https://recount-pro.ru">
+  <meta property="og:type" content="website">
 
-<!-- Twitter Card -->
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="RecountPro — пересчёт остатков без Excel">
-<meta name="twitter:description" content="Мобильное приложение для ревизии. Telegram-отчёты, PDF, 1С.">
-<meta name="twitter:image" content="https://recount-pro.ru/preview.jpg">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="RecountPro — пересчёт остатков без Excel">
+  <meta name="twitter:description" content="Мобильное приложение для ревизии. Telegram-отчёты, PDF, 1С.">
+  <meta name="twitter:image" content="https://recount-pro.ru/preview.jpg">
 
-<!-- Яндекс.Метрика и Google Search Console (если используешь) -->
-<!-- <meta name="yandex-verification" content="код_подтверждения"> -->
-<!-- <meta name="google-site-verification" content="код_подтверждения"> -->
-
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RecountPro</title>
   <link rel="stylesheet" href="css/style.css" />
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
-  <meta name="description" content="RecountPro — пересчёт остатков без Excel. Умный ввод, Telegram-отчёты, PDF-экспорт.">
-  <meta property="og:title" content="RecountPro — инвентаризация без Excel">
-  <meta property="og:image" content="https://recount-pro.ru/preview.jpg">
 </head>
 <body>
   <header class="hero" id="hero">
@@ -66,6 +57,24 @@
       <li>📜 История пересчетов</li>
     </ul>
   </section>
+
+  <!-- 👇 Слайдер вставлен сюда -->
+  <section class="section" id="screenshots">
+    <h2>Скриншоты приложения</h2>
+    <div class="slider">
+      <div class="slider-wrapper">
+        <img src="IMG_2589-frame.png" alt="Скрин 1" class="slide active" />
+        <img src="IMG_2616-frame.png" alt="Скрин 2" class="slide" />
+        <img src="IMG_2621-frame.png" alt="Скрин 3" class="slide" />
+        <img src="IMG_2623-frame.png" alt="Скрин 4" class="slide" />
+        <img src="IMG_2624-frame.png" alt="Скрин 5" class="slide" />
+        <img src="IMG_2629-frame.png" alt="Скрин 6" class="slide" />
+      </div>
+      <button class="nav prev">←</button>
+      <button class="nav next">→</button>
+    </div>
+  </section>
+  <!-- ☝️ Конец слайдера -->
 
   <section class="section" id="value">
     <h2>Зачем нужен RecountPro</h2>
@@ -128,6 +137,27 @@
       el.classList.add('hidden');
       observer.observe(el);
     });
+
+    // 👇 Слайдер JS
+    const slides = document.querySelectorAll('.slide');
+    let current = 0;
+
+    function showSlide(index) {
+      slides.forEach(slide => slide.classList.remove('active'));
+      slides[index].classList.add('active');
+    }
+
+    document.querySelector('.next').addEventListener('click', () => {
+      current = (current + 1) % slides.length;
+      showSlide(current);
+    });
+
+    document.querySelector('.prev').addEventListener('click', () => {
+      current = (current - 1 + slides.length) % slides.length;
+      showSlide(current);
+    });
+
+    showSlide(current);
   </script>
 </body>
 </html>
