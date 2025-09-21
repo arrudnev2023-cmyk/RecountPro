@@ -17,13 +17,19 @@
       text-align: center;
       margin-bottom: 20px;
     }
-    .search-wrapper {
-      position: relative;
+    .search-wrapper-flex {
+      display: flex;
+      gap: 10px;
       margin-bottom: 20px;
+      align-items: center;
+    }
+    .search-box {
+      position: relative;
+      flex-grow: 1;
     }
     .search-bar {
       width: 100%;
-      padding: 12px 90px 12px 12px;
+      padding: 12px 40px 12px 12px;
       border-radius: 10px;
       border: none;
       font-size: 16px;
@@ -32,7 +38,7 @@
     }
     .clear-btn {
       position: absolute;
-      right: 50px;
+      right: 10px;
       top: 50%;
       transform: translateY(-50%);
       background: none;
@@ -42,17 +48,14 @@
       cursor: pointer;
     }
     .summary-btn {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
       background-color: #28a745;
       border: none;
       color: white;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 14px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 16px;
       cursor: pointer;
+      white-space: nowrap;
     }
     .product-card {
       background-color: rgba(255,255,255,0.1);
@@ -118,21 +121,22 @@
 </head>
 <body>
   <h2>Экран пересчёта RecountPro</h2>
-  <div class="search-wrapper">
-    <input
-      type="text"
-      placeholder="Поиск по названию"
-      class="search-bar"
-      id="searchInput"
-      autocomplete="off"
-      autocorrect="off"
-      autocapitalize="off"
-      spellcheck="false"
-    />
-    <button id="clearSearch" class="clear-btn" aria-label="Очистить">×</button>
+  <div class="search-wrapper-flex">
+    <div class="search-box">
+      <input
+        type="text"
+        placeholder="Поиск по названию"
+        class="search-bar"
+        id="searchInput"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+      />
+      <button id="clearSearch" class="clear-btn" aria-label="Очистить">×</button>
+    </div>
     <button id="showSummary" class="summary-btn">Итог</button>
   </div>
-
   <div id="productList">
     <!-- 15 карточек -->
     <div class="product-card"><div class="product-name">Вино Сендеро де Монтана Бонарда Аргентина кр.сух 0,75</div><div class="product-qty">По документам: 2 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
@@ -151,7 +155,6 @@
     <div class="product-card"><div class="product-name">Вино Музаради Алазанская Долина бел.п/сл 0,75</div><div class="product-qty">По документам: 6 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
     <div class="product-card"><div class="product-name">Вино Музаради Алазанская Долина кр.п/сл 0,75</div><div class="product-qty">По документам: 6 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
   </div>
-  <!-- Модальное окно итогов -->
   <div id="summaryModal" class="hidden" style="
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -256,7 +259,7 @@
         const diff = actual - expected;
 
         const diffColor = diff === 0 ? 'white' : diff > 0 ? '#00ff99' : '#ff4d4d';
-        const diffText = diff === 0 ? '—' : (diff > 0 ? '+' : '') + diff;
+        const diffText = diff === 0 ? '0' : (diff > 0 ? '+' : '') + diff;
 
         const row = document.createElement('div');
         row.style.marginBottom = '12px';
