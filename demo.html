@@ -11,6 +11,7 @@
       background: linear-gradient(135deg, #1e3c72, #8e44ad);
       color: white;
       padding: 20px;
+      position: relative;
     }
     h2 {
       text-align: center;
@@ -48,11 +49,14 @@
       color: white;
     }
     .keyboard {
+      position: absolute;
+      left: 20px;
+      right: 20px;
+      z-index: 1000;
       background-color: rgba(255,255,255,0.1);
       padding: 15px;
       border-radius: 10px;
       text-align: center;
-      margin-top: 10px;
     }
     .keyboard .keys {
       display: grid;
@@ -88,7 +92,7 @@
   <input type="text" placeholder="Поиск по названию" class="search-bar" id="searchInput" />
 
   <div id="productList">
-    <!-- Автоматически сгенерированные карточки -->
+    <!-- 15 карточек товаров -->
     <div class="product-card"><div class="product-name">Вино Сендеро де Монтана Бонарда Аргентина кр.сух 0,75</div><div class="product-qty">По документам: 2 шт</div><input type="text" class="fact-input" placeholder="Факт" /></div>
     <div class="product-card"><div class="product-name">Вино Андес Аура Чили кр.п/сух 1л</div><div class="product-qty">По документам: 5 шт</div><input type="text" class="fact-input" placeholder="Факт" /></div>
     <div class="product-card"><div class="product-name">Вино Сан оф Африка Сенсо Пинотаж кр.п/сух 0,75</div><div class="product-qty">По документам: 3 шт</div><input type="text" class="fact-input" placeholder="Факт" /></div>
@@ -113,7 +117,7 @@
       <button>7</button><button>8</button><button>9</button>
       <button>+</button><button>0</button><button>←</button>
     </div>
-       <button class="done-btn">Готово</button>
+    <button class="done-btn">Готово</button>
   </div>
 
   <script>
@@ -125,10 +129,13 @@
 
     let activeInput = null;
 
-    // Открытие клавиатуры при фокусе
+    // Открытие клавиатуры под активным полем
     inputs.forEach(input => {
       input.addEventListener('focus', () => {
         activeInput = input;
+        const rect = input.getBoundingClientRect();
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        keyboard.style.top = `${rect.bottom + scrollTop + 10}px`;
         keyboard.classList.remove('hidden');
       });
     });
@@ -139,7 +146,7 @@
       if (activeInput) activeInput.blur();
     });
 
-    // Клики по клавишам
+    // Ввод символов
     keyboard.querySelectorAll('.keys button').forEach(btn => {
       btn.addEventListener('click', () => {
         if (!activeInput) return;
@@ -159,6 +166,13 @@
         const name = card.querySelector('.product-name').textContent.toLowerCase();
         card.style.display = name.includes(query) ? 'block' : 'none';
       });
+    });
+
+    // Закрытие клавиатуры при клике вне поля
+    document.addEventListener('click', (e) => {
+      if (!keyboard.contains(e.target) && !e.target.classList.contains('fact-input')) {
+        keyboard.classList.add('hidden');
+      }
     });
   </script>
 </body>
