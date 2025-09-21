@@ -17,13 +17,29 @@
       text-align: center;
       margin-bottom: 20px;
     }
+    .search-wrapper {
+      position: relative;
+      margin-bottom: 20px;
+    }
     .search-bar {
       width: 100%;
-      padding: 12px;
+      padding: 12px 40px 12px 12px;
       border-radius: 10px;
       border: none;
       font-size: 16px;
-      margin-bottom: 20px;
+      background-color: rgba(255,255,255,0.2);
+      color: white;
+    }
+    .clear-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
     }
     .product-card {
       background-color: rgba(255,255,255,0.1);
@@ -89,10 +105,22 @@
 </head>
 <body>
   <h2>Экран пересчёта RecountPro</h2>
-  <input type="text" placeholder="Поиск по названию" class="search-bar" id="searchInput" />
+  <div class="search-wrapper">
+    <input
+      type="text"
+      placeholder="Поиск по названию"
+      class="search-bar"
+      id="searchInput"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+    />
+    <button id="clearSearch" class="clear-btn" aria-label="Очистить">×</button>
+  </div>
 
   <div id="productList">
-    <!-- 15 карточек товаров -->
+    <!-- 15 карточек -->
     <div class="product-card"><div class="product-name">Вино Сендеро де Монтана Бонарда Аргентина кр.сух 0,75</div><div class="product-qty">По документам: 2 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
     <div class="product-card"><div class="product-name">Вино Андес Аура Чили кр.п/сух 1л</div><div class="product-qty">По документам: 5 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
     <div class="product-card"><div class="product-name">Вино Сан оф Африка Сенсо Пинотаж кр.п/сух 0,75</div><div class="product-qty">По документам: 3 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
@@ -109,8 +137,6 @@
     <div class="product-card"><div class="product-name">Вино Музаради Алазанская Долина бел.п/сл 0,75</div><div class="product-qty">По документам: 6 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
     <div class="product-card"><div class="product-name">Вино Музаради Алазанская Долина кр.п/сл 0,75</div><div class="product-qty">По документам: 6 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
   </div>
-  </div> <!-- Закрытие productList -->
-
   <div class="keyboard hidden" id="customKeyboard">
     <div class="keys">
       <button>1</button><button>2</button><button>3</button>
@@ -126,6 +152,7 @@
     const keyboard = document.getElementById('customKeyboard');
     const doneBtn = document.querySelector('.done-btn');
     const searchInput = document.getElementById('searchInput');
+    const clearBtn = document.getElementById('clearSearch');
     const productCards = document.querySelectorAll('.product-card');
 
     let activeInput = null;
@@ -167,6 +194,12 @@
         const name = card.querySelector('.product-name').textContent.toLowerCase();
         card.style.display = name.includes(query) ? 'block' : 'none';
       });
+    });
+
+    // Очистка поиска
+    clearBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      productCards.forEach(card => card.style.display = 'block');
     });
 
     // Закрытие клавиатуры при клике вне поля
