@@ -101,21 +101,14 @@
         const typedarray = new Uint8Array(this.result);
         const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
 
-        let linesByY = {};
+        let lines = [];
 
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
           const content = await page.getTextContent();
-
-          content.items.forEach(item => {
-            const y = Math.round(item.transform[5]);
-            if (!linesByY[y]) linesByY[y] = [];
-            linesByY[y].push(item.str);
-          });
+          const line = content.items.map(item => item.str).join(" ");
+          lines.push(...line.split("\n")); // разбиваем по строкам
         }
-
-        const sortedY = Object.keys(linesByY).sort((a, b) => b - a);
-        const lines = sortedY.map(y => linesByY[y].join(" "));
 
         extractItems(lines);
         renderItems();
@@ -124,46 +117,40 @@
     }
 
     function extractItems(lines) {
-  items = [];
+      items = [];
 
-  const ignorePatterns = [
-    /проверка/i,
-    /комиссия/i,
-    /итого/i,
-    /дата/i,
-    /подпись/i,
-    /ответственный/i,
-    /документ/i,
-    /основание/i
-  ];
+      const ignorePatterns = [
+        /проверка/i,
+        /комиссия/i,
+        /итого/i,
+        /дата/i,
+        /подпись/i,
+        /ответственный/i,
+        /документ/i,
+        /основание/i
+      ];
 
-  lines.forEach(line => {
-    if (ignorePatterns.some(p => p.test(line))) return;
+      lines.forEach(line => {
+        const clean = line.trim();
+        const words = clean.split(/\s+/);
+        if (words.length === 0) return;
+        if (/^\d/.test(words[0])) return;
+        if (ignorePatterns.some(p => p.test(clean))) return;
+        if (!/[а-яa-z]/i.test(clean)) return;
 
-    // разбиваем строку на фрагменты по объёмам
-    const fragments = line.split(/(?=\d{1,2},\d{2})/);
+        const volumeMatch = clean.match(/(\d{1,2},\d{2})/);
+        const quantityMatch = clean.match(/(\d+)\s*шт/);
 
-    fragments.forEach(fragment => {
-      const clean = fragment.trim();
-      const words = clean.split(/\s+/);
-      if (words.length === 0) return;
-      if (/^\d/.test(words[0])) return; // если начинается с цифры — пропускаем
+        if (!volumeMatch || !quantityMatch) return;
 
-      const volumeMatch = clean.match(/(\d{1,2},\d{2})/);
-      const quantityMatch = clean.match(/(\d+)\s*шт/);
-
-      if (!volumeMatch || !quantityMatch) return;
-
-      const quantity = parseInt(quantityMatch[1]);
-      items.push({
-        name: clean,
-        docQty: quantity,
-        factQty: null
+        const quantity = parseInt(quantityMatch[1]);
+        items.push({
+          name: clean,
+          docQty: quantity,
+          factQty: null
+        });
       });
-    });
-  });
-}
-
+    }
 
     function renderItems() {
       const container = document.getElementById("itemsContainer");
