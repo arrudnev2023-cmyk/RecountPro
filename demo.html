@@ -99,6 +99,15 @@
 
     <div id="itemsContainer"></div>
     <div id="summary"></div>
+
+    <!-- Модальное окно -->
+    <div id="modalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:999;">
+      <div id="modalContent" style="background:white; max-width:600px; margin:40px auto; padding:20px; border-radius:16px; overflow-y:auto; max-height:80vh;">
+        <h2 style="margin-top:0;">📊 Итоги пересчёта</h2>
+        <div id="modalItems"></div>
+        <button onclick="closeModal()" style="margin-top:20px; padding:10px 16px; background:#2980b9; color:white; border:none; border-radius:12px; cursor:pointer;">Закрыть</button>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -207,22 +216,38 @@
       saveState();
     }
 
-    function showSummary() {
-      let summary = "";
-      items.forEach(item => {
-        const input = factInputs[item.id];
-        if (!input) return;
-
-        const fact = evaluateExpression(input);
-        const diff = fact - item.docQty;
-        const status = diff === 0 ? "✅ Совпадает" : diff > 0 ? `📦 Излишек: +${diff}` : `⚠️ Недостача: ${diff}`;
-        summary += `<strong>${item.name}</strong>: ${status}<br/>`;
-      });
-      document.getElementById("summary").innerHTML = summary;
-    }
-
     function evaluateExpression(input) {
       return input.replace(/\s+/g, "").split("+").reduce((sum, part) => sum + (parseInt(part) || 0), 0);
+    }
+
+    function showSummary() {
+      const modalItems = document.getElementById("modalItems");
+      modalItems.innerHTML = "";
+
+      items.forEach(item => {
+        const input = factInputs[item.id];
+        const fact = evaluateExpression(input || "");
+        const diff = fact - item.docQty;
+
+        const color = diff > 0 ? "#2ecc71" : diff < 0 ? "#e74c3c" : "#7f8c8d";
+        const diffText = diff > 0 ? `+${diff}` : diff;
+
+        modalItems.innerHTML += `
+          <div style="border:1px solid #ccc; border-left:8px solid ${color}; padding:12px; margin-bottom:12px; border-radius:8px;">
+            <strong>${item.name}</strong><br/>
+            Факт: ${input || "—"}<br/>
+            Итог: ${fact}<br/>
+            По документам: ${item.docQty}<br/>
+            Разница: <span style="color:${color}; font-weight:bold;">${diffText}</span>
+          </div>
+        `;
+      });
+
+      document.getElementById("modalOverlay").style.display = "block";
+    }
+
+    function closeModal() {
+      document.getElementById("modalOverlay").style.display = "none";
     }
   </script>
 </body>
