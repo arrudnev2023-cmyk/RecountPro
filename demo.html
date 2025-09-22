@@ -126,12 +126,14 @@
         const volume = volumeMatch[1];
         const volumeIndex = line.indexOf(volume);
         const namePart = line.slice(0, volumeIndex);
+
         const nameWords = namePart.split(/\s+/).filter(word => !/^\d+$/.test(word));
         const name = nameWords.join(" ").trim();
 
         const afterVolume = line.slice(volumeIndex + volume.length);
-        const quantityMatch = afterVolume.match(/(\d+)\s*шт/);
-        const quantity = quantityMatch ? parseInt(quantityMatch[1]) : null;
+        const quantityMatches = [...afterVolume.matchAll(/(\d+)\s*шт/g)];
+        const lastQuantityMatch = quantityMatches.pop();
+        const quantity = lastQuantityMatch ? parseInt(lastQuantityMatch[1]) : null;
 
         if (name && volume && quantity !== null) {
           items.push({
