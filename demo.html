@@ -124,38 +124,46 @@
     }
 
     function extractItems(lines) {
-      items = [];
+  items = [];
 
-      const ignorePatterns = [
-        /проверка/i,
-        /комиссия/i,
-        /итого/i,
-        /дата/i,
-        /подпись/i,
-        /ответственный/i,
-        /документ/i,
-        /основание/i
-      ];
+  const ignorePatterns = [
+    /проверка/i,
+    /комиссия/i,
+    /итого/i,
+    /дата/i,
+    /подпись/i,
+    /ответственный/i,
+    /документ/i,
+    /основание/i
+  ];
 
-      lines.forEach(line => {
-        const clean = line.trim();
+  lines.forEach(line => {
+    if (ignorePatterns.some(p => p.test(line))) return;
 
-        if (ignorePatterns.some(p => p.test(clean))) return;
-        if (!/[а-яa-z]/i.test(clean)) return; // нет букв — не товар
+    // разбиваем строку на фрагменты по объёмам
+    const fragments = line.split(/(?=\d{1,2},\d{2})/);
 
-        const volumeMatch = clean.match(/(\d{1,2},\d{2})/);
-        const quantityMatch = clean.match(/(\d+)\s*шт/);
+    fragments.forEach(fragment => {
+      const clean = fragment.trim();
+      const words = clean.split(/\s+/);
+      if (words.length === 0) return;
+      if (/^\d/.test(words[0])) return; // если начинается с цифры — пропускаем
 
-        if (!volumeMatch || !quantityMatch) return;
+      const volumeMatch = clean.match(/(\d{1,2},\d{2})/);
+      const quantityMatch = clean.match(/(\d+)\s*шт/);
 
-        const quantity = parseInt(quantityMatch[1]);
-        items.push({
-          name: clean,
-          docQty: quantity,
-          factQty: null
-        });
+      if (!volumeMatch || !quantityMatch) return;
+
+      const quantity = parseInt(quantityMatch[1]);
+      items.push({
+        name: clean,
+        docQty: quantity,
+        factQty: null
       });
-    }
+    });
+  });
+}
+
 
     function renderItems() {
       const container = document.getElementById("itemsContainer");
