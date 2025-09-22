@@ -146,8 +146,10 @@
           });
         }
 
-        const sortedY = Object.keys(linesByY).sort((a, b) => b - a); // снизу вверх — как раньше
+        const sortedY = Object.keys(linesByY).sort((a, b) => b - a);
         const lines = sortedY.map(y => linesByY[y].join(" "));
+
+        console.log("Строки из PDF:", lines); // отладка
 
         extractItems(lines);
         loadState();
@@ -163,10 +165,11 @@
         const fragments = line.split(/(?=\d{1,2},\d{2})/); // разбиваем по объёмам
 
         fragments.forEach(fragment => {
+          console.log("Фрагмент:", fragment); // отладка
+
           const volumeMatch = fragment.match(/(\d{1,2},\d{2})/);
           const quantityMatch = fragment.match(/(\d+)\s*шт/);
-          const words = fragment.trim().split(/\s+/);
-          if (!volumeMatch || !quantityMatch || /^\d/.test(words[0])) return;
+          if (!volumeMatch || !quantityMatch) return;
 
           const volume = volumeMatch[1];
           const quantity = parseInt(quantityMatch[1]);
