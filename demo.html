@@ -149,8 +149,6 @@
         const sortedY = Object.keys(linesByY).sort((a, b) => b - a);
         const lines = sortedY.map(y => linesByY[y].join(" "));
 
-        console.log("Строки из PDF:", lines); // отладка
-
         extractItems(lines);
         loadState();
         renderItems();
@@ -162,27 +160,33 @@
       items = [];
 
       lines.forEach(line => {
-        const fragments = line.split(/(?=\d{1,2},\d{2})/); // разбиваем по объёмам
+        const words = line.split(/\s+/);
+        let buffer = [];
 
-        fragments.forEach(fragment => {
-          console.log("Фрагмент:", fragment); // отладка
+        words.forEach(word => {
+          buffer.push(word);
 
-          const volumeMatch = fragment.match(/(\d{1,2},\d{2})/);
-          const quantityMatch = fragment.match(/(\d+)\s*шт/);
-          if (!volumeMatch || !quantityMatch) return;
+          if (/^\d+\s*шт$/.test(word)) {
+            const fragment = buffer.join(" ");
+            buffer = [];
 
-          const volume = volumeMatch[1];
-          const quantity = parseInt(quantityMatch[1]);
-          const namePart = fragment.slice(0, fragment.indexOf(volume));
-          const nameWords = namePart.split(/\s+/).filter(w => !/^\d+$/.test(w));
-          const name = nameWords.join(" ").trim();
+            const volumeMatch = fragment.match(/(\d{1,2},\d{2})/);
+            const quantityMatch = fragment.match(/(\d+)\s*шт/);
+            if (!volumeMatch || !quantityMatch) return;
 
-          items.push({
-            id: crypto.randomUUID(),
-            name: `${name} ${volume}`,
-            docQty: quantity,
-            factQty: null
-          });
+            const volume = volumeMatch[1];
+            const quantity = parseInt(quantityMatch[1]);
+            const namePart = fragment.slice(0, fragment.indexOf(volume));
+            const nameWords = namePart.split(/\s+/).filter(w => !/^\d+$/.test(w));
+            const name = nameWords.join(" ").trim();
+
+            items.push({
+              id: crypto.randomUUID(),
+              name: `${name} ${volume}`,
+              docQty: quantity,
+              factQty: null
+            });
+          }
         });
       });
     }
