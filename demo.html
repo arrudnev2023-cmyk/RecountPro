@@ -101,23 +101,30 @@
         const typedarray = new Uint8Array(this.result);
         const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
 
-        let fullText = "";
+        let linesByY = {};
+
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
           const content = await page.getTextContent();
-          const strings = content.items.map(item => item.str);
-          fullText += strings.join(" ") + "\n";
+
+          content.items.forEach(item => {
+            const y = Math.round(item.transform[5]);
+            if (!linesByY[y]) linesByY[y] = [];
+            linesByY[y].push(item.str);
+          });
         }
 
-        extractItems(fullText);
+        const sortedY = Object.keys(linesByY).sort((a, b) => b - a);
+        const lines = sortedY.map(y => linesByY[y].join(" "));
+
+        extractItems(lines);
         renderItems();
       };
       reader.readAsArrayBuffer(file);
     }
 
-    function extractItems(text) {
+    function extractItems(lines) {
       items = [];
-      const lines = text.split("\n");
 
       lines.forEach(line => {
         const volumeMatch = line.match(/(\d{1,2},\d{2})/);
