@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Импорт товаров</title>
+  <title>Пересчёт товаров</title>
   <style>
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to bottom right, rgba(46, 204, 113, 0.6), rgba(52, 152, 219, 0.6));
+      background: linear-gradient(to bottom right, rgba(52, 152, 219, 0.6), rgba(155, 89, 182, 0.6));
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -16,81 +16,109 @@
     }
     .container {
       width: 100%;
-      max-width: 500px;
-      padding: 40px 20px;
-      text-align: center;
+      max-width: 600px;
+      padding: 20px;
     }
     h1 {
-      font-size: 36px;
+      font-size: 32px;
       font-weight: bold;
-      font-family: 'Segoe UI Rounded', sans-serif;
       color: white;
-      margin-bottom: 40px;
-    }
-    button, .nav-button {
-      display: block;
-      width: 100%;
-      padding: 14px;
-      font-size: 20px;
       margin-bottom: 20px;
-      border: none;
+      text-align: center;
+    }
+    .top-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .top-bar input {
+      flex: 1;
+      padding: 10px;
       border-radius: 12px;
+      border: none;
+      font-size: 16px;
+    }
+    .top-bar button {
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: none;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      font-size: 14px;
       cursor: pointer;
     }
-    .upload-button {
-      background: white;
-      color: #27ae60;
-    }
-    .nav-button {
-      background: white;
-      color: #2980b9;
-    }
-    input[type="file"] {
-      display: none;
-    }
-    #itemsContainer {
-      margin-top: 30px;
-    }
     .item-card {
-      background: white;
-      padding: 15px;
-      margin-bottom: 10px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      text-align: left;
+      background: rgba(255,255,255,0.15);
+      padding: 16px;
+      border-radius: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      color: white;
     }
     .item-card input {
       width: 100%;
-      padding: 8px;
-      margin-top: 8px;
+      padding: 10px;
       font-size: 16px;
+      margin-top: 8px;
+      border-radius: 8px;
+      border: none;
     }
     #summary {
-      background: #ecf0f1;
-      padding: 15px;
-      border-radius: 8px;
+      background: rgba(255,255,255,0.2);
+      padding: 16px;
+      border-radius: 12px;
+      color: white;
       margin-top: 20px;
+    }
+    label.upload-button {
+      display: block;
+      background: white;
+      color: #2980b9;
+      padding: 12px;
+      border-radius: 12px;
+      text-align: center;
+      margin-bottom: 20px;
+      cursor: pointer;
+    }
+    input[type="file"] {
+      display: none;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>📄 Импорт товаров</h1>
+    <h1>📦 Пересчёт товаров</h1>
 
     <label for="pdfUpload" class="upload-button">📥 Загрузить PDF</label>
     <input type="file" id="pdfUpload" accept=".pdf" />
-    <button class="nav-button" onclick="alert('Заглушка: переход к истории')">📂 Ранее загруженные</button>
+
+    <div class="top-bar">
+      <input type="text" id="searchInput" placeholder="🔍 Поиск по названию" />
+      <button onclick="showSummary()">Итог</button>
+    </div>
 
     <div id="itemsContainer"></div>
-    <button class="upload-button" onclick="calculateTotal()">Итог</button>
     <div id="summary"></div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script>
     let items = [];
+    let factInputs = {};
 
     document.getElementById("pdfUpload").addEventListener("change", parsePDF);
+    document.getElementById("searchInput").addEventListener("input", renderItems);
+
+    function saveState() {
+      localStorage.setItem("factInputs", JSON.stringify(factInputs));
+    }
+
+    function loadState() {
+      const saved = localStorage.getItem("factInputs");
+      if (saved) {
+        factInputs = JSON.parse(saved);
+      }
+    }
 
     async function parsePDF(event) {
       const file = event.target.files[0];
@@ -107,10 +135,11 @@
           const page = await pdf.getPage(i);
           const content = await page.getTextContent();
           const line = content.items.map(item => item.str).join(" ");
-          lines.push(...line.split("\n")); // разбиваем по строкам
+          lines.push(...line.split("\n"));
         }
 
         extractItems(lines);
+        loadState();
         renderItems();
       };
       reader.readAsArrayBuffer(file);
@@ -143,43 +172,61 @@
 
         if (!volumeMatch || !quantityMatch) return;
 
-        const quantity = parseInt(quantityMatch[1]);
+        const quantity = quantityMatch[1];
         items.push({
+          id: crypto.randomUUID(),
           name: clean,
-          docQty: quantity,
-          factQty: null
+          quantity
         });
       });
     }
 
     function renderItems() {
       const container = document.getElementById("itemsContainer");
+      const search = document.getElementById("searchInput").value.toLowerCase();
       container.innerHTML = "";
-      items.forEach((item, index) => {
-        container.innerHTML += `
-          <div class="item-card">
+
+      items
+        .filter(item => item.name.toLowerCase().includes(search))
+        .forEach(item => {
+          const inputValue = factInputs[item.id] || "";
+          const card = document.createElement("div");
+          card.className = "item-card";
+          card.innerHTML = `
             <strong>${item.name}</strong><br/>
-            По документам: ${item.docQty} шт<br/>
-            <input type="number" placeholder="Факт" onchange="updateFact(${index}, this.value)" />
-          </div>
-        `;
-      });
+            <small>По документам: ${item.quantity} шт</small><br/>
+            <input type="text" value="${inputValue}" placeholder="Факт" oninput="updateFact('${item.id}', this.value)" />
+          `;
+          container.appendChild(card);
+        });
     }
 
-    function updateFact(index, value) {
-      items[index].factQty = parseInt(value);
+    function updateFact(id, value) {
+      factInputs[id] = value;
+      saveState();
     }
 
-    function calculateTotal() {
+    function showSummary() {
       let summary = "";
       items.forEach(item => {
-        if (item.factQty !== null) {
-          const diff = item.factQty - item.docQty;
-          const status = diff === 0 ? "✅ Совпадает" : diff > 0 ? `📦 Излишек: +${diff}` : `⚠️ Недостача: ${diff}`;
-          summary += `<strong>${item.name}</strong>: ${status}<br/>`;
-        }
+        const input = factInputs[item.id];
+        if (!input) return;
+
+        const fact = evaluateExpression(input);
+        const doc = extractInt(item.quantity);
+        const diff = fact - doc;
+        const status = diff === 0 ? "✅ Совпадает" : diff > 0 ? `📦 Излишек: +${diff}` : `⚠️ Недостача: ${diff}`;
+        summary += `<strong>${item.name}</strong>: ${status}<br/>`;
       });
       document.getElementById("summary").innerHTML = summary;
+    }
+
+    function evaluateExpression(input) {
+      return input.replace(/\s+/g, "").split("+").reduce((sum, part) => sum + (parseInt(part) || 0), 0);
+    }
+
+    function extractInt(text) {
+      return parseInt(text.replace(/\D+/g, "")) || 0;
     }
   </script>
 </body>
