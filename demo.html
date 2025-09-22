@@ -140,28 +140,19 @@
       lines.forEach(line => {
         if (ignorePatterns.some(p => p.test(line))) return;
 
-        const volumeMatch = line.match(/(\d{1,2},\d{2})/);
-        if (!volumeMatch) return;
-
-        const volume = volumeMatch[1];
-        const volumeIndex = line.indexOf(volume);
-        const namePart = line.slice(0, volumeIndex);
-
-        const nameWords = namePart.split(/\s+/).filter(word => !/^\d+$/.test(word));
-        const name = nameWords.join(" ").trim();
-
-        const afterVolume = line.slice(volumeIndex + volume.length);
-        const quantityMatches = [...afterVolume.matchAll(/(\d+)\s*шт/g)];
+        const quantityMatches = [...line.matchAll(/(\d+)\s*шт/g)];
         const lastQuantityMatch = quantityMatches.pop();
         const quantity = lastQuantityMatch ? parseInt(lastQuantityMatch[1]) : null;
 
-        if (name && volume && quantity !== null) {
-          items.push({
-            name: `${name} ${volume}`,
-            docQty: quantity,
-            factQty: null
-          });
-        }
+        if (quantity === null) return;
+
+        const name = line.trim(); // вся строка как название
+
+        items.push({
+          name,
+          docQty: quantity,
+          factQty: null
+        });
       });
     }
 
