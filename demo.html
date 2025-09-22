@@ -126,7 +126,20 @@
     function extractItems(lines) {
       items = [];
 
+      const ignorePatterns = [
+        /проверка осуществлялась/i,
+        /комиссией в составе/i,
+        /итого/i,
+        /дата/i,
+        /подпись/i,
+        /ответственный/i,
+        /документ/i,
+        /основание/i
+      ];
+
       lines.forEach(line => {
+        if (ignorePatterns.some(p => p.test(line))) return;
+
         const volumeMatch = line.match(/(\d{1,2},\d{2})/);
         if (!volumeMatch) return;
 
