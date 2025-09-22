@@ -160,25 +160,24 @@
       items = [];
 
       lines.forEach(line => {
-        const fragments = line.split(/(?=\d{1,2},\d{2})/); // разбиваем по объёмам
+        const quantityMatch = line.match(/(\d+)\s*шт/);
+        if (!quantityMatch) return;
 
-        fragments.forEach(fragment => {
-          const volumeMatch = fragment.match(/(\d{1,2},\d{2})/);
-          const quantityMatch = fragment.match(/(\d+)\s*шт/);
-          if (!volumeMatch || !quantityMatch) return;
+        const quantity = parseInt(quantityMatch[1]);
+        const quantityIndex = line.indexOf(quantityMatch[0]);
 
-          const volume = volumeMatch[1];
-          const quantity = parseInt(quantityMatch[1]);
-          const namePart = fragment.slice(0, fragment.indexOf(volume));
-          const nameWords = namePart.split(/\s+/).filter(w => !/^\d+$/.test(w));
-          const name = nameWords.join(" ").trim();
+        const startMatch = line.match(/\d+/);
+        if (!startMatch) return;
 
-          items.push({
-            id: crypto.randomUUID(),
-            name: `${name} ${volume}`,
-            docQty: quantity,
-            factQty: null
-          });
+        const startIndex = line.indexOf(startMatch[0]);
+
+        const namePart = line.slice(startIndex + startMatch[0].length, quantityIndex).trim();
+
+        items.push({
+          id: crypto.randomUUID(),
+          name: namePart,
+          docQty: quantity,
+          factQty: null
         });
       });
     }
