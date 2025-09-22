@@ -105,9 +105,13 @@
   <script>
     let items = [];
     let factInputs = {};
+    let searchText = "";
 
     document.getElementById("pdfUpload").addEventListener("change", parsePDF);
-    document.getElementById("searchInput").addEventListener("input", renderItems);
+    document.getElementById("searchInput").addEventListener("input", (e) => {
+      searchText = e.target.value;
+      renderItems();
+    });
 
     function saveState() {
       localStorage.setItem("factInputs", JSON.stringify(factInputs));
@@ -129,14 +133,21 @@
         const typedarray = new Uint8Array(this.result);
         const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
 
-        let lines = [];
+        let linesByY = {};
 
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
           const content = await page.getTextContent();
-          const line = content.items.map(item => item.str).join(" ");
-          lines.push(...line.split("\n"));
+
+          content.items.forEach(item => {
+            const y = Math.round(item.transform[5]);
+            if (!linesByY[y]) linesByY[y] = [];
+            linesByY[y].push(item.str);
+          });
         }
+
+        const sortedY = Object.keys(linesByY).sort((a, b) => b - a);
+        const lines = sortedY.map(y => linesByY[y].join(" "));
 
         extractItems(lines);
         loadState();
@@ -148,57 +159,50 @@
     function extractItems(lines) {
       items = [];
 
-      const ignorePatterns = [
-        /проверка/i,
-        /комиссия/i,
-        /итого/i,
-        /дата/i,
-        /подпись/i,
-        /ответственный/i,
-        /документ/i,
-        /основание/i
-      ];
-
       lines.forEach(line => {
-        const clean = line.trim();
-        const words = clean.split(/\s+/);
-        if (words.length === 0) return;
-        if (/^\d/.test(words[0])) return;
-        if (ignorePatterns.some(p => p.test(clean))) return;
-        if (!/[а-яa-z]/i.test(clean)) return;
+        const volumeMatch = line.match(/(\d{1,2},\d{2})/);
+        if (!volumeMatch) return;
 
-        const volumeMatch = clean.match(/(\d{1,2},\d{2})/);
-        const quantityMatch = clean.match(/(\d+)\s*шт/);
+        const volume = volumeMatch[1];
+        const volumeIndex = line.indexOf(volume);
+        const namePart = line.slice(0, volumeIndex);
+        const nameWords = namePart.split(/\s+/).filter(word => !/^\d+$/.test(word));
+        const name = nameWords.join(" ").trim();
 
-        if (!volumeMatch || !quantityMatch) return;
+        const afterVolume = line.slice(volumeIndex + volume.length);
+        const quantityMatches = [...afterVolume.matchAll(/(\d+)\s*шт/g)];
+        const lastQuantityMatch = quantityMatches.pop();
+        const quantity = lastQuantityMatch ? parseInt(lastQuantityMatch[1]) : null;
 
-        const quantity = quantityMatch[1];
-        items.push({
-          id: crypto.randomUUID(),
-          name: clean,
-          quantity
-        });
+        if (name && volume && quantity !== null) {
+          items.push({
+            id: crypto.randomUUID(),
+            name: `${name} ${volume}`,
+            docQty: quantity,
+            factQty: null
+          });
+        }
       });
     }
 
     function renderItems() {
       const container = document.getElementById("itemsContainer");
-      const search = document.getElementById("searchInput").value.toLowerCase();
       container.innerHTML = "";
 
-      items
-        .filter(item => item.name.toLowerCase().includes(search))
-        .forEach(item => {
-          const inputValue = factInputs[item.id] || "";
-          const card = document.createElement("div");
-          card.className = "item-card";
-          card.innerHTML = `
+      const filtered = searchText.trim()
+        ? items.filter(item => item.name.toLowerCase().includes(searchText.toLowerCase()))
+        : items;
+
+      filtered.forEach(item => {
+        const value = factInputs[item.id] || "";
+        container.innerHTML += `
+          <div class="item-card">
             <strong>${item.name}</strong><br/>
-            <small>По документам: ${item.quantity} шт</small><br/>
-            <input type="text" value="${inputValue}" placeholder="Факт" oninput="updateFact('${item.id}', this.value)" />
-          `;
-          container.appendChild(card);
-        });
+            По документам: ${item.docQty} шт<br/>
+            <input type="text" value="${value}" placeholder="Факт" oninput="updateFact('${item.id}', this.value)" />
+          </div>
+        `;
+      });
     }
 
     function updateFact(id, value) {
@@ -213,8 +217,7 @@
         if (!input) return;
 
         const fact = evaluateExpression(input);
-        const doc = extractInt(item.quantity);
-        const diff = fact - doc;
+        const diff = fact - item.docQty;
         const status = diff === 0 ? "✅ Совпадает" : diff > 0 ? `📦 Излишек: +${diff}` : `⚠️ Недостача: ${diff}`;
         summary += `<strong>${item.name}</strong>: ${status}<br/>`;
       });
@@ -223,10 +226,6 @@
 
     function evaluateExpression(input) {
       return input.replace(/\s+/g, "").split("+").reduce((sum, part) => sum + (parseInt(part) || 0), 0);
-    }
-
-    function extractInt(text) {
-      return parseInt(text.replace(/\D+/g, "")) || 0;
     }
   </script>
 </body>
