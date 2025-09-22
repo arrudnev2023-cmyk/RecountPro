@@ -101,12 +101,27 @@
     function extractItems(text) {
       items = [];
       const lines = text.split("\n");
+
       lines.forEach(line => {
-        const match = line.match(/(.+?)\s+(?:\d{6,})?\s+(?:кор\s+)?(\d+)\s+шт/i);
-        if (match) {
-          const name = match[1].trim();
-          const docQty = parseInt(match[2]);
-          items.push({ name, docQty, factQty: null });
+        const volumeMatch = line.match(/(\d{1,2},\d{2})/);
+        if (!volumeMatch) return;
+
+        const volume = volumeMatch[1];
+        const volumeIndex = line.indexOf(volume);
+        const namePart = line.slice(0, volumeIndex);
+        const nameWords = namePart.split(/\s+/).filter(word => !/^\d+$/.test(word));
+        const name = nameWords.join(" ").trim();
+
+        const afterVolume = line.slice(volumeIndex + volume.length);
+        const quantityMatch = afterVolume.match(/(\d+)\s*шт/);
+        const quantity = quantityMatch ? parseInt(quantityMatch[1]) : null;
+
+        if (name && volume && quantity !== null) {
+          items.push({
+            name: `${name} ${volume}`,
+            docQty: quantity,
+            factQty: null
+          });
         }
       });
     }
