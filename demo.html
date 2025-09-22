@@ -2,289 +2,160 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Демо RecountPro</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RecountPro Пересчёт</title>
   <style>
     body {
+      font-family: sans-serif;
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #1e3c72, #8e44ad);
-      color: white;
       padding: 20px;
-      position: relative;
+      background: #f5f5f5;
     }
     h2 {
       text-align: center;
-      margin-bottom: 20px;
+      color: #2c3e50;
     }
-    .search-wrapper-flex {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-      align-items: center;
-    }
-    .search-box {
-      position: relative;
-      flex-grow: 1;
-    }
-    .search-bar {
-      width: 100%;
-      padding: 12px 36px 12px 12px;
-      border-radius: 10px;
-      border: none;
-      font-size: 15px;
-      background-color: rgba(255,255,255,0.2);
-      color: white;
-    }
-    .clear-btn {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
-      color: white;
-      font-size: 20px;
-      cursor: pointer;
-    }
-    .summary-btn {
-      background-color: #28a745;
-      border: none;
-      color: white;
-      padding: 8px 12px;
-      border-radius: 10px;
-      font-size: 15px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .product-card {
-      background-color: rgba(255,255,255,0.1);
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 15px;
-    }
-    .product-name {
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-    .product-qty {
-      font-size: 14px;
-      margin-bottom: 10px;
-    }
-    .fact-input {
+    #pdfUpload, #searchInput {
       width: 100%;
       padding: 10px;
-      border-radius: 8px;
-      border: none;
+      margin: 10px 0;
       font-size: 16px;
-      background-color: rgba(255,255,255,0.2);
-      color: white;
     }
-    .keyboard {
-      position: absolute;
-      left: 20px;
-      right: 20px;
-      z-index: 1000;
-      background-color: rgba(255,255,255,0.1);
-      padding: 15px;
-      border-radius: 10px;
-      text-align: center;
-    }
-    .keyboard .keys {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-    .keyboard button {
-      padding: 14px;
-      font-size: 18px;
-      border: none;
-      border-radius: 8px;
-      background-color: white;
-      color: #1e3c72;
-      font-weight: bold;
-    }
-    .done-btn {
+    button {
       width: 100%;
-      padding: 14px;
-      font-size: 16px;
-      background-color: #007bff;
+      padding: 12px;
+      background: #27ae60;
       color: white;
       border: none;
-      border-radius: 8px;
+      font-size: 16px;
+      margin-bottom: 20px;
+      cursor: pointer;
+      border-radius: 6px;
     }
-    .hidden {
-      display: none;
+    .item-card {
+      background: white;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .item-card input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 8px;
+      font-size: 16px;
+    }
+    #summary {
+      background: #ecf0f1;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <h2>Экран пересчёта RecountPro</h2>
-  <div class="search-wrapper-flex">
-    <div class="search-box">
-      <input
-        type="text"
-        placeholder="Поиск по названию"
-        class="search-bar"
-        id="searchInput"
-        autocomplete="off"
-        autocorrect="off"
-        autocapitalize="off"
-        spellcheck="false"
-      />
-      <button id="clearSearch" class="clear-btn" aria-label="Очистить">×</button>
-    </div>
-    <button id="showSummary" class="summary-btn">Итог</button>
-  </div>
-  <div id="productList">
-    <!-- 15 карточек -->
-    <div class="product-card"><div class="product-name">Вино Сендеро де Монтана Бонарда Аргентина кр.сух 0,75</div><div class="product-qty">По документам: 2 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-    <div class="product-card"><div class="product-name">Вино Андес Аура Чили кр.п/сух 1л</div><div class="product-qty">По документам: 5 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-    <div class="product-card"><div class="product-name">Вино Сан оф Африка Сенсо Пинотаж кр.п/сух 0,75</div><div class="product-qty">По документам: 3 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-    <div class="product-card"><div class="product-name">Вино Кумба Пинотаж кр.п/сух 0,75</div><div class="product-qty">По документам: 2 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-    <div class="product-card"><div class="product-name">Вино Сол де Плата Мальбек Мендоса кр.сух 0,75</div><div class="product-qty">По документам: 3 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-    <div class="product-card"><div class="product-name">Вино Молоко Любимой Женщины бел.п/сл 0,75</div><div class="product-qty">По документам: 3 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-    <div class="product-card"><div class="product-name">Вино Вейнцунфт Рислинг Рейнгау бел.п/сух 0,75</div><div class="product-qty">По документам: 5 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-    <div class="product-card"><div class="product-name">Вино Зибенштейн Пино Нуар Пфальц кр.п/сух 0,75</div><div class="product-qty">По документам: 3 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-    <div class="product-card"><div class="product-name">Вино Зибенштейн Совиньон Блан Пфальц бел.п/сух 0,75</div><div class="product-qty">По документам: 2 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-    <div class="product-card"><div class="product-name">Вино Зибенштейн Рислинг Пфальц бел.п/сух 0,75</div><div class="product-qty">По документам: 2 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-    <div class="product-card"><div class="product-name">Вино Мальборо Моту Кораха бел.сух 0,75</div><div class="product-qty">По документам: 7 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-    <div class="product-card"><div class="product-name">Вино Макуту Бэй Совиньон Блан бел.сух 0,75</div><div class="product-qty">По документам: 2 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-    <div class="product-card"><div class="product-name">Вино Кахури Гвинис Марани Мукузани кр.сух 0,75</div><div class="product-qty">По документам: 7 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-    <div class="product-card"><div class="product-name">Вино Музаради Алазанская Долина бел.п/сл 0,75</div><div class="product-qty">По документам: 6 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-    <div class="product-card"><div class="product-name">Вино Музаради Алазанская Долина кр.п/сл 0,75</div><div class="product-qty">По документам: 6 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
-  </div>
-  <div id="summaryModal" class="hidden" style="
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.8);
-    color: white;
-    padding: 20px;
-    overflow-y: auto;
-    z-index: 2000;
-  ">
-    <h3 style="text-align:center;">Итоги пересчёта</h3>
-    <div id="summaryContent"></div>
-    <button id="closeSummary" style="
-      margin-top: 20px;
-      width: 100%;
-      padding: 14px;
-      font-size: 16px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 8px;
-    ">Закрыть</button>
-  </div>
-    <div class="keyboard hidden" id="customKeyboard">
-    <div class="keys">
-      <button>1</button><button>2</button><button>3</button>
-      <button>4</button><button>5</button><button>6</button>
-      <button>7</button><button>8</button><button>9</button>
-      <button>+</button><button>0</button><button>←</button>
-    </div>
-    <button class="done-btn">Готово</button>
-  </div>
+  <h2>Пересчёт товаров</h2>
 
+  <!-- Загрузка PDF -->
+  <input type="file" id="pdfUpload" accept=".pdf" />
+  <button onclick="parsePDF()">Загрузить PDF</button>
+
+  <!-- Поиск -->
+  <input type="text" id="searchInput" placeholder="Поиск по названию" oninput="filterItems()" />
+
+  <!-- Таблица пересчёта -->
+  <div id="itemsContainer"></div>
+
+  <!-- Итог -->
+  <button onclick="calculateTotal()">Итог</button>
+  <div id="summary"></div>
+
+  <!-- JS: PDF.js + логика -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script>
-    const inputs = document.querySelectorAll('.fact-input');
-    const keyboard = document.getElementById('customKeyboard');
-    const doneBtn = document.querySelector('.done-btn');
-    const searchInput = document.getElementById('searchInput');
-    const clearBtn = document.getElementById('clearSearch');
-    const showSummaryBtn = document.getElementById('showSummary');
-    const summaryModal = document.getElementById('summaryModal');
-    const summaryContent = document.getElementById('summaryContent');
-    const closeSummaryBtn = document.getElementById('closeSummary');
-    const productCards = document.querySelectorAll('.product-card');
+    let items = [];
 
-    let activeInput = null;
+    async function parsePDF() {
+      const file = document.getElementById("pdfUpload").files[0];
+      if (!file) return;
 
-    // Открытие клавиатуры под активным полем
-    inputs.forEach(input => {
-      input.addEventListener('click', () => {
-        activeInput = input;
-        const rect = input.getBoundingClientRect();
-        const scrollTop = window.scrollY || document.documentElement.scrollTop;
-        keyboard.style.top = `${rect.bottom + scrollTop + 10}px`;
-        keyboard.classList.remove('hidden');
-      });
-    });
+      const reader = new FileReader();
+      reader.onload = async function () {
+        const typedarray = new Uint8Array(this.result);
+        const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
 
-    // Закрытие клавиатуры
-    doneBtn.addEventListener('click', () => {
-      keyboard.classList.add('hidden');
-      activeInput = null;
-    });
+        let fullText = "";
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const strings = content.items.map(item => item.str);
+          fullText += strings.join(" ") + "\n";
+        }
 
-    // Ввод символов
-    keyboard.querySelectorAll('.keys button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (!activeInput) return;
-        const val = btn.textContent;
-        if (val === '←') {
-          activeInput.value = activeInput.value.slice(0, -1);
-        } else {
-          activeInput.value += val;
+        extractItems(fullText);
+        renderItems();
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function extractItems(text) {
+      items = [];
+      const lines = text.split("\n");
+      lines.forEach(line => {
+        const match = line.match(/(.+?)\s+(?:\d{6,})?\s+(?:кор\s+)?(\d+)\s+шт/i);
+        if (match) {
+          const name = match[1].trim();
+          const docQty = parseInt(match[2]);
+          items.push({ name, docQty, factQty: null });
         }
       });
-    });
+    }
 
-    // Поиск по названию
-    searchInput.addEventListener('input', () => {
-      const query = searchInput.value.toLowerCase();
-      productCards.forEach(card => {
-        const name = card.querySelector('.product-name').textContent.toLowerCase();
-        card.style.display = name.includes(query) ? 'block' : 'none';
-      });
-    });
-
-    // Очистка поиска
-    clearBtn.addEventListener('click', () => {
-      searchInput.value = '';
-      productCards.forEach(card => card.style.display = 'block');
-    });
-
-    // Открытие итогов
-    showSummaryBtn.addEventListener('click', () => {
-      summaryContent.innerHTML = '';
-      productCards.forEach(card => {
-        const name = card.querySelector('.product-name').textContent;
-        const fact = card.querySelector('.fact-input').value.trim();
-        const qtyText = card.querySelector('.product-qty').textContent;
-        const match = qtyText.match(/(\d+)/);
-        const expected = match ? parseInt(match[1]) : 0;
-        const actual = parseInt(fact) || 0;
-        const diff = actual - expected;
-
-        const diffColor = diff === 0 ? 'white' : diff > 0 ? '#00ff99' : '#ff4d4d';
-        const diffText = diff === 0 ? '0' : (diff > 0 ? '+' : '') + diff;
-
-        const row = document.createElement('div');
-        row.style.marginBottom = '12px';
-        row.innerHTML = `
-          <div><strong>${name}</strong></div>
-          <div>Факт: ${actual} | Итог: ${expected} | <span style="color:${diffColor}">Разница: ${diffText}</span></div>
+    function renderItems() {
+      const container = document.getElementById("itemsContainer");
+      container.innerHTML = "";
+      items.forEach((item, index) => {
+        container.innerHTML += `
+          <div class="item-card">
+            <strong>${item.name}</strong><br/>
+            По документам: ${item.docQty} шт<br/>
+            <input type="number" placeholder="Факт" onchange="updateFact(${index}, this.value)" />
+          </div>
         `;
-        summaryContent.appendChild(row);
       });
+    }
 
-      summaryModal.classList.remove('hidden');
-    });
+    function updateFact(index, value) {
+      items[index].factQty = parseInt(value);
+    }
 
-    // Закрытие итогов
-    closeSummaryBtn.addEventListener('click', () => {
-      summaryModal.classList.add('hidden');
-    });
+    function filterItems() {
+      const query = document.getElementById("searchInput").value.toLowerCase();
+      const filtered = items.filter(item => item.name.toLowerCase().includes(query));
+      const container = document.getElementById("itemsContainer");
+      container.innerHTML = "";
+      filtered.forEach((item, index) => {
+        container.innerHTML += `
+          <div class="item-card">
+            <strong>${item.name}</strong><br/>
+            По документам: ${item.docQty} шт<br/>
+            <input type="number" placeholder="Факт" onchange="updateFact(${index}, this.value)" />
+          </div>
+        `;
+      });
+    }
 
-    // Закрытие клавиатуры при клике вне поля
-    document.addEventListener('click', (e) => {
-      if (!keyboard.contains(e.target) && !e.target.classList.contains('fact-input')) {
-        keyboard.classList.add('hidden');
-        activeInput = null;
-      }
-    });
+    function calculateTotal() {
+      let summary = "";
+      items.forEach(item => {
+        if (item.factQty !== null) {
+          const diff = item.factQty - item.docQty;
+          const status = diff === 0 ? "✅ Совпадает" : diff > 0 ? `📦 Излишек: +${diff}` : `⚠️ Недостача: ${diff}`;
+          summary += `<strong>${item.name}</strong>: ${status}<br/>`;
+        }
+      });
+      document.getElementById("summary").innerHTML = summary;
+    }
   </script>
 </body>
 </html>
