@@ -127,8 +127,8 @@
       items = [];
 
       const ignorePatterns = [
-        /проверка осуществлялась/i,
-        /комиссией в составе/i,
+        /проверка/i,
+        /комиссия/i,
         /итого/i,
         /дата/i,
         /подпись/i,
@@ -138,18 +138,19 @@
       ];
 
       lines.forEach(line => {
-        if (ignorePatterns.some(p => p.test(line))) return;
+        const clean = line.trim();
 
-        const volumeMatch = line.match(/(\d{1,2},\d{2})/);
-        const quantityMatch = line.match(/(\d+)\s*шт/);
+        if (ignorePatterns.some(p => p.test(clean))) return;
+        if (!/[а-яa-z]/i.test(clean)) return; // нет букв — не товар
+
+        const volumeMatch = clean.match(/(\d{1,2},\d{2})/);
+        const quantityMatch = clean.match(/(\d+)\s*шт/);
 
         if (!volumeMatch || !quantityMatch) return;
 
-        const name = line.trim();
         const quantity = parseInt(quantityMatch[1]);
-
         items.push({
-          name,
+          name: clean,
           docQty: quantity,
           factQty: null
         });
