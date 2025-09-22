@@ -140,18 +140,20 @@
       lines.forEach(line => {
         if (ignorePatterns.some(p => p.test(line))) return;
 
-        const quantityMatches = [...line.matchAll(/(\d+)\s*шт/g)];
-        const lastQuantityMatch = quantityMatches.pop();
-        const quantity = lastQuantityMatch ? parseInt(lastQuantityMatch[1]) : null;
+        const parts = line.split(/(?=\d{1,2},\d{2})/); // разбивка по объёмам
 
-        if (quantity === null) return;
+        parts.forEach(part => {
+          const quantityMatch = part.match(/(\d+)\s*шт/);
+          const quantity = quantityMatch ? parseInt(quantityMatch[1]) : null;
 
-        const name = line.trim(); // вся строка как название
+          if (quantity === null) return;
 
-        items.push({
-          name,
-          docQty: quantity,
-          factQty: null
+          const name = part.trim();
+          items.push({
+            name,
+            docQty: quantity,
+            factQty: null
+          });
         });
       });
     }
