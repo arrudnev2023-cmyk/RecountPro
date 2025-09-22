@@ -133,21 +133,14 @@
         const typedarray = new Uint8Array(this.result);
         const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
 
-        let linesByY = {};
+        let lines = [];
 
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
           const content = await page.getTextContent();
-
-          content.items.forEach(item => {
-            const y = Math.round(item.transform[5]);
-            if (!linesByY[y]) linesByY[y] = [];
-            linesByY[y].push(item.str);
-          });
+          const line = content.items.map(item => item.str).join(" ");
+          lines.push(line);
         }
-
-        const sortedY = Object.keys(linesByY).sort((a, b) => a - b); // исправлено: сверху вниз
-        const lines = sortedY.map(y => linesByY[y].join(" "));
 
         extractItems(lines);
         loadState();
@@ -160,28 +153,27 @@
       items = [];
 
       lines.forEach(line => {
-        const volumeMatch = line.match(/(\d{1,2},\d{2})/);
-        if (!volumeMatch) return;
+        const fragments = line.split(/(?=\d{1,2},\d{2})/); // разбиваем по объёмам
 
-        const volume = volumeMatch[1];
-        const volumeIndex = line.indexOf(volume);
-        const namePart = line.slice(0, volumeIndex);
-        const nameWords = namePart.split(/\s+/).filter(word => !/^\d+$/.test(word));
-        const name = nameWords.join(" ").trim();
+        fragments.forEach(fragment => {
+          const volumeMatch = fragment.match(/(\d{1,2},\d{2})/);
+          const quantityMatch = fragment.match(/(\d+)\s*шт/);
+          const words = fragment.trim().split(/\s+/);
+          if (!volumeMatch || !quantityMatch || /^\d/.test(words[0])) return;
 
-        const afterVolume = line.slice(volumeIndex + volume.length);
-        const quantityMatches = [...afterVolume.matchAll(/(\d+)\s*шт/g)];
-        const lastQuantityMatch = quantityMatches.pop();
-        const quantity = lastQuantityMatch ? parseInt(lastQuantityMatch[1]) : null;
+          const volume = volumeMatch[1];
+          const quantity = parseInt(quantityMatch[1]);
+          const namePart = fragment.slice(0, fragment.indexOf(volume));
+          const nameWords = namePart.split(/\s+/).filter(w => !/^\d+$/.test(w));
+          const name = nameWords.join(" ").trim();
 
-        if (name && volume && quantity !== null) {
           items.push({
             id: crypto.randomUUID(),
             name: `${name} ${volume}`,
             docQty: quantity,
             factQty: null
           });
-        }
+        });
       });
     }
 
