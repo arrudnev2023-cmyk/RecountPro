@@ -161,6 +161,35 @@ input[type="file"] {
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
   white-space: nowrap;
 }
+    .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background: white;
+  padding-bottom: 10px;
+  z-index: 1;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.modal-close {
+  font-size: 24px;
+  cursor: pointer;
+  color: #888;
+  padding: 0 8px;
+}
+
+.modal-scroll {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 
   </style>
 </head>
@@ -190,10 +219,14 @@ input[type="file"] {
 
     <div id="modalOverlay">
       <div id="modalContent">
-        <h2>📊 Итоги пересчёта</h2>
-        <div id="modalItems"></div>
-        <button onclick="closeModal()">Закрыть</button>
-      </div>
+  <div class="modal-header">
+    <h2>📊 Итоги пересчёта</h2>
+    <span class="modal-close" onclick="closeModal()">✖</span>
+  </div>
+  <div id="modalItems" class="modal-scroll"></div>
+  <button onclick="closeModal()">Закрыть</button>
+</div>
+
     </div>
   </div>
 
