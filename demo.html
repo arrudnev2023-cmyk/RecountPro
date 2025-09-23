@@ -6,105 +6,151 @@
   <title>Пересчёт товаров</title>
   <style>
     body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to bottom right, rgba(52, 152, 219, 0.6), rgba(155, 89, 182, 0.6));
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .container {
-      width: 100%;
-      max-width: 600px;
-      padding: 20px;
-    }
-    h1 {
-      font-size: 32px;
-      font-weight: bold;
-      color: white;
-      margin-bottom: 20px;
-      text-align: center;
-    }
-    .top-bar {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    .top-bar input {
-      flex: 1;
-      padding: 10px;
-      border-radius: 12px;
-      border: none;
-      font-size: 16px;
-    }
-    .top-bar button {
-      padding: 10px 16px;
-      border-radius: 12px;
-      border: none;
-      background: rgba(255,255,255,0.2);
-      color: white;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    .item-card {
-      background: rgba(255,255,255,0.15);
-      padding: 16px;
-      border-radius: 16px;
-      margin-bottom: 16px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      color: white;
-    }
-    .item-card input {
-      width: 100%;
-      padding: 10px;
-      font-size: 16px;
-      margin-top: 8px;
-      border-radius: 8px;
-      border: none;
-    }
-    label.upload-button {
-      display: block;
-      background: white;
-      color: #2980b9;
-      padding: 12px;
-      border-radius: 12px;
-      text-align: center;
-      margin-bottom: 20px;
-      cursor: pointer;
-    }
-    input[type="file"] {
-      display: none;
-    }
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(to bottom right, rgba(52, 152, 219, 0.6), rgba(155, 89, 182, 0.6));
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.container {
+  width: 100%;
+  max-width: 600px;
+  padding: 20px;
+}
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: inherit;
+  padding: 12px 0;
+  text-align: center;
+}
+.sticky-bar {
+  position: sticky;
+  top: 60px;
+  z-index: 10;
+  background: inherit;
+  padding-bottom: 10px;
+}
+.top-bar {
+  display: flex;
+  gap: 12px;
+}
+.top-bar input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 12px;
+  border: none;
+  font-size: 16px;
+}
+.top-bar button {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255,255,255,0.2);
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+.item-card {
+  background: rgba(255,255,255,0.15);
+  padding: 16px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  color: white;
+}
+.item-card input {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: none;
+}
+label.upload-button {
+  display: block;
+  background: white;
+  color: #2980b9;
+  padding: 12px;
+  border-radius: 12px;
+  text-align: center;
+  margin-bottom: 20px;
+  cursor: pointer;
+}
+input[type="file"] {
+  display: none;
+}
+.export-button {
+  margin-top: 20px;
+  padding: 10px 16px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+#modalOverlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  z-index: 999;
+}
+#modalContent {
+  background: white;
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 20px;
+  border-radius: 16px;
+  overflow-y: auto;
+  max-height: 80vh;
+}
+#modalContent button {
+  margin-top: 20px;
+  padding: 10px 16px;
+  background: #2980b9;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>📦 Пересчёт товаров</h1>
+    <div class="sticky-header">
+      <h1>📦 Пересчёт товаров</h1>
+    </div>
 
     <label for="pdfUpload" class="upload-button">📥 Загрузить PDF</label>
     <input type="file" id="pdfUpload" accept=".pdf" />
 
-    <div class="top-bar">
-      <input type="text" id="searchInput" placeholder="🔍 Поиск по названию" />
-      <button onclick="showSummary()">Итог</button>
+    <div class="sticky-bar">
+      <div class="top-bar">
+        <input type="text" id="searchInput" placeholder="🔍 Поиск по названию" />
+        <button onclick="showSummary()">Итог</button>
+      </div>
     </div>
 
     <div id="itemsContainer"></div>
 
-    <button onclick="exportToPDF()" style="margin-top:20px; padding:10px 16px; background:#27ae60; color:white; border:none; border-radius:12px; cursor:pointer;">
-      📤 Экспорт в PDF
-    </button>
+    <button onclick="exportToPDF()" class="export-button">📤 Экспорт в PDF</button>
 
-    <div id="modalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:999;">
-      <div id="modalContent" style="background:white; max-width:600px; margin:40px auto; padding:20px; border-radius:16px; overflow-y:auto; max-height:80vh;">
-        <h2 style="margin-top:0;">📊 Итоги пересчёта</h2>
+    <div id="modalOverlay">
+      <div id="modalContent">
+        <h2>📊 Итоги пересчёта</h2>
         <div id="modalItems"></div>
-        <button onclick="closeModal()" style="margin-top:20px; padding:10px 16px; background:#2980b9; color:white; border:none; border-radius:12px; cursor:pointer;">Закрыть</button>
+        <button onclick="closeModal()">Закрыть</button>
       </div>
     </div>
   </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
 <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
 <script>
   let items = [];
@@ -161,36 +207,35 @@
   }
 
   function extractItems(lines) {
-  items = [];
+    items = [];
 
-  lines.forEach(line => {
-    // Ищем все товарные коды (5+ цифр подряд)
-    const parts = line.split(/(?=\d{5,}\s)/g); // разделяем по товарному коду
+    lines.forEach(line => {
+      const parts = line.split(/(?=\d{5,}\s)/g);
 
-    parts.forEach(part => {
-  const partMatch = part.match(/^(\d{5,})\s+(.*)/);
-  if (!partMatch) return;
+      parts.forEach(part => {
+        const partMatch = part.match(/^(\d{5,})\s+(.*)/);
+        if (!partMatch) return;
 
-  const rawName = partMatch[2];
+        const rawName = partMatch[2];
+        const matches = [...rawName.matchAll(/(\d+)\s*шт/g)];
+        if (matches.length === 0) return;
 
-  const matches = [...rawName.matchAll(/(\d+)\s*шт/g)];
-  if (matches.length === 0) return;
+        const lastMatch = matches[matches.length - 1];
+        const quantity = parseInt(lastMatch[1]);
+        const quantityIndex = rawName.lastIndexOf(lastMatch[0]);
 
-  const lastMatch = matches[matches.length - 1];
-  const quantity = parseInt(lastMatch[1]);
-  const quantityIndex = rawName.lastIndexOf(lastMatch[0]);
+        const namePart = rawName.slice(0, quantityIndex).trim();
 
-  const namePart = rawName.slice(0, quantityIndex).trim();
-
-  items.push({
-    id: crypto.randomUUID(),
-    name: namePart,
-    docQty: quantity,
-    factQty: null
-  });
-});
-  });
+        items.push({
+          id: crypto.randomUUID(),
+          name: namePart,
+          docQty: quantity,
+          factQty: null
+        });
+      });
+    });
   }
+
   function renderItems() {
     const container = document.getElementById("itemsContainer");
     container.innerHTML = "";
@@ -220,7 +265,7 @@
     return input.replace(/\s+/g, "").split("+").reduce((sum, part) => sum + (parseInt(part) || 0), 0);
   }
 
-  function showSummary() {
+    function showSummary() {
     const modalItems = document.getElementById("modalItems");
     modalItems.innerHTML = "";
 
@@ -298,5 +343,6 @@
     reader.readAsArrayBuffer(file);
   }
 </script>
+
 </body>
 </html>
