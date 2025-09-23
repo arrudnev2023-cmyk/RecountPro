@@ -168,30 +168,29 @@
     const parts = line.split(/(?=\d{5,}\s)/g); // разделяем по товарному коду
 
     parts.forEach(part => {
-      const matches = [...part.matchAll(/(\d+)\s*шт/g)];
-      if (matches.length === 0) return;
+  const partMatch = part.match(/^(\d{5,})\s+(.*)/);
+  if (!partMatch) return;
 
-      const lastMatch = matches[matches.length - 1];
-      const quantity = parseInt(lastMatch[1]);
-      const quantityIndex = part.lastIndexOf(lastMatch[0]);
+  const rawName = partMatch[2];
 
-      const startMatch = part.match(/\d{5,}/); // товарный код
-      if (!startMatch) return;
+  const matches = [...rawName.matchAll(/(\d+)\s*шт/g)];
+  if (matches.length === 0) return;
 
-      const startIndex = part.indexOf(startMatch[0]);
+  const lastMatch = matches[matches.length - 1];
+  const quantity = parseInt(lastMatch[1]);
+  const quantityIndex = rawName.lastIndexOf(lastMatch[0]);
 
-      const namePart = part.slice(startIndex + startMatch[0].length, quantityIndex).trim();
+  const namePart = rawName.slice(0, quantityIndex).trim();
 
-      items.push({
-        id: crypto.randomUUID(),
-        name: namePart,
-        docQty: quantity,
-        factQty: null
-      });
-    });
+  items.push({
+    id: crypto.randomUUID(),
+    name: namePart,
+    docQty: quantity,
+    factQty: null
   });
-}
-
+});
+  });
+  }
   function renderItems() {
     const container = document.getElementById("itemsContainer");
     container.innerHTML = "";
