@@ -116,7 +116,36 @@ input[type="file"] {
   border-radius: 12px;
   cursor: pointer;
 }
+    .top-bar {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
 
+.search-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.search-wrapper input {
+  width: 100%;
+  padding: 10px 36px 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  background: white;
+  color: #333;
+}
+
+#clearSearch {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 18px;
+  color: #888;
+}
   </style>
 </head>
 <body>
@@ -129,7 +158,12 @@ input[type="file"] {
 
     <div class="sticky-bar">
       <div class="top-bar">
-        <input type="text" id="searchInput" placeholder="🔍 Поиск по названию" />
+        <div class="search-wrapper">
+  <input type="text" id="searchInput" placeholder="🔍 Поиск по названию"
+    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+  <span id="clearSearch" onclick="clearSearch()">✖</span>
+</div>
+
         <button onclick="showSummary()">Итог</button>
       </div>
     </div>
@@ -339,6 +373,12 @@ input[type="file"] {
     };
     reader.readAsArrayBuffer(file);
   }
+  function clearSearch() {
+  const input = document.getElementById("searchInput");
+  input.value = "";
+  searchText = "";
+  renderItems();
+}
 </script>
 
 </body>
