@@ -164,29 +164,33 @@
   items = [];
 
   lines.forEach(line => {
-    const matches = [...line.matchAll(/(\d+)\s*шт/g)];
-    if (matches.length === 0) return;
+    // Ищем все товарные коды (5+ цифр подряд)
+    const parts = line.split(/(?=\d{5,}\s)/g); // разделяем по товарному коду
 
-    const lastMatch = matches[matches.length - 1];
-    const quantity = parseInt(lastMatch[1]);
-    const quantityIndex = line.lastIndexOf(lastMatch[0]);
+    parts.forEach(part => {
+      const matches = [...part.matchAll(/(\d+)\s*шт/g)];
+      if (matches.length === 0) return;
 
-    const startMatch = line.match(/\d+/);
-    if (!startMatch) return;
+      const lastMatch = matches[matches.length - 1];
+      const quantity = parseInt(lastMatch[1]);
+      const quantityIndex = part.lastIndexOf(lastMatch[0]);
 
-    const startIndex = line.indexOf(startMatch[0]);
+      const startMatch = part.match(/\d{5,}/); // товарный код
+      if (!startMatch) return;
 
-    const namePart = line.slice(startIndex + startMatch[0].length, quantityIndex).trim();
+      const startIndex = part.indexOf(startMatch[0]);
 
-    items.push({
-      id: crypto.randomUUID(),
-      name: namePart,
-      docQty: quantity,
-      factQty: null
+      const namePart = part.slice(startIndex + startMatch[0].length, quantityIndex).trim();
+
+      items.push({
+        id: crypto.randomUUID(),
+        name: namePart,
+        docQty: quantity,
+        factQty: null
+      });
     });
   });
 }
-
 
   function renderItems() {
     const container = document.getElementById("itemsContainer");
