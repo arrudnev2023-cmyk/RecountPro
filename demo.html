@@ -161,30 +161,32 @@
   }
 
   function extractItems(lines) {
-    items = [];
+  items = [];
 
-    lines.forEach(line => {
-      const quantityMatch = line.match(/(\d+)\s*шт/);
-      if (!quantityMatch) return;
+  lines.forEach(line => {
+    const matches = [...line.matchAll(/(\d+)\s*шт/g)];
+    if (matches.length === 0) return;
 
-      const quantity = parseInt(quantityMatch[1]);
-      const quantityIndex = line.indexOf(quantityMatch[0]);
+    const lastMatch = matches[matches.length - 1];
+    const quantity = parseInt(lastMatch[1]);
+    const quantityIndex = line.lastIndexOf(lastMatch[0]);
 
-      const startMatch = line.match(/\d+/);
-      if (!startMatch) return;
+    const startMatch = line.match(/\d+/);
+    if (!startMatch) return;
 
-      const startIndex = line.indexOf(startMatch[0]);
+    const startIndex = line.indexOf(startMatch[0]);
 
-      const namePart = line.slice(startIndex + startMatch[0].length, quantityIndex).trim();
+    const namePart = line.slice(startIndex + startMatch[0].length, quantityIndex).trim();
 
-      items.push({
-        id: crypto.randomUUID(),
-        name: namePart,
-        docQty: quantity,
-        factQty: null
-      });
+    items.push({
+      id: crypto.randomUUID(),
+      name: namePart,
+      docQty: quantity,
+      factQty: null
     });
-  }
+  });
+}
+
 
   function renderItems() {
     const container = document.getElementById("itemsContainer");
