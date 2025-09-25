@@ -229,6 +229,7 @@ const supabase = supabase.createClient(
     <input type="email" id="email" placeholder="Email" />
     <input type="password" id="password" placeholder="Пароль" />
     <button onclick="signIn()">Войти</button>
+    <button onclick="signUp()">Регистрация</button>
     <div id="auth-error"></div>
   </div>
 
@@ -410,6 +411,19 @@ const supabase = supabase.createClient(
       factInputs[id] = value;
       saveState();
     }
+    async function signUp() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+
+  const { data, error } = await supabase.auth.signUp({ email, password });
+
+  if (error) {
+    document.getElementById('auth-error').innerText = error.message;
+  } else {
+    document.getElementById('auth-error').innerText = "✅ Аккаунт создан. Теперь войдите.";
+  }
+}
+
 
     function evaluateExpression(input) {
       return input.replace(/\s+/g, "").split("+").reduce((sum, part) => sum + (parseInt(part) || 0), 0);
