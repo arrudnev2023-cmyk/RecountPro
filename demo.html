@@ -4,439 +4,505 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Пересчёт товаров</title>
+
+const supabase = supabase.createClient(
+  'https://iqebsxvdspmtqzlihqyk.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxZWJzeHZkc3BtdHF6bGlocXlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MTk1ODUsImV4cCI6MjA3NDM5NTU4NX0.KJpvUiuKDZDWagH4xW4UVul_nyAGnqqJ3QYJYy8-I-I'
+);
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
   <style>
     body {
-  margin: 0;
-  font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(to bottom right, rgba(52, 152, 219, 0.6), rgba(155, 89, 182, 0.6));
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.container {
-  width: 100%;
-  max-width: 600px;
-  padding: 20px;
-}
-.sticky-bar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: #f9f9f9;
-  padding: 10px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  border-bottom: 1px solid #ccc;
-}
-.top-bar {
-  display: flex;
-  gap: 12px;
-  width: 100%;
-  align-items: center;
-}
-.search-wrapper {
-  position: relative;
-  flex: 3;
-  min-width: 0; /* важно для flex */
-}
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom right, rgba(52, 152, 219, 0.6), rgba(155, 89, 182, 0.6));
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-.search-wrapper input {
-  width: 100%;
-  box-sizing: border-box; /* чтобы padding не ломал ширину */
-  padding: 10px 36px 10px 12px;
-  border-radius: 12px;
-  border: 1px solid #ccc;
-  font-size: 16px;
-  background: white;
-  color: #333;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+    .container {
+      width: 100%;
+      max-width: 600px;
+      padding: 20px;
+    }
 
-#clearSearch {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  cursor: pointer;
-  font-size: 18px;
-  color: #888;
-  user-select: none;
-}
+    #auth-screen {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(255,255,255,0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
 
-}
-.top-bar button {
-  flex: 1;
-  padding: 10px 16px;
-  border-radius: 12px;
-  border: none;
-  background: #3498db;
-  color: white;
-  font-size: 14px;
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  white-space: nowrap;
-}
-.item-card {
-  background: rgba(255,255,255,0.15);
-  padding: 16px;
-  border-radius: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  color: white;
-}
-.item-card input {
-  width: 100%;
-  padding: 10px;
-  font-size: 16px;
-  margin-top: 8px;
-  border-radius: 8px;
-  border: none;
-}
-label.upload-button {
-  display: block;
-  background: white;
-  color: #2980b9;
-  padding: 12px;
-  border-radius: 12px;
-  text-align: center;
-  margin-bottom: 20px;
-  cursor: pointer;
-}
-input[type="file"] {
-  display: none;
-}
-.export-button {
-  margin-top: 20px;
-  padding: 10px 16px;
-  background: #27ae60;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-}
-#modalOverlay {
-  display: none;
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.6);
-  z-index: 999;
-}
-#modalContent {
-  background: white;
-  max-width: 600px;
-  margin: 40px auto;
-  padding: 20px;
-  border-radius: 16px;
-  overflow-y: auto;
-  max-height: 80vh;
-}
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: sticky;
-  top: 0;
-  background: white;
-  padding: 10px 0;
-  z-index: 1;
-  border-bottom: 1px solid #ccc;
-}
-.modal-header h2 {
-  margin: 0;
-  font-size: 20px;
-  padding-left: 12px;
-}
-.modal-close {
-  font-size: 24px;
-  cursor: pointer;
-  color: #888;
-  padding-right: 12px;
-  user-select: none;
-}
-.modal-scroll {
-  max-height: 60vh;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-#modalContent button {
-  margin-top: 20px;
-  padding: 10px 16px;
-  background: #2980b9;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-}
+    #auth-screen input {
+      padding: 10px;
+      margin: 5px;
+      width: 250px;
+      font-size: 16px;
+    }
+
+    #auth-screen button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+
+    #auth-error {
+      color: red;
+      margin-top: 10px;
+    }
+
+    #demo-screen {
+      display: none;
+    }
+    .search-wrapper {
+      flex: 3;
+      min-width: 0;
+    }
+
+    .search-wrapper input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px 36px 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      background: white;
+      color: #333;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    #clearSearch {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      font-size: 18px;
+      color: #888;
+      user-select: none;
+    }
+
+    .top-bar button {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: none;
+      background: #3498db;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      white-space: nowrap;
+    }
+
+    .item-card {
+      background: rgba(255,255,255,0.15);
+      padding: 16px;
+      border-radius: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      color: white;
+    }
+
+    .item-card input {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 8px;
+      border-radius: 8px;
+      border: none;
+    }
+
+    label.upload-button {
+      display: block;
+      background: white;
+      color: #2980b9;
+      padding: 12px;
+      border-radius: 12px;
+      text-align: center;
+      margin-bottom: 20px;
+      cursor: pointer;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .export-button {
+      margin-top: 20px;
+      padding: 10px 16px;
+      background: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+
+    #modalOverlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 999;
+    }
+
+    #modalContent {
+      background: white;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      border-radius: 16px;
+      overflow-y: auto;
+      max-height: 80vh;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      background: white;
+      padding: 10px 0;
+      z-index: 1;
+      border-bottom: 1px solid #ccc;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 20px;
+      padding-left: 12px;
+    }
+
+    .modal-close {
+      font-size: 24px;
+      cursor: pointer;
+      color: #888;
+      padding-right: 12px;
+      user-select: none;
+    }
+
+    .modal-scroll {
+      max-height: 60vh;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    #modalContent button {
+      margin-top: 20px;
+      padding: 10px 16px;
+      background: #2980b9;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+
     .summary-button {
-  display: block;
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  background: #3498db;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1 style="text-align:center; margin-bottom:20px;">📦 Пересчёт товаров</h1>
 
-   <label for="pdfUpload" class="upload-button">📥 Загрузить PDF</label>
-<input type="file" id="pdfUpload" accept=".pdf" />
-
-<button onclick="showSummary()" class="summary-button">📊 Итог</button>
-
-
-    <div class="sticky-bar">
-  <div class="top-bar">
-    <div class="search-wrapper">
-      <input type="text" id="searchInput" placeholder="🔍 Поиск по названию"
-        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-      <span id="clearSearch" onclick="clearSearch()">✖</span>
-    </div>
+  <!-- 🔐 Авторизация -->
+  <div id="auth-screen">
+    <h2>Вход в RecountPro</h2>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Пароль" />
+    <button onclick="signIn()">Войти</button>
+    <div id="auth-error"></div>
   </div>
-</div>
 
+  <!-- ✅ Интерфейс пересчёта -->
+  <div id="demo-screen">
+    <div class="container">
+      <h1 style="text-align:center; margin-bottom:20px;">📦 Пересчёт товаров</h1>
 
-    <div id="itemsContainer"></div>
+      <label for="pdfUpload" class="upload-button">📥 Загрузить PDF</label>
+      <input type="file" id="pdfUpload" accept=".pdf" />
 
-    <button onclick="exportToPDF()" class="export-button">📤 Экспорт в PDF</button>
-    <button onclick="clearAll()" class="export-button" style="background:#e74c3c;">🧼 Очистить пересчёт</button>
+      <button onclick="showSummary()" class="summary-button">📊 Итог</button>
 
-    <div id="modalOverlay">
-      <div id="modalContent">
-        <div class="modal-header">
-          <h2>📊 Итоги пересчёта</h2>
-          <span class="modal-close" onclick="closeModal()">✖</span>
+      <div class="sticky-bar">
+        <div class="top-bar">
+          <div class="search-wrapper">
+            <input type="text" id="searchInput" placeholder="🔍 Поиск по названию"
+              autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+            <span id="clearSearch" onclick="clearSearch()">✖</span>
+          </div>
         </div>
-        <div id="modalItems" class="modal-scroll"></div>
-        <button onclick="closeModal()">Закрыть</button>
+      </div>
+
+      <div id="itemsContainer"></div>
+
+      <button onclick="exportToPDF()" class="export-button">📤 Экспорт в PDF</button>
+      <button onclick="clearAll()" class="export-button" style="background:#e74c3c;">🧼 Очистить пересчёт</button>
+
+      <div id="modalOverlay">
+        <div id="modalContent">
+          <div class="modal-header">
+            <h2>📊 Итоги пересчёта</h2>
+            <span class="modal-close" onclick="closeModal()">✖</span>
+          </div>
+          <div id="modalItems" class="modal-scroll"></div>
+          <button onclick="closeModal()">Закрыть</button>
+        </div>
       </div>
     </div>
   </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script>
+    const supabase = supabase.createClient(
+  'https://iqebsxvdspmtqzlihqyk.supabase.co',
+  'твой_anonKey_сюда'
+);
 
- <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-<script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
-<script>
-  let items = [];
-  let factInputs = {};
-  let searchText = "";
 
-  document.getElementById("pdfUpload").addEventListener("change", parsePDF);
-  document.getElementById("searchInput").addEventListener("input", (e) => {
-    searchText = e.target.value;
-    renderItems();
-  });
+    async function signIn() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
 
-  function clearSearch() {
-    const input = document.getElementById("searchInput");
-    input.value = "";
-    searchText = "";
-    renderItems();
-  }
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-  function saveState() {
-    localStorage.setItem("factInputs", JSON.stringify(factInputs));
-  }
-
-  function loadSavedData() {
-    const savedItems = localStorage.getItem("parsedItems");
-    const savedFacts = localStorage.getItem("factInputs");
-
-    if (savedItems) items = JSON.parse(savedItems);
-    if (savedFacts) factInputs = JSON.parse(savedFacts);
-
-    renderItems();
-  }
-
-  window.addEventListener("DOMContentLoaded", loadSavedData);
-
-  async function parsePDF(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async function () {
-      const typedarray = new Uint8Array(this.result);
-      const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
-
-      let linesByY = {};
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        content.items.forEach(item => {
-          const y = Math.round(item.transform[5]);
-          if (!linesByY[y]) linesByY[y] = [];
-          linesByY[y].push(item.str);
-        });
+      if (error) {
+        document.getElementById('auth-error').innerText = error.message;
+      } else {
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('demo-screen').style.display = 'block';
       }
+    }
 
-            const sortedY = Object.keys(linesByY).sort((a, b) => b - a);
-      const lines = sortedY.map(y => linesByY[y].join(" "));
-      extractItems(lines);
-      saveState();
+    let items = [];
+    let factInputs = {};
+    let searchText = "";
+
+    document.getElementById("pdfUpload").addEventListener("change", parsePDF);
+    document.getElementById("searchInput").addEventListener("input", (e) => {
+      searchText = e.target.value;
       renderItems();
-    };
-    reader.readAsArrayBuffer(file);
-  }
-
-  function extractItems(lines) {
-    items = [];
-
-    lines.forEach(line => {
-      const parts = line.split(/(?=\d{5,}\s)/g);
-
-      parts.forEach(part => {
-        const partMatch = part.match(/^(\d{5,})\s+(.*)/);
-        if (!partMatch) return;
-
-        const rawName = partMatch[2];
-        const matches = [...rawName.matchAll(/(\d+)\s*шт/g)];
-        if (matches.length === 0) return;
-
-        const lastMatch = matches[matches.length - 1];
-        const quantity = parseInt(lastMatch[1]);
-        const quantityIndex = rawName.lastIndexOf(lastMatch[0]);
-
-        const namePart = rawName.slice(0, quantityIndex).trim();
-
-        items.push({
-          id: crypto.randomUUID(),
-          name: namePart,
-          docQty: quantity,
-          factQty: null
-        });
-      });
     });
 
-    localStorage.setItem("parsedItems", JSON.stringify(items));
-  }
-
-  function renderItems() {
-    const container = document.getElementById("itemsContainer");
-    container.innerHTML = "";
-
-    const filtered = searchText.trim()
-      ? items.filter(item => item.name.toLowerCase().includes(searchText.toLowerCase()))
-      : items;
-
-    filtered.forEach(item => {
-      const value = factInputs[item.id] || "";
-      container.innerHTML += `
-        <div class="item-card">
-          <strong>${item.name}</strong><br/>
-          По документам: ${item.docQty} шт<br/>
-          <input type="text" value="${value}" placeholder="Факт" oninput="updateFact('${item.id}', this.value)" />
-        </div>
-      `;
-    });
-  }
-
-  function updateFact(id, value) {
-    factInputs[id] = value;
-    saveState();
-  }
-
-  function evaluateExpression(input) {
-    return input.replace(/\s+/g, "").split("+").reduce((sum, part) => sum + (parseInt(part) || 0), 0);
-  }
-
-  function showSummary() {
-    const modalItems = document.getElementById("modalItems");
-    modalItems.innerHTML = "";
-
-    items.forEach(item => {
-      const input = factInputs[item.id];
-      const fact = evaluateExpression(input || "");
-      const diff = fact - item.docQty;
-
-      const color = diff > 0 ? "#2ecc71" : diff < 0 ? "#e74c3c" : "#7f8c8d";
-      const diffText = diff > 0 ? `+${diff}` : diff;
-
-      modalItems.innerHTML += `
-        <div style="border:1px solid #ccc; border-left:8px solid ${color}; padding:12px; margin-bottom:12px; border-radius:8px;">
-          <strong>${item.name}</strong><br/>
-          Факт: ${input || "—"}<br/>
-          Итог: ${fact}<br/>
-          По документам: ${item.docQty}<br/>
-          Разница: <span style="color:${color}; font-weight:bold;">${diffText}</span>
-        </div>
-      `;
-    });
-
-    document.getElementById("modalOverlay").style.display = "block";
-  }
-
-  function closeModal() {
-    document.getElementById("modalOverlay").style.display = "none";
-  }
-
-  function clearAll() {
-    if (confirm("Точно очистить все данные пересчёта?")) {
-      localStorage.removeItem("parsedItems");
-      localStorage.removeItem("factInputs");
-      items = [];
-      factInputs = {};
+    function clearSearch() {
+      const input = document.getElementById("searchInput");
+      input.value = "";
+      searchText = "";
       renderItems();
     }
-  }
 
-  async function exportToPDF() {
-    const fileInput = document.getElementById("pdfUpload");
-    const file = fileInput.files[0];
-    if (!file) return alert("Сначала загрузите PDF");
+    function saveState() {
+      localStorage.setItem("factInputs", JSON.stringify(factInputs));
+    }
 
-    const reader = new FileReader();
-    reader.onload = async function () {
-      const existingPdfBytes = new Uint8Array(this.result);
-      const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
-      const pages = pdfDoc.getPages();
-      const firstPage = pages[0];
-      const { width, height } = firstPage.getSize();
+    function loadSavedData() {
+      const savedItems = localStorage.getItem("parsedItems");
+      const savedFacts = localStorage.getItem("factInputs");
 
-      items.forEach((item, index) => {
-        const fact = evaluateExpression(factInputs[item.id] || "");
-        const diff = fact - item.docQty;
-        const diffText = diff > 0 ? `+${diff}` : diff;
+      if (savedItems) items = JSON.parse(savedItems);
+      if (savedFacts) factInputs = JSON.parse(savedFacts);
 
-        const y = height - 50 - index * 40;
+      renderItems();
+    }
 
-        firstPage.drawText(`${item.name} (${item.docQty} шт)`, {
-          x: 50,
-          y,
-          size: 12,
-          color: PDFLib.rgb(0, 0, 0),
-        });
+    window.addEventListener("DOMContentLoaded", loadSavedData);
 
-        firstPage.drawText(`Факт: ${fact} | Разница: ${diffText}`, {
-          x: 50,
-          y: y - 16,
-          size: 12,
-          color: diff > 0 ? PDFLib.rgb(0, 0.6, 0) : diff < 0 ? PDFLib.rgb(0.8, 0, 0) : PDFLib.rgb(0.5, 0.5, 0.5),
+    async function parsePDF(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async function () {
+        const typedarray = new Uint8Array(this.result);
+        const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+
+        let linesByY = {};
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          content.items.forEach(item => {
+            const y = Math.round(item.transform[5]);
+            if (!linesByY[y]) linesByY[y] = [];
+            linesByY[y].push(item.str);
+          });
+        }
+
+        const sortedY = Object.keys(linesByY).sort((a, b) => b - a);
+        const lines = sortedY.map(y => linesByY[y].join(" "));
+        extractItems(lines);
+        saveState();
+        renderItems();
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function extractItems(lines) {
+      items = [];
+
+      lines.forEach(line => {
+        const parts = line.split(/(?=\d{5,}\s)/g);
+
+        parts.forEach(part => {
+          const partMatch = part.match(/^(\d{5,})\s+(.*)/);
+          if (!partMatch) return;
+
+          const rawName = partMatch[2];
+          const matches = [...rawName.matchAll(/(\d+)\s*шт/g)];
+          if (matches.length === 0) return;
+
+          const lastMatch = matches[matches.length - 1];
+          const quantity = parseInt(lastMatch[1]);
+          const quantityIndex = rawName.lastIndexOf(lastMatch[0]);
+
+          const namePart = rawName.slice(0, quantityIndex).trim();
+
+          items.push({
+            id: crypto.randomUUID(),
+            name: namePart,
+            docQty: quantity,
+            factQty: null
+          });
         });
       });
 
-      const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
+      localStorage.setItem("parsedItems", JSON.stringify(items));
+    }
 
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "RecountPro_Итог.pdf";
-      a.click();
-      URL.revokeObjectURL(url);
-    };
-    reader.readAsArrayBuffer(file);
-  }
-</script>
+    function renderItems() {
+      const container = document.getElementById("itemsContainer");
+      container.innerHTML = "";
 
+      const filtered = searchText.trim()
+        ? items.filter(item => item.name.toLowerCase().includes(searchText.toLowerCase()))
+        : items;
+
+      filtered.forEach(item => {
+        const value = factInputs[item.id] || "";
+        container.innerHTML += `
+          <div class="item-card">
+            <strong>${item.name}</strong><br/>
+            По документам: ${item.docQty} шт<br/>
+            <input type="text" value="${value}" placeholder="Факт" oninput="updateFact('${item.id}', this.value)" />
+          </div>
+        `;
+      });
+    }
+
+    function updateFact(id, value) {
+      factInputs[id] = value;
+      saveState();
+    }
+
+    function evaluateExpression(input) {
+      return input.replace(/\s+/g, "").split("+").reduce((sum, part) => sum + (parseInt(part) || 0), 0);
+    }
+
+    function showSummary() {
+      const modalItems = document.getElementById("modalItems");
+      modalItems.innerHTML = "";
+
+      items.forEach(item => {
+        const input = factInputs[item.id];
+        const fact = evaluateExpression(input || "");
+        const diff = fact - item.docQty;
+
+        const color = diff > 0 ? "#2ecc71" : diff < 0 ? "#e74c3c" : "#7f8c8d";
+        const diffText = diff > 0 ? `+${diff}` : diff;
+
+        modalItems.innerHTML += `
+          <div style="border:1px solid #ccc; border-left:8px solid ${color}; padding:12px; margin-bottom:12px; border-radius:8px;">
+            <strong>${item.name}</strong><br/>
+            Факт: ${input || "—"}<br/>
+            Итог: ${fact}<br/>
+            По документам: ${item.docQty}<br/>
+            Разница: <span style="color:${color}; font-weight:bold;">${diffText}</span>
+          </div>
+        `;
+      });
+
+      document.getElementById("modalOverlay").style.display = "block";
+    }
+
+    function closeModal() {
+      document.getElementById("modalOverlay").style.display = "none";
+    }
+
+    function clearAll() {
+      if (confirm("Точно очистить все данные пересчёта?")) {
+        localStorage.removeItem("parsedItems");
+        localStorage.removeItem("factInputs");
+        items = [];
+        factInputs = {};
+        renderItems();
+      }
+    }
+
+    async function exportToPDF() {
+      const fileInput = document.getElementById("pdfUpload");
+      const file = fileInput.files[0];
+      if (!file) return alert("Сначала загрузите PDF");
+
+      const reader = new FileReader();
+      reader.onload = async function () {
+        const existingPdfBytes = new Uint8Array(this.result);
+        const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
+        const pages = pdfDoc.getPages();
+        const firstPage = pages[0];
+        const { width, height } = firstPage.getSize();
+
+        items.forEach((item, index) => {
+          const fact = evaluateExpression(factInputs[item.id] || "");
+          const diff = fact - item.docQty;
+          const diffText = diff > 0 ? `+${diff}` : diff;
+
+          const y = height - 50 - index * 40;
+
+          firstPage.drawText(`${item.name} (${item.docQty} шт)`, {
+            x: 50,
+            y,
+            size: 12,
+            color: PDFLib.rgb(0, 0, 0),
+          });
+
+          firstPage.drawText(`Факт: ${fact} | Разница: ${diffText}`, {
+            x: 50,
+            y: y - 16,
+            size: 12,
+            color: diff > 0 ? PDFLib.rgb(0, 0.6, 0) : diff < 0 ? PDFLib.rgb(0.8, 0, 0) : PDFLib.rgb(0.5, 0.5, 0.5),
+          });
+        });
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "RecountPro_Итог.pdf";
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  </script>
 </body>
 </html>
+
