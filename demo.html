@@ -77,6 +77,19 @@
     #cards {
       margin-top: 20px;
     }
+
+    #register-modal input {
+      width: 100%;
+      margin: 5px 0;
+      padding: 8px;
+      font-size: 14px;
+    }
+
+    #register-modal button {
+      margin-top: 10px;
+      padding: 8px 12px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -95,6 +108,19 @@
     <input type="file" id="pdfInput" accept=".pdf" />
     <button id="parseBtn">Пересчитать</button>
     <div id="cards"></div>
+  </div>
+
+  <div id="register-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+    <div style="background:white; padding:20px; border-radius:8px; width:300px;">
+      <h3>Регистрация</h3>
+      <input type="text" id="reg-name" placeholder="Имя" />
+      <input type="text" id="reg-surname" placeholder="Фамилия" />
+      <input type="email" id="reg-email" placeholder="Email" />
+      <input type="password" id="reg-password" placeholder="Пароль" />
+      <button id="reg-submit">Создать аккаунт</button>
+      <button onclick="document.getElementById('register-modal').style.display='none'">Отмена</button>
+      <div id="reg-message" style="margin-top:10px;"></div>
+    </div>
   </div>
 
   <script type="module">
@@ -133,17 +159,40 @@
       }
     });
 
-    document.getElementById('signUpBtn').addEventListener('click', async () => {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
+    document.getElementById('signUpBtn').addEventListener('click', () => {
+      document.getElementById('register-modal').style.display = 'flex';
+    });
 
-      const { data, error } = await supabase.auth.signUp({ email, password });
+    document.getElementById('reg-submit').addEventListener('click', async () => {
+      const name = document.getElementById('reg-name').value;
+      const surname = document.getElementById('reg-surname').value;
+      const email = document.getElementById('reg-email').value;
+      const password = document.getElementById('reg-password').value;
 
-      console.log("signUp result:", data, error);
+      const msg = document.getElementById('reg-message');
+      msg.innerText = '';
 
-      document.getElementById('auth-error').innerText = error?.message || '';
-      document.getElementById('auth-success').innerText =
-        data?.user ? '📩 Проверьте почту и подтвердите email.' : '';
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name, surname }
+        }
+      });
+
+      if (error) {
+        msg.innerText = error.message;
+        msg.style.color = 'red';
+        return;
+      }
+
+      msg.innerText = '✅ Ваш аккаунт успешно зарегистрирован. Пожалуйста подтвердите почту.';
+      msg.style.color = 'green';
+
+      const userId = data?.user?.id;
+      if (userId) {
+        await supabase.from('profiles').insert([{ id: userId, name, surname }]);
+      }
     });
 
     document.getElementById('parseBtn').addEventListener('click', async () => {
