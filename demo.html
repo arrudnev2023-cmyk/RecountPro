@@ -104,7 +104,9 @@
   </div>
 
   <div class="container" id="demo-screen">
-    <h2>Импорт PDF и пересчёт</h2>
+    <button id="logoutBtn" style="background:#e74c3c; margin-bottom:20px;">Выйти из профиля</button>
+    <h2 id="welcome" style="margin-bottom:20px;"></h2>
+    <h3>Импорт PDF и пересчёт</h3>
     <input type="file" id="pdfInput" accept=".pdf" />
     <button id="parseBtn">Пересчитать</button>
     <div id="cards"></div>
@@ -134,11 +136,24 @@
     const authScreen = document.getElementById('auth-screen');
     const demoScreen = document.getElementById('demo-screen');
 
+    async function showWelcome(userId) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', userId)
+        .single();
+
+      if (data?.name) {
+        document.getElementById('welcome').innerText = `Добро пожаловать, ${data.name}!`;
+      }
+    }
+
     async function checkAuth() {
       const { data } = await supabase.auth.getUser();
       if (data?.user) {
         authScreen.style.display = 'none';
         demoScreen.style.display = 'block';
+        showWelcome(data.user.id);
       }
     }
 
@@ -156,7 +171,15 @@
       if (data?.user) {
         authScreen.style.display = 'none';
         demoScreen.style.display = 'block';
+        showWelcome(data.user.id);
       }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      demoScreen.style.display = 'none';
+      authScreen.style.display = 'flex';
+      document.getElementById('welcome').innerText = '';
     });
 
     document.getElementById('signUpBtn').addEventListener('click', () => {
@@ -208,7 +231,7 @@
         const text = new TextDecoder().decode(reader.result);
         const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
-        const parsedCards = lines.map((line, index) => {
+                const parsedCards = lines.map((line, index) => {
           const parts = line.split(/\s{2,}/);
           const name = parts[0] || `Товар ${index + 1}`;
           const quantity = parts[1] || '—';
