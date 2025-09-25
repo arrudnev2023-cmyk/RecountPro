@@ -2,39 +2,47 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Авторизация Supabase</title>
+  <title>RecountPro Demo</title>
   <style>
     body {
       font-family: sans-serif;
       background: #f0f0f0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+      margin: 0;
+      padding: 0;
     }
-    .auth-box {
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
       background: white;
-      padding: 30px;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      width: 300px;
     }
-    .auth-box input {
+    h2 {
+      text-align: center;
+    }
+    input[type="email"], input[type="password"], input[type="file"] {
       width: 100%;
       padding: 10px;
       margin: 8px 0;
       font-size: 16px;
     }
-    .auth-box button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
+    button {
+      padding: 10px 20px;
       font-size: 16px;
+      margin-top: 10px;
       background: #3498db;
       color: white;
       border: none;
       border-radius: 8px;
       cursor: pointer;
+    }
+    .card {
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
+      background: #fafafa;
     }
     #auth-error {
       color: red;
@@ -49,14 +57,21 @@
   </style>
 </head>
 <body>
-  <div class="auth-box">
-    <h2 style="text-align:center;">RecountPro Auth</h2>
+  <div class="container" id="auth-section">
+    <h2>RecountPro Авторизация</h2>
     <input type="email" id="email" placeholder="Email" />
     <input type="password" id="password" placeholder="Пароль" />
     <button id="signInBtn">Войти</button>
     <button id="signUpBtn">Регистрация</button>
     <div id="auth-error"></div>
     <div id="auth-success"></div>
+  </div>
+
+  <div class="container" id="main-section" style="display:none;">
+    <h2>Загрузка PDF для пересчёта</h2>
+    <input type="file" id="pdfInput" accept=".pdf" />
+    <button id="parseBtn">Пересчитать</button>
+    <div id="cards"></div>
   </div>
 
   <script type="module">
@@ -67,6 +82,19 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxZWJzeHZkc3BtdHF6bGlocXlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MTk1ODUsImV4cCI6MjA3NDM5NTU4NX0.KJpvUiuKDZDWagH4xW4UVul_nyAGnqqJ3QYJYy8-I-I'
     );
 
+    const authSection = document.getElementById('auth-section');
+    const mainSection = document.getElementById('main-section');
+
+    async function checkAuth() {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        authSection.style.display = 'none';
+        mainSection.style.display = 'block';
+      }
+    }
+
+    checkAuth();
+
     document.getElementById('signInBtn').addEventListener('click', async () => {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
@@ -75,6 +103,11 @@
 
       document.getElementById('auth-error').innerText = error?.message || '';
       document.getElementById('auth-success').innerText = data?.user ? '✅ Вход выполнен' : '';
+
+      if (data?.user) {
+        authSection.style.display = 'none';
+        mainSection.style.display = 'block';
+      }
     });
 
     document.getElementById('signUpBtn').addEventListener('click', async () => {
@@ -89,6 +122,20 @@
       document.getElementById('auth-success').innerText =
         data?.user ? '📩 Проверьте почту и подтвердите email.' : '';
     });
+
+    document.getElementById('parseBtn').addEventListener('click', async () => {
+      const fileInput = document.getElementById('pdfInput');
+      const file = fileInput.files[0];
+      if (!file) return alert("Выберите PDF-файл");
+
+      const reader = new FileReader();
+      reader.onload = function () {
+        const text = new TextDecoder().decode(reader.result);
+        const lines = text.split('\n').filter(l => l.trim());
+        const cards = lines.map((line, i) => `<div class="card">#${i + 1}: ${line}</div>`).join('');
+        document.getElementById('cards').innerHTML = cards;
+      };
+      reader.readAsArrayBuffer(file);
+    });
   </script>
 </body>
-</html>
