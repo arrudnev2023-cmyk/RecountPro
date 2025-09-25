@@ -3,17 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Пересчёт товаров</title>
+  <title>RecountPro</title>
 
   <style>
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to bottom right, rgba(52, 152, 219, 0.6), rgba(155, 89, 182, 0.6));
+      background: linear-gradient(to bottom right, #000, #111);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      color: gold;
     }
 
     .container {
@@ -26,47 +27,83 @@
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: rgba(255,255,255,0.95);
+      background: #000;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       z-index: 999;
+      text-align: center;
+    }
+
+    #auth-screen h2 {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      background: linear-gradient(to right, gold, #ffcc00);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: glow 2s infinite alternate;
+    }
+
+    @keyframes glow {
+      from { text-shadow: 0 0 10px gold; }
+      to { text-shadow: 0 0 20px #ffcc00; }
     }
 
     #auth-screen input {
-      padding: 10px;
-      margin: 5px;
-      width: 250px;
+      padding: 12px;
+      margin: 8px;
+      width: 280px;
       font-size: 16px;
+      border: 1px solid gold;
+      background: #111;
+      color: gold;
+      border-radius: 6px;
     }
 
     #auth-screen button {
-      padding: 10px 20px;
+      padding: 12px 24px;
       font-size: 16px;
       margin-top: 10px;
+      background: gold;
+      color: black;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s ease;
     }
 
-    #auth-error {
-      color: red;
-      margin-top: 10px;
+    #auth-screen button:hover {
+      background: #ffcc00;
     }
 
-    #auth-success {
-      color: green;
+    #auth-error, #auth-success {
       margin-top: 10px;
+      font-size: 14px;
     }
 
     #demo-screen {
       display: none;
     }
 
+    #logoutBtn {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+
     .card {
-      background: white;
+      background: #222;
       border-radius: 8px;
       padding: 10px;
       margin: 10px 0;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 6px rgba(255, 215, 0, 0.2);
+      color: gold;
     }
 
     .card strong {
@@ -78,23 +115,51 @@
       margin-top: 20px;
     }
 
+    #register-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #register-modal div {
+      background: #111;
+      padding: 20px;
+      border-radius: 8px;
+      width: 300px;
+      color: gold;
+    }
+
     #register-modal input {
       width: 100%;
       margin: 5px 0;
       padding: 8px;
       font-size: 14px;
+      background: #222;
+      border: 1px solid gold;
+      color: gold;
+      border-radius: 6px;
     }
 
     #register-modal button {
       margin-top: 10px;
       padding: 8px 12px;
       font-size: 14px;
+      background: gold;
+      color: black;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <div id="auth-screen">
-    <h2>RecountPro Авторизация</h2>
+    <h2>Добро пожаловать в RecountPro</h2>
     <input type="email" id="email" placeholder="Email" />
     <input type="password" id="password" placeholder="Пароль" />
     <button id="signInBtn">Войти</button>
@@ -104,7 +169,7 @@
   </div>
 
   <div class="container" id="demo-screen">
-    <button id="logoutBtn" style="background:#e74c3c; margin-bottom:20px;">Выйти из профиля</button>
+    <button id="logoutBtn">Выйти из профиля</button>
     <h2 id="welcome" style="margin-bottom:20px;"></h2>
     <h3>Импорт PDF и пересчёт</h3>
     <input type="file" id="pdfInput" accept=".pdf" />
@@ -112,8 +177,8 @@
     <div id="cards"></div>
   </div>
 
-  <div id="register-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
-    <div style="background:white; padding:20px; border-radius:8px; width:300px;">
+  <div id="register-modal">
+    <div>
       <h3>Регистрация</h3>
       <input type="text" id="reg-name" placeholder="Имя" />
       <input type="text" id="reg-surname" placeholder="Фамилия" />
@@ -137,7 +202,7 @@
     const demoScreen = document.getElementById('demo-screen');
 
     async function showWelcome(userId) {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('profiles')
         .select('name')
         .eq('id', userId)
@@ -182,7 +247,7 @@
       document.getElementById('welcome').innerText = '';
     });
 
-    document.getElementById('signUpBtn').addEventListener('click', () => {
+       document.getElementById('signUpBtn').addEventListener('click', () => {
       document.getElementById('register-modal').style.display = 'flex';
     });
 
@@ -209,12 +274,16 @@
         return;
       }
 
-      msg.innerText = '✅ Ваш аккаунт успешно зарегистрирован. Пожалуйста подтвердите почту.';
+      msg.innerText = '✅ Аккаунт создан. Пожалуйста подтвердите почту.';
       msg.style.color = 'green';
 
       const userId = data?.user?.id;
       if (userId) {
         await supabase.from('profiles').insert([{ id: userId, name, surname }]);
+        document.getElementById('register-modal').style.display = 'none';
+        authScreen.style.display = 'none';
+        demoScreen.style.display = 'block';
+        showWelcome(userId);
       }
     });
 
@@ -231,7 +300,7 @@
         const text = new TextDecoder().decode(reader.result);
         const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
-                const parsedCards = lines.map((line, index) => {
+        const parsedCards = lines.map((line, index) => {
           const parts = line.split(/\s{2,}/);
           const name = parts[0] || `Товар ${index + 1}`;
           const quantity = parts[1] || '—';
