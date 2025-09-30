@@ -2,24 +2,20 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RecountPro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      overflow-x: hidden;
-      box-sizing: border-box;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(-45deg, #4e00c2, #0077ff, #00c2c2, #ff4d88);
       background-size: 400% 400%;
       animation: gradientMove 12s ease infinite;
       color: white;
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      box-sizing: border-box;
     }
 
     @keyframes gradientMove {
@@ -31,10 +27,16 @@
     .container {
       width: 100%;
       max-width: 600px;
+      margin: 0 auto;
       padding: 20px;
       box-sizing: border-box;
     }
 
+    button {
+      cursor: pointer;
+    }
+
+    /* Авторизация */
     #auth-screen {
       position: absolute;
       top: 0; left: 0;
@@ -58,7 +60,6 @@
       text-transform: uppercase;
       margin-bottom: 4px;
       color: #eee;
-      animation: slideDown 1s ease forwards;
     }
 
     #auth-screen h1 {
@@ -68,12 +69,6 @@
       color: white;
       text-align: center;
       letter-spacing: 1px;
-      animation: slideDown 1s ease 0.2s forwards;
-    }
-
-    @keyframes slideDown {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(0); }
     }
 
     #auth-screen input {
@@ -86,7 +81,6 @@
       background: rgba(255,255,255,0.1);
       color: white;
       border-radius: 8px;
-      animation: fadeIn 0.5s ease forwards;
     }
 
     #auth-screen button {
@@ -97,19 +91,6 @@
       color: white;
       border: none;
       border-radius: 8px;
-      cursor: pointer;
-      transition: transform 0.2s ease;
-      animation: bounceIn 0.6s ease forwards;
-    }
-
-    #auth-screen button:hover {
-      transform: scale(1.05);
-    }
-
-    @keyframes bounceIn {
-      0% { transform: scale(0.8); opacity: 0; }
-      60% { transform: scale(1.1); opacity: 1; }
-      100% { transform: scale(1); }
     }
 
     #auth-error, #auth-success {
@@ -118,6 +99,7 @@
       color: #fff;
     }
 
+    /* Дашборд */
     .balance-bar {
       display: flex;
       justify-content: space-between;
@@ -135,7 +117,6 @@
       padding: 6px 12px;
       border-radius: 8px;
       font-size: 20px;
-      cursor: pointer;
     }
 
     .action-buttons {
@@ -151,71 +132,150 @@
       padding: 16px;
       font-size: 18px;
       border-radius: 12px;
-      cursor: pointer;
       width: 100%;
-      transition: background 0.3s ease;
     }
 
-    .action-buttons button:hover {
-      background: rgba(255,255,255,0.2);
-    }
-
-    .card {
-      background: rgba(255,255,255,0.1);
-      border-radius: 12px;
-      padding: 12px;
-      margin: 10px 0;
-      color: white;
-    }
-
-    .card strong {
-      display: block;
-      margin-bottom: 5px;
-    }
-
-    #register-modal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8);
-      z-index: 1000;
-      justify-content: center;
+    /* Пересчёт */
+    .search-wrapper-flex {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
       align-items: center;
     }
 
-    #register-modal div {
-      background: #222;
-      padding: 20px;
-      border-radius: 12px;
-      width: 300px;
-      color: white;
+    .search-box {
+      position: relative;
+      flex-grow: 1;
     }
 
-    #register-modal input {
+    .search-bar {
       width: 100%;
-      margin: 5px 0;
-      padding: 10px;
-      font-size: 14px;
-      background: rgba(255,255,255,0.1);
+      padding: 12px 36px 12px 12px;
+      border-radius: 10px;
+      border: none;
+      font-size: 15px;
+      background-color: rgba(255,255,255,0.2);
+      color: white;
+    }
+
+    .clear-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
       border: none;
       color: white;
+      font-size: 20px;
+    }
+
+    .summary-btn {
+      background-color: #28a745;
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 15px;
+      white-space: nowrap;
+    }
+
+    .product-card {
+      background-color: rgba(255,255,255,0.1);
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+    }
+
+    .product-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .product-qty {
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .fact-input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+      background-color: rgba(255,255,255,0.2);
+      color: white;
+    }
+
+    .keyboard {
+      position: absolute;
+      left: 20px;
+      right: 20px;
+      z-index: 1000;
+      background-color: rgba(255,255,255,0.1);
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .keyboard .keys {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .keyboard button {
+      padding: 14px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      background-color: white;
+      color: #1e3c72;
+      font-weight: bold;
+    }
+
+    .done-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
       border-radius: 8px;
     }
 
-    #register-modal button {
-      margin-top: 10px;
-      padding: 10px 14px;
-      font-size: 14px;
-      background: linear-gradient(to right, #ff4d88, #ff9900);
+    .hidden {
+      display: none;
+    }
+
+    #summaryModal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 20px;
+      overflow-y: auto;
+      z-index: 2000;
+    }
+
+    #summaryModal h3 {
+      text-align: center;
+    }
+
+    #closeSummary {
+      margin-top: 20px;
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      background-color: #007bff;
       color: white;
       border: none;
       border-radius: 8px;
-      cursor: pointer;
     }
   </style>
 </head>
 <body>
+  <!-- Авторизация -->
   <div id="auth-screen">
     <h2>добро пожаловать в</h2>
     <h1>RecountPro</h1>
@@ -227,7 +287,9 @@
     <div id="auth-success"></div>
   </div>
 
+  <!-- Дашборд -->
   <div class="container" id="dashboard-screen" style="display:none;">
+    <button onclick="goBack()" style="margin-bottom: 20px;">← Назад</button>
     <div style="margin-bottom: 24px;">
       <div style="font-size: 20px; font-weight: 600;">Баланс:</div>
       <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
@@ -244,14 +306,54 @@
     </div>
   </div>
 
-  <div class="container" id="demo-screen" style="display:none;">
-    <h2 id="welcome" style="margin-bottom:20px;"></h2>
-    <h3 style="margin-bottom: 12px;">Импорт PDF и пересчёт</h3>
-    <input type="file" id="pdfInput" accept=".pdf" style="margin-bottom: 12px;" />
-    <button id="parseBtn">Пересчитать</button>
-    <div id="cards" style="margin-top: 20px;"></div>
+  <!-- Пересчёт -->
+  <div class="container" id="recount-screen" style="display:none;">
+    <button onclick="goBack()" style="margin-bottom: 20px;">← Назад</button>
+    <h2>Экран пересчёта RecountPro</h2>
+    <div class="search-wrapper-flex">
+      <div class="search-box">
+        <input
+          type="text"
+          placeholder="Поиск по названию"
+          class="search-bar"
+          id="searchInput"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+        />
+        <button id="clearSearch" class="clear-btn" aria-label="Очистить">×</button>
+      </div>
+      <button id="showSummary" class="summary-btn">Итог</button>
+    </div>
+
+    <div id="productList">
+      <div class="product-card">
+        <div class="product-name">Вино Сендеро де Монтана Бонарда Аргентина кр.сух 0,75</div>
+        <div class="product-qty">По документам: 2 шт</div>
+        <input type="text" class="fact-input" placeholder="Факт" readonly />
+      </div>
+      <!-- Можно добавить ещё карточки -->
+    </div>
+
+    <div id="summaryModal" class="hidden">
+      <h3>Итоги пересчёта</h3>
+      <div id="summaryContent"></div>
+      <button id="closeSummary">Закрыть</button>
+    </div>
+
+    <div class="keyboard hidden" id="customKeyboard">
+      <div class="keys">
+        <button>1</button><button>2</button><button>3</button>
+        <button>4</button><button>5</button><button>6</button>
+        <button>7</button><button>8</button><button>9</button>
+        <button>+</button><button>0</button><button>←</button>
+      </div>
+      <button class="done-btn">Готово</button>
+    </div>
   </div>
 
+  <!-- Регистрация -->
   <div id="register-modal">
     <div>
       <h3>Регистрация</h3>
@@ -274,7 +376,21 @@
 
     const authScreen = document.getElementById('auth-screen');
     const dashboardScreen = document.getElementById('dashboard-screen');
-    const demoScreen = document.getElementById('demo-screen');
+    const recountScreen = document.getElementById('recount-screen');
+
+    let currentScreen = 'auth';
+
+    function goBack() {
+      if (currentScreen === 'dashboard') {
+        dashboardScreen.style.display = 'none';
+        authScreen.style.display = 'flex';
+        currentScreen = 'auth';
+      } else if (currentScreen === 'recount') {
+        recountScreen.style.display = 'none';
+        dashboardScreen.style.display = 'block';
+        currentScreen = 'dashboard';
+      }
+    }
 
     async function showWelcome(userId) {
       const { data } = await supabase
@@ -283,9 +399,6 @@
         .eq('id', userId)
         .single();
 
-      if (data?.name) {
-        document.getElementById('welcome').innerText = `Добро пожаловать, ${data.name}!`;
-      }
       if (data?.balance !== undefined) {
         document.getElementById('balance').innerText = `Баланс: ${data.balance} руб.`;
       }
@@ -296,6 +409,7 @@
       if (data?.user) {
         authScreen.style.display = 'none';
         dashboardScreen.style.display = 'block';
+        currentScreen = 'dashboard';
         showWelcome(data.user.id);
       }
     }
@@ -314,6 +428,7 @@
       if (data?.user) {
         authScreen.style.display = 'none';
         dashboardScreen.style.display = 'block';
+        currentScreen = 'dashboard';
         showWelcome(data.user.id);
       }
     });
@@ -321,9 +436,9 @@
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await supabase.auth.signOut();
       dashboardScreen.style.display = 'none';
-      demoScreen.style.display = 'none';
+      recountScreen.style.display = 'none';
       authScreen.style.display = 'flex';
-      document.getElementById('welcome').innerText = '';
+      currentScreen = 'auth';
     });
 
     document.getElementById('signUpBtn').addEventListener('click', () => {
@@ -362,6 +477,7 @@
         document.getElementById('register-modal').style.display = 'none';
         authScreen.style.display = 'none';
         dashboardScreen.style.display = 'block';
+        currentScreen = 'dashboard';
         showWelcome(userId);
       }
     });
@@ -389,7 +505,8 @@
 
     document.getElementById('startBtn').addEventListener('click', () => {
       dashboardScreen.style.display = 'none';
-      demoScreen.style.display = 'block';
+      recountScreen.style.display = 'block';
+      currentScreen = 'recount';
     });
 
     document.getElementById('infoBtn').addEventListener('click', () => {
@@ -400,38 +517,96 @@
       alert("Настройки пока не реализованы. Здесь можно будет изменить имя, язык, уведомления.");
     });
 
-    document.getElementById('parseBtn').addEventListener('click', async () => {
-      const fileInput = document.getElementById('pdfInput');
-      const file = fileInput.files[0];
-      if (!file) {
-        alert("Выберите PDF-файл");
-        return;
+    // Пересчёт: клавиатура, поиск, итог
+    const inputs = document.querySelectorAll('.fact-input');
+    const keyboard = document.getElementById('customKeyboard');
+    const doneBtn = document.querySelector('.done-btn');
+    const searchInput = document.getElementById('searchInput');
+    const clearBtn = document.getElementById('clearSearch');
+    const showSummaryBtn = document.getElementById('showSummary');
+    const summaryModal = document.getElementById('summaryModal');
+    const summaryContent = document.getElementById('summaryContent');
+    const closeSummaryBtn = document.getElementById('closeSummary');
+    const productCards = document.querySelectorAll('.product-card');
+
+    let activeInput = null;
+
+    inputs.forEach(input => {
+      input.addEventListener('click', () => {
+        activeInput = input;
+        const rect = input.getBoundingClientRect();
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        keyboard.style.top = `${rect.bottom + scrollTop + 10}px`;
+        keyboard.classList.remove('hidden');
+      });
+    });
+
+    doneBtn.addEventListener('click', () => {
+      keyboard.classList.add('hidden');
+      activeInput = null;
+    });
+
+    keyboard.querySelectorAll('.keys button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!activeInput) return;
+        const val = btn.textContent;
+        if (val === '←') {
+          activeInput.value = activeInput.value.slice(0, -1);
+        } else {
+          activeInput.value += val;
+        }
+      });
+    });
+
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.toLowerCase();
+      productCards.forEach(card => {
+        const name = card.querySelector('.product-name').textContent.toLowerCase();
+        card.style.display = name.includes(query) ? 'block' : 'none';
+      });
+    });
+
+    clearBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      productCards.forEach(card => card.style.display = 'block');
+    });
+
+    showSummaryBtn.addEventListener('click', () => {
+      summaryContent.innerHTML = '';
+      productCards.forEach(card => {
+        const name = card.querySelector('.product-name').textContent;
+        const fact = card.querySelector('.fact-input').value.trim();
+        const qtyText = card.querySelector('.product-qty').textContent;
+        const match = qtyText.match(/(\d+)/);
+        const expected = match ? parseInt(match[1]) : 0;
+        const actual = parseInt(fact) || 0;
+        const diff = actual - expected;
+
+        const diffColor = diff === 0 ? 'white' : diff > 0 ? '#00ff99' : '#ff4d4d';
+        const diffText = diff === 0 ? '0' : (diff > 0 ? '+' : '') + diff;
+
+        const row = document.createElement('div');
+        row.style.marginBottom = '12px';
+        row.innerHTML = `
+          <div><strong>${name}</strong></div>
+          <div>Факт: ${actual} | Документ: ${expected} | <span style="color:${diffColor}">Разница: ${diffText}</span></div>
+        `;
+        summaryContent.appendChild(row);
+      });
+
+      summaryModal.classList.remove('hidden');
+    });
+
+    closeSummaryBtn.addEventListener('click', () => {
+      summaryModal.classList.add('hidden');
+    });
+
+    // Закрытие клавиатуры при клике вне поля
+    document.addEventListener('click', (e) => {
+      if (!keyboard.contains(e.target) && !e.target.classList.contains('fact-input')) {
+        keyboard.classList.add('hidden');
+        activeInput = null;
       }
-
-      const reader = new FileReader();
-      reader.onload = async function () {
-        const text = new TextDecoder().decode(reader.result);
-        const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-
-        const parsedCards = lines.map((line, index) => {
-          const parts = line.split(/\s{2,}/);
-          const name = parts[0] || `Товар ${index + 1}`;
-          const quantity = parts[1] || '—';
-          const price = parts[2] || '—';
-
-          return `
-            <div class="card">
-              <strong>${name}</strong>
-              Кол-во: ${quantity}<br />
-              Цена: ${price}
-            </div>
-          `;
-        });
-
-        document.getElementById('cards').innerHTML = parsedCards.join('');
-      };
-
-      reader.readAsArrayBuffer(file);
     });
   </script>
 </body>
