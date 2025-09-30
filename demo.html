@@ -23,47 +23,48 @@
       padding: 20px;
     }
 
-   #auth-screen {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: #000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  box-sizing: border-box;
-  color: gold;
-}
+    #auth-screen {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      box-sizing: border-box;
+      color: gold;
+      animation: fadeIn 1s ease-in;
+    }
 
-#auth-screen h2 {
-  font-size: 16px;
-  font-weight: 400;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-  color: #aaa;
-}
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
-#auth-screen h1 {
-  font-size: 36px;
-  font-weight: 700;
-  margin-bottom: 30px;
-  color: gold;
-  text-align: center;
-  letter-spacing: 1px;
-}
+    #auth-screen h2 {
+      font-size: 16px;
+      font-weight: 400;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      color: #aaa;
+    }
 
-
-    @keyframes glow {
-      from { text-shadow: 0 0 10px gold; }
-      to { text-shadow: 0 0 20px #ffcc00; }
+    #auth-screen h1 {
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 30px;
+      color: gold;
+      text-align: center;
+      letter-spacing: 1px;
     }
 
     #auth-screen input {
       padding: 12px;
       margin: 8px;
-      width: 280px;
+      width: 100%;
+      max-width: 280px;
       font-size: 16px;
       border: 1px solid gold;
       background: #111;
@@ -111,7 +112,7 @@
       border-radius: 8px;
       padding: 10px;
       margin: 10px 0;
-      box-shadow: 0 2px 6px rgba(255, 215, 0, 0.2);
+      box-shadow: none;
       color: gold;
     }
 
@@ -168,8 +169,8 @@
 </head>
 <body>
   <div id="auth-screen">
-   <h2>добро пожаловать в</h2>
-<h1>RecountPro</h1>
+    <h2>добро пожаловать в</h2>
+    <h1>RecountPro</h1>
     <input type="email" id="email" placeholder="Email" />
     <input type="password" id="password" placeholder="Пароль" />
     <button id="signInBtn">Войти</button>
@@ -199,7 +200,6 @@
       <div id="reg-message" style="margin-top:10px;"></div>
     </div>
   </div>
-
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 
@@ -257,7 +257,7 @@
       document.getElementById('welcome').innerText = '';
     });
 
-       document.getElementById('signUpBtn').addEventListener('click', () => {
+    document.getElementById('signUpBtn').addEventListener('click', () => {
       document.getElementById('register-modal').style.display = 'flex';
     });
 
