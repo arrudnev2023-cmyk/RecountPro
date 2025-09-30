@@ -2,253 +2,94 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>RecountPro</title>
+  <title>RecountPro Demo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <style>
-    html, body {
+    * { box-sizing: border-box; }
+    body {
       margin: 0;
-      padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(-45deg, #4e00c2, #0077ff, #00c2c2, #ff4d88);
-      background-size: 400% 400%;
-      animation: gradientMove 12s ease infinite;
-      color: white;
-      min-height: 100vh;
-      box-sizing: border-box;
+      background: #f2f2f7;
+      color: #111;
     }
+    .screen { display: none; padding: 20px; min-height: 100vh; }
+    .active { display: block; }
 
-    @keyframes gradientMove {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-
-    .container {
-      width: 100%;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-      box-sizing: border-box;
-    }
-
-    button {
-      cursor: pointer;
-    }
-
-    /* Экраны */
-    #auth-screen, #dashboard-screen, #recount-screen {
-      display: none;
-    }
-
-    #auth-screen.active,
-    #dashboard-screen.active,
-    #recount-screen.active {
+    .centered {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 40px 20px;
-      animation: fadeIn 0.5s ease-in;
+      gap: 12px;
+      margin-top: 120px;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+    .icon {
+      font-size: 64px;
+      animation: rotateBox 2s linear infinite;
     }
 
-    input, button {
-      font-size: 16px;
-      border-radius: 8px;
+    @keyframes rotateBox {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    h1 { font-size: 36px; margin: 0; }
+    h2 { font-size: 18px; opacity: 0.8; text-align: center; margin: 0; }
+
+    .btn {
+      font-size: 18px;
+      padding: 14px;
+      width: 100%;
+      max-width: 300px;
+      background: #007aff;
+      color: white;
       border: none;
-    }
-
-    input {
-      padding: 12px;
-      margin: 8px 0;
-      width: 100%;
-      max-width: 280px;
-      background: rgba(255,255,255,0.1);
-      color: white;
-    }
-
-    button {
-      padding: 12px 24px;
-      background: linear-gradient(to right, #ff4d88, #ff9900);
-      color: white;
-      margin-top: 10px;
-    }
-
-    .action-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      margin-top: 20px;
-    }
-
-    .action-buttons button {
-      background: rgba(255,255,255,0.1);
-      padding: 16px;
-      font-size: 18px;
       border-radius: 12px;
-      width: 100%;
-    }
-
-    .product-card {
-      background-color: rgba(255,255,255,0.1);
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 15px;
-    }
-
-    .product-name {
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-
-    .product-qty {
-      font-size: 14px;
-      margin-bottom: 10px;
-    }
-
-    .fact-input {
-      width: 100%;
-      padding: 10px;
-      border-radius: 8px;
-      background-color: rgba(255,255,255,0.2);
-      color: white;
-    }
-
-    .keyboard {
-      position: absolute;
-      left: 20px;
-      right: 20px;
-      z-index: 1000;
-      background-color: rgba(255,255,255,0.1);
-      padding: 15px;
-      border-radius: 10px;
-      text-align: center;
-    }
-
-    .keyboard .keys {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .keyboard button {
-      padding: 14px;
-      font-size: 18px;
-      background-color: white;
-      color: #1e3c72;
-      font-weight: bold;
-    }
-
-    .done-btn {
-      width: 100%;
-      padding: 14px;
-      font-size: 16px;
-      background-color: #007bff;
-      color: white;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    #summaryModal {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.8);
-      color: white;
-      padding: 20px;
-      overflow-y: auto;
-      z-index: 2000;
-    }
-
-    #summaryModal h3 {
-      text-align: center;
-    }
-
-    #closeSummary {
+      cursor: pointer;
       margin-top: 20px;
-      width: 100%;
-      padding: 14px;
-      font-size: 16px;
-      background-color: #007bff;
-      color: white;
+    }
+
+    .btn.secondary {
+      background: white;
+      color: #007aff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 <body>
-  <!-- Авторизация -->
-  <div id="auth-screen" class="active">
-    <h2>добро пожаловать в</h2>
-    <h1>RecountPro</h1>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Пароль" />
-    <button id="signInBtn">Войти</button>
-    <button id="signUpBtn">Регистрация</button>
-    <div id="auth-error"></div>
-    <div id="auth-success"></div>
-  </div>
-
-  <!-- Дашборд -->
-  <div class="container" id="dashboard-screen">
-    <button onclick="goBack()" style="margin-bottom: 20px;">← Назад</button>
-    <div style="margin-bottom: 24px;">
-      <div style="font-size: 20px; font-weight: 600;">Баланс:</div>
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
-        <div id="balance" style="font-size: 24px;">… руб.</div>
-        <button id="topUpBtn">+</button>
-      </div>
-    </div>
-
-    <div class="action-buttons">
-      <button id="startBtn">Начать пересчёт</button>
-      <button id="infoBtn">Информация</button>
-      <button id="settingsBtn">Настройки</button>
-      <button id="logoutBtn">Выйти</button>
+  <div id="screenStart" class="screen active">
+    <div class="centered">
+      <div class="icon">📦</div>
+      <h1>RecountPro</h1>
+      <h2>Пересчёт — это просто</h2>
+      <button class="btn" onclick="showScreen('screenImport')">🚀 Начать пересчёт</button>
     </div>
   </div>
+  <!-- Импорт -->
+  <div id="screenImport" class="screen">
+    <h1>📄 Импорт товаров</h1>
+    <input type="file" id="pdfInput" accept=".pdf" style="display:none" />
+    <button class="btn" onclick="document.getElementById('pdfInput').click()">📥 Загрузить PDF</button>
+    <button class="btn secondary" onclick="showScreen('screenHistory')">📂 Ранее загруженные</button>
+    <button class="btn secondary" id="goToMainBtn" style="display:none" onclick="showScreen('screenContent')">⏩ Перейти к пересчёту</button>
+  </div>
 
+  <!-- История -->
+  <div id="screenHistory" class="screen">
+    <h1>📂 История</h1>
+    <div id="historyList"></div>
+    <button class="btn" onclick="showScreen('screenImport')">← Назад</button>
+  </div>
   <!-- Пересчёт -->
-  <div class="container" id="recount-screen">
-    <button onclick="goBack()" style="margin-bottom: 20px;">← Назад</button>
-    <h2>Экран пересчёта RecountPro</h2>
-
-    <input type="file" id="pdfInput" accept=".pdf" style="margin-bottom: 12px;" />
-    <button id="parseBtn">Импортировать PDF</button>
-
-    <div class="search-wrapper-flex" style="margin-top: 20px;">
-      <div class="search-box">
-        <input
-          type="text"
-          placeholder="Поиск по названию"
-          class="search-bar"
-          id="searchInput"
-          autocomplete="off"
-          autocorrect="off"
-          autocapitalize="off"
-          spellcheck="false"
-        />
-        <button id="clearSearch" class="clear-btn" aria-label="Очистить">×</button>
-      </div>
-      <button id="showSummary" class="summary-btn">Итог</button>
+  <div id="screenContent" class="screen">
+    <div class="search-row">
+      <input type="text" id="searchInput" class="search-input" placeholder="🔍 Поиск по названию" />
+      <button class="clear-btn" id="clearSearch">×</button>
+      <button class="summary-btn" onclick="showScreen('screenSummary')">Итог</button>
     </div>
-
-    <div id="productList">
-      <!-- Карточки товаров появятся после импорта PDF -->
-    </div>
-
-    <div id="summaryModal" class="hidden">
-      <h3>Итоги пересчёта</h3>
-      <div id="summaryContent"></div>
-      <button id="closeSummary">Закрыть</button>
-    </div>
-
-    <div class="keyboard hidden" id="customKeyboard">
+    <div id="productList"></div>
+    <button class="flashlight-btn" id="flashlightBtn">Фонарик ВЫКЛ</button>
+    <div id="customKeyboard">
       <div class="keys">
         <button>1</button><button>2</button><button>3</button>
         <button>4</button><button>5</button><button>6</button>
@@ -258,296 +99,206 @@
       <button class="done-btn">Готово</button>
     </div>
   </div>
-
-  <!-- Регистрация -->
-  <div id="register-modal" style="display:none;">
-    <div>
-      <h3>Регистрация</h3>
-      <input type="text" id="reg-name" placeholder="Имя" />
-      <input type="text" id="reg-surname" placeholder="Фамилия" />
-      <input type="email" id="reg-email" placeholder="Email" />
-      <input type="password" id="reg-password" placeholder="Пароль" />
-      <button id="reg-submit">Создать аккаунт</button>
-      <button onclick="document.getElementById('register-modal').style.display='none'">Отмена</button>
-      <div id="reg-message" style="margin-top:10px;"></div>
-    </div>
+  <!-- Итоги -->
+  <div id="screenSummary" class="screen">
+    <h1>📦 Итоги пересчёта</h1>
+    <div id="summaryList"></div>
+    <button class="export-btn" onclick="alert('📤 Экспорт в PDF пока как заглушка')">📤 Экспорт в PDF</button>
+    <button class="btn" onclick="showScreen('screenContent')">← Назад</button>
   </div>
-<script type="module">
-  import { createClient } from 'https://esm.sh/@supabase/supabase-js'
+<script>
+  let products = []
+  let factInputs = {}
+  let activeInput = null
+  let isFlashlightOn = false
 
-  const supabase = createClient(
-    'https://iqebsxvdspmtqzlihqyk.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxZWJzeHZkc3BtdHF6bGlocXlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MTk1ODUsImV4cCI6MjA3NDM5NTU4NX0.KJpvUiuKDZDWagH4xW4UVul_nyAGnqqJ3QYJYy8-I-I'
-  );
-
-  const authScreen = document.getElementById('auth-screen');
-  const dashboardScreen = document.getElementById('dashboard-screen');
-  const recountScreen = document.getElementById('recount-screen');
-
-  let currentScreen = 'auth';
-
-  function switchScreen(target) {
-    authScreen.classList.remove('active');
-    dashboardScreen.classList.remove('active');
-    recountScreen.classList.remove('active');
-
-    if (target === 'auth') authScreen.classList.add('active');
-    if (target === 'dashboard') dashboardScreen.classList.add('active');
-    if (target === 'recount') recountScreen.classList.add('active');
-
-    currentScreen = target;
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(div => div.classList.remove('active'))
+    document.getElementById(id).classList.add('active')
+    if (id === 'screenSummary') renderSummary()
+    if (id === 'screenHistory') renderHistory()
+    if (id === 'screenContent') renderProducts()
   }
 
-  function goBack() {
-    if (currentScreen === 'dashboard') {
-      switchScreen('auth');
-    } else if (currentScreen === 'recount') {
-      switchScreen('dashboard');
+  document.getElementById('pdfInput').addEventListener('change', async (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = function () {
+      const text = new TextDecoder().decode(reader.result)
+      parseText(text)
     }
+    reader.readAsArrayBuffer(file)
+  })
+
+  function parseText(fullText) {
+    localStorage.removeItem("savedState")
+    const lines = fullText.split(/\r?\n/)
+    const volumeRegex = /(\d{1,2},\d{2})/
+    const quantityRegex = /(\d+\s*шт)/
+
+    products = []
+    factInputs = {}
+
+    for (const line of lines) {
+      const volumeMatch = line.match(volumeRegex)
+      if (!volumeMatch) continue
+
+      const volume = volumeMatch[1]
+      const namePart = line.slice(0, line.indexOf(volume)).trim()
+      const nameWords = namePart.split(/\s+/).filter(word => !/^\d+$/.test(word))
+      const name = nameWords.join(' ').trim()
+
+      const afterVolume = line.slice(line.indexOf(volume) + volume.length)
+      const quantityMatch = afterVolume.match(quantityRegex)
+      const quantity = quantityMatch ? quantityMatch[1] : "?"
+
+      const fullName = `${name} ${volume}`
+      products.push({ id: crypto.randomUUID(), name: fullName, quantity })
+    }
+
+    localStorage.setItem("savedState", JSON.stringify({ products, factInputs }))
+    document.getElementById('goToMainBtn').style.display = 'inline-block'
   }
 
-  async function showBalance(userId) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('balance')
-      .eq('id', userId)
-      .single();
+  function renderProducts() {
+    const productList = document.getElementById('productList')
+    const query = document.getElementById('searchInput').value.trim().toLowerCase()
+    const filtered = query === '' ? products : products.filter(p => p.name.toLowerCase().includes(query))
 
-    if (data?.balance !== undefined) {
-      document.getElementById('balance').innerText = `Баланс: ${data.balance} руб.`;
-    }
-  }
+    productList.innerHTML = ''
+    filtered.forEach(product => {
+      const card = document.createElement('div')
+      card.className = 'product-card'
 
-  async function checkAuth() {
-    const { data } = await supabase.auth.getUser();
-    if (data?.user) {
-      switchScreen('dashboard');
-      showBalance(data.user.id);
-    }
-  }
+      const title = document.createElement('h3')
+      title.textContent = product.name
 
-  checkAuth();
+      const qty = document.createElement('p')
+      qty.textContent = product.quantity
 
-  document.getElementById('signInBtn').addEventListener('click', async () => {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-    document.getElementById('auth-error').innerText = error?.message || '';
-    document.getElementById('auth-success').innerText = data?.user ? '✅ Вход выполнен' : '';
-
-    if (data?.user) {
-      switchScreen('dashboard');
-      showBalance(data.user.id);
-    }
-  });
-
-  document.getElementById('logoutBtn').addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    switchScreen('auth');
-  });
-
-  document.getElementById('signUpBtn').addEventListener('click', () => {
-    document.getElementById('register-modal').style.display = 'flex';
-  });
-
-  document.getElementById('reg-submit').addEventListener('click', async () => {
-    const name = document.getElementById('reg-name').value;
-    const surname = document.getElementById('reg-surname').value;
-    const email = document.getElementById('reg-email').value;
-    const password = document.getElementById('reg-password').value;
-
-    const msg = document.getElementById('reg-message');
-    msg.innerText = '';
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name, surname }
+      const input = document.createElement('input')
+      input.className = 'fact-input'
+      input.type = 'text'
+      input.readOnly = true
+      input.value = factInputs[product.id] || ''
+      input.onclick = () => {
+        activeInput = input
+        const keyboard = document.getElementById('customKeyboard')
+        keyboard.style.display = 'flex'
+        const rect = input.getBoundingClientRect()
+        const scrollTop = window.scrollY || document.documentElement.scrollTop
+        keyboard.style.top = `${rect.bottom + scrollTop + 10}px`
       }
-    });
 
-    if (error) {
-      msg.innerText = error.message;
-      msg.style.color = 'red';
-      return;
-    }
+      card.appendChild(title)
+      card.appendChild(qty)
+      card.appendChild(input)
+      productList.appendChild(card)
+    })
+  }
 
-    msg.innerText = '✅ Аккаунт создан. Подтвердите почту.';
-    msg.style.color = 'white';
+  document.getElementById('searchInput').addEventListener('input', renderProducts)
+  document.getElementById('clearSearch').addEventListener('click', () => {
+    document.getElementById('searchInput').value = ''
+    renderProducts()
+  })
 
-    const userId = data?.user?.id;
-    if (userId) {
-      await supabase.from('profiles').insert([{ id: userId, name, surname, balance: 0 }]);
-      document.getElementById('register-modal').style.display = 'none';
-      switchScreen('dashboard');
-      showBalance(userId);
-    }
-  });
+  document.querySelector('.done-btn').addEventListener('click', () => {
+    document.getElementById('customKeyboard').style.display = 'none'
+    activeInput = null
+  })
 
-  document.getElementById('topUpBtn').addEventListener('click', async () => {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id;
-    if (!userId) return;
-
-    const { data } = await supabase
-      .from('profiles')
-      .select('balance')
-      .eq('id', userId)
-      .single();
-
-    const newBalance = (data?.balance || 0) + 100;
-
-    await supabase
-      .from('profiles')
-      .update({ balance: newBalance })
-      .eq('id', userId);
-
-    document.getElementById('balance').innerText = `Баланс: ${newBalance} руб.`;
-  });
-
-  document.getElementById('startBtn').addEventListener('click', () => {
-    switchScreen('recount');
-  });
-
-  document.getElementById('infoBtn').addEventListener('click', () => {
-    alert("RecountPro — это система пересчёта товаров из PDF. Здесь будет информация о продукте.");
-  });
-
-  document.getElementById('settingsBtn').addEventListener('click', () => {
-    alert("Настройки пока не реализованы. Здесь можно будет изменить имя, язык, уведомления.");
-  });
-  // Импорт PDF и генерация карточек
-  document.getElementById('parseBtn').addEventListener('click', () => {
-    const fileInput = document.getElementById('pdfInput');
-    const file = fileInput.files[0];
-    if (!file) {
-      alert("Выберите PDF-файл");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async function () {
-      const text = new TextDecoder().decode(reader.result);
-      const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-
-      const productList = document.getElementById('productList');
-      productList.innerHTML = '';
-
-      lines.forEach((line, index) => {
-        const parts = line.split(/\s{2,}/);
-        const name = parts[0] || `Товар ${index + 1}`;
-        const qty = parts[1] || '—';
-
-        const card = document.createElement('div');
-        card.className = 'product-card';
-        card.innerHTML = `
-          <div class="product-name">${name}</div>
-          <div class="product-qty">По документам: ${qty} шт</div>
-          <input type="text" class="fact-input" placeholder="Факт" readonly />
-        `;
-        productList.appendChild(card);
-      });
-
-      // Назначаем обработчики для новых карточек
-      const inputs = document.querySelectorAll('.fact-input');
-      inputs.forEach(input => {
-        input.addEventListener('click', () => {
-          activeInput = input;
-          const rect = input.getBoundingClientRect();
-          const scrollTop = window.scrollY || document.documentElement.scrollTop;
-          keyboard.style.top = `${rect.bottom + scrollTop + 10}px`;
-          keyboard.classList.remove('hidden');
-        });
-      });
-    };
-
-    reader.readAsArrayBuffer(file);
-  });
-
-  // Клавиатура
-  const keyboard = document.getElementById('customKeyboard');
-  const doneBtn = document.querySelector('.done-btn');
-  let activeInput = null;
-
-  doneBtn.addEventListener('click', () => {
-    keyboard.classList.add('hidden');
-    activeInput = null;
-  });
-
-  keyboard.querySelectorAll('.keys button').forEach(btn => {
+  document.querySelectorAll('#customKeyboard .keys button').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (!activeInput) return;
-      const val = btn.textContent;
+      if (!activeInput) return
+      const val = btn.textContent
       if (val === '←') {
-        activeInput.value = activeInput.value.slice(0, -1);
+        activeInput.value = activeInput.value.slice(0, -1)
       } else {
-        activeInput.value += val;
+        activeInput.value += val
       }
-    });
-  });
+
+      const card = activeInput.closest('.product-card')
+      const name = card.querySelector('h3').textContent
+      const product = products.find(p => p.name === name)
+      if (product) {
+        factInputs[product.id] = activeInput.value
+        localStorage.setItem("savedState", JSON.stringify({ products, factInputs }))
+      }
+    })
+  })
 
   document.addEventListener('click', (e) => {
+    const keyboard = document.getElementById('customKeyboard')
     if (!keyboard.contains(e.target) && !e.target.classList.contains('fact-input')) {
-      keyboard.classList.add('hidden');
-      activeInput = null;
+      keyboard.style.display = 'none'
+      activeInput = null
     }
-  });
+  })
 
-  // Поиск
-  const searchInput = document.getElementById('searchInput');
-  const clearBtn = document.getElementById('clearSearch');
+  document.getElementById('flashlightBtn').addEventListener('click', () => {
+    isFlashlightOn = !isFlashlightOn
+    const btn = document.getElementById('flashlightBtn')
+    btn.textContent = isFlashlightOn ? "Фонарик ВКЛ" : "Фонарик ВЫКЛ"
+    btn.classList.toggle("flashlight-on", isFlashlightOn)
+  })
 
-  searchInput.addEventListener('input', () => {
-    const query = searchInput.value.toLowerCase();
-    document.querySelectorAll('.product-card').forEach(card => {
-      const name = card.querySelector('.product-name').textContent.toLowerCase();
-      card.style.display = name.includes(query) ? 'block' : 'none';
-    });
-  });
+  function evaluateExpression(input) {
+    return input.replace(/\s+/g, '').split('+').map(Number).reduce((a,b) => a + b, 0)
+  }
 
-  clearBtn.addEventListener('click', () => {
-    searchInput.value = '';
-    document.querySelectorAll('.product-card').forEach(card => card.style.display = 'block');
-  });
+  function extractInt(str) {
+    const digits = str.replace(/\D+/g, '')
+    return digits ? parseInt(digits) : 0
+  }
 
-  // Итоги пересчёта
-  const showSummaryBtn = document.getElementById('showSummary');
-  const summaryModal = document.getElementById('summaryModal');
-  const summaryContent = document.getElementById('summaryContent');
-  const closeSummaryBtn = document.getElementById('closeSummary');
+  function formatDiff(diff) {
+    if (diff > 0) return `+${diff}`
+    if (diff < 0) return `${diff}`
+    return '0'
+  }
 
-  showSummaryBtn.addEventListener('click', () => {
-    summaryContent.innerHTML = '';
-    document.querySelectorAll('.product-card').forEach(card => {
-      const name = card.querySelector('.product-name').textContent;
-      const fact = card.querySelector('.fact-input').value.trim();
-      const qtyText = card.querySelector('.product-qty').textContent;
-      const match = qtyText.match(/(\d+)/);
-      const expected = match ? parseInt(match[1]) : 0;
-      const actual = parseInt(fact) || 0;
-      const diff = actual - expected;
+  function colorForDiff(diff) {
+    if (diff > 0) return 'green'
+    if (diff < 0) return 'red'
+    return 'gray'
+  }
 
-      const diffColor = diff === 0 ? 'white' : diff > 0 ? '#00ff99' : '#ff4d4d';
-      const diffText = diff === 0 ? '0' : (diff > 0 ? '+' : '') + diff;
+  function renderSummary() {
+    const summaryList = document.getElementById('summaryList')
+    summaryList.innerHTML = ''
+    products.forEach(product => {
+      const fact = factInputs[product.id] || ""
+      const factResult = evaluateExpression(fact)
+      const docQty = extractInt(product.quantity)
+      const diff = factResult - docQty
 
-      const row = document.createElement('div');
-      row.style.marginBottom = '12px';
-      row.innerHTML = `
-        <div><strong>${name}</strong></div>
-        <div>Факт: ${actual} | Документ: ${expected} | <span style="color:${diffColor}">Разница: ${diffText}</span></div>
-      `;
-      summaryContent.appendChild(row);
-    });
+      const card = document.createElement('div')
+      card.className = 'summary-card'
+      card.innerHTML = `
+        <h3>${product.name}</h3>
+        <div class="summary-row">Факт: ${fact} | Итог: ${factResult}</div>
+        <div class="summary-row">Должно: ${docQty} | <span class="diff ${colorForDiff(diff)}">Разница: ${formatDiff(diff)}</span></div>
+      `
+      summaryList.appendChild(card)
+    })
+  }
 
-    summaryModal.classList.remove('hidden');
-  });
-
-  closeSummaryBtn.addEventListener('click', () => {
-    summaryModal.classList.add('hidden');
-  });
+  function renderHistory() {
+    const historyList = document.getElementById('historyList')
+    historyList.innerHTML = ''
+    const saved = localStorage.getItem("savedState")
+    if (saved) {
+      const btn = document.createElement('button')
+      btn.className = 'btn secondary'
+      btn.textContent = '📄 Сохранённый пересчёт 1'
+      btn.onclick = () => showScreen('screenContent')
+      historyList.appendChild(btn)
+    } else {
+      historyList.innerHTML = '<p>Нет сохранённых пересчётов.</p>'
+    }
+  }
 </script>
 </body>
 </html>
