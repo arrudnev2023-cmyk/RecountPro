@@ -55,6 +55,8 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
 </head>
 <body>
   <div id="screenStart" class="screen active">
@@ -120,16 +122,24 @@
     if (id === 'screenContent') renderProducts()
   }
 
-  document.getElementById('pdfInput').addEventListener('change', async (event) => {
-    const file = event.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = function () {
-      const text = new TextDecoder().decode(reader.result)
-      parseText(text)
-    }
-    reader.readAsArrayBuffer(file)
-  })
+document.getElementById('pdfInput').addEventListener('change', async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+
+  let fullText = ''
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    const lines = content.items.map(item => item.str).join('\n')
+    fullText += lines + '\n'
+  }
+
+  parseText(fullText)
+})
+
 
   function parseText(fullText) {
     localStorage.removeItem("savedState")
