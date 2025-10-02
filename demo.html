@@ -2,313 +2,293 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>RecountPro Demo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recount Tycoon</title>
   <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f2f2f7;
-      color: #111;
-    }
-    .screen { display: none; padding: 20px; min-height: 100vh; }
-    .active { display: block; }
-
-    .centered {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      margin-top: 120px;
-    }
-
-    .icon {
-      font-size: 64px;
-      animation: rotateBox 2s linear infinite;
-    }
-
-    @keyframes rotateBox {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-
-    h1 { font-size: 36px; margin: 0; }
-    h2 { font-size: 18px; opacity: 0.8; text-align: center; margin: 0; }
-
-    .btn {
-      font-size: 18px;
-      padding: 14px;
-      width: 100%;
-      max-width: 300px;
-      background: #007aff;
-      color: white;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      margin-top: 20px;
-    }
-
-    .btn.secondary {
-      background: white;
-      color: #007aff;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    body { font-family: Inter, sans-serif; margin: 0; padding: 0; background: #fff; color: #333; }
+    header { background: #f5f5f5; padding: 20px; text-align: center; border-bottom: 1px solid #ddd; }
+    .stats { font-size: 18px; margin-top: 10px; }
+    section { padding: 20px; }
+    h2 { margin-bottom: 10px; font-size: 20px; }
+    .card { background: #f0f0f0; padding: 15px; margin: 10px 0; border-radius: 8px; cursor: pointer; transition: background 0.2s; font-size: 16px; }
+    .card:hover { background: #e0e0e0; }
+    button { margin: 5px; padding: 10px 20px; font-size: 16px; background: #333; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #555; }
+    .log { background: #fafafa; border-top: 1px solid #ddd; padding: 20px; font-size: 14px; }
+    #log div { margin-bottom: 5px; }
+    @media (max-width: 600px) {
+      .card { font-size: 15px; padding: 12px; }
+      .stats { font-size: 16px; }
+      button { font-size: 15px; padding: 8px 16px; }
     }
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
 </head>
 <body>
-  <div id="screenStart" class="screen active">
-    <div class="centered">
-      <div class="icon">📦</div>
-      <h1>RecountPro</h1>
-      <h2>Пересчёт — это просто</h2>
-      <button class="btn" onclick="showScreen('screenImport')">🚀 Начать пересчёт</button>
+  <header>
+    <h1>Recount Tycoon</h1>
+    <div class="stats">
+      💰 <span id="budget">10000</span> ⏱ <span id="time">0</span> 👥 <span id="team">1</span> 📈 <span id="reputation">50</span> 🏢 <span id="level">1</span>
     </div>
-  </div>
-  <!-- Импорт -->
-  <div id="screenImport" class="screen">
-    <h1>📄 Импорт товаров</h1>
-    <input type="file" id="pdfInput" accept=".pdf" style="display:none" />
-    <button class="btn" onclick="document.getElementById('pdfInput').click()">📥 Загрузить PDF</button>
-    <button class="btn secondary" onclick="showScreen('screenHistory')">📂 Ранее загруженные</button>
-    <button class="btn secondary" id="goToMainBtn" style="display:none" onclick="showScreen('screenContent')">⏩ Перейти к пересчёту</button>
-  </div>
+    <button onclick="saveGame()">💾 Сохранить</button>
+    <button onclick="loadGame()">📂 Загрузить</button>
+  </header>
 
-  <!-- История -->
-  <div id="screenHistory" class="screen">
-    <h1>📂 История</h1>
-    <div id="historyList"></div>
-    <button class="btn" onclick="showScreen('screenImport')">← Назад</button>
-  </div>
-  <!-- Пересчёт -->
-  <div id="screenContent" class="screen">
-    <div class="search-row">
-      <input type="text" id="searchInput" class="search-input" placeholder="🔍 Поиск по названию" />
-      <button class="clear-btn" id="clearSearch">×</button>
-      <button class="summary-btn" onclick="showScreen('screenSummary')">Итог</button>
-    </div>
-    <div id="productList"></div>
-    <button class="flashlight-btn" id="flashlightBtn">Фонарик ВЫКЛ</button>
-    <div id="customKeyboard">
-      <div class="keys">
-        <button>1</button><button>2</button><button>3</button>
-        <button>4</button><button>5</button><button>6</button>
-        <button>7</button><button>8</button><button>9</button>
-        <button>+</button><button>0</button><button>←</button>
-      </div>
-      <button class="done-btn">Готово</button>
-    </div>
-  </div>
-  <!-- Итоги -->
-  <div id="screenSummary" class="screen">
-    <h1>📦 Итоги пересчёта</h1>
-    <div id="summaryList"></div>
-    <button class="export-btn" onclick="alert('📤 Экспорт в PDF пока как заглушка')">📤 Экспорт в PDF</button>
-    <button class="btn" onclick="showScreen('screenContent')">← Назад</button>
-  </div>
-<script>
-  let products = []
-  let factInputs = {}
-  let activeInput = null
-  let isFlashlightOn = false
+  <section class="features">
+    <h2>Фичи продукта</h2>
+    <div class="card" onclick="addFeature('pdf')">📄 PDF-парсинг — 3000</div>
+    <div class="card" onclick="addFeature('rls')">🔐 RLS — 4000</div>
+    <div class="card" onclick="addFeature('mobile')">📱 Мобильная адаптация — 2500</div>
+    <div class="card" onclick="addFeature('api')">🔗 Интеграции — 3500</div>
+    <div class="card" onclick="addFeature('analytics')">📊 Аналитика — 2000</div>
+  </section>
 
-  function showScreen(id) {
-    document.querySelectorAll('.screen').forEach(div => div.classList.remove('active'))
-    document.getElementById(id).classList.add('active')
-    if (id === 'screenSummary') renderSummary()
-    if (id === 'screenHistory') renderHistory()
-    if (id === 'screenContent') renderProducts()
-  }
+  <section class="upgrades">
+    <h2>Улучшения фич</h2>
+    <div class="card" onclick="upgradeFeature('pdf')">📄 PDF → AI — 4000</div>
+    <div class="card" onclick="upgradeFeature('rls')">🔐 RLS → Аудит — 5000</div>
+    <div class="card" onclick="upgradeFeature('mobile')">📱 Моб → Кроссплатф. — 3500</div>
+    <div class="card" onclick="upgradeFeature('api')">🔗 API → Webhooks — 4500</div>
+    <div class="card" onclick="upgradeFeature('analytics')">📊 Аналитика → Дашборды — 3000</div>
+  </section>
 
-document.getElementById('pdfInput').addEventListener('change', async (event) => {
-  const file = event.target.files[0]
-  if (!file) return
+  <section class="team">
+    <h2>Команда</h2>
+    <div class="card" onclick="hire('designer')">🎨 UX-дизайнер — 2000</div>
+    <div class="card" onclick="hire('dev')">💻 Разработчик — 3000</div>
+    <div class="card" onclick="hire('lawyer')">⚖️ Юрист — 2500</div>
+    <div class="card" onclick="hire('analyst')">📈 Аналитик — 1500</div>
+  </section>
 
-  const arrayBuffer = await file.arrayBuffer()
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  <section class="office">
+    <h2>Офис</h2>
+    <div class="card" onclick="buildFloor('design')">🎨 Этаж дизайна — 3000</div>
+    <div class="card" onclick="buildFloor('dev')">💻 Этаж разработки — 3000</div>
+    <div class="card" onclick="buildFloor('legal')">⚖️ Этаж юристов — 3000</div>
+    <div class="card" onclick="buildFloor('analytics')">📊 Этаж аналитики — 3000</div>
+  </section>
 
-  let fullText = ''
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i)
-    const content = await page.getTextContent()
-    const lines = content.items.map(item => item.str).join('\n')
-    fullText += lines + '\n'
-  }
+  <section class="clients">
+    <h2>Запросы клиентов</h2>
+    <div id="client-request" class="card">—</div>
+    <button onclick="respondToClient(true)">Принять</button>
+    <button onclick="respondToClient(false)">Отклонить</button>
+    <button onclick="nextTurn()">Следующий ход</button>
+  </section>
 
-  parseText(fullText)
-})
+  <section class="businesses">
+    <h2>Бизнесы</h2>
+    <div id="business-list"></div>
+  </section>
 
+  <section class="log">
+    <h2>События</h2>
+    <div id="log"></div>
+  </section>
 
-  function parseText(fullText) {
-    localStorage.removeItem("savedState")
-    const lines = fullText.split(/\r?\n/)
-    const volumeRegex = /(\d{1,2},\d{2})/
-    const quantityRegex = /(\d+\s*шт)/
+  <script>
+    let budget = 10000, time = 0, team = 1, reputation = 50, level = 1;
+    let features = [], featureLevels = { pdf: 1, rls: 1, mobile: 1, api: 1, analytics: 1 };
+    let office = { design: false, dev: false, legal: false, analytics: false };
+    let currentClient = null;
 
-    products = []
-    factInputs = {}
-
-    for (const line of lines) {
-      const volumeMatch = line.match(volumeRegex)
-      if (!volumeMatch) continue
-
-      const volume = volumeMatch[1]
-      const namePart = line.slice(0, line.indexOf(volume)).trim()
-      const nameWords = namePart.split(/\s+/).filter(word => !/^\d+$/.test(word))
-      const name = nameWords.join(' ').trim()
-
-      const afterVolume = line.slice(line.indexOf(volume) + volume.length)
-      const quantityMatch = afterVolume.match(quantityRegex)
-      const quantity = quantityMatch ? quantityMatch[1] : "?"
-
-      const fullName = `${name} ${volume}`
-      products.push({ id: crypto.randomUUID(), name: fullName, quantity })
+    function updateStats() {
+      budget = Math.max(0, budget);
+      reputation = Math.max(0, reputation);
+      document.getElementById("budget").textContent = budget;
+      document.getElementById("time").textContent = time;
+      document.getElementById("team").textContent = team;
+      document.getElementById("reputation").textContent = reputation;
+      document.getElementById("level").textContent = level;
     }
 
-    localStorage.setItem("savedState", JSON.stringify({ products, factInputs }))
-    document.getElementById('goToMainBtn').style.display = 'inline-block'
-  }
+    function log(message) {
+      const entry = document.createElement("div");
+      entry.textContent = `⏱ ${time}: ${message}`;
+      document.getElementById("log").prepend(entry);
+    }
 
-  function renderProducts() {
-    const productList = document.getElementById('productList')
-    const query = document.getElementById('searchInput').value.trim().toLowerCase()
-    const filtered = query === '' ? products : products.filter(p => p.name.toLowerCase().includes(query))
-
-    productList.innerHTML = ''
-    filtered.forEach(product => {
-      const card = document.createElement('div')
-      card.className = 'product-card'
-
-      const title = document.createElement('h3')
-      title.textContent = product.name
-
-      const qty = document.createElement('p')
-      qty.textContent = product.quantity
-
-      const input = document.createElement('input')
-      input.className = 'fact-input'
-      input.type = 'text'
-      input.readOnly = true
-      input.value = factInputs[product.id] || ''
-      input.onclick = () => {
-        activeInput = input
-        const keyboard = document.getElementById('customKeyboard')
-        keyboard.style.display = 'flex'
-        const rect = input.getBoundingClientRect()
-        const scrollTop = window.scrollY || document.documentElement.scrollTop
-        keyboard.style.top = `${rect.bottom + scrollTop + 10}px`
-      }
-
-      card.appendChild(title)
-      card.appendChild(qty)
-      card.appendChild(input)
-      productList.appendChild(card)
-    })
-  }
-
-  document.getElementById('searchInput').addEventListener('input', renderProducts)
-  document.getElementById('clearSearch').addEventListener('click', () => {
-    document.getElementById('searchInput').value = ''
-    renderProducts()
-  })
-
-  document.querySelector('.done-btn').addEventListener('click', () => {
-    document.getElementById('customKeyboard').style.display = 'none'
-    activeInput = null
-  })
-
-  document.querySelectorAll('#customKeyboard .keys button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (!activeInput) return
-      const val = btn.textContent
-      if (val === '←') {
-        activeInput.value = activeInput.value.slice(0, -1)
+    function addFeature(name) {
+      const costs = { pdf: 3000, rls: 4000, mobile: 2500, api: 3500, analytics: 2000 };
+      if (budget >= costs[name] && !features.includes(name)) {
+        budget -= costs[name];
+        features.push(name);
+        time++;
+        log(`✅ Внедрена фича: ${name.toUpperCase()}`);
+        updateStats(); checkLevelUp();
       } else {
-        activeInput.value += val
+        log("Недостаточно бюджета или фича уже внедрена.");
       }
+    }
 
-      const card = activeInput.closest('.product-card')
-      const name = card.querySelector('h3').textContent
-      const product = products.find(p => p.name === name)
-      if (product) {
-        factInputs[product.id] = activeInput.value
-        localStorage.setItem("savedState", JSON.stringify({ products, factInputs }))
+    function upgradeFeature(name) {
+      const cost = 2000 + featureLevels[name] * 1000;
+      if (budget >= cost && featureLevels[name] < 2) {
+        budget -= cost;
+        featureLevels[name]++;
+        time++;
+        log(`🔧 Фича ${name.toUpperCase()} улучшена до уровня ${featureLevels[name]}`);
+        updateStats();
+      } else {
+        log("Нельзя улучшить: либо нет бюджета, либо уже максимальный уровень.");
       }
-    })
-  })
-
-  document.addEventListener('click', (e) => {
-    const keyboard = document.getElementById('customKeyboard')
-    if (!keyboard.contains(e.target) && !e.target.classList.contains('fact-input')) {
-      keyboard.style.display = 'none'
-      activeInput = null
     }
-  })
 
-  document.getElementById('flashlightBtn').addEventListener('click', () => {
-    isFlashlightOn = !isFlashlightOn
-    const btn = document.getElementById('flashlightBtn')
-    btn.textContent = isFlashlightOn ? "Фонарик ВКЛ" : "Фонарик ВЫКЛ"
-    btn.classList.toggle("flashlight-on", isFlashlightOn)
-  })
-
-  function evaluateExpression(input) {
-    return input.replace(/\s+/g, '').split('+').map(Number).reduce((a,b) => a + b, 0)
-  }
-
-  function extractInt(str) {
-    const digits = str.replace(/\D+/g, '')
-    return digits ? parseInt(digits) : 0
-  }
-
-  function formatDiff(diff) {
-    if (diff > 0) return `+${diff}`
-    if (diff < 0) return `${diff}`
-    return '0'
-  }
-
-  function colorForDiff(diff) {
-    if (diff > 0) return 'green'
-    if (diff < 0) return 'red'
-    return 'gray'
-  }
-
-  function renderSummary() {
-    const summaryList = document.getElementById('summaryList')
-    summaryList.innerHTML = ''
-    products.forEach(product => {
-      const fact = factInputs[product.id] || ""
-      const factResult = evaluateExpression(fact)
-      const docQty = extractInt(product.quantity)
-      const diff = factResult - docQty
-
-      const card = document.createElement('div')
-      card.className = 'summary-card'
-      card.innerHTML = `
-        <h3>${product.name}</h3>
-        <div class="summary-row">Факт: ${fact} | Итог: ${factResult}</div>
-        <div class="summary-row">Должно: ${docQty} | <span class="diff ${colorForDiff(diff)}">Разница: ${formatDiff(diff)}</span></div>
-      `
-      summaryList.appendChild(card)
-    })
-  }
-
-  function renderHistory() {
-    const historyList = document.getElementById('historyList')
-    historyList.innerHTML = ''
-    const saved = localStorage.getItem("savedState")
-    if (saved) {
-      const btn = document.createElement('button')
-      btn.className = 'btn secondary'
-      btn.textContent = '📄 Сохранённый пересчёт 1'
-      btn.onclick = () => showScreen('screenContent')
-      historyList.appendChild(btn)
-    } else {
-      historyList.innerHTML = '<p>Нет сохранённых пересчётов.</p>'
+    function hire(role) {
+      const costs = { designer: 2000, dev: 3000, lawyer: 2500, analyst: 1500 };
+      if (budget >= costs[role]) {
+        budget -= costs[role];
+        team++;
+        time++;
+        log(`👥 Нанят: ${role}`);
+        updateStats();
+      } else {
+        log("Недостаточно бюджета для найма.");
+      }
     }
-  }
-</script>
+
+    function buildFloor(floor) {
+      const cost = 3000;
+      if (budget >= cost && !office[floor]) {
+        budget -= cost;
+        office[floor] = true;
+        time++;
+        log(`🏢 Построен этаж: ${floor}`);
+        updateStats();
+      } else {
+        log("Этаж уже построен или недостаточно бюджета.");
+      }
+    }
+
+    const clientRequests = [
+      { text: "Нужна интеграция с 1С", need: "api+", reward: 1200 },
+      { text: "Хочу авто-заполнение из PDF", need: "pdf+", reward: 1500 },
+      { text: "Нужна RLS с разграничением по ролям", need: "rls+", reward: 1800 },
+      { text: "Приложение должно работать на Android и iOS", need: "mobile+", reward: 1600 },
+      { text: "Хочу дашборды и прогнозы", need: "analytics+", reward: 1400 }
+    ];
+
+    function triggerClientRequest() {
+      currentClient = clientRequests[Math.floor(Math.random() * clientRequests.length)];
+      document.getElementById("client-request").textContent = `💬 ${currentClient.text}`;
+    }
+
+    function respondToClient(accept) {
+      if (!currentClient) return;
+      if (accept) {
+        const key = currentClient.need.replace("+", "");
+        if (featureLevels[key] >= 2) {
+          budget += currentClient.reward;
+          reputation += 5;
+          log(`📦 Запрос выполнен: +${currentClient.reward} и +5 репутации`);
+        } else {
+          log("❌ Запрос провален: фича не улучшена");
+          reputation -= 5;
+        }
+      } else {
+        log("🚫 Запрос отклонён");
+        reputation -= 2;
+      }
+      currentClient = null;
+      document.getElementById("client-request").textContent = "—";
+      updateStats();
+    }
+
+    function paySalaries() {
+      const salary = team * 500;
+      budget -= salary;
+      log(`💸 Зарплата команде: -${salary}`);
+    }
+
+    function earnSubscriptions() {
+      const income = reputation * 20;
+      budget += income;
+      log(`📈 Подписки от клиентов: +${income}`);
+    }
+
+    function checkLevelUp() {
+      if (reputation >= 60 && level === 1) {
+        level = 2;
+        log("📊 Уровень 2: открыты новые бизнесы");
+      }
+      if (reputation >= 80 && level === 2) {
+        level = 3;
+        log("🏆 Уровень 3: доступ к Красное & Белое");
+      }
+    }
+
+    const businesses = [
+      { name: "🛒 Потерочка", need: ["pdf", "mobile"], team: 1, reward: 1500, rep: 5 },
+      { name: "🧃 Магнитик", need: ["pdf", "rls", "designer"], team: 2, reward: 3000, rep: 8 },
+      { name: "🧻 Ашанчик", need: ["pdf", "api", "analytics"], team: 3, reward: 4000, rep: 10 },
+      { name: "🧴 Метроша", need: ["pdf", "rls", "mobile", "api", "analytics"], team: 4, reward: 6000, rep: 15 },
+      { name: "🍷 Красное & Белое", need: ["pdf", "rls", "mobile", "api", "analytics"], team: 5, reward: 7000, rep: 20 }
+    ];
+
+    function renderBusinesses() {
+      const container = document.getElementById("business-list");
+      container.innerHTML = "";
+      businesses.forEach(biz => {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.textContent = `${biz.name} — ${biz.reward}`;
+        div.onclick = () => deploy(biz);
+        container.appendChild(div);
+      });
+    }
+
+    function deploy(biz) {
+      const hasAll = biz.need.every(f => features.includes(f) || f === "designer" && team >= 2);
+      if (hasAll && team >= biz.team) {
+        budget += biz.reward;
+        reputation += biz.rep;
+        time++;
+        log(`🚀 Внедрение в ${biz.name}: +${biz.reward}, +${biz.rep} репутации`);
+        updateStats();
+        checkLevelUp();
+        if (biz.name.includes("Красное") && reputation >= 100) {
+          log("🎉 Победа! RecountPro внедрён в Красное & Белое!");
+        }
+      } else {
+        log(`❌ Не хватает фич или команды для ${biz.name}`);
+      }
+    }
+
+    function nextTurn() {
+      time++;
+      paySalaries();
+      earnSubscriptions();
+      if (time % 3 === 0) triggerClientRequest();
+      updateStats();
+    }
+
+    function saveGame() {
+      const state = {
+        budget, time, team, reputation, level, features, featureLevels, office
+      };
+      localStorage.setItem("recountSave", JSON.stringify(state));
+      log("💾 Игра сохранена");
+    }
+
+    function loadGame() {
+      const state = JSON.parse(localStorage.getItem("recountSave"));
+      if (state) {
+        budget = state.budget;
+        time = state.time;
+        team = state.team;
+        reputation = state.reputation;
+        level = state.level;
+        features = state.features;
+        featureLevels = state.featureLevels;
+        office = state.office;
+        updateStats();
+        log("📂 Игра загружена");
+      } else {
+        log("❌ Нет сохранения");
+      }
+    }
+
+    renderBusinesses();
+    updateStats();
+  </script>
 </body>
 </html>
