@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
-  <head>
+<head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>RecountPro — Пересчёт</title>
@@ -149,6 +149,7 @@
       display: none;
       padding: 1rem;
       font-size: 12px;
+      margin-top: 0;
     }
     #export-area table {
       width: 100%;
@@ -159,6 +160,7 @@
       border: 1px solid #ccc;
       padding: 4px;
       text-align: left;
+      word-break: break-word;
     }
   </style>
 </head>
@@ -190,7 +192,7 @@
   </div>
 
   <button id="open-summary">Итог</button>
-  <button onclick="exportPDF()" style="position:fixed;bottom:8rem;right:1rem;z-index:1001;">📤 Экспорт PDF</button>
+  <button onclick="exportPDF()" style="position:fixed;bottom:8rem;right:1rem;z-index:1001;">📤 Скачать PDF</button>
 
   <div id="modal">
     <div>
@@ -389,6 +391,7 @@
     summary.innerHTML = '';
     tbody.innerHTML = '';
     exportArea.style.display = "block";
+    window.scrollTo(0, 0);
 
     let totalPlus = 0, totalMinus = 0;
 
@@ -409,7 +412,7 @@
         <td>${item.unit}</td>
         <td>${item.price.toFixed(2)}</td>
         <td>${item.docQty}</td>
-        <td>${raw}</td>
+        <td style="word-break: break-word; max-width: 120px;">${raw}</td>
         <td>${delta}</td>
       `;
       tbody.appendChild(row);
@@ -420,15 +423,20 @@
       💰 Избыток: +${totalPlus.toFixed(2)} ₽
     `;
 
-    html2pdf().set({
-      margin: 0.5,
-      filename: 'RecountPro.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-    }).from(exportArea).save().then(() => {
+    const filename = prompt("Введите имя файла", "RecountPro.pdf");
+    if (filename) {
+      html2pdf().set({
+        margin: 0.5,
+        filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      }).from(exportArea).save().then(() => {
+        exportArea.style.display = "none";
+      });
+    } else {
       exportArea.style.display = "none";
-    });
+    }
   }
 
   document.addEventListener("focusin", e => {
