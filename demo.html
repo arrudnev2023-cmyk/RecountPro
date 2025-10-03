@@ -3,349 +3,106 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Recount Tycoon 3.0</title>
+  <title>RecountPro MVP</title>
   <style>
-    body { font-family: Inter, sans-serif; margin: 0; padding: 0; background: #fff; color: #333; }
-    header { background: #f5f5f5; padding: 20px; text-align: center; border-bottom: 1px solid #ddd; }
-    .stats { font-size: 18px; margin-top: 10px; }
-    section { padding: 20px; }
-    h2 { margin-bottom: 10px; font-size: 20px; }
-    .card { background: #f0f0f0; padding: 15px; margin: 10px 0; border-radius: 8px; cursor: pointer; transition: background 0.2s; font-size: 16px; position: relative; }
-    .card:hover { background: #e0e0e0; }
-    .card:hover::after { content: attr(data-hint); position: absolute; left: 10px; bottom: -20px; font-size: 12px; color: #666; }
-    button { margin: 5px; padding: 10px 20px; font-size: 16px; background: #333; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
-    button:hover { background: #555; }
-    .log { background: #fafafa; border-top: 1px solid #ddd; padding: 20px; font-size: 14px; }
-    #log div { margin-bottom: 5px; }
-    #tutorial { background: #fff8dc; border: 1px solid #e6c200; padding: 20px; margin: 20px; border-radius: 10px; font-size: 16px; }
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f8f8f8;
+    }
+    h1 {
+      text-align: center;
+      padding: 1rem;
+      margin: 0;
+      background: #222;
+      color: #fff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0;
+    }
+    th, td {
+      padding: 0.6rem;
+      border-bottom: 1px solid #ddd;
+      font-size: 0.9rem;
+    }
+    th {
+      background: #eee;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 0.4rem;
+      font-size: 0.9rem;
+      box-sizing: border-box;
+    }
+    tr.match { background-color: #e0ffe0; }
+    tr.missing { background-color: #fff8c6; }
+    tr.excess { background-color: #ffd6d6; }
     @media (max-width: 600px) {
-      .card { font-size: 15px; padding: 12px; }
-      .stats { font-size: 16px; }
-      button { font-size: 15px; padding: 8px 16px; }
+      th, td {
+        font-size: 0.8rem;
+        padding: 0.4rem;
+      }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Recount Tycoon</h1>
-    <div class="stats">
-      💰 <span id="budget">10000</span> ⏱ <span id="time">0</span> 👥 <span id="team">1</span> 📈 <span id="reputation">50</span> 🏢 <span id="level">1</span>
-    </div>
-    <button onclick="saveGame()">💾 Сохранить</button>
-    <button onclick="loadGame()">📂 Загрузить</button>
-    <button onclick="suggestNext()">🤔 Что делать дальше?</button>
-    <button onclick="workAsCashier()">🧑‍💼 Поработать кассиром (+100)</button>
-  </header>
-
-  <section id="tutorial" class="card">
-    👋 Добро пожаловать в Recount Tycoon!  
-    Ты — основатель RecountPro.  
-    Цель: создать продукт, собрать команду и внедриться в торговые сети.  
-    Начни с добавления фич, затем найми команду, потом внедряйся в компании.  
-    Нажми “Следующий ход” — и игра начнётся!
-    <button onclick="hideTutorial()">Понятно!</button>
-  </section>
-
-  <section class="features">
-    <h2>Создай свой продукт</h2>
-    <div class="card" data-hint="Работа с документами" onclick="addFeature('pdf')">📄 PDF-парсинг — 3000</div>
-    <div class="card" data-hint="Безопасность и доступы" onclick="addFeature('rls')">🔐 RLS — 4000</div>
-    <div class="card" data-hint="Адаптация под смартфоны" onclick="addFeature('mobile')">📱 Мобильная адаптация — 2500</div>
-    <div class="card" data-hint="Интеграции с системами" onclick="addFeature('api')">🔗 API — 3500</div>
-    <div class="card" data-hint="Анализ данных" onclick="addFeature('analytics')">📊 Аналитика — 2000</div>
-  </section>
-
-  <section class="upgrades">
-    <h2>Прокачай фичи</h2>
-    <div class="card" onclick="upgradeFeature('pdf')">📄 PDF → AI — 4000</div>
-    <div class="card" onclick="upgradeFeature('rls')">🔐 RLS → Аудит — 5000</div>
-    <div class="card" onclick="upgradeFeature('mobile')">📱 Моб → Кроссплатф. — 3500</div>
-    <div class="card" onclick="upgradeFeature('api')">🔗 API → Webhooks — 4500</div>
-    <div class="card" onclick="upgradeFeature('analytics')">📊 Аналитика → Дашборды — 3000</div>
-  </section>
-
-  <section class="team">
-    <h2>Найми специалистов</h2>
-    <div class="card" onclick="hire('designer')">🎨 UX-дизайнер — 2000</div>
-    <div class="card" onclick="hire('dev')">💻 Разработчик — 3000</div>
-    <div class="card" onclick="hire('lawyer')">⚖️ Юрист — 2500</div>
-    <div class="card" onclick="hire('analyst')">📈 Аналитик — 1500</div>
-  </section>
-
-  <section class="office">
-    <h2>Построй офис</h2>
-    <div class="card" onclick="buildFloor('design')">🎨 Этаж дизайна — 3000</div>
-    <div class="card" onclick="buildFloor('dev')">💻 Этаж разработки — 3000</div>
-    <div class="card" onclick="buildFloor('legal')">⚖️ Этаж юристов — 3000</div>
-    <div class="card" onclick="buildFloor('analytics')">📊 Этаж аналитики — 3000</div>
-  </section>
-
-  <section class="clients">
-    <h2>Обслужи клиентов</h2>
-    <div id="client-request" class="card">—</div>
-    <button onclick="respondToClient(true)">Принять</button>
-    <button onclick="respondToClient(false)">Отклонить</button>
-    <button onclick="nextTurn()">Следующий ход</button>
-  </section>
-
-  <section class="businesses">
-    <h2>Внедрение в компании</h2>
-    <div id="business-list"></div>
-  </section>
-
-  <section class="log">
-    <h2>История твоей компании</h2>
-    <div id="log"></div>
-  </section>
+  <h1>RecountPro — Пересчёт товаров</h1>
+  <table id="recount-table">
+    <thead>
+      <tr>
+        <th>Артикул</th>
+        <th>Название</th>
+        <th>Размерность</th>
+        <th>Цена</th>
+        <th>По документам</th>
+        <th>Фактическое</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
   <script>
-    let budget = 10000, time = 0, team = 1, reputation = 50, level = 1;
-let features = [], featureLevels = { pdf: 1, rls: 1, mobile: 1, api: 1, analytics: 1 };
-let office = { design: false, dev: false, legal: false, analytics: false };
-let currentClient = null;
-let activeBusinesses = [];
+    const data = [
+      { code: "37571", name: "Пиво Гюмри Голд", unit: "20×1", price: 84.99, docQty: 19 },
+      { code: "37570", name: "Пиво Арарат", unit: "12×1", price: 124.99, docQty: 4 },
+      { code: "36870", name: "Пиво Белорусское", unit: "20×1", price: 69.99, docQty: 271 },
+      { code: "37809", name: "Пиво Белорусское 1.4", unit: "6×1", price: 149.99, docQty: 4 },
+      { code: "39029", name: "Пиво Мерфис Айриш Стаут", unit: "24×1", price: 218.89, docQty: 2 }
+    ];
 
-function updateStats() {
-  budget = Math.max(0, budget);
-  reputation = Math.max(0, reputation);
-  document.getElementById("budget").textContent = budget;
-  document.getElementById("time").textContent = time;
-  document.getElementById("team").textContent = team;
-  document.getElementById("reputation").textContent = reputation;
-  document.getElementById("level").textContent = level;
-}
+    const tbody = document.querySelector("#recount-table tbody");
 
-function log(message) {
-  const entry = document.createElement("div");
-  entry.textContent = `⏱ ${time}: ${message}`;
-  document.getElementById("log").prepend(entry);
-}
-
-function hideTutorial() {
-  document.getElementById("tutorial").style.display = "none";
-}
-
-function addFeature(name) {
-  const costs = { pdf: 3000, rls: 4000, mobile: 2500, api: 3500, analytics: 2000 };
-  if (budget >= costs[name] && !features.includes(name)) {
-    budget -= costs[name];
-    features.push(name);
-    time++;
-    log(`✅ Внедрена фича: ${name.toUpperCase()}`);
-    updateStats(); checkLevelUp();
-  } else {
-    log("Недостаточно бюджета или фича уже внедрена.");
-  }
-}
-
-function upgradeFeature(name) {
-  const cost = 2000 + featureLevels[name] * 1000;
-  if (budget >= cost && featureLevels[name] < 2) {
-    budget -= cost;
-    featureLevels[name]++;
-    time++;
-    log(`🔧 Фича ${name.toUpperCase()} улучшена до уровня ${featureLevels[name]}`);
-    updateStats();
-  } else {
-    log("Нельзя улучшить: либо нет бюджета, либо уже максимальный уровень.");
-  }
-}
-
-function hire(role) {
-  const costs = { designer: 2000, dev: 3000, lawyer: 2500, analyst: 1500 };
-  if (budget >= costs[role]) {
-    budget -= costs[role];
-    team++;
-    time++;
-    log(`👥 Нанят: ${role}`);
-    updateStats();
-  } else {
-    log("Недостаточно бюджета для найма.");
-  }
-}
-
-function buildFloor(floor) {
-  const cost = 3000;
-  if (budget >= cost && !office[floor]) {
-    budget -= cost;
-    office[floor] = true;
-    time++;
-    log(`🏢 Построен этаж: ${floor}`);
-    updateStats();
-  } else {
-    log("Этаж уже построен или недостаточно бюджета.");
-  }
-}
-
-const clientRequests = [
-  { text: "Нужна интеграция с 1С", need: "api+", reward: 1200 },
-  { text: "Хочу авто-заполнение из PDF", need: "pdf+", reward: 1500 },
-  { text: "Нужна RLS с разграничением по ролям", need: "rls+", reward: 1800 },
-  { text: "Приложение должно работать на Android и iOS", need: "mobile+", reward: 1600 },
-  { text: "Хочу дашборды и прогнозы", need: "analytics+", reward: 1400 }
-];
-
-function triggerClientRequest() {
-  currentClient = clientRequests[Math.floor(Math.random() * clientRequests.length)];
-  document.getElementById("client-request").textContent = `💬 ${currentClient.text}`;
-}
-
-function respondToClient(accept) {
-  if (!currentClient) return;
-  if (accept) {
-    const key = currentClient.need.replace("+", "");
-    if (featureLevels[key] >= 2) {
-      budget += currentClient.reward;
-      reputation += 5;
-      log(`📦 Запрос выполнен: +${currentClient.reward} и +5 репутации`);
-    } else {
-      log("❌ Запрос провален: фича не улучшена");
-      reputation -= 5;
-    }
-  } else {
-    log("🚫 Запрос отклонён");
-    reputation -= 2;
-  }
-  currentClient = null;
-  document.getElementById("client-request").textContent = "—";
-  updateStats();
-}
-
-function paySalaries() {
-  const salary = team * 500;
-  budget -= salary;
-  log(`💸 Зарплата команде: -${salary}`);
-}
-
-function earnSubscriptions() {
-  const income = reputation * 20;
-  budget += income;
-  log(`📈 Подписки от клиентов: +${income}`);
-}
-
-function checkLevelUp() {
-  if (reputation >= 60 && level === 1) {
-    level = 2;
-    log("📊 Уровень 2: открыты новые компании");
-  }
-  if (reputation >= 80 && level === 2) {
-    level = 3;
-    log("🏆 Уровень 3: доступ к Красное & Белое");
-  }
-}
-
-const businesses = [
-  { name: "🛒 Потерочка", need: ["pdf", "mobile"], team: 1, reward: 150, rep: 5 },
-  { name: "🧃 Магнитик", need: ["pdf", "rls", "api"], team: 2, reward: 300, rep: 8 },
-  { name: "🧻 Ашанчик", need: ["pdf", "api", "analytics"], team: 3, reward: 400, rep: 10 },
-  { name: "🧴 Метроша", need: ["pdf", "rls", "mobile", "api", "analytics"], team: 4, reward: 600, rep: 15 },
-  { name: "🍷 Красное & Белое", need: ["pdf", "rls", "mobile", "api", "analytics"], team: 5, reward: 700, rep: 20 }
-];
-
-function renderBusinesses() {
-  const container = document.getElementById("business-list");
-  container.innerHTML = "";
-  businesses.forEach(biz => {
-    const div = document.createElement("div");
-    div.className = "card";
-    const active = activeBusinesses.includes(biz);
-    div.innerHTML = `${biz.name} — ${biz.reward}/сек<br>
-      📋 Требует: ${biz.need.join(", ")}<br>
-      👥 Команда: ${biz.team}+<br>
-      ${active ? "✅ Внедрено" : ""}
-    `;
-    div.onclick = () => deploy(biz);
-    container.appendChild(div);
-  });
-}
-
-function deploy(biz) {
-  const hasAll = biz.need.every(f => features.includes(f));
-  if (hasAll && team >= biz.team && !activeBusinesses.includes(biz)) {
-    activeBusinesses.push(biz);
-    reputation += biz.rep;
-    time++;
-    log(`🚀 Внедрение в ${biz.name}: теперь приносит ${biz.reward}/сек`);
-    updateStats();
-    checkLevelUp();
-    renderBusinesses();
-    if (biz.name.includes("Красное") && reputation >= 100) {
-      log("🎉 Победа! RecountPro внедрён в Красное & Белое!");
-    }
-  } else {
-    log(`❌ Не хватает фич или команды для ${biz.name}`);
-  }
-}
-
-function nextTurn() {
-  time++;
-  paySalaries();
-  earnSubscriptions();
-  if (time % 3 === 0) triggerClientRequest();
-  updateStats();
-}
-
-function workAsCashier() {
-  budget += 100;
-  time++;
-  log("🧑‍💼 Ты поработал кассиром и заработал 100");
-  updateStats();
-}
-
-function suggestNext() {
-  if (features.length === 0) {
-    log("👉 Добавь хотя бы одну фичу, чтобы начать.");
-  } else if (team < 2) {
-    log("👥 Найми ещё специалистов для внедрения.");
-  } else if (reputation < 60) {
-    log("📈 Повышай репутацию через клиентские запросы.");
-  } else {
-    log("🚀 Готов внедряться в крупные компании!");
-  }
-}
-
-function saveGame() {
-  const state = {
-    budget, time, team, reputation, level, features, featureLevels, office, activeBusinesses
-  };
-  localStorage.setItem("recountSave", JSON.stringify(state));
-  log("💾 Игра сохранена");
-}
-
-function loadGame() {
-  const state = JSON.parse(localStorage.getItem("recountSave"));
-  if (state) {
-    budget = state.budget;
-    time = state.time;
-    team = state.team;
-    reputation = state.reputation;
-    level = state.level;
-    features = state.features;
-    featureLevels = state.featureLevels;
-    office = state.office;
-       activeBusinesses = state.activeBusinesses.map(saved => {
-      return businesses.find(b => b.name === saved.name);
+    data.forEach(item => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${item.code}</td>
+        <td>${item.name}</td>
+        <td>${item.unit}</td>
+        <td>${item.price.toFixed(2)}</td>
+        <td>${item.docQty}</td>
+        <td><input type="number" min="0" data-code="${item.code}" /></td>
+      `;
+      tbody.appendChild(row);
     });
-    updateStats();
-    renderBusinesses();
-    log("📂 Игра загружена");
-  } else {
-    log("❌ Нет сохранения");
-  }
-}
 
-// Автодоход каждую секунду
-setInterval(() => {
-  activeBusinesses.forEach(b => {
-    budget += b.reward;
-  });
-  updateStats();
-}, 1000);
-
-// Инициализация
-renderBusinesses();
-updateStats();
-
+    tbody.addEventListener("input", e => {
+      if (e.target.tagName === "INPUT") {
+        const code = e.target.dataset.code;
+        const actual = parseInt(e.target.value || "0");
+        const row = e.target.closest("tr");
+        const item = data.find(i => i.code === code);
+        row.classList.remove("match", "missing", "excess");
+        if (actual === item.docQty) row.classList.add("match");
+        else if (actual < item.docQty) row.classList.add("missing");
+        else row.classList.add("excess");
+      }
+    });
   </script>
 </body>
 </html>
