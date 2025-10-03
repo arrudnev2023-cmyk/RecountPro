@@ -228,8 +228,8 @@
         div.className = "item";
         div.innerHTML = `
           <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
-          <div class="field"><span class="label">Название:</span> ${item.name}</div>
-                    <div class="field"><span class="label">Размерность:</span> ${item.unit}</div>
+                    <div class="field"><span class="label">Название:</span> ${item.name}</div>
+          <div class="field"><span class="label">Размерность:</span> ${item.unit}</div>
           <div class="field"><span class="label">Цена:</span> ${item.price.toFixed(2)} ₽</div>
           <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
           <div class="field">
@@ -261,14 +261,6 @@
       updateSummary(items);
     }
 
-    searchInput.addEventListener("input", () => {
-      const query = searchInput.value.toLowerCase();
-      const filtered = allItems.filter(item =>
-        item.name.toLowerCase().includes(query) || item.code.includes(query)
-      );
-      render(filtered);
-    });
-
     document.getElementById("clear-search").addEventListener("click", () => {
       searchInput.value = '';
       render(allItems);
@@ -277,6 +269,9 @@
     document.getElementById("open-summary").addEventListener("click", () => {
       const container = document.getElementById("modal-content");
       container.innerHTML = '';
+      let totalPlus = 0;
+      let totalMinus = 0;
+
       allItems.forEach(item => {
         const input = document.querySelector(`input[data-code="${item.code}"]`);
         if (!input) return;
@@ -287,8 +282,15 @@
         const delta = actual - item.docQty;
         let color = '#ccc';
         let sign = '0';
-        if (delta > 0) { color = '#2e8b57'; sign = '+' + delta; }
-        else if (delta < 0) { color = '#d00'; sign = delta; }
+        if (delta > 0) {
+          color = '#2e8b57';
+          sign = '+' + delta;
+          totalPlus += delta * item.price;
+        } else if (delta < 0) {
+          color = '#d00';
+          sign = delta;
+          totalMinus += Math.abs(delta) * item.price;
+        }
 
         const div = document.createElement("div");
         div.style = `padding: 0.4rem 0; border-bottom: 1px solid #eee;`;
@@ -298,6 +300,14 @@
         `;
         container.appendChild(div);
       });
+
+      const summaryDiv = document.createElement("div");
+      summaryDiv.style = "margin-top: 1rem; font-weight: bold;";
+      summaryDiv.innerHTML = `
+        🧾 Сумма недостачи: <span style="color:#d00;">–${totalMinus.toFixed(2)} ₽</span><br>
+        💰 Сумма избытка: <span style="color:#2e8b57;">+${totalPlus.toFixed(2)} ₽</span>
+      `;
+      container.appendChild(summaryDiv);
 
       document.getElementById("modal").style.display = 'flex';
     });
