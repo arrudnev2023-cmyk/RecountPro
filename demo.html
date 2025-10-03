@@ -301,7 +301,7 @@
   const list = document.getElementById("list");
   const searchInput = document.getElementById("search");
   let allItems = [], activeInput = null;
-  let sessionValues = {};
+  let sessionValues = {}; // хранит ВСЕ значения, независимо от фильтра
 
   function groupByY(items) {
     const lines = {};
@@ -337,10 +337,9 @@
   function updateSummary(items) {
     let match = 0, missing = 0, excess = 0, delta = 0;
     items.forEach(item => {
-      const input = document.querySelector(`input[data-code="${item.code}"]`);
-      if (!input) return;
+      const val = sessionValues[item.code];
       let actual = 0;
-      try { actual = eval(input.value.replace(',', '.')) || 0; } catch {}
+      try { actual = eval((val || "").replace(',', '.')) || 0; } catch {}
       if (actual === item.docQty) match++;
       else if (actual < item.docQty) { missing++; delta += item.docQty - actual; }
       else if (actual > item.docQty) { excess++; delta += actual - item.docQty; }
@@ -378,7 +377,7 @@
       }
     });
 
-    updateSummary(items);
+    updateSummary(allItems);
   }
 
   document.getElementById("search").addEventListener("input", () => {
@@ -398,8 +397,8 @@
     if (e.target.tagName === "INPUT") {
       const code = e.target.dataset.code;
       const value = e.target.value;
-      localStorage.setItem("qty_" + code, value);
       sessionValues[code] = value;
+      localStorage.setItem("qty_" + code, value);
 
       const raw = value.replace(',', '.');
       let actual = 0;
@@ -410,6 +409,7 @@
       if (actual === item.docQty) card.classList.add("match");
       else if (actual < item.docQty) card.classList.add("missing");
       else if (actual > item.docQty) card.classList.add("excess");
+
       updateSummary(allItems);
 
       if (localStorage.getItem("active_session")) {
@@ -419,6 +419,7 @@
     }
   });
 </script>
+
 <script>
   function exportPDF() {
     const exportArea = document.getElementById("export-area");
