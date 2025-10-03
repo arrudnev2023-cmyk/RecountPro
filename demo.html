@@ -67,13 +67,14 @@
     .item.excess { background-color: #ffd6d6; }
     .field { margin-bottom: 0.4rem; font-size: 0.9rem; }
     .label { font-weight: bold; color: #333; }
-    input[type="text"] {
+    input[data-code] {
       width: 100%;
       padding: 0.5rem;
       font-size: 1rem;
       box-sizing: border-box;
       border: 1px solid #ccc;
       border-radius: 6px;
+      background: #fefefe;
     }
     #summary {
       position: sticky;
@@ -118,11 +119,33 @@
       padding: 1rem;
       box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
+    #custom-keyboard {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #fff;
+      border-top: 1px solid #ccc;
+      padding: 0.5rem;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+      z-index: 3000;
+    }
+    #custom-keyboard button {
+      font-size: 1.2rem;
+      padding: 0.6rem;
+      border: none;
+      background: #eee;
+      border-radius: 6px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <h1>RecountPro — Пересчёт товаров</h1>
+
   <input type="file" id="upload" accept=".pdf" />
+
   <div id="search-container">
     <div id="search-wrapper">
       <input
@@ -137,12 +160,16 @@
       <button id="clear-search" title="Очистить">×</button>
     </div>
   </div>
+
   <div id="list"></div>
+
   <div id="summary">
     <strong>Итог:</strong>
     <div id="summary-content">Загружено 0 позиций</div>
   </div>
+
   <button id="open-summary">Итог</button>
+
   <div id="modal">
     <div>
       <h2 style="margin-top: 0;">Итог пересчёта</h2>
@@ -158,184 +185,181 @@
     </div>
   </div>
 
-  <script>
-    const list = document.getElementById("list");
-    const searchInput = document.getElementById("search");
-    let allItems = [];
+  <div id="custom-keyboard">
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 0.5rem;">
+      <button class="key">1</button><button class="key">2</button><button class="key">3</button>
+      <button class="key">4</button><button class="key">5</button><button class="key">6</button>
+      <button class="key">7</button><button class="key">8</button><button class="key">9</button>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
+      <button class="key">+</button><button class="key">0</button><button class="key">←</button>
+    </div>
+  </div>
+<script>
+  const list = document.getElementById("list");
+  const searchInput = document.getElementById("search");
+  let allItems = [], activeInput = null;
 
-    function groupByY(items) {
-      const lines = {};
-      items.forEach(item => {
-        const y = Math.round(item.transform[5]);
-        if (!lines[y]) lines[y] = [];
-        lines[y].push({ str: item.str, x: item.transform[4] });
-      });
-      return Object.values(lines).map(words => {
-        return words.sort((a, b) => a.x - b.x).map(w => w.str).join(' ');
-      });
-    }
-
-    function parseLines(lines) {
-      const items = [];
-      for (let line of lines) {
-        line = line.trim();
-        if (!/^\d+\s+\d{4,6}/.test(line)) continue;
-
-        const match = line.match(/^(\d+)\s+(\d{4,6})\s+(.+?)\s+(\d+\*\d+)?\s+([\d.,]+)\s+.*?(\d+)\s*шт/i);
-        if (match) {
-          items.push({
-            code: match[2],
-            name: match[3].trim(),
-            unit: match[4] || '',
-            price: parseFloat(match[5].replace(',', '.')),
-            docQty: parseInt(match[6])
-          });
-        }
-      }
-      return items;
-    }
-
-    function updateSummary(items) {
-      let match = 0, missing = 0, excess = 0, delta = 0;
-
-      items.forEach(item => {
-        const input = document.querySelector(`input[data-code="${item.code}"]`);
-        if (!input) return;
-        let actual = 0;
-        try {
-          actual = eval(input.value.replace(',', '.')) || 0;
-        } catch {}
-        if (actual === item.docQty) match++;
-        else if (actual < item.docQty) {
-          missing++;
-          delta += item.docQty - actual;
-        }
-        else if (actual > item.docQty) {
-          excess++;
-          delta += actual - item.docQty;
-        }
-      });
-
-      document.getElementById("summary-content").innerHTML = `
-        Всего: ${items.length} | Совпало: ${match} | Меньше: ${missing} | Больше: ${excess} | Расхождение: ${delta} шт
-      `;
-    }
-
-    function render(items) {
-      list.innerHTML = '';
-      items.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "item";
-        div.innerHTML = `
-          <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
-                    <div class="field"><span class="label">Название:</span> ${item.name}</div>
-          <div class="field"><span class="label">Размерность:</span> ${item.unit}</div>
-          <div class="field"><span class="label">Цена:</span> ${item.price.toFixed(2)} ₽</div>
-          <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
-          <div class="field">
-            <span class="label">Фактическое количество:</span>
-            <input type="text" data-code="${item.code}" />
-          </div>
-        `;
-        list.appendChild(div);
-      });
-
-      list.addEventListener("input", e => {
-        if (e.target.tagName === "INPUT") {
-          const code = e.target.dataset.code;
-          const raw = e.target.value.replace(',', '.');
-          let actual = 0;
-          try {
-            actual = eval(raw);
-          } catch {}
-          const item = allItems.find(i => i.code === code);
-          const card = e.target.closest(".item");
-          card.classList.remove("match", "missing", "excess");
-          if (actual === item.docQty) card.classList.add("match");
-          else if (actual < item.docQty) card.classList.add("missing");
-          else if (actual > item.docQty) card.classList.add("excess");
-          updateSummary(allItems);
-        }
-      });
-
-      updateSummary(items);
-    }
-
-    document.getElementById("clear-search").addEventListener("click", () => {
-      searchInput.value = '';
-      render(allItems);
+  function groupByY(items) {
+    const lines = {};
+    items.forEach(item => {
+      const y = Math.round(item.transform[5]);
+      if (!lines[y]) lines[y] = [];
+      lines[y].push({ str: item.str, x: item.transform[4] });
     });
+    return Object.values(lines).map(words => {
+      return words.sort((a, b) => a.x - b.x).map(w => w.str).join(' ');
+    });
+  }
 
-    document.getElementById("open-summary").addEventListener("click", () => {
-      const container = document.getElementById("modal-content");
-      container.innerHTML = '';
-      let totalPlus = 0;
-      let totalMinus = 0;
+  function parseLines(lines) {
+    const items = [];
+    for (let line of lines) {
+      line = line.trim();
+      if (!/^\d+\s+\d{4,6}/.test(line)) continue;
+      const match = line.match(/^(\d+)\s+(\d{4,6})\s+(.+?)\s+(\d+\*\d+)?\s+([\d.,]+)\s+.*?(\d+)\s*шт/i);
+      if (match) {
+        items.push({
+          code: match[2],
+          name: match[3].trim(),
+          unit: match[4] || '',
+          price: parseFloat(match[5].replace(',', '.')),
+          docQty: parseInt(match[6])
+        });
+      }
+    }
+    return items;
+  }
 
-      allItems.forEach(item => {
-        const input = document.querySelector(`input[data-code="${item.code}"]`);
-        if (!input) return;
-        let actual = 0;
-        try {
-          actual = eval(input.value.replace(',', '.')) || 0;
-        } catch {}
-        const delta = actual - item.docQty;
-        let color = '#ccc';
-        let sign = '0';
-        if (delta > 0) {
-          color = '#2e8b57';
-          sign = '+' + delta;
-          totalPlus += delta * item.price;
-        } else if (delta < 0) {
-          color = '#d00';
-          sign = delta;
-          totalMinus += Math.abs(delta) * item.price;
-        }
+  function updateSummary(items) {
+    let match = 0, missing = 0, excess = 0, delta = 0;
+    items.forEach(item => {
+      const input = document.querySelector(`input[data-code="${item.code}"]`);
+      if (!input) return;
+      let actual = 0;
+      try { actual = eval(input.value.replace(',', '.')) || 0; } catch {}
+      if (actual === item.docQty) match++;
+      else if (actual < item.docQty) { missing++; delta += item.docQty - actual; }
+      else if (actual > item.docQty) { excess++; delta += actual - item.docQty; }
+    });
+    document.getElementById("summary-content").innerHTML = `
+      Всего: ${items.length} | Совпало: ${match} | Меньше: ${missing} | Больше: ${excess} | Расхождение: ${delta} шт
+    `;
+  }
 
-        const div = document.createElement("div");
-        div.style = `padding: 0.4rem 0; border-bottom: 1px solid #eee;`;
-        div.innerHTML = `
+  function render(items) {
+    list.innerHTML = '';
+    items.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
+        <div class="field"><span class="label">Название:</span> ${item.name}</div>
+        <div class="field"><span class="label">Размерность:</span> ${item.unit}</div>
+        <div class="field"><span class="label">Цена:</span> ${item.price.toFixed(2)} ₽</div>
+        <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
+        <div class="field">
+          <span class="label">Фактическое количество:</span>
+          <input type="text" data-code="${item.code}" readonly />
+        </div>
+      `;
+      list.appendChild(div);
+    });
+    updateSummary(items);
+  }
+
+  document.getElementById("search").addEventListener("input", () => {
+    const query = searchInput.value.toLowerCase();
+    const filtered = allItems.filter(item =>
+      item.name.toLowerCase().includes(query) || item.code.includes(query)
+    );
+    render(filtered);
+  });
+
+  document.getElementById("clear-search").addEventListener("click", () => {
+    searchInput.value = '';
+    render(allItems);
+  });
+
+  document.getElementById("open-summary").addEventListener("click", () => {
+    const container = document.getElementById("modal-content");
+    container.innerHTML = '';
+    let totalPlus = 0;
+    let totalMinus = 0;
+    const rows = [];
+
+    allItems.forEach(item => {
+      const input = document.querySelector(`input[data-code="${item.code}"]`);
+      if (!input) return;
+      let actual = 0;
+      try { actual = eval(input.value.replace(',', '.')) || 0; } catch {}
+      const delta = actual - item.docQty;
+      let color = '#ccc', sign = '0';
+      if (delta > 0) { color = '#2e8b57'; sign = '+' + delta; totalPlus += delta * item.price; }
+      else if (delta < 0) { color = '#d00'; sign = delta; totalMinus += Math.abs(delta) * item.price; }
+
+      rows.push(`
+        <div style="padding: 0.4rem 0; border-bottom: 1px solid #eee;">
           <div><strong>${item.name}</strong> (${item.code})</div>
           <div style="color: ${color}; font-weight: bold;">Расхождение: ${sign}</div>
-        `;
-        container.appendChild(div);
-      });
-
-      const summaryDiv = document.createElement("div");
-      summaryDiv.style = "margin-top: 1rem; font-weight: bold;";
-      summaryDiv.innerHTML = `
-        🧾 Сумма недостачи: <span style="color:#d00;">–${totalMinus.toFixed(2)} ₽</span><br>
-        💰 Сумма избытка: <span style="color:#2e8b57;">+${totalPlus.toFixed(2)} ₽</span>
-      `;
-      container.appendChild(summaryDiv);
-
-      document.getElementById("modal").style.display = 'flex';
+        </div>
+      `);
     });
 
-    document.getElementById("upload").addEventListener("change", async e => {
-      const file = e.target.files[0];
-      if (!file) return;
+    const summaryDiv = document.createElement("div");
+    summaryDiv.style = "margin-bottom: 1rem; font-weight: bold;";
+    summaryDiv.innerHTML = `
+      🧾 Сумма недостачи: <span style="color:#d00;">–${totalMinus.toFixed(2)} ₽</span><br>
+      💰 Сумма избытка: <span style="color:#2e8b57;">+${totalPlus.toFixed(2)} ₽</span>
+    `;
+    container.appendChild(summaryDiv);
+    container.insertAdjacentHTML("beforeend", rows.join(""));
+    document.getElementById("modal").style.display = 'flex';
+  });
 
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let allLines = [];
+  document.addEventListener("click", e => {
+    if (e.target.matches("input[data-code]")) {
+      activeInput = e.target;
+      document.getElementById("custom-keyboard").style.display = "block";
+    } else if (!e.target.closest("#custom-keyboard")) {
+      document.getElementById("custom-keyboard").style.display = "none";
+      activeInput = null;
+    }
+  });
 
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        const grouped = groupByY(content.items);
-        allLines.push(...grouped);
-      }
-
-      allItems = parseLines(allLines);
-      if (allItems.length === 0) {
-        alert("Не удалось распарсить строки. Проверь формат PDF.");
-        console.log("Все строки:", allLines);
+  document.querySelectorAll(".key").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (!activeInput) return;
+      const val = btn.textContent;
+      if (val === "←") {
+        activeInput.value = activeInput.value.slice(0, -1);
       } else {
-        render(allItems);
+        activeInput.value += val;
       }
+      activeInput.dispatchEvent(new Event("input"));
     });
-  </script>
+  });
+
+  document.getElementById("upload").addEventListener("change", async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let allLines = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const grouped = groupByY(content.items);
+      allLines.push(...grouped);
+    }
+    allItems = parseLines(allLines);
+    if (allItems.length === 0) {
+      alert("Не удалось распарсить строки. Проверь формат PDF.");
+      console.log("Все строки:", allLines);
+    } else {
+      render(allItems);
+    }
+  });
+</script>
 </body>
 </html>
-
