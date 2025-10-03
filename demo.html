@@ -2,145 +2,276 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
+  <title>Демо RecountPro</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RecountPro — Пересчёт</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <style>
     body {
-      font-family: sans-serif;
       margin: 0;
-      padding: 0;
-      background: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #8e44ad);
+      color: white;
+      padding: 20px;
+      position: relative;
     }
-    h1 {
+    h2 {
       text-align: center;
-      padding: 1rem;
-      margin: 0;
-      background: #222;
-      color: #fff;
-      font-size: 1.2rem;
+      margin-bottom: 20px;
     }
-    #upload {
-      display: block;
-      margin: 1rem auto;
-      font-size: 1rem;
+    .search-wrapper-flex {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      align-items: center;
     }
-    .item {
-      background: #fff;
-      margin: 0.5rem;
-      padding: 0.8rem;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    .search-box {
+      position: relative;
+      flex-grow: 1;
     }
-    .item.match { background-color: #e0ffe0; }
-    .item.missing { background-color: #fff8c6; }
-    .item.excess { background-color: #ffd6d6; }
-    .field {
-      margin-bottom: 0.4rem;
-      font-size: 0.9rem;
-    }
-    .label {
-      font-weight: bold;
-      color: #333;
-    }
-    input[type="number"] {
+    .search-bar {
       width: 100%;
-      padding: 0.5rem;
-      font-size: 1rem;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 6px;
+      padding: 12px 36px 12px 12px;
+      border-radius: 10px;
+      border: none;
+      font-size: 15px;
+      background-color: rgba(255,255,255,0.2);
+      color: white;
+    }
+    .clear-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .summary-btn {
+      background-color: #28a745;
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 15px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .product-card {
+      background-color: rgba(255,255,255,0.1);
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+    }
+    .product-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .product-qty {
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .fact-input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+      background-color: rgba(255,255,255,0.2);
+      color: white;
+    }
+    .keyboard {
+      position: absolute;
+      left: 20px;
+      right: 20px;
+      z-index: 1000;
+      background-color: rgba(255,255,255,0.1);
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .keyboard .keys {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .keyboard button {
+      padding: 14px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      background-color: white;
+      color: #1e3c72;
+      font-weight: bold;
+    }
+    .done-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+    }
+    .hidden {
+      display: none;
     }
   </style>
 </head>
 <body>
-  <h1>RecountPro — Пересчёт товаров</h1>
-  <input type="file" id="upload" accept=".pdf" />
-  <div id="list"></div>
+  <h2>Экран пересчёта RecountPro</h2>
+  <div class="search-wrapper-flex">
+    <div class="search-box">
+      <input
+        type="text"
+        placeholder="Поиск по названию"
+        class="search-bar"
+        id="searchInput"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+      />
+      <button id="clearSearch" class="clear-btn" aria-label="Очистить">×</button>
+    </div>
+    <button id="showSummary" class="summary-btn">Итог</button>
+  </div>
+
+  <div id="productList">
+    <!-- Вставь сюда карточки товаров -->
+    <div class="product-card"><div class="product-name">Вино Сендеро де Монтана Бонарда Аргентина кр.сух 0,75</div><div class="product-qty">По документам: 2 шт</div><input type="text" class="fact-input" placeholder="Факт" readonly /></div>
+    <!-- ... остальные карточки ... -->
+  </div>
+
+  <div id="summaryModal" class="hidden" style="
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 20px;
+    overflow-y: auto;
+    z-index: 2000;
+  ">
+    <h3 style="text-align:center;">Итоги пересчёта</h3>
+    <div id="summaryContent"></div>
+    <button id="closeSummary" style="
+      margin-top: 20px;
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+    ">Закрыть</button>
+  </div>
+  <div class="keyboard hidden" id="customKeyboard">
+    <div class="keys">
+      <button>1</button><button>2</button><button>3</button>
+      <button>4</button><button>5</button><button>6</button>
+      <button>7</button><button>8</button><button>9</button>
+      <button>+</button><button>0</button><button>←</button>
+    </div>
+    <button class="done-btn">Готово</button>
+  </div>
 
   <script>
-    const list = document.getElementById("list");
+    const inputs = document.querySelectorAll('.fact-input');
+    const keyboard = document.getElementById('customKeyboard');
+    const doneBtn = document.querySelector('.done-btn');
+    const searchInput = document.getElementById('searchInput');
+    const clearBtn = document.getElementById('clearSearch');
+    const showSummaryBtn = document.getElementById('showSummary');
+    const summaryModal = document.getElementById('summaryModal');
+    const summaryContent = document.getElementById('summaryContent');
+    const closeSummaryBtn = document.getElementById('closeSummary');
+    const productCards = document.querySelectorAll('.product-card');
 
-    function groupByY(items) {
-      const lines = {};
-      items.forEach(item => {
-        const y = Math.round(item.transform[5]);
-        if (!lines[y]) lines[y] = [];
-        lines[y].push(item.str);
+    let activeInput = null;
+
+    // Открытие клавиатуры под активным полем
+    inputs.forEach(input => {
+      input.addEventListener('click', () => {
+        activeInput = input;
+        const rect = input.getBoundingClientRect();
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        keyboard.style.top = `${rect.bottom + scrollTop + 10}px`;
+        keyboard.classList.remove('hidden');
       });
-      return Object.values(lines).map(words => words.join(' '));
-    }
+    });
 
-    function parseLines(lines) {
-      const items = [];
-      for (let line of lines) {
-        const match = line.match(/^\s*\d+\s+(\d{4,6})\s+(.+?)\s+(\d+\*\d+)\s+([\d.,]+)\s+.*?(\d+)\s*$/);
-        if (match) {
-          items.push({
-            code: match[1],
-            name: match[2].trim(),
-            unit: match[3],
-            price: parseFloat(match[4].replace(',', '.')),
-            docQty: parseInt(match[5])
-          });
+    // Закрытие клавиатуры
+    doneBtn.addEventListener('click', () => {
+      keyboard.classList.add('hidden');
+      activeInput = null;
+    });
+
+    // Ввод символов
+    keyboard.querySelectorAll('.keys button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!activeInput) return;
+        const val = btn.textContent;
+        if (val === '←') {
+          activeInput.value = activeInput.value.slice(0, -1);
+        } else {
+          activeInput.value += val;
         }
-      }
-      return items;
-    }
+      });
+    });
 
-    function render(items) {
-      list.innerHTML = '';
-      items.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "item";
-        div.innerHTML = `
-          <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
-          <div class="field"><span class="label">Название:</span> ${item.name}</div>
-          <div class="field"><span class="label">Размерность:</span> ${item.unit}</div>
-          <div class="field"><span class="label">Цена:</span> ${item.price.toFixed(2)} ₽</div>
-          <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
-          <div class="field">
-            <span class="label">Фактическое количество:</span>
-            <input type="number" min="0" data-code="${item.code}" />
-          </div>
+    // Поиск по названию
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.toLowerCase();
+      productCards.forEach(card => {
+        const name = card.querySelector('.product-name').textContent.toLowerCase();
+        card.style.display = name.includes(query) ? 'block' : 'none';
+      });
+    });
+
+    // Очистка поиска
+    clearBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      productCards.forEach(card => card.style.display = 'block');
+    });
+
+    // Открытие итогов
+    showSummaryBtn.addEventListener('click', () => {
+      summaryContent.innerHTML = '';
+      productCards.forEach(card => {
+        const name = card.querySelector('.product-name').textContent;
+        const fact = card.querySelector('.fact-input').value.trim();
+        const qtyText = card.querySelector('.product-qty').textContent;
+        const match = qtyText.match(/(\d+)/);
+        const expected = match ? parseInt(match[1]) : 0;
+        const actual = parseInt(fact) || 0;
+        const diff = actual - expected;
+
+        const diffColor = diff === 0 ? 'white' : diff > 0 ? '#00ff99' : '#ff4d4d';
+        const diffText = diff === 0 ? '0' : (diff > 0 ? '+' : '') + diff;
+
+        const row = document.createElement('div');
+        row.style.marginBottom = '12px';
+        row.innerHTML = `
+          <div><strong>${name}</strong></div>
+          <div>Факт: ${actual} | Итог: ${expected} | <span style="color:${diffColor}">Разница: ${diffText}</span></div>
         `;
-        list.appendChild(div);
+        summaryContent.appendChild(row);
       });
 
-      list.addEventListener("input", e => {
-        if (e.target.tagName === "INPUT") {
-          const code = e.target.dataset.code;
-          const actual = parseInt(e.target.value || "0");
-          const item = items.find(i => i.code === code);
-          const card = e.target.closest(".item");
-          card.classList.remove("match", "missing", "excess");
-          if (actual === item.docQty) card.classList.add("match");
-          else if (actual < item.docQty) card.classList.add("missing");
-          else card.classList.add("excess");
-        }
-      });
-    }
+      summaryModal.classList.remove('hidden');
+    });
 
-    document.getElementById("upload").addEventListener("change", async e => {
-      const file = e.target.files[0];
-      if (!file) return;
+    // Закрытие итогов
+    closeSummaryBtn.addEventListener('click', () => {
+      summaryModal.classList.add('hidden');
+    });
 
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let allLines = [];
-
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        const grouped = groupByY(content.items);
-        allLines.push(...grouped);
-      }
-
-      const items = parseLines(allLines);
-      if (items.length === 0) {
-        alert("Не удалось распарсить таблицу. Проверь формат PDF.");
-      } else {
-        render(items);
+    // Закрытие клавиатуры при клике вне поля
+    document.addEventListener('click', (e) => {
+      if (!keyboard.contains(e.target) && !e.target.classList.contains('fact-input')) {
+        keyboard.classList.add('hidden');
+        activeInput = null;
       }
     });
   </script>
