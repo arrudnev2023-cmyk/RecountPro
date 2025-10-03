@@ -105,12 +105,6 @@
       font-size: 1rem;
       cursor: pointer;
     }
-   #export-area {
-  visibility: hidden;
-  position: absolute;
-  left: -9999px;
-}
-
     #modal {
       display: none;
       position: fixed;
@@ -150,6 +144,21 @@
       background: #eee;
       border-radius: 6px;
       cursor: pointer;
+    }
+    #export-area {
+      display: none;
+      padding: 1rem;
+      font-size: 12px;
+    }
+    #export-area table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    #export-area th, #export-area td {
+      border: 1px solid #ccc;
+      padding: 4px;
+      text-align: left;
     }
   </style>
 </head>
@@ -212,7 +221,7 @@
   <div id="export-area">
     <h2>Итог пересчёта</h2>
     <div id="export-summary"></div>
-    <table border="1" cellspacing="0" cellpadding="4" style="width:100%; font-size:12px;">
+    <table>
       <thead>
         <tr>
           <th>Артикул</th>
@@ -373,10 +382,12 @@
   });
 
   function exportPDF() {
+    const exportArea = document.getElementById("export-area");
     const summary = document.getElementById("export-summary");
     const tbody = document.getElementById("export-table-body");
     summary.innerHTML = '';
     tbody.innerHTML = '';
+    exportArea.style.display = "block";
 
     let totalPlus = 0, totalMinus = 0;
 
@@ -414,15 +425,14 @@
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-    }).from(document.getElementById("export-area")).save();
+    }).from(exportArea).save().then(() => {
+      exportArea.style.display = "none";
+    });
   }
 
   document.addEventListener("click", e => {
     if (e.target.matches("input[data-code]")) {
       activeInput = e.target;
-      document.getElementById("custom-keyboard").style.display = "block";
-      setTimeout(() => activeInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-    } else if (!e.target.closest("#custom-keyboard")) {
             document.getElementById("custom-keyboard").style.display = "none";
       activeInput = null;
     }
