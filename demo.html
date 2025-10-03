@@ -407,13 +407,13 @@
 
       const row = document.createElement("tr");
       row.innerHTML = `
-        <td>${item.code}</td>
-        <td>${item.name}</td>
-        <td>${item.unit}</td>
-        <td>${item.price.toFixed(2)}</td>
-        <td>${item.docQty}</td>
-        <td style="word-break: break-word; white-space: pre-wrap; max-width: 160px; overflow-wrap: break-word;">${raw}</td>
-        <td>${delta}</td>
+        <td style="width:80px;">${item.code}</td>
+        <td style="width:180px;">${item.name}</td>
+        <td style="width:80px;">${item.unit}</td>
+        <td style="width:60px;">${item.price.toFixed(2)}</td>
+        <td style="width:80px;">${item.docQty}</td>
+        <td style="width:160px; word-break: break-word; white-space: pre-wrap; overflow-wrap: break-word;">${raw}</td>
+        <td style="width:60px;">${delta}</td>
       `;
       tbody.appendChild(row);
     });
@@ -426,11 +426,11 @@
     const filename = prompt("Введите имя файла", "RecountPro.pdf");
     if (filename) {
       html2pdf().set({
-        margin: 0.5,
+        margin: 0.3,
         filename,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 1.2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       }).from(exportArea).save().then(() => {
         exportArea.style.display = "none";
       });
