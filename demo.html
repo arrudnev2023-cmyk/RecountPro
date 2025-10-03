@@ -65,14 +65,14 @@
       const lines = text.split('\n');
       const items = [];
       for (let line of lines) {
-        const match = line.match(/^(\d{2,3})\s+(\d{5})\s+(.+?)\s+(\d+\*\d+)\s+([\d.,]+)\s+(.+?)\s+(\d+)\s*$/);
+        const match = line.match(/(\d{4,6})\s+(.+?)\s+(\d+\*\d+)\s+([\d.,]+)\s+(.+?)\s+(\d+)\s*$/);
         if (match) {
           items.push({
-            code: match[2],
-            name: match[3].trim(),
-            unit: match[4],
-            price: parseFloat(match[5].replace(',', '.')),
-            docQty: parseInt(match[7])
+            code: match[1],
+            name: match[2].trim(),
+            unit: match[3],
+            price: parseFloat(match[4].replace(',', '.')),
+            docQty: parseInt(match[6])
           });
         }
       }
