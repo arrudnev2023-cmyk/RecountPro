@@ -2,12 +2,18 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RecountPro — Пересчёт</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
-    body { font-family: sans-serif; margin: 0; background: #f5f5f5; padding-bottom: 12rem; }
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      background: #f5f5f5;
+      padding-bottom: 12rem;
+      color: #222;
+    }
     h1 {
       text-align: center;
       padding: 1rem;
@@ -63,6 +69,7 @@
       border-radius: 8px;
       box-shadow: 0 1px 2px rgba(0,0,0,0.05);
       max-width: 600px;
+      transition: background 0.3s ease;
     }
     .item.match { background-color: #e0ffe0; }
     .item.missing { background-color: #fff8c6; }
@@ -147,18 +154,17 @@
     }
     #export-area {
       display: none;
-      padding: 1rem;
-      font-size: 12px;
-      margin-top: 0;
+      padding: 0.3rem;
+      font-size: 8px;
     }
     #export-area table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 1rem;
+      table-layout: fixed;
     }
     #export-area th, #export-area td {
       border: 1px solid #ccc;
-      padding: 4px;
+      padding: 1px 2px;
       text-align: left;
       word-break: break-word;
     }
@@ -221,18 +227,18 @@
   </div>
 
   <div id="export-area">
-    <h2>Итог пересчёта</h2>
+    <h2 style="margin: 0;">Итог пересчёта</h2>
     <div id="export-summary"></div>
     <table>
       <thead>
         <tr>
-          <th>Арт</th>
-          <th>Название</th>
-          <th>Разм</th>
-          <th>Цена</th>
-          <th>Должно</th>
-          <th>Факт</th>
-          <th>Расхождение</th>
+          <th style="width:60px;">Артикул</th>
+          <th style="width:140px;">Название</th>
+          <th style="width:60px;">Размерность</th>
+          <th style="width:50px;">Цена</th>
+          <th style="width:60px;">По документам</th>
+          <th style="width:140px;">Факт</th>
+          <th style="width:50px;">Расхождение</th>
         </tr>
       </thead>
       <tbody id="export-table-body"></tbody>
@@ -348,42 +354,6 @@
   });
 </script>
 <script>
-  document.getElementById("open-summary").addEventListener("click", () => {
-    const container = document.getElementById("modal-content");
-    container.innerHTML = '';
-    let totalPlus = 0;
-    let totalMinus = 0;
-    const rows = [];
-
-    allItems.forEach(item => {
-      const input = document.querySelector(`input[data-code="${item.code}"]`);
-      if (!input) return;
-      let actual = 0;
-      try { actual = eval(input.value.replace(',', '.')) || 0; } catch {}
-      const delta = actual - item.docQty;
-      let color = '#ccc', sign = '0';
-      if (delta > 0) { color = '#2e8b57'; sign = '+' + delta; totalPlus += delta * item.price; }
-      else if (delta < 0) { color = '#d00'; sign = delta; totalMinus += Math.abs(delta) * item.price; }
-
-      rows.push(`
-        <div style="padding: 0.4rem 0; border-bottom: 1px solid #eee;">
-          <div><strong>${item.name}</strong> (${item.code})</div>
-          <div style="color: ${color}; font-weight: bold;">Расхождение: ${sign}</div>
-        </div>
-      `);
-    });
-
-    const summaryDiv = document.createElement("div");
-    summaryDiv.style = "margin-bottom: 1rem; font-weight: bold;";
-    summaryDiv.innerHTML = `
-      🧾 Сумма недостачи: <span style="color:#d00;">–${totalMinus.toFixed(2)} ₽</span><br>
-      💰 Сумма избытка: <span style="color:#2e8b57;">+${totalPlus.toFixed(2)} ₽</span>
-    `;
-    container.appendChild(summaryDiv);
-    container.insertAdjacentHTML("beforeend", rows.join(""));
-    document.getElementById("modal").style.display = 'flex';
-  });
-
   function exportPDF() {
     const exportArea = document.getElementById("export-area");
     const summary = document.getElementById("export-summary");
@@ -407,13 +377,13 @@
 
       const row = document.createElement("tr");
       row.innerHTML = `
-        <td style="width:80px;">${item.code}</td>
-        <td style="width:180px;">${item.name}</td>
-        <td style="width:80px;">${item.unit}</td>
-        <td style="width:60px;">${item.price.toFixed(2)}</td>
-        <td style="width:80px;">${item.docQty}</td>
-        <td style="width:160px; word-break: break-word; white-space: pre-wrap; overflow-wrap: break-word;">${raw}</td>
-        <td style="width:60px;">${delta}</td>
+        <td style="width:60px;">${item.code}</td>
+        <td style="width:140px;">${item.name}</td>
+        <td style="width:60px;">${item.unit}</td>
+        <td style="width:50px;">${item.price.toFixed(2)}</td>
+        <td style="width:60px;">${item.docQty}</td>
+        <td style="width:140px; word-break: break-word; white-space: pre-wrap; overflow-wrap: break-word;">${raw}</td>
+        <td style="width:50px;">${delta}</td>
       `;
       tbody.appendChild(row);
     });
@@ -426,11 +396,11 @@
     const filename = prompt("Введите имя файла", "RecountPro.pdf");
     if (filename) {
       html2pdf().set({
-        margin: 0.3,
+        margin: 0.2,
         filename,
         image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 1.2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        html2canvas: { scale: 0.9 },
+        jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' }
       }).from(exportArea).save().then(() => {
         exportArea.style.display = "none";
       });
@@ -488,6 +458,5 @@
     }
   });
 </script>
-
 </body>
 </html>
