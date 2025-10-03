@@ -7,20 +7,29 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
+    :root {
+      --accent: #4f46e5;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --bg: #f9fafb;
+      --text: #1f2937;
+      --card: #ffffff;
+      --border: #e5e7eb;
+    }
     body {
-      font-family: system-ui, sans-serif;
+      font-family: "Segoe UI", system-ui, sans-serif;
       margin: 0;
-      background: #f5f5f5;
+      background: var(--bg);
+      color: var(--text);
       padding-bottom: 12rem;
-      color: #222;
     }
     h1 {
       text-align: center;
       padding: 1rem;
       margin: 0;
-      background: #222;
+      background: var(--accent);
       color: #fff;
-      font-size: 1.2rem;
+      font-size: 1.3rem;
       position: sticky;
       top: 0;
       z-index: 1000;
@@ -30,7 +39,7 @@
       top: 3.2rem;
       z-index: 999;
       background: #fff;
-      border-bottom: 1px solid #ccc;
+      border-bottom: 1px solid var(--border);
     }
     #search-wrapper {
       position: relative;
@@ -39,13 +48,16 @@
     }
     #search {
       width: 100%;
-      padding: 0.5rem 2.5rem 0.5rem 0.5rem;
+      padding: 0.6rem 2.5rem 0.6rem 0.6rem;
       font-size: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
       box-sizing: border-box;
+      background: #fff;
     }
     #clear-search {
       position: absolute;
-      right: 0.3rem;
+      right: 0.5rem;
       top: 50%;
       transform: translateY(-50%);
       background: none;
@@ -58,44 +70,54 @@
       display: block;
       margin: 1rem auto;
       font-size: 1rem;
-      padding: 0.5rem;
+      padding: 0.6rem;
       width: 90%;
       max-width: 500px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
     }
     .item {
-      background: #fff;
+      background: var(--card);
       margin: 0.5rem auto;
-      padding: 0.8rem;
-      border-radius: 8px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
       max-width: 600px;
       transition: background 0.3s ease;
     }
-    .item.match { background-color: #e0ffe0; }
+    .item.match { background-color: #e0f7e0; }
     .item.missing { background-color: #fff8c6; }
-    .item.excess { background-color: #ffd6d6; }
-    .field { margin-bottom: 0.4rem; font-size: 0.9rem; }
-    .label { font-weight: bold; color: #333; }
+    .item.excess { background-color: #ffe4e4; }
+    .field { margin-bottom: 0.5rem; font-size: 0.95rem; }
+    .label { font-weight: 600; color: var(--text); }
     input[data-code] {
       width: 100%;
-      padding: 0.5rem;
+      padding: 0.6rem;
       font-size: 1rem;
       box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 6px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
       background: #fefefe;
       touch-action: manipulation;
     }
     button {
       touch-action: manipulation;
+      font-size: 1rem;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
     }
     #summary {
       position: sticky;
       bottom: 0;
       background: #fff;
-      border-top: 1px solid #ccc;
-      padding: 0.8rem;
-      font-size: 0.9rem;
+      border-top: 1px solid var(--border);
+      padding: 1rem;
+      font-size: 0.95rem;
       box-shadow: 0 -1px 3px rgba(0,0,0,0.1);
       z-index: 1000;
     }
@@ -104,13 +126,6 @@
       bottom: 4rem;
       right: 1rem;
       z-index: 1001;
-      background: #222;
-      color: #fff;
-      border: none;
-      padding: 0.6rem 1rem;
-      border-radius: 6px;
-      font-size: 1rem;
-      cursor: pointer;
     }
     #modal {
       display: none;
@@ -128,7 +143,7 @@
       width: 90%;
       max-height: 80%;
       overflow-y: auto;
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 1rem;
       box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
@@ -139,7 +154,7 @@
       left: 0;
       width: 100%;
       background: #fff;
-      border-top: 1px solid #ccc;
+      border-top: 1px solid var(--border);
       padding: 0.5rem;
       box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
       z-index: 3000;
@@ -149,7 +164,7 @@
       padding: 1rem;
       border: none;
       background: #eee;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
     }
     #export-area {
@@ -163,7 +178,7 @@
       table-layout: fixed;
     }
     #export-area th, #export-area td {
-      border: 1px solid #ccc;
+      border: 1px solid var(--border);
       padding: 1px 2px;
       text-align: left;
       word-break: break-word;
@@ -197,8 +212,10 @@
     <div id="summary-content">Загружено 0 позиций</div>
   </div>
 
-  <button id="open-summary">Итог</button>
+  <button id="open-summary">📊 Итог</button>
   <button onclick="exportPDF()" style="position:fixed;bottom:8rem;right:1rem;z-index:1001;">📤 Скачать PDF</button>
+  <button onclick="saveSession()" style="position:fixed;bottom:12rem;right:1rem;z-index:1001;">💾 Сохранить сессию</button>
+  <button onclick="loadSession()" style="position:fixed;bottom:16rem;right:1rem;z-index:1001;">📂 Загрузить сессию</button>
 
   <div id="modal">
     <div>
@@ -206,10 +223,10 @@
       <div id="modal-content"></div>
       <button onclick="document.getElementById('modal').style.display='none'" style="
         margin-top: 1rem;
-        background: #ccc;
+        background: var(--border);
         border: none;
         padding: 0.5rem 1rem;
-        border-radius: 6px;
+        border-radius: 8px;
         cursor: pointer;
       ">Закрыть</button>
     </div>
@@ -244,6 +261,7 @@
       <tbody id="export-table-body"></tbody>
     </table>
   </div>
+</body>
 <script>
   const list = document.getElementById("list");
   const searchInput = document.getElementById("search");
@@ -419,6 +437,57 @@
     }
   }
 
+  function saveSession() {
+    const values = {};
+    allItems.forEach(item => {
+      const input = document.querySelector(`input[data-code="${item.code}"]`);
+      if (input && input.value.trim()) {
+        values[item.code] = input.value.trim();
+      }
+    });
+    const session = {
+      items: allItems,
+      values
+    };
+    const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "recount-session.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function loadSession() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      try {
+        const session = JSON.parse(text);
+        if (!session.items || !Array.isArray(session.items)) throw new Error("Неверный формат");
+        allItems = session.items;
+        render(allItems);
+        if (session.values) {
+          Object.entries(session.values).forEach(([code, value]) => {
+            const input = document.querySelector(`input[data-code="${code}"]`);
+            if (input) {
+              input.value = value;
+              input.dispatchEvent(new Event("input"));
+            }
+          });
+        }
+        alert("Сессия успешно загружена.");
+      } catch {
+        alert("Ошибка при загрузке сессии.");
+      }
+    };
+    input.click();
+  }
+
   document.addEventListener("focusin", e => {
     if (e.target.matches("input[data-code]")) {
       activeInput = e.target;
@@ -468,6 +537,4 @@
     }
   });
 </script>
-
-</body>
 </html>
