@@ -11,17 +11,17 @@
       --accent: #4f46e5;
       --danger: #dc2626;
       --success: #16a34a;
-      --bg: #f9fafb;
+      --bg: #eef2f7;
       --text: #1f2937;
       --card: #ffffff;
-      --border: #e5e7eb;
+      --border: #d1d5db;
     }
     body {
       font-family: "Segoe UI", system-ui, sans-serif;
       margin: 0;
-      background: var(--bg);
+      background: linear-gradient(to bottom right, #eef2f7, #e0e7ff);
       color: var(--text);
-      padding-bottom: 12rem;
+      padding-bottom: 14rem;
     }
     h1 {
       text-align: center;
@@ -121,11 +121,38 @@
       box-shadow: 0 -1px 3px rgba(0,0,0,0.1);
       z-index: 1000;
     }
-    #open-summary {
+    #action-buttons {
       position: fixed;
-      bottom: 4rem;
+      bottom: 1rem;
       right: 1rem;
       z-index: 1001;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    #session-switcher {
+      position: fixed;
+      bottom: 6rem;
+      left: 1rem;
+      z-index: 1001;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    #session-switcher select {
+      padding: 0.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    #session-switcher button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 0.5rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
     }
     #modal {
       display: none;
@@ -170,7 +197,7 @@
     #export-area {
       display: none;
       padding: 0.3rem;
-      font-size: 8px;
+      font-size: 10px;
     }
     #export-area table {
       width: 100%;
@@ -179,7 +206,7 @@
     }
     #export-area th, #export-area td {
       border: 1px solid var(--border);
-      padding: 1px 2px;
+      padding: 2px 4px;
       text-align: left;
       word-break: break-word;
     }
@@ -212,10 +239,18 @@
     <div id="summary-content">Загружено 0 позиций</div>
   </div>
 
-  <button id="open-summary">📊 Итог</button>
-  <button onclick="exportPDF()" style="position:fixed;bottom:8rem;right:1rem;z-index:1001;">📤 Скачать PDF</button>
-  <button onclick="saveSession()" style="position:fixed;bottom:12rem;right:1rem;z-index:1001;">💾 Сохранить сессию</button>
-  <button onclick="loadSession()" style="position:fixed;bottom:16rem;right:1rem;z-index:1001;">📂 Загрузить сессию</button>
+  <div id="action-buttons">
+    <button onclick="exportPDF()">📤 Скачать PDF</button>
+    <button onclick="saveSession()">💾 Сохранить сессию</button>
+    <button onclick="loadSession()">📂 Загрузить сессию</button>
+    <button id="open-summary">📊 Итог</button>
+  </div>
+
+  <div id="session-switcher">
+    <select id="session-list"></select>
+    <button onclick="switchSession()">🔁 Переключить</button>
+    <button onclick="deleteSession()">🗑️ Удалить</button>
+  </div>
 
   <div id="modal">
     <div>
@@ -368,6 +403,19 @@
       else if (actual < item.docQty) card.classList.add("missing");
       else if (actual > item.docQty) card.classList.add("excess");
       updateSummary(allItems);
+
+      // 🔁 Автосохранение в активную сессию
+      if (localStorage.getItem("active_session")) {
+        const values = {};
+        allItems.forEach(item => {
+          const input = document.querySelector(`input[data-code="${item.code}"]`);
+          if (input && input.value.trim()) {
+            values[item.code] = input.value.trim();
+          }
+        });
+        const session = { items: allItems, values };
+        localStorage.setItem("session_" + localStorage.getItem("active_session"), JSON.stringify(session));
+      }
     }
   });
 </script>
@@ -417,7 +465,7 @@
         margin: 0.2,
         filename,
         image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 0.9 },
+        html2canvas: { scale: 1.1 },
         jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
         pagebreak: { mode: ['avoid-all'] }
       };
@@ -435,57 +483,6 @@
     } else {
       exportArea.style.display = "none";
     }
-  }
-
-  function saveSession() {
-    const values = {};
-    allItems.forEach(item => {
-      const input = document.querySelector(`input[data-code="${item.code}"]`);
-      if (input && input.value.trim()) {
-        values[item.code] = input.value.trim();
-      }
-    });
-    const session = {
-      items: allItems,
-      values
-    };
-    const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "recount-session.json";
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function loadSession() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json";
-    input.onchange = async e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const text = await file.text();
-      try {
-        const session = JSON.parse(text);
-        if (!session.items || !Array.isArray(session.items)) throw new Error("Неверный формат");
-        allItems = session.items;
-        render(allItems);
-        if (session.values) {
-          Object.entries(session.values).forEach(([code, value]) => {
-            const input = document.querySelector(`input[data-code="${code}"]`);
-            if (input) {
-              input.value = value;
-              input.dispatchEvent(new Event("input"));
-            }
-          });
-        }
-        alert("Сессия успешно загружена.");
-      } catch {
-        alert("Ошибка при загрузке сессии.");
-      }
-    };
-    input.click();
   }
 
   document.addEventListener("focusin", e => {
@@ -536,5 +533,110 @@
       render(allItems);
     }
   });
+</script>
+<script>
+  function saveSession() {
+    const name = prompt("Введите имя сессии");
+    if (!name) return;
+    const values = {};
+    allItems.forEach(item => {
+      const input = document.querySelector(`input[data-code="${item.code}"]`);
+      if (input && input.value.trim()) {
+        values[item.code] = input.value.trim();
+      }
+    });
+    const session = { items: allItems, values };
+    localStorage.setItem("session_" + name, JSON.stringify(session));
+    localStorage.setItem("active_session", name);
+    updateSessionList();
+    alert("Сессия сохранена: " + name);
+  }
+
+  function loadSession() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      try {
+        const session = JSON.parse(text);
+        if (!session.items || !Array.isArray(session.items)) throw new Error("Неверный формат");
+        allItems = session.items;
+        render(allItems);
+        if (session.values) {
+          Object.entries(session.values).forEach(([code, value]) => {
+            const input = document.querySelector(`input[data-code="${code}"]`);
+            if (input) {
+              input.value = value;
+              input.dispatchEvent(new Event("input"));
+            }
+          });
+        }
+        alert("Сессия успешно загружена.");
+      } catch {
+        alert("Ошибка при загрузке сессии.");
+      }
+    };
+    input.click();
+  }
+
+  function switchSession() {
+    const select = document.getElementById("session-list");
+    const name = select.value;
+    if (!name) return;
+    const raw = localStorage.getItem("session_" + name);
+    if (!raw) return alert("Сессия не найдена");
+    try {
+      const session = JSON.parse(raw);
+      allItems = session.items;
+      render(allItems);
+      if (session.values) {
+        Object.entries(session.values).forEach(([code, value]) => {
+          const input = document.querySelector(`input[data-code="${code}"]`);
+          if (input) {
+            input.value = value;
+            input.dispatchEvent(new Event("input"));
+          }
+        });
+      }
+      localStorage.setItem("active_session", name);
+      alert("Сессия загружена: " + name);
+    } catch {
+      alert("Ошибка при загрузке сессии");
+    }
+  }
+
+  function deleteSession() {
+    const select = document.getElementById("session-list");
+    const name = select.value;
+    if (!name) return;
+    if (!confirm("Удалить сессию: " + name + "?")) return;
+    localStorage.removeItem("session_" + name);
+    if (localStorage.getItem("active_session") === name) {
+      localStorage.removeItem("active_session");
+    }
+    updateSessionList();
+    alert("Сессия удалена.");
+  }
+
+  function updateSessionList() {
+    const select = document.getElementById("session-list");
+    select.innerHTML = '';
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith("session_")) {
+        const name = key.replace("session_", "");
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+      }
+    });
+    const active = localStorage.getItem("active_session");
+    if (active) select.value = active;
+  }
+
+  window.addEventListener("DOMContentLoaded", updateSessionList);
 </script>
 </html>
