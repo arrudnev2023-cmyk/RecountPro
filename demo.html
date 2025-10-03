@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
+  <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>RecountPro — Пересчёт</title>
@@ -300,10 +300,9 @@
         <div class="field"><span class="label">Цена:</span> ${item.price.toFixed(2)} ₽</div>
         <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
         <div class="field">
-  <span class="label">Фактическое количество:</span>
-  <input type="text" data-code="${item.code}" inputmode="none" />
-</div>
-
+          <span class="label">Фактическое количество:</span>
+          <input type="text" data-code="${item.code}" inputmode="none" />
+        </div>
       `;
       list.appendChild(div);
     });
@@ -345,7 +344,8 @@
       updateSummary(allItems);
     }
   });
-
+</script>
+<script>
   document.getElementById("open-summary").addEventListener("click", () => {
     const container = document.getElementById("modal-content");
     container.innerHTML = '';
@@ -431,10 +431,17 @@
     });
   }
 
-  document.addEventListener("click", e => {
+  document.addEventListener("focusin", e => {
     if (e.target.matches("input[data-code]")) {
       activeInput = e.target;
-            document.getElementById("custom-keyboard").style.display = "none";
+      document.getElementById("custom-keyboard").style.display = "block";
+      setTimeout(() => activeInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    }
+  });
+
+  document.addEventListener("click", e => {
+    if (!e.target.closest("#custom-keyboard") && !e.target.matches("input[data-code]")) {
+      document.getElementById("custom-keyboard").style.display = "none";
       activeInput = null;
     }
   });
