@@ -26,26 +26,35 @@
   <script>
     const list = document.getElementById("list");
 
-    function parseLines(text) {
-      const lines = text.split('\n');
-      const items = [];
+    function groupByY(items) {
+      const lines = {};
+      items.forEach(item => {
+        const y = Math.round(item.transform[5]);
+        if (!lines[y]) lines[y] = [];
+        lines[y].push({ str: item.str, x: item.transform[4] });
+      });
+      return Object.values(lines).map(words => {
+        return words.sort((a, b) => a.x - b.x).map(w => w.str).join(' ');
+      });
+    }
 
+    function parseLines(lines) {
+      const items = [];
       for (let line of lines) {
         line = line.trim();
-        if (!/^\d{4,5}/.test(line)) continue;
+        if (!/^\d+\s+\d{4,6}/.test(line)) continue;
 
-        const match = line.match(/^(\d{4,5})\s+(.+?)\s+(\d+\*\d+)\s+([\d.,]+)\s+.*?(\d+)\s*$/);
+        const match = line.match(/^(\d+)\s+(\d{4,6})\s+(.+?)\s+(\d+\*\d+)?\s+([\d.,]+)\s+.*?(\d+)\s*шт/i);
         if (match) {
           items.push({
-            code: match[1],
-            name: match[2].trim(),
-            unit: match[3],
-            price: parseFloat(match[4].replace(',', '.')),
-            docQty: parseInt(match[5])
+            code: match[2],
+            name: match[3].trim(),
+            unit: match[4] || '',
+            price: parseFloat(match[5].replace(',', '.')),
+            docQty: parseInt(match[6])
           });
         }
       }
-
       return items;
     }
 
@@ -88,19 +97,19 @@
 
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let fullText = '';
+      let allLines = [];
 
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        const strings = content.items.map(item => item.str);
-        fullText += strings.join('\n') + '\n';
+        const grouped = groupByY(content.items);
+        allLines.push(...grouped);
       }
 
-      const items = parseLines(fullText);
+      const items = parseLines(allLines);
       if (items.length === 0) {
         alert("Не удалось распарсить строки. Проверь формат PDF.");
-        console.log("Исходный текст:", fullText);
+        console.log("Все строки:", allLines);
       } else {
         render(items);
       }
