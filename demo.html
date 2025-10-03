@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
+  <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>RecountPro — Пересчёт</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     :root {
-      --accent: #4f46e5;
-      --danger: #dc2626;
-      --success: #16a34a;
-      --bg: #eef2f7;
+      --accent: #6d28d9;
+      --accent-light: #a78bfa;
+      --bg-start: #eef2ff;
+      --bg-end: #e0e7ff;
       --text: #1f2937;
       --card: #ffffff;
       --border: #d1d5db;
@@ -19,7 +19,7 @@
     body {
       font-family: "Segoe UI", system-ui, sans-serif;
       margin: 0;
-      background: linear-gradient(to bottom right, #eef2f7, #e0e7ff);
+      background: linear-gradient(to bottom right, var(--bg-start), var(--bg-end));
       color: var(--text);
       padding-bottom: 14rem;
     }
@@ -86,9 +86,9 @@
       max-width: 600px;
       transition: background 0.3s ease;
     }
-    .item.match { background-color: #e0f7e0; }
-    .item.missing { background-color: #fff8c6; }
-    .item.excess { background-color: #ffe4e4; }
+    .item.match { background-color: #e0f2fe; }
+    .item.missing { background-color: #fef9c3; }
+    .item.excess { background-color: #fce7f3; }
     .field { margin-bottom: 0.5rem; font-size: 0.95rem; }
     .label { font-weight: 600; color: var(--text); }
     input[data-code] {
@@ -185,6 +185,7 @@
       padding: 0.5rem;
       box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
       z-index: 3000;
+      touch-action: manipulation;
     }
     #custom-keyboard button {
       font-size: 1.6rem;
@@ -300,6 +301,7 @@
   const list = document.getElementById("list");
   const searchInput = document.getElementById("search");
   let allItems = [], activeInput = null;
+  let sessionValues = {};
 
   function groupByY(items) {
     const lines = {};
@@ -368,8 +370,12 @@
     });
 
     document.querySelectorAll("input[data-code]").forEach(input => {
-      const saved = localStorage.getItem("qty_" + input.dataset.code);
-      if (saved) input.value = saved;
+      const code = input.dataset.code;
+      const saved = sessionValues[code] || localStorage.getItem("qty_" + code);
+      if (saved) {
+        input.value = saved;
+        input.dispatchEvent(new Event("input"));
+      }
     });
 
     updateSummary(items);
@@ -391,8 +397,11 @@
   list.addEventListener("input", e => {
     if (e.target.tagName === "INPUT") {
       const code = e.target.dataset.code;
-      localStorage.setItem("qty_" + code, e.target.value);
-      const raw = e.target.value.replace(',', '.');
+      const value = e.target.value;
+      localStorage.setItem("qty_" + code, value);
+      sessionValues[code] = value;
+
+      const raw = value.replace(',', '.');
       let actual = 0;
       try { actual = eval(raw); } catch {}
       const item = allItems.find(i => i.code === code);
@@ -403,16 +412,8 @@
       else if (actual > item.docQty) card.classList.add("excess");
       updateSummary(allItems);
 
-      // 🔁 Автосохранение в активную сессию
       if (localStorage.getItem("active_session")) {
-        const values = {};
-        allItems.forEach(item => {
-          const input = document.querySelector(`input[data-code="${item.code}"]`);
-          if (input && input.value.trim()) {
-            values[item.code] = input.value.trim();
-          }
-        });
-        const session = { items: allItems, values };
+        const session = { items: allItems, values: sessionValues };
         localStorage.setItem("session_" + localStorage.getItem("active_session"), JSON.stringify(session));
       }
     }
@@ -542,17 +543,9 @@
   function saveSession() {
     const name = prompt("Введите имя сессии");
     if (!name) return;
-    const values = {};
-    allItems.forEach(item => {
-      const input = document.querySelector(`input[data-code="${item.code}"]`);
-      if (input && input.value.trim()) {
-        values[item.code] = input.value.trim();
-      }
-    });
-    const session = { items: allItems, values };
+    const session = { items: allItems, values: sessionValues };
     localStorage.setItem("session_" + name, JSON.stringify(session));
     localStorage.setItem("active_session", name);
-    updateSessionList();
     alert("Сессия сохранена: " + name);
   }
 
@@ -568,16 +561,8 @@
         const session = JSON.parse(text);
         if (!session.items || !Array.isArray(session.items)) throw new Error("Неверный формат");
         allItems = session.items;
+        sessionValues = session.values || {};
         render(allItems);
-        if (session.values) {
-          Object.entries(session.values).forEach(([code, value]) => {
-            const input = document.querySelector(`input[data-code="${code}"]`);
-            if (input) {
-              input.value = value;
-              input.dispatchEvent(new Event("input"));
-            }
-          });
-        }
         alert("Сессия успешно загружена.");
       } catch {
         alert("Ошибка при загрузке сессии.");
@@ -594,16 +579,8 @@
     try {
       const session = JSON.parse(raw);
       allItems = session.items;
+      sessionValues = session.values || {};
       render(allItems);
-      if (session.values) {
-        Object.entries(session.values).forEach(([code, value]) => {
-          const input = document.querySelector(`input[data-code="${code}"]`);
-          if (input) {
-            input.value = value;
-            input.dispatchEvent(new Event("input"));
-          }
-        });
-      }
       localStorage.setItem("active_session", name);
       alert("Сессия загружена: " + name);
     } catch {
@@ -621,11 +598,4 @@
     }
     alert("Сессия удалена.");
   }
-
-  function updateSessionList() {
-    // можно добавить отображение списка, если нужно
-  }
-
-  window.addEventListener("DOMContentLoaded", updateSessionList);
 </script>
-</html>
