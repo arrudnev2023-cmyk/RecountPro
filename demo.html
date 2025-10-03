@@ -2,11 +2,11 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>RecountPro — Пересчёт</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <style>
-    body { font-family: sans-serif; margin: 0; background: #f5f5f5; }
+    body { font-family: sans-serif; margin: 0; background: #f5f5f5; padding-bottom: 12rem; }
     h1 {
       text-align: center;
       padding: 1rem;
@@ -57,10 +57,11 @@
     }
     .item {
       background: #fff;
-      margin: 0.5rem;
+      margin: 0.5rem auto;
       padding: 0.8rem;
       border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      max-width: 600px;
     }
     .item.match { background-color: #e0ffe0; }
     .item.missing { background-color: #fff8c6; }
@@ -132,8 +133,8 @@
       z-index: 3000;
     }
     #custom-keyboard button {
-      font-size: 1.2rem;
-      padding: 0.6rem;
+      font-size: 1.6rem;
+      padding: 1rem;
       border: none;
       background: #eee;
       border-radius: 6px;
@@ -207,9 +208,9 @@
       if (!lines[y]) lines[y] = [];
       lines[y].push({ str: item.str, x: item.transform[4] });
     });
-    return Object.values(lines).map(words => {
-      return words.sort((a, b) => a.x - b.x).map(w => w.str).join(' ');
-    });
+    return Object.values(lines).map(words =>
+      words.sort((a, b) => a.x - b.x).map(w => w.str).join(' ')
+    );
   }
 
   function parseLines(lines) {
@@ -321,6 +322,7 @@
     if (e.target.matches("input[data-code]")) {
       activeInput = e.target;
       document.getElementById("custom-keyboard").style.display = "block";
+      setTimeout(() => activeInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
     } else if (!e.target.closest("#custom-keyboard")) {
       document.getElementById("custom-keyboard").style.display = "none";
       activeInput = null;
