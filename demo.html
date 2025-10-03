@@ -395,13 +395,23 @@
 
     const filename = prompt("Введите имя файла", "RecountPro.pdf");
     if (filename) {
-      html2pdf().set({
+      const opt = {
         margin: 0.2,
         filename,
         image: { type: 'jpeg', quality: 0.95 },
         html2canvas: { scale: 0.9 },
-        jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' }
-      }).from(exportArea).save().then(() => {
+        jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all'] }
+      };
+
+      html2pdf().set(opt).from(exportArea).toPdf().get('pdf').then(pdf => {
+        const totalPages = pdf.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+          pdf.setPage(i);
+          pdf.setFontSize(8);
+          pdf.text(`Страница ${i} из ${totalPages}`, pdf.internal.pageSize.getWidth() - 60, pdf.internal.pageSize.getHeight() - 10);
+        }
+      }).save().then(() => {
         exportArea.style.display = "none";
       });
     } else {
@@ -458,5 +468,6 @@
     }
   });
 </script>
+
 </body>
 </html>
