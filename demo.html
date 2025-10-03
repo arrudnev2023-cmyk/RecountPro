@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>RecountPro — Пересчёт</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     body { font-family: sans-serif; margin: 0; background: #f5f5f5; padding-bottom: 12rem; }
     h1 {
@@ -106,6 +105,9 @@
       font-size: 1rem;
       cursor: pointer;
     }
+    #export-area {
+      display: none;
+    }
     #modal {
       display: none;
       position: fixed;
@@ -203,6 +205,25 @@
       <button class="key">+</button><button class="key">0</button><button class="key">←</button>
     </div>
   </div>
+
+  <div id="export-area">
+    <h2>Итог пересчёта</h2>
+    <div id="export-summary"></div>
+    <table border="1" cellspacing="0" cellpadding="4" style="width:100%; font-size:12px;">
+      <thead>
+        <tr>
+          <th>Артикул</th>
+          <th>Название</th>
+          <th>Размерность</th>
+          <th>Цена</th>
+          <th>По документам</th>
+          <th>Факт</th>
+          <th>Расхождение</th>
+        </tr>
+      </thead>
+      <tbody id="export-table-body"></tbody>
+    </table>
+  </div>
 <script>
   const list = document.getElementById("list");
   const searchInput = document.getElementById("search");
@@ -274,7 +295,6 @@
       list.appendChild(div);
     });
 
-    // восстановление значений после рендера
     document.querySelectorAll("input[data-code]").forEach(input => {
       const saved = localStorage.getItem("qty_" + input.dataset.code);
       if (saved) input.value = saved;
@@ -350,10 +370,12 @@
   });
 
   function exportPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const summary = document.getElementById("export-summary");
+    const tbody = document.getElementById("export-table-body");
+    summary.innerHTML = '';
+    tbody.innerHTML = '';
+
     let totalPlus = 0, totalMinus = 0;
-    const rows = [];
 
     allItems.forEach(item => {
       const input = document.querySelector(`input[data-code="${item.code}"]`);
@@ -365,30 +387,31 @@
       if (delta > 0) totalPlus += delta * item.price;
       else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
 
-      rows.push([
-        item.code,
-        item.name,
-        item.unit,
-        item.price.toFixed(2),
-        item.docQty,
-        raw,
-        delta
-      ]);
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${item.code}</td>
+        <td>${item.name}</td>
+        <td>${item.unit}</td>
+        <td>${item.price.toFixed(2)}</td>
+        <td>${item.docQty}</td>
+        <td>${raw}</td>
+        <td>${delta}</td>
+      `;
+      tbody.appendChild(row);
     });
 
-    doc.setFontSize(14);
-    doc.text(`🧾 Недостача: –${totalMinus.toFixed(2)} ₽`, 14, 20);
-    doc.text(`💰 Избыток: +${totalPlus.toFixed(2)} ₽`, 14, 30);
+    summary.innerHTML = `
+      🧾 Недостача: –${totalMinus.toFixed(2)} ₽<br>
+      💰 Избыток: +${totalPlus.toFixed(2)} ₽
+    `;
 
-    doc.autoTable({
-      startY: 40,
-      head: [["Артикул", "Название", "Размерность", "Цена", "По документам", "Факт", "Расхождение"]],
-      body: rows,
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [34, 34, 34] }
-    });
-
-    doc.save("RecountPro.pdf");
+    html2pdf().set({
+      margin: 0.5,
+      filename: 'RecountPro.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    }).from(document.getElementById("export-area")).save();
   }
 
   document.addEventListener("click", e => {
@@ -397,7 +420,7 @@
       document.getElementById("custom-keyboard").style.display = "block";
       setTimeout(() => activeInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
     } else if (!e.target.closest("#custom-keyboard")) {
-      document.getElementById("custom-keyboard").style.display = "none";
+            document.getElementById("custom-keyboard").style.display = "none";
       activeInput = null;
     }
   });
@@ -407,7 +430,7 @@
       if (!activeInput) return;
       const val = btn.textContent;
       if (val === "←") {
-                activeInput.value = activeInput.value.slice(0, -1);
+        activeInput.value = activeInput.value.slice(0, -1);
       } else {
         activeInput.value += val;
       }
