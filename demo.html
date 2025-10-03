@@ -8,23 +8,26 @@
   <style>
     body { font-family: sans-serif; margin: 0; background: #f5f5f5; }
     h1 { text-align: center; padding: 1rem; margin: 0; background: #222; color: #fff; font-size: 1.2rem; }
-    #upload { display: block; margin: 1rem auto; font-size: 1rem; }
+    #upload, #search { display: block; margin: 1rem auto; font-size: 1rem; padding: 0.5rem; width: 90%; max-width: 500px; }
     .item { background: #fff; margin: 0.5rem; padding: 0.8rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .item.match { background-color: #e0ffe0; }
     .item.missing { background-color: #fff8c6; }
     .item.excess { background-color: #ffd6d6; }
     .field { margin-bottom: 0.4rem; font-size: 0.9rem; }
     .label { font-weight: bold; color: #333; }
-    input[type="number"] { width: 100%; padding: 0.5rem; font-size: 1rem; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
+    input[type="text"] { width: 100%; padding: 0.5rem; font-size: 1rem; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
   </style>
 </head>
 <body>
   <h1>RecountPro — Пересчёт товаров</h1>
   <input type="file" id="upload" accept=".pdf" />
+  <input type="text" id="search" placeholder="Поиск по названию или артикулу..." />
   <div id="list"></div>
 
   <script>
     const list = document.getElementById("list");
+    const searchInput = document.getElementById("search");
+    let allItems = [];
 
     function groupByY(items) {
       const lines = {};
@@ -71,7 +74,7 @@
           <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
           <div class="field">
             <span class="label">Фактическое количество:</span>
-            <input type="number" min="0" data-code="${item.code}" />
+            <input type="text" data-code="${item.code}" />
           </div>
         `;
         list.appendChild(div);
@@ -80,16 +83,28 @@
       list.addEventListener("input", e => {
         if (e.target.tagName === "INPUT") {
           const code = e.target.dataset.code;
-          const actual = parseInt(e.target.value || "0");
-          const item = items.find(i => i.code === code);
+          const raw = e.target.value.replace(',', '.');
+          let actual = 0;
+          try {
+            actual = eval(raw);
+          } catch {}
+          const item = allItems.find(i => i.code === code);
           const card = e.target.closest(".item");
           card.classList.remove("match", "missing", "excess");
           if (actual === item.docQty) card.classList.add("match");
           else if (actual < item.docQty) card.classList.add("missing");
-          else card.classList.add("excess");
+          else if (actual > item.docQty) card.classList.add("excess");
         }
       });
     }
+
+    searchInput.addEventListener("input", () => {
+      const query = searchInput.value.toLowerCase();
+      const filtered = allItems.filter(item =>
+        item.name.toLowerCase().includes(query) || item.code.includes(query)
+      );
+      render(filtered);
+    });
 
     document.getElementById("upload").addEventListener("change", async e => {
       const file = e.target.files[0];
@@ -106,12 +121,12 @@
         allLines.push(...grouped);
       }
 
-      const items = parseLines(allLines);
-      if (items.length === 0) {
+      allItems = parseLines(allLines);
+      if (allItems.length === 0) {
         alert("Не удалось распарсить строки. Проверь формат PDF.");
         console.log("Все строки:", allLines);
       } else {
-        render(items);
+        render(allItems);
       }
     });
   </script>
