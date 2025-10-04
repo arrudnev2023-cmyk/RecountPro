@@ -348,36 +348,28 @@
   }
 
   function updateSummary(items) {
-  let match = 0, missing = 0, excess = 0, delta = 0;
-
-  items.forEach(item => {
-    const raw = sessionValues[item.code] || "";
-    let actual = 0;
-    try {
-      actual = eval(raw.replace(',', '.')) || 0;
-    } catch {}
-
-    if (actual === item.docQty) {
-      match++;
-    } else if (actual < item.docQty) {
-      missing++;
-      delta += item.docQty - actual;
-    } else if (actual > item.docQty) {
-      excess++;
-      delta += actual - item.docQty;
-    }
-  });
-
-  document.getElementById("summary-content").innerHTML = `
-    Всего: ${items.length} | Совпало: ${match} | Меньше: ${missing} | Больше: ${excess} | Расхождение: ${delta} шт
-  `;
-}
+    let match = 0, missing = 0, excess = 0, delta = 0;
+    items.forEach(item => {
+      const raw = sessionValues[item.code] || "";
+      let actual = 0;
+      try { actual = eval(raw.replace(',', '.')) || 0; } catch {}
+      if (actual === item.docQty) match++;
+      else if (actual < item.docQty) { missing++; delta += item.docQty - actual; }
+      else if (actual > item.docQty) { excess++; delta += actual - item.docQty; }
+    });
+    document.getElementById("summary-content").innerHTML = `
+      Всего: ${items.length} | Совпало: ${match} | Меньше: ${missing} | Больше: ${excess} | Расхождение: ${delta} шт
+    `;
+  }
 
   function render(items) {
     list.innerHTML = '';
     items.forEach(item => {
       const div = document.createElement("div");
       div.className = "item";
+
+      const value = sessionValues[item.code] || "";
+
       div.innerHTML = `
         <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
         <div class="field"><span class="label">Название:</span> ${item.name}</div>
@@ -386,18 +378,17 @@
         <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
         <div class="field">
           <span class="label">Фактическое количество:</span>
-          <input type="text" data-code="${item.code}" inputmode="none" />
+          <input type="text" data-code="${item.code}" inputmode="none" value="${value}" />
         </div>
       `;
-      list.appendChild(div);
-    });
 
-    document.querySelectorAll("input[data-code]").forEach(input => {
-      const code = input.dataset.code;
-      if (sessionValues.hasOwnProperty(code)) {
-        input.value = sessionValues[code];
-        input.dispatchEvent(new Event("input"));
-      }
+      let actual = 0;
+      try { actual = eval(value.replace(',', '.')) || 0; } catch {}
+      if (actual === item.docQty) div.classList.add("match");
+      else if (actual < item.docQty) div.classList.add("missing");
+      else if (actual > item.docQty) div.classList.add("excess");
+
+      list.appendChild(div);
     });
 
     updateSummary(allItems);
@@ -442,6 +433,7 @@
     }
   });
 </script>
+
 <script>
   function exportPDF() {
     const exportArea = document.getElementById("export-area");
