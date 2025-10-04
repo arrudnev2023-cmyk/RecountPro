@@ -211,6 +211,9 @@
       text-align: left;
       word-break: break-word;
     }
+    .hidden {
+  display: none !important;
+}
   </style>
 </head>
 <body>
@@ -366,9 +369,9 @@
     list.innerHTML = '';
     items.forEach(item => {
       const value = sessionValues[item.code] || "";
-
       const div = document.createElement("div");
       div.className = "item";
+      div.dataset.code = item.code;
 
       div.innerHTML = `
         <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
@@ -394,17 +397,19 @@
     updateSummary(allItems);
   }
 
-  document.getElementById("search").addEventListener("input", () => {
+  searchInput.addEventListener("input", () => {
     const query = searchInput.value.toLowerCase();
-    const filtered = allItems.filter(item =>
-      item.name.toLowerCase().includes(query) || item.code.includes(query)
-    );
-    render(filtered);
+    document.querySelectorAll("#list .item").forEach(div => {
+      const code = div.dataset.code;
+      const item = allItems.find(i => i.code === code);
+      const match = item.name.toLowerCase().includes(query) || item.code.includes(query);
+      div.classList.toggle("hidden", !match);
+    });
   });
 
   document.getElementById("clear-search").addEventListener("click", () => {
     searchInput.value = '';
-    render(allItems);
+    document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
   });
 
   list.addEventListener("input", e => {
@@ -433,8 +438,6 @@
     }
   });
 </script>
-
-
 <script>
   function exportPDF() {
     const exportArea = document.getElementById("export-area");
