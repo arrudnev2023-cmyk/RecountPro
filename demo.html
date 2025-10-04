@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
-  <head>
+<head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>RecountPro — Пересчёт</title>
@@ -154,7 +154,7 @@
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    #modal {
+    #modal, #session-modal {
       display: none;
       position: fixed;
       top: 0; left: 0;
@@ -164,7 +164,7 @@
       justify-content: center;
       align-items: center;
     }
-    #modal > div {
+    #modal > div, #session-modal > div {
       background: #fff;
       max-width: 600px;
       width: 90%;
@@ -245,10 +245,8 @@
     <div id="menu-actions">
       <button onclick="exportPDF()">📤 Скачать PDF</button>
       <button onclick="saveSession()">💾 Сохранить сессию</button>
-      <button onclick="loadSession()">📂 Загрузить сессию</button>
-      <button onclick="switchSession()">🔁 Переключить</button>
-      <button onclick="deleteSession()">🗑️ Удалить</button>
-      <button onclick="document.getElementById('modal').style.display='flex'">📊 Итог</button>
+      <button onclick="openSessionModal()">🗂 Управление сессиями</button>
+      <button onclick="showSummaryModal()">📊 Итог</button>
     </div>
   </div>
 
@@ -257,6 +255,21 @@
       <h2 style="margin-top: 0;">Итог пересчёта</h2>
       <div id="modal-content"></div>
       <button onclick="document.getElementById('modal').style.display='none'" style="
+        margin-top: 1rem;
+        background: var(--border);
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+      ">Закрыть</button>
+    </div>
+  </div>
+
+  <div id="session-modal">
+    <div>
+      <h2 style="margin-top: 0;">Сессии</h2>
+      <div id="session-list"></div>
+      <button onclick="document.getElementById('session-modal').style.display='none'" style="
         margin-top: 1rem;
         background: var(--border);
         border: none;
@@ -301,7 +314,7 @@
   const list = document.getElementById("list");
   const searchInput = document.getElementById("search");
   let allItems = [], activeInput = null;
-  let sessionValues = {}; // хранит ВСЕ значения, независимо от фильтра
+  let sessionValues = {};
 
   function groupByY(items) {
     const lines = {};
@@ -370,9 +383,8 @@
 
     document.querySelectorAll("input[data-code]").forEach(input => {
       const code = input.dataset.code;
-      const saved = sessionValues[code] || localStorage.getItem("qty_" + code);
-      if (saved) {
-        input.value = saved;
+      if (sessionValues.hasOwnProperty(code)) {
+        input.value = sessionValues[code];
         input.dispatchEvent(new Event("input"));
       }
     });
@@ -419,7 +431,6 @@
     }
   });
 </script>
-
 <script>
   function exportPDF() {
     const exportArea = document.getElementById("export-area");
@@ -433,9 +444,7 @@
     let totalPlus = 0, totalMinus = 0;
 
     allItems.forEach(item => {
-      const input = document.querySelector(`input[data-code="${item.code}"]`);
-      if (!input) return;
-      const raw = input.value;
+      const raw = sessionValues[item.code] || "";
       let actual = 0;
       try { actual = eval(raw.replace(',', '.')) || 0; } catch {}
       const delta = actual - item.docQty;
@@ -486,6 +495,21 @@
     }
   }
 
+  function showSummaryModal() {
+    let html = '';
+    allItems.forEach(item => {
+      const raw = sessionValues[item.code] || "";
+      let actual = 0;
+      try { actual = eval(raw.replace(',', '.')) || 0; } catch {}
+      const delta = actual - item.docQty;
+      if (delta !== 0) {
+        html += `<div><strong>${item.name}</strong> (${item.code}): ${actual} шт → ${delta > 0 ? '+' : ''}${delta}</div>`;
+      }
+    });
+    document.getElementById("modal-content").innerHTML = html || "<div>Нет расхождений</div>";
+    document.getElementById("modal").style.display = "flex";
+  }
+
   document.getElementById("menu-toggle").addEventListener("click", () => {
     const menu = document.getElementById("menu-actions");
     menu.style.display = menu.style.display === "flex" ? "none" : "flex";
@@ -532,12 +556,12 @@
       allLines.push(...grouped);
     }
     allItems = parseLines(allLines);
-    if (allItems.length === 0) {
-      alert("Не удалось распарсить строки. Проверь формат PDF.");
-      console.log("Все строки:", allLines);
-    } else {
-      render(allItems);
-    }
+    sessionValues = {};
+    allItems.forEach(item => {
+      const saved = localStorage.getItem("qty_" + item.code);
+      if (saved) sessionValues[item.code] = saved;
+    });
+    render(allItems);
   });
 </script>
 <script>
@@ -550,31 +574,32 @@
     alert("Сессия сохранена: " + name);
   }
 
-  function loadSession() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json";
-    input.onchange = async e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const text = await file.text();
-      try {
-        const session = JSON.parse(text);
-        if (!session.items || !Array.isArray(session.items)) throw new Error("Неверный формат");
-        allItems = session.items;
-        sessionValues = session.values || {};
-        render(allItems);
-        alert("Сессия успешно загружена.");
-      } catch {
-        alert("Ошибка при загрузке сессии.");
-      }
-    };
-    input.click();
+  function openSessionModal() {
+    const container = document.getElementById("session-list");
+    container.innerHTML = '';
+    const keys = Object.keys(localStorage).filter(k => k.startsWith("session_"));
+    if (keys.length === 0) {
+      container.innerHTML = "<div>Нет сохранённых сессий</div>";
+    } else {
+      keys.forEach(key => {
+        const name = key.replace("session_", "");
+        const div = document.createElement("div");
+        div.style = "margin-bottom: 0.5rem; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;";
+        div.innerHTML = `
+          <strong>${name}</strong>
+          <div style="margin-top: 0.3rem;">
+            <button onclick="loadSession('${name}')">📂 Загрузить</button>
+            <button onclick="switchSession('${name}')">🔁 Активировать</button>
+            <button onclick="deleteSession('${name}')">🗑 Удалить</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+    document.getElementById("session-modal").style.display = "flex";
   }
 
-  function switchSession() {
-    const name = prompt("Введите имя сессии для переключения");
-    if (!name) return;
+  function loadSession(name) {
     const raw = localStorage.getItem("session_" + name);
     if (!raw) return alert("Сессия не найдена");
     try {
@@ -582,21 +607,23 @@
       allItems = session.items;
       sessionValues = session.values || {};
       render(allItems);
-      localStorage.setItem("active_session", name);
       alert("Сессия загружена: " + name);
     } catch {
       alert("Ошибка при загрузке сессии");
     }
   }
 
-  function deleteSession() {
-    const name = prompt("Введите имя сессии для удаления");
-    if (!name) return;
+  function switchSession(name) {
+    localStorage.setItem("active_session", name);
+    loadSession(name);
+  }
+
+  function deleteSession(name) {
     if (!confirm("Удалить сессию: " + name + "?")) return;
     localStorage.removeItem("session_" + name);
     if (localStorage.getItem("active_session") === name) {
       localStorage.removeItem("active_session");
     }
-    alert("Сессия удалена.");
+    openSessionModal();
   }
 </script>
