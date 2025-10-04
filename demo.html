@@ -365,10 +365,10 @@
   function render(items) {
     list.innerHTML = '';
     items.forEach(item => {
+      const value = sessionValues[item.code] || "";
+
       const div = document.createElement("div");
       div.className = "item";
-
-      const value = sessionValues[item.code] || "";
 
       div.innerHTML = `
         <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
@@ -433,6 +433,7 @@
     }
   });
 </script>
+
 
 <script>
   function exportPDF() {
