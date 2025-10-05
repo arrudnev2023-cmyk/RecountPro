@@ -371,7 +371,12 @@ function updateSummary(items) {
 
   items.forEach(item => {
     const input = document.querySelector(`input[data-code="${item.code}"]`);
-    const raw = input ? input.value.trim() : "";
+    if (!input) {
+      console.warn("Нет поля для", item.code);
+      return;
+    }
+
+    const raw = input.value.trim();
     const actual = parseFloat(raw.replace(',', '.')) || 0;
 
     if (actual === item.docQty) match++;
@@ -388,7 +393,6 @@ function updateSummary(items) {
     Всего: ${items.length} | Совпало: ${match} | Меньше: ${missing} | Больше: ${excess} | Расхождение: ${delta} шт
   `;
 }
-
 
   function render(items) {
     list.innerHTML = '';
