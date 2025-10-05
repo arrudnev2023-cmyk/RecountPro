@@ -371,15 +371,14 @@ function updateSummary(items) {
 
   items.forEach(item => {
     const input = document.querySelector(`input[data-code="${item.code}"]`);
-    const raw = input ? input.value : "";
-    let actual = 0;
-    try { actual = eval(raw.replace(',', '.')) || 0; } catch {}
+    const raw = input ? input.value.trim() : "";
+    const actual = parseFloat(raw.replace(',', '.')) || 0;
 
     if (actual === item.docQty) match++;
     else if (actual < item.docQty) {
       missing++;
       delta += item.docQty - actual;
-    } else if (actual > item.docQty) {
+    } else {
       excess++;
       delta += actual - item.docQty;
     }
@@ -389,6 +388,7 @@ function updateSummary(items) {
     Всего: ${items.length} | Совпало: ${match} | Меньше: ${missing} | Больше: ${excess} | Расхождение: ${delta} шт
   `;
 }
+
 
   function render(items) {
     list.innerHTML = '';
