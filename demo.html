@@ -440,13 +440,6 @@
 </script>
 <script>
 function exportPDF() {
-  // 🔒 Защита: обновляем sessionValues из DOM
-  document.querySelectorAll("input[data-code]").forEach(input => {
-    const code = input.dataset.code;
-    const value = input.value;
-    sessionValues[code] = value;
-  });
-
   const exportArea = document.getElementById("export-area");
   const summary = document.getElementById("export-summary");
   const tbody = document.getElementById("export-table-body");
@@ -458,7 +451,9 @@ function exportPDF() {
   let totalPlus = 0, totalMinus = 0;
 
   allItems.forEach(item => {
-    const raw = sessionValues[item.code] || "";
+    // 🔒 Берём значение напрямую из DOM
+    const input = document.querySelector(`input[data-code="${item.code}"]`);
+    const raw = input ? input.value : "";
     let actual = 0;
     try { actual = eval(raw.replace(',', '.')) || 0; } catch {}
     const delta = actual - item.docQty;
@@ -508,6 +503,7 @@ function exportPDF() {
     exportArea.style.display = "none";
   }
 }
+
 
   function showSummaryModal() {
     let html = '';
