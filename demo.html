@@ -376,14 +376,20 @@ function updateSummary(items) {
     try { actual = eval(raw.replace(',', '.')) || 0; } catch {}
 
     if (actual === item.docQty) match++;
-    else if (actual < item.docQty) { missing++; delta += item.docQty - actual; }
-    else if (actual > item.docQty) { excess++; delta += actual - item.docQty; }
+    else if (actual < item.docQty) {
+      missing++;
+      delta += item.docQty - actual;
+    } else if (actual > item.docQty) {
+      excess++;
+      delta += actual - item.docQty;
+    }
   });
 
   document.getElementById("summary-content").innerHTML = `
     Всего: ${items.length} | Совпало: ${match} | Меньше: ${missing} | Больше: ${excess} | Расхождение: ${delta} шт
   `;
 }
+
   function render(items) {
     list.innerHTML = '';
     items.forEach(item => {
