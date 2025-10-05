@@ -366,22 +366,24 @@
     }
     return items;
   }
+function updateSummary(items) {
+  let match = 0, missing = 0, excess = 0, delta = 0;
 
-  function updateSummary(items) {
-    let match = 0, missing = 0, excess = 0, delta = 0;
-    items.forEach(item => {
-      const raw = sessionValues[item.code] || "";
-      let actual = 0;
-      try { actual = eval(raw.replace(',', '.')) || 0; } catch {}
-      if (actual === item.docQty) match++;
-      else if (actual < item.docQty) { missing++; delta += item.docQty - actual; }
-      else if (actual > item.docQty) { excess++; delta += actual - item.docQty; }
-    });
-    document.getElementById("summary-content").innerHTML = `
-      Всего: ${items.length} | Совпало: ${match} | Меньше: ${missing} | Больше: ${excess} | Расхождение: ${delta} шт
-    `;
-  }
+  items.forEach(item => {
+    const input = document.querySelector(`input[data-code="${item.code}"]`);
+    const raw = input ? input.value : "";
+    let actual = 0;
+    try { actual = eval(raw.replace(',', '.')) || 0; } catch {}
 
+    if (actual === item.docQty) match++;
+    else if (actual < item.docQty) { missing++; delta += item.docQty - actual; }
+    else if (actual > item.docQty) { excess++; delta += actual - item.docQty; }
+  });
+
+  document.getElementById("summary-content").innerHTML = `
+    Всего: ${items.length} | Совпало: ${match} | Меньше: ${missing} | Больше: ${excess} | Расхождение: ${delta} шт
+  `;
+}
   function render(items) {
     list.innerHTML = '';
     items.forEach(item => {
