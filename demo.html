@@ -488,6 +488,41 @@ function updateSummary(items) {
       if (localStorage.getItem("active_session")) {
         const session = { items: allItems, values: sessionValues };
         localStorage.setItem("session_" + localStorage.getItem("active_session"), JSON.stringify(session));
+        const keyboard = document.getElementById("custom-keyboard");
+let activeInput = null;
+
+document.querySelectorAll('input[data-code]').forEach(input => {
+  input.addEventListener('focus', () => {
+    activeInput = input;
+    keyboard.style.display = "grid";
+    setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+  });
+
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      keyboard.style.display = "none";
+      activeInput = null;
+    }, 200);
+  });
+});
+
+keyboard.addEventListener('mousedown', e => {
+  e.preventDefault(); // предотвращает потерю фокуса
+});
+
+keyboard.querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!activeInput) return;
+    const val = btn.textContent;
+
+    if (val === "←") {
+      activeInput.value = activeInput.value.slice(0, -1);
+    } else {
+      activeInput.value += val;
+    }
+
+    activeInput.dispatchEvent(new Event("input")); // чтобы обновить классы и расчёты
+
       }
     }
   });
