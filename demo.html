@@ -579,13 +579,21 @@ function exportPDF() {
     menu.style.display = menu.style.display === "flex" ? "none" : "flex";
   });
 
-  document.addEventListener("focusin", e => {
-    if (e.target.matches("input[data-code]")) {
-      activeInput = e.target;
-      document.getElementById("custom-keyboard").style.display = "block";
-      setTimeout(() => activeInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-    }
+  document.querySelectorAll('input[data-code]').forEach(input => {
+  input.addEventListener('focus', () => {
+    activeInput = input;
+    document.getElementById("custom-keyboard").style.display = "grid";
+    setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
   });
+
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      document.getElementById("custom-keyboard").style.display = "none";
+      activeInput = null;
+    }, 200);
+  });
+});
+
 
   document.addEventListener("click", e => {
     if (!e.target.closest("#custom-keyboard") && !e.target.matches("input[data-code]")) {
