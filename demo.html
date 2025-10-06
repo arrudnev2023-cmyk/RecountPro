@@ -419,7 +419,7 @@ function updateSummary(items) {
   `;
 }
 
-  function render(items) {
+ function render(items) {
   list.innerHTML = '';
   items.forEach(item => {
     const value = sessionValues[item.code] || "";
@@ -460,18 +460,25 @@ function updateSummary(items) {
       keyboard.style.display = "grid";
       setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
     });
-
-    input.addEventListener('blur', () => {
-      setTimeout(() => {
-        keyboard.style.display = "none";
-        activeInput = null;
-      }, 200);
-    });
   });
 
-  keyboard.addEventListener('mousedown', e => {
-    e.preventDefault(); // предотвращает потерю фокуса
+  document.addEventListener("click", e => {
+    if (
+      !e.target.closest("#custom-keyboard") &&
+      !e.target.matches("input[data-code]")
+    ) {
+      keyboard.style.display = "none";
+      activeInput = null;
+    }
   });
+
+  keyboard.addEventListener("mousedown", e => {
+    e.preventDefault();
+  });
+
+  keyboard.addEventListener("touchstart", e => {
+    e.preventDefault();
+  }, { passive: false });
 
   keyboard.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -484,7 +491,7 @@ function updateSummary(items) {
         activeInput.value += val;
       }
 
-      activeInput.dispatchEvent(new Event("input")); // чтобы обновить классы и расчёты
+      activeInput.dispatchEvent(new Event("input"));
     });
   });
 }
