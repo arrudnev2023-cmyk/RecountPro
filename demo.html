@@ -348,24 +348,30 @@
     );
   }
 
-  function parseLines(lines) {
-    const items = [];
-    for (let line of lines) {
-      line = line.trim();
-      if (!/^\d+\s+\d{4,6}/.test(line)) continue;
-      const match = line.match(/^(\d+)\s+(\d{4,6})\s+(.+?)\s+(\d+\*\d+)?\s+([\d.,]+)\s+.*?(\d+)\s*шт/i);
-      if (match) {
-        items.push({
-          code: match[2],
-          name: match[3].trim(),
-          unit: match[4] || '',
-          price: parseFloat(match[5].replace(',', '.')),
-          docQty: parseInt(match[6])
-        });
-      }
+ function parseLines(lines) {
+  const items = [];
+  for (let line of lines) {
+    line = line.trim();
+    if (!/^\d+\s+\d{4,6}/.test(line)) continue;
+
+    // Основной парсинг: номер, код, название, размерность, цена
+    const match = line.match(/^(\d+)\s+(\d{4,6})\s+(.+?)\s+(\d+\*\d+)?\s+([\d.,]+)\s+(.*)$/i);
+    if (match) {
+      const rawTail = match[6]; // всё, что после цены
+      const qtyMatches = [...rawTail.matchAll(/(\d+)\s*шт/gi)];
+      const docQty = qtyMatches.length > 0 ? parseInt(qtyMatches[qtyMatches.length - 1][1]) : null;
+
+      items.push({
+        code: match[2],
+        name: match[3].trim(),
+        unit: match[4] || '',
+        price: parseFloat(match[5].replace(',', '.')),
+        docQty
+      });
     }
-    return items;
   }
+  return items;
+}
 function updateSummary(items) {
   let match = 0, missing = 0, excess = 0, delta = 0;
 
