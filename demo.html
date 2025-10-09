@@ -29,8 +29,10 @@
       background: #0a0a0a;
     }
     h1 {
-      position: sticky;
+      position: fixed;
       top: 0;
+      left: 0;
+      right: 0;
       z-index: 1001;
       background: var(--accent);
       color: #fff;
@@ -42,7 +44,7 @@
     }
     #search-container {
       position: sticky;
-      top: 3.2rem;
+      top: 3.6rem;
       z-index: 999;
       background: #fff;
       border-bottom: 1px solid var(--border);
@@ -110,9 +112,9 @@
     #custom-keyboard {
       display: grid;
       position: fixed;
-      bottom: -40vh;
       left: 0;
-      width: 100%;
+      right: 0;
+      bottom: 0;
       height: 33vh;
       background: #111;
       padding: 0.5rem;
@@ -121,9 +123,10 @@
       grid-template-columns: repeat(3, 1fr);
       grid-template-rows: repeat(4, 1fr);
       gap: 0.5rem;
-      transition: bottom 0.3s ease;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
     }
-    #custom-keyboard.show { bottom: 0; }
+    #custom-keyboard.show { transform: translateY(0); }
     #custom-keyboard button {
       width: 100%;
       height: 100%;
@@ -138,7 +141,7 @@
       position: fixed;
       bottom: 1rem;
       right: 1rem;
-      z-index: 1001;
+      z-index: 2000;
       display: flex;
       flex-direction: column;
       align-items: flex-end;
@@ -176,9 +179,7 @@
   </style>
 </head>
 <body>
-  <!-- Фон canvas -->
   <canvas id="bg"></canvas>
-
   <h1>RecountPro — Пересчёт</h1>
   <input type="file" id="upload" accept=".pdf" />
   <div id="search-container">
@@ -188,7 +189,6 @@
     </div>
   </div>
   <div id="list"></div>
-
   <div id="menu-wrapper">
     <div style="display:flex; gap:0.5rem;">
       <button id="flashlight-btn">🔦</button>
@@ -202,7 +202,6 @@
       <button onclick="clearRecount()">🧹 Очистить пересчёт</button>
     </div>
   </div>
-
   <div id="custom-keyboard">
     <button>1</button><button>2</button><button>3</button>
     <button>4</button><button>5</button><button>6</button>
@@ -269,13 +268,6 @@
         const session = JSON.parse(savedSession);
         allItems = session.items || [];
         sessionValues = session.values || {};
-
-        // ВАЖНО: подтягиваем qty_... из localStorage
-        allItems.forEach(item => {
-          const saved = localStorage.getItem("qty_" + item.code);
-          if (saved) sessionValues[item.code] = saved;
-        });
-
         if (allItems.length > 0) render(allItems);
       } catch {}
     }
@@ -337,7 +329,6 @@
       else if (actual < item.docQty) { missing++; delta += item.docQty - actual; }
       else { excess++; delta += actual - item.docQty; }
     });
-    // строка снизу убрана, поэтому просто обновляем данные для экспорта
   }
 
   // Рендер списка товаров
@@ -424,7 +415,6 @@
       const code = e.target.dataset.code;
       const value = e.target.value;
       sessionValues[code] = value;
-      localStorage.setItem("qty_" + code, value);
 
       const raw = value.replace(',', '.');
       let actual = 0;
@@ -547,24 +537,15 @@
       allLines.push(...grouped);
     }
     allItems = parseLines(allLines);
-
-// не обнуляем, а берём старые значения
-const newValues = {};
-allItems.forEach(item => {
-  // если уже есть в sessionValues — оставляем
-  if (sessionValues[item.code]) {
-    newValues[item.code] = sessionValues[item.code];
-  } else {
-    // иначе пробуем подтянуть из localStorage
-    const saved = localStorage.getItem("qty_" + item.code);
-    if (saved) newValues[item.code] = saved;
-  }
-});
-sessionValues = newValues;
-
-render(allItems);
-autosave();
-
+    const newValues = {};
+    allItems.forEach(item => {
+      if (sessionValues[item.code]) {
+        newValues[item.code] = sessionValues[item.code];
+      }
+    });
+    sessionValues = newValues;
+    render(allItems);
+    autosave();
   });
 
   // Очистка пересчёта
@@ -640,7 +621,8 @@ autosave();
     }
     openSessionModal();
   }
-  // 🔦 Фонарик (аппаратный)
+
+  // 🔦 Фонарик
   let flashlightStream = null;
   let flashlightTrack = null;
   let flashlightOn = false;
@@ -672,7 +654,7 @@ autosave();
 
   document.getElementById("flashlight-btn").addEventListener("click", toggleFlashlight);
 
-  // 🌌 Анимация фона (мигающие пиксели)
+  // 🌌 Анимация фона
   const canvas = document.getElementById("bg");
   const ctx = canvas.getContext("2d");
   function resizeCanvas() {
@@ -680,7 +662,7 @@ autosave();
     canvas.height = window.innerHeight;
   }
   window.addEventListener("resize", resizeCanvas);
-  resizeCanvas();
+    resizeCanvas();
 
   let pixels = Array.from({length:150}, () => ({
     x: Math.random()*canvas.width,
@@ -706,3 +688,4 @@ autosave();
 </script>
 </body>
 </html>
+
