@@ -85,6 +85,7 @@
       color: #888;
       cursor: pointer;
     }
+
     #list {
       max-width: 960px;
       margin: 0 auto;
@@ -100,9 +101,9 @@
       transition: background 0.3s;
     }
 
-    .item.match { background: #dcfce7; }   /* зелёный фон — совпадение */
-    .item.missing { background: #fee2e2; } /* красный фон — недостача */
-    .item.excess { background: #fef9c3; }  /* жёлтый фон — избыток */
+    .item.match { background: #dcfce7; }
+    .item.missing { background: #fee2e2; }
+    .item.excess { background: #fef9c3; }
 
     .field {
       margin: 0.2rem 0;
@@ -122,13 +123,13 @@
       width: 100%;
       box-sizing: border-box;
     }
-    /* Кастомная клавиатура */
+    /* Кастомная клавиатура — чёрная с белыми кнопками */
     #custom-keyboard {
       position: fixed;
       bottom: -100%;
       left: 0;
       right: 0;
-      background: #f9fafb;
+      background: #000; /* чёрный фон */
       border-top: 1px solid var(--border);
       padding: 0.5rem;
       display: grid;
@@ -143,17 +144,19 @@
     }
 
     #custom-keyboard button {
+      background: #fff; /* белые кнопки */
+      color: #000;
+      font-weight: bold;
       padding: 0.8rem;
       font-size: 1.2rem;
-      border: 1px solid var(--border);
+      border: none;
       border-radius: 6px;
-      background: #fff;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.2s, color 0.2s;
     }
 
     #custom-keyboard button:hover {
-      background: var(--accent-light);
+      background: var(--accent);
       color: #fff;
     }
 
@@ -287,6 +290,7 @@
       <tbody id="export-table-body"></tbody>
     </table>
   </div>
+
   <!-- Кастомная клавиатура -->
   <div id="custom-keyboard">
     <button>1</button>
@@ -298,8 +302,8 @@
     <button>7</button>
     <button>8</button>
     <button>9</button>
+    <button>+</button>
     <button>0</button>
-    <button>,</button>
     <button>←</button>
   </div>
 <script>
@@ -309,7 +313,7 @@
   let allItems = [], activeInput = null;
   let sessionValues = {};
 
-  // Восстановление при загрузке страницы
+  // Восстановление при загрузке
   window.addEventListener("DOMContentLoaded", () => {
     const savedSession = localStorage.getItem("autosave_session");
     if (savedSession) {
@@ -328,7 +332,7 @@
     localStorage.setItem("autosave_session", JSON.stringify(session));
   }
 
-  // Группировка текста по строкам PDF
+  // Группировка текста PDF
   function groupByY(items) {
     const lines = {};
     items.forEach(item => {
@@ -341,19 +345,17 @@
     );
   }
 
-  // Парсинг строк в объекты товаров
+  // Парсинг строк
   function parseLines(lines) {
     const items = [];
     for (let line of lines) {
       line = line.trim();
       if (!/^\d+\s+\d{4,6}/.test(line)) continue;
-
       const match = line.match(/^(\d+)\s+(\d{4,6})\s+(.+?)\s+(\d+\*\d+)?\s+([\d.,]+)\s+(.*)$/i);
       if (match) {
         const rawTail = match[6];
         const qtyMatches = [...rawTail.matchAll(/(\d+)\s*шт/gi)];
         const docQty = qtyMatches.length > 0 ? parseInt(qtyMatches[qtyMatches.length - 1][1]) : null;
-
         items.push({
           code: match[2],
           name: match[3].trim(),
@@ -366,7 +368,7 @@
     return items;
   }
 
-  // Обновление итогов
+  // Итоги
   function updateSummary(items) {
     let match = 0, missing = 0, excess = 0, delta = 0;
     items.forEach(item => {
@@ -380,7 +382,7 @@
     });
   }
 
-  // Рендер списка товаров
+  // Рендер списка
   function render(items) {
     list.innerHTML = '';
     items.forEach(item => {
@@ -410,7 +412,7 @@
     attachInputHandlers();
   }
 
-  // Проверка видимости поля над клавиатурой
+  // Проверка видимости
   function ensureVisible(el) {
     const rect = el.getBoundingClientRect();
     const kbHeight = keyboard.offsetHeight;
@@ -422,7 +424,7 @@
     }
   }
 
-  // Подключение обработчиков
+  // Обработчики ввода
   function attachInputHandlers() {
     document.querySelectorAll('input[data-code]').forEach(input => {
       input.addEventListener('focus', () => {
@@ -431,7 +433,6 @@
         list.style.paddingBottom = keyboard.offsetHeight + "px";
         setTimeout(() => ensureVisible(input), 150);
       });
-
       input.addEventListener('blur', () => {
         list.style.paddingBottom = "0";
       });
@@ -459,6 +460,7 @@
       }
     });
   }
+
   // Поиск
   searchInput.addEventListener("input", () => {
     const query = searchInput.value.toLowerCase();
@@ -469,7 +471,6 @@
       div.classList.toggle("hidden", !match);
     });
   });
-
   document.getElementById("clear-search").addEventListener("click", () => {
     searchInput.value = '';
     document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
@@ -481,7 +482,6 @@
       const code = e.target.dataset.code;
       const value = e.target.value;
       sessionValues[code] = value;
-
       const raw = value.replace(',', '.');
       let actual = 0;
       try { actual = Function("return " + raw)(); } catch {}
@@ -491,7 +491,6 @@
       if (actual === item.docQty) card.classList.add("match");
       else if (actual < item.docQty) card.classList.add("missing");
       else if (actual > item.docQty) card.classList.add("excess");
-
       updateSummary(allItems);
       autosave();
     }
@@ -508,7 +507,6 @@
     window.scrollTo(0, 0);
 
     let totalPlus = 0, totalMinus = 0;
-
     allItems.forEach(item => {
       const input = document.querySelector(`input[data-code="${item.code}"]`);
       const raw = input ? input.value : "";
@@ -517,13 +515,12 @@
       const delta = actual - item.docQty;
       if (delta > 0) totalPlus += delta * item.price;
       else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
-
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${item.code}</td>
         <td>${item.name}</td>
         <td>${item.unit}</td>
-        <td>${item.price.toFixed(2)}</td>
+                <td>${item.price.toFixed(2)}</td>
         <td>${item.docQty}</td>
         <td>${raw}</td>
         <td>${delta}</td>
@@ -683,7 +680,7 @@
   function deleteSession(name) {
     if (!confirm("Удалить сессию: " + name + "?")) return;
     localStorage.removeItem("session_" + name);
-        if (localStorage.getItem("active_session") === name) {
+    if (localStorage.getItem("active_session") === name) {
       localStorage.removeItem("active_session");
     }
     openSessionModal();
