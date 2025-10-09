@@ -10,7 +10,7 @@
       margin: 0;
       font-family: 'Inter', sans-serif;
       background: radial-gradient(circle at center, #0a0a0f 0%, #1a1a2e 100%);
-      background-image: url('https://recount-pro.ru/assets/portal-bg.jpg'); /* замените на ваш путь */
+      background-image: url('/assets/portal-bg.jpg'); /* замените на ваш путь */
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -79,7 +79,7 @@
     }
 
     .auth-form button {
-      width: 100%;
+      width: 48%;
       padding: 12px;
       background: gold;
       color: #0a0a0f;
@@ -88,6 +88,7 @@
       border-radius: 8px;
       cursor: pointer;
       transition: background 0.3s ease, transform 0.2s ease;
+      margin: 0 1%;
     }
 
     .auth-form button:hover {
@@ -107,6 +108,11 @@
       font-size: 14px;
       display: none;
     }
+
+    .button-group {
+      display: flex;
+      justify-content: space-between;
+    }
   </style>
 </head>
 <body>
@@ -118,26 +124,43 @@
     <p class="welcome">Добро пожаловать в RecountPro. Здесь начинается порядок.</p>
 
     <form class="auth-form" onsubmit="handleSubmit(event)">
-      <input type="email" id="email" placeholder="E-mail" required />
-      <button type="submit">Получить код</button>
-      <p class="disclaimer">Нажимая "Войти", вы принимаете условия обработки данных.</p>
-      <p class="success" id="successMessage">Код отправлен на почту!</p>
+      <input type="text" id="login" placeholder="Логин" required />
+      <input type="password" id="password" placeholder="Пароль" required />
+      <div class="button-group">
+        <button type="button" onclick="handleRegister()">Авторизация</button>
+        <button type="submit">Вход</button>
+      </div>
+      <p class="disclaimer">Нажимая кнопку, вы принимаете условия обработки данных.</p>
+      <p class="success" id="successMessage">Успешный вход!</p>
     </form>
   </main>
 
   <script>
     function handleSubmit(event) {
       event.preventDefault();
-      const email = document.getElementById('email').value;
+      const login = document.getElementById('login').value;
+      const password = document.getElementById('password').value;
       const successMessage = document.getElementById('successMessage');
 
-      // Здесь можно добавить реальный запрос к API
-      console.log("Отправка кода на:", email);
+      // Здесь можно подключить API для входа
+      console.log("Вход:", login, password);
 
+      successMessage.textContent = "Успешный вход!";
       successMessage.style.display = 'block';
-      setTimeout(() => {
-        successMessage.style.display = 'none';
-      }, 4000);
+      setTimeout(() => successMessage.style.display = 'none', 4000);
+    }
+
+    function handleRegister() {
+      const login = document.getElementById('login').value;
+      const password = document.getElementById('password').value;
+      const successMessage = document.getElementById('successMessage');
+
+      // Здесь можно подключить API для регистрации
+      console.log("Регистрация:", login, password);
+
+      successMessage.textContent = "Регистрация выполнена!";
+      successMessage.style.display = 'block';
+      setTimeout(() => successMessage.style.display = 'none', 4000);
     }
   </script>
 </body>
