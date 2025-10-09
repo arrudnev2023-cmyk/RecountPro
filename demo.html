@@ -287,6 +287,21 @@
       <tbody id="export-table-body"></tbody>
     </table>
   </div>
+  <!-- Кастомная клавиатура -->
+  <div id="custom-keyboard">
+    <button>1</button>
+    <button>2</button>
+    <button>3</button>
+    <button>4</button>
+    <button>5</button>
+    <button>6</button>
+    <button>7</button>
+    <button>8</button>
+    <button>9</button>
+    <button>0</button>
+    <button>,</button>
+    <button>←</button>
+  </div>
 <script>
   const list = document.getElementById("list");
   const searchInput = document.getElementById("search");
@@ -570,6 +585,7 @@
     const menu = document.getElementById("menu-actions");
     menu.style.display = menu.style.display === "flex" ? "none" : "flex";
   });
+
   // Загрузка PDF
   document.getElementById("upload").addEventListener("change", async e => {
     const file = e.target.files[0];
@@ -667,7 +683,7 @@
   function deleteSession(name) {
     if (!confirm("Удалить сессию: " + name + "?")) return;
     localStorage.removeItem("session_" + name);
-    if (localStorage.getItem("active_session") === name) {
+        if (localStorage.getItem("active_session") === name) {
       localStorage.removeItem("active_session");
     }
     openSessionModal();
@@ -739,3 +755,4 @@
 </script>
 </body>
 </html>
+
