@@ -135,16 +135,6 @@
       border-radius: 8px;
       cursor: pointer;
     }
-    #summary {
-      position: sticky;
-      bottom: 0;
-      background: #fff;
-      border-top: 1px solid var(--border);
-      padding: 1rem;
-      font-size: 0.95rem;
-      box-shadow: 0 -1px 3px rgba(0,0,0,0.1);
-      z-index: 1000;
-    }
     #menu-wrapper {
       position: fixed;
       bottom: 1rem;
@@ -154,7 +144,7 @@
       flex-direction: column;
       align-items: flex-end;
     }
-    #menu-toggle {
+    #menu-toggle, #flashlight-btn {
       background: var(--accent);
       color: #fff;
       border: none;
@@ -189,7 +179,6 @@
 <body>
   <!-- Фон canvas -->
   <canvas id="bg"></canvas>
-
   <h1>RecountPro — Пересчёт</h1>
   <input type="file" id="upload" accept=".pdf" />
   <div id="search-container">
@@ -199,10 +188,12 @@
     </div>
   </div>
   <div id="list"></div>
-  <div id="summary"><strong>Итог:</strong> <div id="summary-content">Загружено 0 позиций</div></div>
 
   <div id="menu-wrapper">
-    <button id="menu-toggle">📋 Меню</button>
+    <div style="display:flex; gap:0.5rem;">
+      <button id="flashlight-btn">🔦</button>
+      <button id="menu-toggle">📋 Меню</button>
+    </div>
     <div id="menu-actions">
       <button onclick="exportPDF()">📤 Скачать PDF</button>
       <button onclick="saveSession()">💾 Сохранить сессию</button>
@@ -270,7 +261,7 @@
   let allItems = [], activeInput = null;
   let sessionValues = {};
 
-  // Автовосстановление при загрузке страницы
+  // Восстановление при загрузке страницы
   window.addEventListener("DOMContentLoaded", () => {
     const savedSession = localStorage.getItem("autosave_session");
     if (savedSession) {
@@ -327,7 +318,7 @@
     return items;
   }
 
-  // Обновление итогов
+  // Обновление итогов (для экспорта/модалки)
   function updateSummary(items) {
     let match = 0, missing = 0, excess = 0, delta = 0;
     items.forEach(item => {
@@ -339,8 +330,7 @@
       else if (actual < item.docQty) { missing++; delta += item.docQty - actual; }
       else { excess++; delta += actual - item.docQty; }
     });
-    document.getElementById("summary-content").innerHTML =
-      `Всего: ${items.length} | Совпало: ${match} | Меньше: ${missing} | Больше: ${excess} | Расхождение: ${delta} шт`;
+    // строка снизу убрана, поэтому просто обновляем данные для экспорта
   }
 
   // Рендер списка товаров
@@ -633,7 +623,39 @@
     openSessionModal();
   }
 
-  // Анимация фона (мигающие пиксели)
+  // 🔦 Фонарик (аппаратный)
+  let flashlightStream = null;
+  let flashlightTrack = null;
+  let flashlightOn = false;
+
+  async function toggleFlashlight() {
+    try {
+      if (!flashlightOn) {
+        flashlightStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { exact: "environment" } }
+        });
+        flashlightTrack = flashlightStream.getVideoTracks()[0];
+        await flashlightTrack.applyConstraints({ advanced: [{ torch: true }] });
+        flashlightOn = true;
+      } else {
+        if (flashlightTrack) {
+          await flashlightTrack.applyConstraints({ advanced: [{ torch: false }] });
+          flashlightTrack.stop();
+        }
+        if (flashlightStream) {
+          flashlightStream.getTracks().forEach(t => t.stop());
+        }
+        flashlightOn = false;
+      }
+    } catch (err) {
+      alert("Фонарик не поддерживается на этом устройстве или браузере");
+      console.error(err);
+    }
+  }
+
+  document.getElementById("flashlight-btn").addEventListener("click", toggleFlashlight);
+
+  // 🌌 Анимация фона (мигающие пиксели)
   const canvas = document.getElementById("bg");
   const ctx = canvas.getContext("2d");
   function resizeCanvas() {
@@ -667,3 +689,4 @@
 </script>
 </body>
 </html>
+
