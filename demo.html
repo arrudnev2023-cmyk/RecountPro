@@ -547,13 +547,24 @@
       allLines.push(...grouped);
     }
     allItems = parseLines(allLines);
-    sessionValues = {};
-    allItems.forEach(item => {
-      const saved = localStorage.getItem("qty_" + item.code);
-      if (saved) sessionValues[item.code] = saved;
-    });
-    render(allItems);
-    autosave();
+
+// не обнуляем, а берём старые значения
+const newValues = {};
+allItems.forEach(item => {
+  // если уже есть в sessionValues — оставляем
+  if (sessionValues[item.code]) {
+    newValues[item.code] = sessionValues[item.code];
+  } else {
+    // иначе пробуем подтянуть из localStorage
+    const saved = localStorage.getItem("qty_" + item.code);
+    if (saved) newValues[item.code] = saved;
+  }
+});
+sessionValues = newValues;
+
+render(allItems);
+autosave();
+
   });
 
   // Очистка пересчёта
