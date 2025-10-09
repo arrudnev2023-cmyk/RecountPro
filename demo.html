@@ -21,7 +21,6 @@
       padding-top: 3.2rem;
       overflow-x: hidden;
     }
-    /* Фон canvas */
     #bg {
       position: fixed;
       top:0; left:0;
@@ -179,6 +178,7 @@
 <body>
   <!-- Фон canvas -->
   <canvas id="bg"></canvas>
+
   <h1>RecountPro — Пересчёт</h1>
   <input type="file" id="upload" accept=".pdf" />
   <div id="search-container">
@@ -269,6 +269,13 @@
         const session = JSON.parse(savedSession);
         allItems = session.items || [];
         sessionValues = session.values || {};
+
+        // ВАЖНО: подтягиваем qty_... из localStorage
+        allItems.forEach(item => {
+          const saved = localStorage.getItem("qty_" + item.code);
+          if (saved) sessionValues[item.code] = saved;
+        });
+
         if (allItems.length > 0) render(allItems);
       } catch {}
     }
@@ -622,7 +629,6 @@
     }
     openSessionModal();
   }
-
   // 🔦 Фонарик (аппаратный)
   let flashlightStream = null;
   let flashlightTrack = null;
@@ -689,4 +695,3 @@
 </script>
 </body>
 </html>
-
