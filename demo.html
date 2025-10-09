@@ -16,32 +16,27 @@
       --card: #ffffff;
       --border: #d1d5db;
     }
-    body{
+    body {
       font-family: "Segoe UI", system-ui, sans-serif;
       margin: 0;
       background: linear-gradient(to bottom right, var(--bg-start), var(--bg-end));
       color: var(--text);
       padding-bottom: 14rem;
-  padding-top: 3.2rem;
-}
-
+      padding-top: 3.2rem;
     }
-  h1 {
-  position: sticky;
-  top: 0;
-  z-index: 1001;
-  background: var(--accent);
-  color: #fff;
-  padding: 1rem;
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: bold;
-  text-align: center;
-  border-bottom: 1px solid var(--border);
-}
-
-
-
+    h1 {
+      position: sticky;
+      top: 0;
+      z-index: 1001;
+      background: var(--accent);
+      color: #fff;
+      padding: 1rem;
+      margin: 0;
+      font-size: 1.3rem;
+      font-weight: bold;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
     #search-container {
       position: sticky;
       top: 3.2rem;
@@ -49,13 +44,7 @@
       background: #fff;
       border-bottom: 1px solid var(--border);
     }
-#search-wrapper { 
-  position: relative;
-  max-width: 960px;
-  margin: 0 auto;
-
-
-    }
+    #search-wrapper { position: relative; max-width: 960px; margin: 0 auto; }
     #search {
       width: 100%;
       padding: 0.6rem 2.5rem 0.6rem 0.6rem;
@@ -95,27 +84,11 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.05);
       max-width: 600px;
       transition: background 0.3s ease;
+      padding-left: 0.8rem;
     }
-    .item.match {
-  background: none;
-  border-left: 4px solid #4caf50;
-}
-
-.item.missing {
-  background: none;
-  border-left: 4px solid #f44336;
-}
-
-.item.excess {
-  background: none;
-  border-left: 4px solid #2196f3;
-}
-
-.item {
-  padding-left: 0.8rem;
-  transition: border-left 0.2s ease;
-}
-
+    .item.match { border-left: 4px solid #4caf50; }
+    .item.missing { border-left: 4px solid #f44336; }
+    .item.excess { border-left: 4px solid #2196f3; }
     .field { margin-bottom: 0.5rem; font-size: 0.95rem; }
     .label { font-weight: 600; color: var(--text); }
     input[data-code] {
@@ -166,7 +139,6 @@
       padding: 0.6rem;
       border-radius: 10px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      animation: fadeIn 0.2s ease-in-out;
     }
     #menu-actions button {
       background: var(--accent);
@@ -177,106 +149,46 @@
       font-size: 0.9rem;
       cursor: pointer;
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    #modal, #session-modal {
+    #custom-keyboard {
       display: none;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 0.5rem;
       position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 2000;
-      justify-content: center;
-      align-items: center;
-    }
-    #modal > div, #session-modal > div {
-      background: #fff;
-      max-width: 600px;
-      width: 90%;
-      max-height: 80%;
-      overflow-y: auto;
-      border-radius: 10px;
-      padding: 1rem;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    }
-#custom-keyboard {
-  display: none;
-  grid-template-columns: repeat(3, 1fr); /* 3 кнопки в ряд */
-  grid-template-rows: repeat(4, 1fr);    /* 4 строки — равные по высоте */
-  gap: 0.5rem;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 33vh;
-  background: #111;
-  padding: 0.5rem;
-  box-sizing: border-box;
-  z-index: 3000;
-  touch-action: manipulation;
-}
-
-#custom-keyboard button {
-  width: 100%;
-  height: 100%;
-  font-size: 1.6rem;
-  background: #333;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-    #export-area {
-      display: none;
-      padding: 0.3rem;
-      font-size: 10px;
-    }
-    #export-area table {
+      bottom: 0;
+      left: 0;
       width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
+      height: 33vh;
+      background: #111;
+      padding: 0.5rem;
+      box-sizing: border-box;
+      z-index: 3000;
+      touch-action: manipulation;
     }
-    #export-area th, #export-area td {
-      border: 1px solid var(--border);
-      padding: 2px 4px;
-      text-align: left;
-      word-break: break-word;
+    #custom-keyboard button {
+      width: 100%;
+      height: 100%;
+      font-size: 1.6rem;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
     }
-    .hidden {
-  display: none !important;
-}
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
-  <h1 id="header">RecountPro — Пересчёт</h1>
-
+  <h1>RecountPro — Пересчёт</h1>
   <input type="file" id="upload" accept=".pdf" />
-
   <div id="search-container">
     <div id="search-wrapper">
-      <input
-        type="text"
-        id="search"
-        placeholder="Поиск по названию или артикулу..."
-        autocomplete="off"
-        autocorrect="off"
-        autocapitalize="off"
-        spellcheck="false"
-      />
-      <button id="clear-search" title="Очистить">×</button>
+      <input type="text" id="search" placeholder="Поиск..." autocomplete="off" />
+      <button id="clear-search">×</button>
     </div>
   </div>
-
   <div id="list"></div>
-
-  <div id="summary">
-    <strong>Итог:</strong>
-    <div id="summary-content">Загружено 0 позиций</div>
-  </div>
-
+  <div id="summary"><strong>Итог:</strong> <div id="summary-content">Загружено 0 позиций</div></div>
   <div id="menu-wrapper">
     <button id="menu-toggle">📋 Меню</button>
     <div id="menu-actions">
@@ -286,56 +198,43 @@
       <button onclick="showSummaryModal()">📊 Итог</button>
     </div>
   </div>
-
-  <div id="modal">
-    <div>
-      <h2 style="margin-top: 0;">Итог пересчёта</h2>
+  <div id="custom-keyboard">
+    <button>1</button><button>2</button><button>3</button>
+    <button>4</button><button>5</button><button>6</button>
+    <button>7</button><button>8</button><button>9</button>
+    <button>+</button><button>0</button><button>←</button>
+  </div>
+  <!-- Модальное окно для итогов -->
+  <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+       background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center;">
+    <div style="background:#fff; max-width:600px; width:90%; max-height:80%; overflow-y:auto;
+                border-radius:10px; padding:1rem; box-shadow:0 2px 10px rgba(0,0,0,0.3);">
+      <h2 style="margin-top:0;">Итог пересчёта</h2>
       <div id="modal-content"></div>
-      <button onclick="document.getElementById('modal').style.display='none'" style="
-        margin-top: 1rem;
-        background: var(--border);
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        cursor: pointer;
-      ">Закрыть</button>
+      <button onclick="document.getElementById('modal').style.display='none'" 
+              style="margin-top:1rem; background:var(--border); border:none; padding:0.5rem 1rem;
+                     border-radius:8px; cursor:pointer;">Закрыть</button>
     </div>
   </div>
 
-  <div id="session-modal">
-    <div>
-      <h2 style="margin-top: 0;">Сессии</h2>
+  <!-- Модальное окно для сессий -->
+  <div id="session-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+       background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center;">
+    <div style="background:#fff; max-width:600px; width:90%; max-height:80%; overflow-y:auto;
+                border-radius:10px; padding:1rem; box-shadow:0 2px 10px rgba(0,0,0,0.3);">
+      <h2 style="margin-top:0;">Сессии</h2>
       <div id="session-list"></div>
-      <button onclick="document.getElementById('session-modal').style.display='none'" style="
-        margin-top: 1rem;
-        background: var(--border);
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        cursor: pointer;
-      ">Закрыть</button>
+      <button onclick="document.getElementById('session-modal').style.display='none'" 
+              style="margin-top:1rem; background:var(--border); border:none; padding:0.5rem 1rem;
+                     border-radius:8px; cursor:pointer;">Закрыть</button>
     </div>
   </div>
 
- <div id="custom-keyboard">
-  <button>1</button>
-  <button>2</button>
-  <button>3</button>
-  <button>4</button>
-  <button>5</button>
-  <button>6</button>
-  <button>7</button>
-  <button>8</button>
-  <button>9</button>
-  <button>+</button>
-  <button>0</button>
-  <button>←</button>
-</div>
-
-  <div id="export-area">
-    <h2 style="margin: 0;">Итог пересчёта</h2>
+  <!-- Область экспорта PDF -->
+  <div id="export-area" style="display:none; padding:0.3rem; font-size:10px;">
+    <h2 style="margin:0;">Итог пересчёта</h2>
     <div id="export-summary"></div>
-    <table>
+    <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
       <thead>
         <tr>
           <th style="width:60px;">Артикул</th>
@@ -350,13 +249,14 @@
       <tbody id="export-table-body"></tbody>
     </table>
   </div>
-</body>
 <script>
   const list = document.getElementById("list");
   const searchInput = document.getElementById("search");
+  const keyboard = document.getElementById("custom-keyboard");
   let allItems = [], activeInput = null;
   let sessionValues = {};
 
+  // Группировка текста по строкам PDF
   function groupByY(items) {
     const lines = {};
     items.forEach(item => {
@@ -369,251 +269,225 @@
     );
   }
 
- function parseLines(lines) {
-  const items = [];
-  for (let line of lines) {
-    line = line.trim();
-    if (!/^\d+\s+\d{4,6}/.test(line)) continue;
+  // Парсинг строк в объекты товаров
+  function parseLines(lines) {
+    const items = [];
+    for (let line of lines) {
+      line = line.trim();
+      if (!/^\d+\s+\d{4,6}/.test(line)) continue;
 
-    // Основной парсинг: номер, код, название, размерность, цена
-    const match = line.match(/^(\d+)\s+(\d{4,6})\s+(.+?)\s+(\d+\*\d+)?\s+([\d.,]+)\s+(.*)$/i);
-    if (match) {
-      const rawTail = match[6]; // всё, что после цены
-      const qtyMatches = [...rawTail.matchAll(/(\d+)\s*шт/gi)];
-      const docQty = qtyMatches.length > 0 ? parseInt(qtyMatches[qtyMatches.length - 1][1]) : null;
+      const match = line.match(/^(\d+)\s+(\d{4,6})\s+(.+?)\s+(\d+\*\d+)?\s+([\d.,]+)\s+(.*)$/i);
+      if (match) {
+        const rawTail = match[6];
+        const qtyMatches = [...rawTail.matchAll(/(\d+)\s*шт/gi)];
+        const docQty = qtyMatches.length > 0 ? parseInt(qtyMatches[qtyMatches.length - 1][1]) : null;
 
-      items.push({
-        code: match[2],
-        name: match[3].trim(),
-        unit: match[4] || '',
-        price: parseFloat(match[5].replace(',', '.')),
-        docQty
-      });
-    }
-  }
-  return items;
-}
-function updateSummary(items) {
-  let match = 0, missing = 0, excess = 0, delta = 0;
-
-  items.forEach(item => {
-    const input = document.querySelector(`input[data-code="${item.code}"]`);
-    if (!input) {
-      console.warn("Нет поля для", item.code);
-      return;
-    }
-
-    const raw = input.value.trim();
-    const actual = parseFloat(raw.replace(',', '.')) || 0;
-
-    if (actual === item.docQty) match++;
-    else if (actual < item.docQty) {
-      missing++;
-      delta += item.docQty - actual;
-    } else {
-      excess++;
-      delta += actual - item.docQty;
-    }
-  });
-
-  document.getElementById("summary-content").innerHTML = `
-    Всего: ${items.length} | Совпало: ${match} | Меньше: ${missing} | Больше: ${excess} | Расхождение: ${delta} шт
-  `;
-}
-function render(items) {
-  list.innerHTML = '';
-  items.forEach(item => {
-    const value = sessionValues[item.code] || "";
-    const div = document.createElement("div");
-    div.className = "item";
-    div.dataset.code = item.code;
-
-    div.innerHTML = `
-      <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
-      <div class="field"><span class="label">Название:</span> ${item.name}</div>
-      <div class="field"><span class="label">Размерность:</span> ${item.unit}</div>
-      <div class="field"><span class="label">Цена:</span> ${item.price.toFixed(2)} ₽</div>
-      <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
-      <div class="field">
-        <span class="label">Фактическое количество:</span>
-        <input type="text" data-code="${item.code}" inputmode="none" value="${value}" />
-      </div>
-    `;
-
-    let actual = 0;
-    try { actual = eval(value.replace(',', '.')) || 0; } catch {}
-    if (actual === item.docQty) div.classList.add("match");
-    else if (actual < item.docQty) div.classList.add("missing");
-    else if (actual > item.docQty) div.classList.add("excess");
-
-    list.appendChild(div);
-  });
-
-  updateSummary(allItems);
-
-  // 👇 Обработчики кастомной клавиатуры
-  const keyboard = document.getElementById("custom-keyboard");
-  activeInput = null;
-
-  document.querySelectorAll('input[data-code]').forEach(input => {
-    input.addEventListener('focus', () => {
-      activeInput = input;
-      keyboard.style.display = "grid";
-      setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-    });
-  });
-
-  document.addEventListener("click", e => {
-    if (
-      !e.target.closest("#custom-keyboard") &&
-      !e.target.matches("input[data-code]")
-    ) {
-      keyboard.style.display = "none";
-      activeInput = null;
-    }
-  });
-
-  // предотвращаем потерю фокуса, но не блокируем клики
-  keyboard.addEventListener("mousedown", e => {
-    if (!e.target.closest("button")) e.preventDefault();
-  });
-
-  keyboard.addEventListener("touchstart", e => {
-    if (!e.target.closest("button")) e.preventDefault();
-  }, { passive: false });
-
-  keyboard.querySelectorAll('button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (!activeInput) return;
-      const val = btn.textContent;
-
-      if (val === "←") {
-        activeInput.value = activeInput.value.slice(0, -1);
-      } else {
-        activeInput.value += val;
+        items.push({
+          code: match[2],
+          name: match[3].trim(),
+          unit: match[4] || '',
+          price: parseFloat(match[5].replace(',', '.')),
+          docQty
+        });
       }
+    }
+    return items;
+  }
 
-      activeInput.dispatchEvent(new Event("input"));
+  // Обновление итогов
+  function updateSummary(items) {
+    let match = 0, missing = 0, excess = 0, delta = 0;
+    items.forEach(item => {
+      const input = document.querySelector(`input[data-code="${item.code}"]`);
+      if (!input) return;
+      const raw = input.value.trim();
+      const actual = parseFloat(raw.replace(',', '.')) || 0;
+      if (actual === item.docQty) match++;
+      else if (actual < item.docQty) { missing++; delta += item.docQty - actual; }
+      else { excess++; delta += actual - item.docQty; }
     });
-  });
-}
+    document.getElementById("summary-content").innerHTML =
+      `Всего: ${items.length} | Совпало: ${match} | Меньше: ${missing} | Больше: ${excess} | Расхождение: ${delta} шт`;
+  }
 
-searchInput.addEventListener("input", () => {
-  const query = searchInput.value.toLowerCase();
-  document.querySelectorAll("#list .item").forEach(div => {
-    const code = div.dataset.code;
-    const item = allItems.find(i => i.code === code);
-    const match = item.name.toLowerCase().includes(query) || item.code.includes(query);
-    div.classList.toggle("hidden", !match);
-  });
-});
-
-document.getElementById("clear-search").addEventListener("click", () => {
-  searchInput.value = '';
-  document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
-});
-
-list.addEventListener("input", e => {
-  if (e.target.tagName === "INPUT") {
-    const code = e.target.dataset.code;
-    const value = e.target.value;
-    sessionValues[code] = value;
-    localStorage.setItem("qty_" + code, value);
-
-    const raw = value.replace(',', '.');
-    let actual = 0;
-    try { actual = eval(raw); } catch {}
-    const item = allItems.find(i => i.code === code);
-    const card = e.target.closest(".item");
-    card.classList.remove("match", "missing", "excess");
-    if (actual === item.docQty) card.classList.add("match");
-    else if (actual < item.docQty) card.classList.add("missing");
-    else if (actual > item.docQty) card.classList.add("excess");
-
+  // Рендер списка товаров
+  function render(items) {
+    list.innerHTML = '';
+    items.forEach(item => {
+      const value = sessionValues[item.code] || "";
+      const div = document.createElement("div");
+      div.className = "item";
+      div.dataset.code = item.code;
+      div.innerHTML = `
+        <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
+        <div class="field"><span class="label">Название:</span> ${item.name}</div>
+        <div class="field"><span class="label">Размерность:</span> ${item.unit}</div>
+        <div class="field"><span class="label">Цена:</span> ${item.price.toFixed(2)} ₽</div>
+        <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
+        <div class="field">
+          <span class="label">Фактическое количество:</span>
+          <input type="text" data-code="${item.code}" inputmode="none" value="${value}" />
+        </div>
+      `;
+      let actual = 0;
+      try { actual = Function("return " + value.replace(',', '.'))() || 0; } catch {}
+      if (actual === item.docQty) div.classList.add("match");
+      else if (actual < item.docQty) div.classList.add("missing");
+      else if (actual > item.docQty) div.classList.add("excess");
+      list.appendChild(div);
+    });
     updateSummary(allItems);
-
-    if (localStorage.getItem("active_session")) {
-      const session = { items: allItems, values: sessionValues };
-      localStorage.setItem("session_" + localStorage.getItem("active_session"), JSON.stringify(session));
-    }
+    attachInputHandlers();
   }
-});
+  // Подключение обработчиков для инпутов и клавиатуры
+  function attachInputHandlers() {
+    document.querySelectorAll('input[data-code]').forEach(input => {
+      input.addEventListener('focus', () => {
+        activeInput = input;
+        keyboard.style.display = "grid";
+        setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+      });
+    });
 
+    // Клики по кнопкам клавиатуры
+    keyboard.querySelectorAll('button').forEach(btn => {
+      btn.onclick = () => {
+        if (!activeInput) return;
+        const val = btn.textContent;
+        if (val === "←") {
+          activeInput.value = activeInput.value.slice(0, -1);
+        } else {
+          activeInput.value += val;
+        }
+        activeInput.dispatchEvent(new Event("input"));
+      };
+    });
 
-</script>
-<script>
-function exportPDF() {
-  const exportArea = document.getElementById("export-area");
-  const summary = document.getElementById("export-summary");
-  const tbody = document.getElementById("export-table-body");
-  summary.innerHTML = '';
-  tbody.innerHTML = '';
-  exportArea.style.display = "block";
-  window.scrollTo(0, 0);
+    // Клик вне клавиатуры скрывает её
+    document.addEventListener("click", e => {
+      if (!e.target.closest("#custom-keyboard") && !e.target.matches("input[data-code]")) {
+        keyboard.style.display = "none";
+        activeInput = null;
+      }
+    });
+  }
 
-  let totalPlus = 0, totalMinus = 0;
-
-  allItems.forEach(item => {
-    // 🔒 Берём значение напрямую из DOM
-    const input = document.querySelector(`input[data-code="${item.code}"]`);
-    const raw = input ? input.value : "";
-    let actual = 0;
-    try { actual = eval(raw.replace(',', '.')) || 0; } catch {}
-    const delta = actual - item.docQty;
-    if (delta > 0) totalPlus += delta * item.price;
-    else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
-
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${item.code}</td>
-      <td>${item.name}</td>
-      <td>${item.unit}</td>
-      <td>${item.price.toFixed(2)}</td>
-      <td>${item.docQty}</td>
-      <td>${raw}</td>
-      <td>${delta}</td>
-    `;
-    tbody.appendChild(row);
+  // Поиск
+  searchInput.addEventListener("input", () => {
+    const query = searchInput.value.toLowerCase();
+    document.querySelectorAll("#list .item").forEach(div => {
+      const code = div.dataset.code;
+      const item = allItems.find(i => i.code === code);
+      const match = item.name.toLowerCase().includes(query) || item.code.includes(query);
+      div.classList.toggle("hidden", !match);
+    });
   });
 
-  summary.innerHTML = `
-    🧾 Недостача: –${totalMinus.toFixed(2)} ₽<br>
-    💰 Избыток: +${totalPlus.toFixed(2)} ₽
-  `;
+  document.getElementById("clear-search").addEventListener("click", () => {
+    searchInput.value = '';
+    document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
+  });
 
-  const filename = prompt("Введите имя файла", "RecountPro.pdf");
-  if (filename) {
-    const opt = {
-      margin: 0.2,
-      filename,
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 1.1 },
-      jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all'] }
-    };
+  // Обработка ввода значений
+  list.addEventListener("input", e => {
+    if (e.target.tagName === "INPUT") {
+      const code = e.target.dataset.code;
+      const value = e.target.value;
+      sessionValues[code] = value;
+      localStorage.setItem("qty_" + code, value);
 
-    html2pdf().set(opt).from(exportArea).toPdf().get('pdf').then(pdf => {
-      const totalPages = pdf.internal.getNumberOfPages();
-      for (let i = 1; i <= totalPages; i++) {
-        pdf.setPage(i);
-        pdf.setFontSize(8);
-        pdf.text(`Страница ${i} из ${totalPages}`, pdf.internal.pageSize.getWidth() - 60, pdf.internal.pageSize.getHeight() - 10);
+      const raw = value.replace(',', '.');
+      let actual = 0;
+      try { actual = Function("return " + raw)(); } catch {}
+      const item = allItems.find(i => i.code === code);
+      const card = e.target.closest(".item");
+      card.classList.remove("match", "missing", "excess");
+      if (actual === item.docQty) card.classList.add("match");
+      else if (actual < item.docQty) card.classList.add("missing");
+      else if (actual > item.docQty) card.classList.add("excess");
+
+      updateSummary(allItems);
+
+      if (localStorage.getItem("active_session")) {
+        const session = { items: allItems, values: sessionValues };
+        localStorage.setItem("session_" + localStorage.getItem("active_session"), JSON.stringify(session));
       }
-    }).save().then(() => {
-      exportArea.style.display = "none";
+    }
+  });
+  // Экспорт PDF
+  function exportPDF() {
+    const exportArea = document.getElementById("export-area");
+    const summary = document.getElementById("export-summary");
+    const tbody = document.getElementById("export-table-body");
+    summary.innerHTML = '';
+    tbody.innerHTML = '';
+    exportArea.style.display = "block";
+    window.scrollTo(0, 0);
+
+    let totalPlus = 0, totalMinus = 0;
+
+    allItems.forEach(item => {
+      const input = document.querySelector(`input[data-code="${item.code}"]`);
+      const raw = input ? input.value : "";
+      let actual = 0;
+      try { actual = Function("return " + raw.replace(',', '.'))() || 0; } catch {}
+      const delta = actual - item.docQty;
+      if (delta > 0) totalPlus += delta * item.price;
+      else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${item.code}</td>
+        <td>${item.name}</td>
+        <td>${item.unit}</td>
+        <td>${item.price.toFixed(2)}</td>
+        <td>${item.docQty}</td>
+        <td>${raw}</td>
+        <td>${delta}</td>
+      `;
+      tbody.appendChild(row);
     });
-  } else {
-    exportArea.style.display = "none";
+
+    summary.innerHTML = `
+      🧾 Недостача: –${totalMinus.toFixed(2)} ₽<br>
+      💰 Избыток: +${totalPlus.toFixed(2)} ₽
+    `;
+
+    const filename = prompt("Введите имя файла", "RecountPro.pdf");
+    if (filename) {
+      const opt = {
+        margin: 0.2,
+        filename,
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 1.1 },
+        jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all'] }
+      };
+
+      html2pdf().set(opt).from(exportArea).toPdf().get('pdf').then(pdf => {
+        const totalPages = pdf.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+          pdf.setPage(i);
+          pdf.setFontSize(8);
+          pdf.text(`Страница ${i} из ${totalPages}`,
+            pdf.internal.pageSize.getWidth() - 60,
+            pdf.internal.pageSize.getHeight() - 10);
+        }
+      }).save().then(() => {
+        exportArea.style.display = "none";
+      });
+    } else {
+      exportArea.style.display = "none";
+    }
   }
-}
 
-
+  // Итоговое модальное окно
   function showSummaryModal() {
     let html = '';
     allItems.forEach(item => {
       const raw = sessionValues[item.code] || "";
       let actual = 0;
-      try { actual = eval(raw.replace(',', '.')) || 0; } catch {}
+      try { actual = Function("return " + raw.replace(',', '.'))() || 0; } catch {}
       const delta = actual - item.docQty;
       if (delta !== 0) {
         html += `<div><strong>${item.name}</strong> (${item.code}): ${actual} шт → ${delta > 0 ? '+' : ''}${delta}</div>`;
@@ -623,47 +497,13 @@ function exportPDF() {
     document.getElementById("modal").style.display = "flex";
   }
 
+  // Меню
   document.getElementById("menu-toggle").addEventListener("click", () => {
     const menu = document.getElementById("menu-actions");
     menu.style.display = menu.style.display === "flex" ? "none" : "flex";
   });
 
-  document.querySelectorAll('input[data-code]').forEach(input => {
-  input.addEventListener('focus', () => {
-    activeInput = input;
-    document.getElementById("custom-keyboard").style.display = "grid";
-    setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-  });
-
-  input.addEventListener('blur', () => {
-    setTimeout(() => {
-      document.getElementById("custom-keyboard").style.display = "none";
-      activeInput = null;
-    }, 200);
-  });
-});
-
-
-  document.addEventListener("click", e => {
-    if (!e.target.closest("#custom-keyboard") && !e.target.matches("input[data-code]")) {
-      document.getElementById("custom-keyboard").style.display = "none";
-      activeInput = null;
-    }
-  });
-
-  document.querySelectorAll(".key").forEach(btn => {
-    btn.addEventListener("click", () => {
-      if (!activeInput) return;
-      const val = btn.textContent;
-      if (val === "←") {
-        activeInput.value = activeInput.value.slice(0, -1);
-      } else {
-        activeInput.value += val;
-      }
-      activeInput.dispatchEvent(new Event("input"));
-    });
-  });
-
+  // Загрузка PDF
   document.getElementById("upload").addEventListener("change", async e => {
     const file = e.target.files[0];
     if (!file) return;
@@ -684,8 +524,8 @@ function exportPDF() {
     });
     render(allItems);
   });
-</script>
-<script>
+
+  // Сессии
   function saveSession() {
     const name = prompt("Введите имя сессии");
     if (!name) return;
@@ -705,10 +545,10 @@ function exportPDF() {
       keys.forEach(key => {
         const name = key.replace("session_", "");
         const div = document.createElement("div");
-        div.style = "margin-bottom: 0.5rem; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;";
+        div.style = "margin-bottom:0.5rem; padding:0.5rem; border:1px solid var(--border); border-radius:6px;";
         div.innerHTML = `
           <strong>${name}</strong>
-          <div style="margin-top: 0.3rem;">
+          <div style="margin-top:0.3rem;">
             <button onclick="loadSession('${name}')">📂 Загрузить</button>
             <button onclick="switchSession('${name}')">🔁 Активировать</button>
             <button onclick="deleteSession('${name}')">🗑 Удалить</button>
@@ -748,3 +588,5 @@ function exportPDF() {
     openSessionModal();
   }
 </script>
+</body>
+</html>
