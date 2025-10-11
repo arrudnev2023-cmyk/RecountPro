@@ -371,86 +371,79 @@
   </div>
 
   <script>
-    // Настройки маршрутов (подставь реальные URL)
-    const ROUTES = {
-      recount: "demo.html",        // основной экран пересчёта
-      subscription: "subscription.html",
-      wallet: "wallet.html",
-      history: "/app/history",
-      profile: "/app/profile",
-      home: "/app/home"
-    };
+  const ROUTES = {
+    recount: "demo.html",
+    subscription: "subscription.html",
+    wallet: "wallet.html",
+    history: "/app/history",
+    profile: "/app/profile",
+    home: "/app/home"
+  };
 
-    // Имитация статуса подписки (замени на реальные данные из сессии)
-    const user = {
-      name: "Артём",
-      subscriptionActive: false,
-      subscriptionUntil: null // "2025-11-12"
-    };
+  const user = {
+    name: "Артём",
+    subscriptionActive: localStorage.getItem("subscriptionActive") === "true",
+    subscriptionUntil: localStorage.getItem("subscriptionUntil")
+  };
 
-    // Отрисовка статуса подписки
-    const subStatusEl = document.getElementById("subStatus");
-    function renderSubStatus(){
-      if(user.subscriptionActive){
-        subStatusEl.textContent = `Подписка активна${user.subscriptionUntil ? " до " + user.subscriptionUntil : ""}`;
-        subStatusEl.style.background = "color-mix(in oklab, var(--success) 18%, transparent)";
-        subStatusEl.style.borderColor = "color-mix(in oklab, var(--success) 35%, var(--border))";
-        subStatusEl.style.color = "color-mix(in oklab, var(--success) 75%, var(--text))";
-      } else {
-        subStatusEl.textContent = "Без подписки";
-        subStatusEl.style.background = "color-mix(in oklab, var(--danger) 12%, transparent)";
-        subStatusEl.style.borderColor = "color-mix(in oklab, var(--danger) 35%, var(--border))";
-        subStatusEl.style.color = "color-mix(in oklab, var(--danger) 70%, var(--text))";
-      }
+  const subStatusEl = document.getElementById("subStatus");
+  function renderSubStatus(){
+    if(user.subscriptionActive){
+      subStatusEl.textContent = `Подписка активна${user.subscriptionUntil ? " до " + user.subscriptionUntil : ""}`;
+      subStatusEl.style.background = "color-mix(in oklab, var(--success) 18%, transparent)";
+      subStatusEl.style.borderColor = "color-mix(in oklab, var(--success) 35%, var(--border))";
+      subStatusEl.style.color = "color-mix(in oklab, var(--success) 75%, var(--text))";
+    } else {
+      subStatusEl.textContent = "Без подписки";
+      subStatusEl.style.background = "color-mix(in oklab, var(--danger) 12%, transparent)";
+      subStatusEl.style.borderColor = "color-mix(in oklab, var(--danger) 35%, var(--border))";
+      subStatusEl.style.color = "color-mix(in oklab, var(--danger) 70%, var(--text))";
     }
-    renderSubStatus();
+  }
+  renderSubStatus();
 
-    // Навигация
-    function go(url){ window.location.href = url; }
+  function go(url){ window.location.href = url; }
 
-    // Главные действия — клики по карточке и по кнопке
-    const startRecountCard = document.getElementById("startRecount");
-    const startRecountBtn = document.getElementById("startRecountBtn");
-    [startRecountCard, startRecountBtn, document.getElementById("quickStartBtn")].forEach(el=>{
-      el.addEventListener("click", () => go(ROUTES.recount));
-      el.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.key === " ") go(ROUTES.recount); });
-    });
+  const startRecountCard = document.getElementById("startRecount");
+  const startRecountBtn = document.getElementById("startRecountBtn");
+  [startRecountCard, startRecountBtn, document.getElementById("quickStartBtn")].forEach(el=>{
+    el.addEventListener("click", () => go(ROUTES.recount));
+    el.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.key === " ") go(ROUTES.recount); });
+  });
 
-    const subscriptionCard = document.getElementById("openSubscription");
-    const subscriptionBtn = document.getElementById("subscriptionBtn");
-    [subscriptionCard, subscriptionBtn].forEach(el=>{
-      el.addEventListener("click", () => go(ROUTES.subscription));
-      el.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.key === " ") go(ROUTES.subscription); });
-    });
+  const subscriptionCard = document.getElementById("openSubscription");
+  const subscriptionBtn = document.getElementById("subscriptionBtn");
+  [subscriptionCard, subscriptionBtn].forEach(el=>{
+    el.addEventListener("click", () => go(ROUTES.subscription));
+    el.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.key === " ") go(ROUTES.subscription); });
+  });
 
-    const walletCard = document.getElementById("openWallet");
-    const walletBtn = document.getElementById("walletBtn");
-    [walletCard, walletBtn].forEach(el=>{
-      el.addEventListener("click", () => go(ROUTES.wallet));
-      el.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.key === " ") go(ROUTES.wallet); });
-    });
+  const walletCard = document.getElementById("openWallet");
+  const walletBtn = document.getElementById("walletBtn");
+  [walletCard, walletBtn].forEach(el=>{
+    el.addEventListener("click", () => go(ROUTES.wallet));
+    el.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.key === " ") go(ROUTES.wallet); });
+  });
 
-    // Нижняя навигация (если нужна)
-    document.getElementById("navHome").addEventListener("click", (e)=>{ e.preventDefault(); go(ROUTES.home); });
-    document.getElementById("navHistory").addEventListener("click", (e)=>{ e.preventDefault(); go(ROUTES.history); });
-    document.getElementById("navProfile").addEventListener("click", (e)=>{ e.preventDefault(); go(ROUTES.profile); });
+  document.getElementById("navHome").addEventListener("click", (e)=>{ e.preventDefault(); go(ROUTES.home); });
+  document.getElementById("navHistory").addEventListener("click", (e)=>{ e.preventDefault(); go(ROUTES.history); });
+  document.getElementById("navProfile").addEventListener("click", (e)=>{ e.preventDefault(); go(ROUTES.profile); });
 
-    // Фокус-менеджмент: удерживаем доступность
-    const focusables = document.querySelectorAll('[role="button"], .cta');
-    focusables.forEach(el=>{
-      el.setAttribute("tabindex", el.getAttribute("tabindex") ?? "0");
-    });
+  const focusables = document.querySelectorAll('[role="button"], .cta');
+  focusables.forEach(el=>{
+    el.setAttribute("tabindex", el.getAttribute("tabindex") ?? "0");
+  });
 
-    // Опционально: защита от двойного клика
-    function lockCTA(btn){
-      btn.disabled = true;
-      btn.style.opacity = "0.7";
-      setTimeout(()=>{ btn.disabled = false; btn.style.opacity = "1"; }, 1200);
-    }
-    [startRecountBtn, subscriptionBtn, walletBtn].forEach(btn=>{
-      btn.addEventListener("click", ()=> lockCTA(btn));
-    });
-  </script>
+  function lockCTA(btn){
+    btn.disabled = true;
+    btn.style.opacity = "0.7";
+    setTimeout(()=>{ btn.disabled = false; btn.style.opacity = "1"; }, 1200);
+  }
+  [startRecountBtn, subscriptionBtn, walletBtn].forEach(btn=>{
+    btn.addEventListener("click", ()=> lockCTA(btn));
+  });
+</script>
+
 </body>
 </html>
 
