@@ -1,1 +1,456 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RecountPro — Домашний экран</title>
+  <meta name="color-scheme" content="light dark" />
+  <style>
+    :root{
+      --bg: #0b0d10;
+      --card: #12151a;
+      --text: #e8eaed;
+      --muted: #a3a7af;
+      --brand: #4e8cff;        /* акцент для главной кнопки */
+      --brand-2: #7c5cff;      /* акцент для второстепенных */
+      --success: #3ccf8e;
+      --danger: #ff6464;
+      --border: #1f232a;
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --shadow-soft: 0 6px 18px rgba(0,0,0,0.25);
+      --focus: 0 0 0 3px rgba(78,140,255,0.35);
+    }
+    @media (prefers-color-scheme: light) {
+      :root{
+        --bg: #f6f7fb;
+        --card: #ffffff;
+        --text: #0f1220;
+        --muted: #5b616e;
+        --brand: #2f6bff;
+        --brand-2: #6b4eff;
+        --success: #1fbf72;
+        --danger: #e75151;
+        --border: #eaeef5;
+        --shadow: 0 10px 30px rgba(20,26,40,0.08);
+        --shadow-soft: 0 6px 18px rgba(20,26,40,0.06);
+        --focus: 0 0 0 3px rgba(47,107,255,0.25);
+      }
+    }
+
+    html, body { height: 100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 20% 10%, rgba(124,92,255,0.08), transparent 55%),
+                  radial-gradient(900px 600px at 80% 70%, rgba(78,140,255,0.10), transparent 50%),
+                  var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Контейнер страницы */
+    .page{
+      min-height: 100%;
+      display:flex;
+      flex-direction: column;
+    }
+
+    /* Шапка */
+    .header{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      padding: 20px clamp(16px, 4vw, 28px);
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .logo{
+      width:36px; height:36px;
+      display:grid; place-items:center;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      box-shadow: var(--shadow-soft);
+    }
+    .logo svg{ width:22px; height:22px; color:white; }
+    .brand-title{
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+    .user{
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+    .sub-status{
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: color-mix(in oklab, var(--success) 18%, transparent);
+      border: 1px solid color-mix(in oklab, var(--success) 35%, var(--border));
+      color: color-mix(in oklab, var(--success) 75%, var(--text));
+      font-size: 13px;
+    }
+    .avatar{
+      width:36px; height:36px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 1px solid var(--border);
+    }
+
+    /* Контент */
+    .content{
+      flex:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: clamp(12px, 4vw, 28px);
+    }
+    .card{
+      width: 100%;
+      max-width: 980px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(18px, 4vw, 28px);
+    }
+
+    .intro{
+      display:flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      padding-bottom: clamp(18px, 3vw, 24px);
+      border-bottom: 1px dashed var(--border);
+    }
+    .intro h1{
+      margin:0;
+      font-size: clamp(20px, 3.4vw, 28px);
+      line-height: 1.25;
+      letter-spacing: 0.2px;
+    }
+    .intro p{
+      margin:6px 0 0 0;
+      color: var(--muted);
+      font-size: clamp(14px, 2.3vw, 15px);
+    }
+
+    /* Панель действий */
+    .actions{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: clamp(12px, 2.2vw, 16px);
+      margin-top: clamp(16px, 3vw, 22px);
+    }
+    @media (min-width: 700px){
+      .actions{ grid-template-columns: 2fr 1fr 1fr; }
+    }
+
+    .action{
+      position: relative;
+      overflow: hidden;
+      padding: clamp(16px, 3vw, 22px);
+      border-radius: calc(var(--radius) - 4px);
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent), var(--card));
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+      cursor:pointer;
+    }
+    .action:focus-visible{
+      outline: none;
+      box-shadow: var(--focus);
+    }
+    .action:hover{
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-soft);
+      border-color: color-mix(in oklab, var(--brand) 20%, var(--border));
+    }
+
+    .action-main{
+      background:
+        radial-gradient(500px 200px at 10% 0%, color-mix(in oklab, var(--brand) 12%, transparent) 0%, transparent 70%),
+        radial-gradient(600px 240px at 100% 100%, color-mix(in oklab, var(--brand-2) 12%, transparent) 0%, transparent 70%),
+        linear-gradient(180deg, color-mix(in oklab, var(--card) 90%, transparent), var(--card));
+      border: 1px solid color-mix(in oklab, var(--brand) 18%, var(--border));
+    }
+
+    .action header{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .icon{
+      width: 28px; height: 28px;
+      display:grid; place-items:center;
+      border-radius: 8px;
+      background: color-mix(in oklab, var(--brand) 22%, transparent);
+      color: white;
+    }
+    .icon.secondary{
+      background: color-mix(in oklab, var(--brand-2) 22%, transparent);
+    }
+    .action h3{
+      margin:0;
+      font-size: clamp(16px, 2.6vw, 18px);
+      letter-spacing: 0.2px;
+    }
+    .action p{
+      margin:0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    /* Кнопки внутри карточек (CTA) */
+    .cta{
+      margin-top: 14px;
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent), var(--card));
+      color: var(--text);
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+      cursor:pointer;
+    }
+    .cta:hover{
+      transform: translateY(-1px);
+      border-color: color-mix(in oklab, var(--brand) 20%, var(--border));
+      box-shadow: var(--shadow-soft);
+    }
+    .cta.primary{
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: white;
+      border: none;
+    }
+    .cta svg{ width:18px; height:18px; }
+
+    /* Нижняя навигация (опционально) */
+    .footer{
+      padding: 14px clamp(16px, 4vw, 28px);
+      display:flex; justify-content: space-between; align-items:center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .footer-nav{ display:flex; gap:18px; }
+    .link{
+      color: var(--muted);
+      text-decoration: none;
+      border-bottom: 1px dotted transparent;
+    }
+    .link:hover{ border-bottom-color: var(--muted); }
+
+    /* Утилиты скрытия для доступности */
+    .sr-only{
+      position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+      overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- Header -->
+    <header class="header" aria-label="Шапка">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <!-- Минималистичный знак (RP) -->
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M6 6h8a4 4 0 0 1 0 8H6V6Z" stroke="currentColor" stroke-width="2" />
+            <path d="M14 14l4 4" stroke="currentColor" stroke-width="2" />
+          </svg>
+        </div>
+        <div class="brand-title">RecountPro</div>
+      </div>
+
+      <div class="user">
+        <!-- Покажем статус: активна/нет -->
+        <div id="subStatus" class="sub-status">Без подписки</div>
+        <div class="avatar" aria-hidden="true"></div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="content">
+      <section class="card" aria-label="Главные действия">
+        <div class="intro">
+          <div>
+            <h1>Добро пожаловать! Продолжим работу?</h1>
+            <p>Выберите действие: начать пересчёт, оформить подписку или перейти к кошельку.</p>
+          </div>
+          <button class="cta primary" id="quickStartBtn" aria-label="Быстрый старт пересчёта">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M5 12h14M12 5l7 7-7 7" stroke-width="2" />
+            </svg>
+            Быстрый старт
+          </button>
+        </div>
+
+        <div class="actions">
+          <!-- Начать пересчёт -->
+          <article class="action action-main" role="button" tabindex="0" id="startRecount">
+            <header>
+              <div class="icon">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M6 6h12v12H6z" stroke="currentColor" stroke-width="2"/>
+                  <path d="M6 10h12" stroke="currentColor" stroke-width="2"/>
+                  <path d="M10 6v12" stroke="currentColor" stroke-width="2"/>
+                </svg>
+              </div>
+              <h3>Начать пересчёт</h3>
+            </header>
+            <p>Перейдите к основному экрану пересчёта товаров, загрузите документы и начните сравнение.</p>
+            <button class="cta primary" id="startRecountBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M5 12h14M12 5l7 7-7 7" stroke-width="2" />
+              </svg>
+              Перейти к пересчёту
+            </button>
+          </article>
+
+          <!-- Подписка -->
+          <article class="action" role="button" tabindex="0" id="openSubscription">
+            <header>
+              <div class="icon secondary">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M12 3l7 4v5c0 5-7 9-7 9s-7-4-7-9V7l7-4z" stroke="currentColor" stroke-width="2"/>
+                </svg>
+              </div>
+              <h3>Подписка</h3>
+            </header>
+            <p>Оформите доступ к истории пересчётов, интеграциям и премиальным функциям.</p>
+            <button class="cta" id="subscriptionBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M12 3l7 4v5c0 5-7 9-7 9s-7-4-7-9V7l7-4z" stroke-width="2" />
+              </svg>
+              Выбрать тариф
+            </button>
+          </article>
+
+          <!-- Кошелёк -->
+          <article class="action" role="button" tabindex="0" id="openWallet">
+            <header>
+              <div class="icon secondary">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M4 7h16v10H4z" stroke="currentColor" stroke-width="2"/>
+                  <path d="M16 12h3" stroke="currentColor" stroke-width="2"/>
+                </svg>
+              </div>
+              <h3>Кошелёк</h3>
+            </header>
+            <p>Пополняйте баланс, привязывайте способы оплаты и смотрите историю транзакций.</p>
+            <button class="cta" id="walletBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M4 7h16v10H4z" stroke-width="2" />
+                <path d="M16 12h3" stroke-width="2" />
+              </svg>
+              Открыть кошелёк
+            </button>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-nav">
+        <a class="link" href="#" id="navHome">Главная</a>
+        <a class="link" href="#" id="navHistory">История</a>
+        <a class="link" href="#" id="navProfile">Профиль</a>
+      </div>
+      <div>© RecountPro</div>
+    </footer>
+  </div>
+
+  <script>
+    // Настройки маршрутов (подставь реальные URL)
+    const ROUTES = {
+      recount: "/app/recount",        // основной экран пересчёта
+      subscription: "/app/subscription",
+      wallet: "/app/wallet",
+      history: "/app/history",
+      profile: "/app/profile",
+      home: "/app/home"
+    };
+
+    // Имитация статуса подписки (замени на реальные данные из сессии)
+    const user = {
+      name: "Артём",
+      subscriptionActive: false,
+      subscriptionUntil: null // "2025-11-12"
+    };
+
+    // Отрисовка статуса подписки
+    const subStatusEl = document.getElementById("subStatus");
+    function renderSubStatus(){
+      if(user.subscriptionActive){
+        subStatusEl.textContent = `Подписка активна${user.subscriptionUntil ? " до " + user.subscriptionUntil : ""}`;
+        subStatusEl.style.background = "color-mix(in oklab, var(--success) 18%, transparent)";
+        subStatusEl.style.borderColor = "color-mix(in oklab, var(--success) 35%, var(--border))";
+        subStatusEl.style.color = "color-mix(in oklab, var(--success) 75%, var(--text))";
+      } else {
+        subStatusEl.textContent = "Без подписки";
+        subStatusEl.style.background = "color-mix(in oklab, var(--danger) 12%, transparent)";
+        subStatusEl.style.borderColor = "color-mix(in oklab, var(--danger) 35%, var(--border))";
+        subStatusEl.style.color = "color-mix(in oklab, var(--danger) 70%, var(--text))";
+      }
+    }
+    renderSubStatus();
+
+    // Навигация
+    function go(url){ window.location.href = url; }
+
+    // Главные действия — клики по карточке и по кнопке
+    const startRecountCard = document.getElementById("startRecount");
+    const startRecountBtn = document.getElementById("startRecountBtn");
+    [startRecountCard, startRecountBtn, document.getElementById("quickStartBtn")].forEach(el=>{
+      el.addEventListener("click", () => go(ROUTES.recount));
+      el.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.key === " ") go(ROUTES.recount); });
+    });
+
+    const subscriptionCard = document.getElementById("openSubscription");
+    const subscriptionBtn = document.getElementById("subscriptionBtn");
+    [subscriptionCard, subscriptionBtn].forEach(el=>{
+      el.addEventListener("click", () => go(ROUTES.subscription));
+      el.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.key === " ") go(ROUTES.subscription); });
+    });
+
+    const walletCard = document.getElementById("openWallet");
+    const walletBtn = document.getElementById("walletBtn");
+    [walletCard, walletBtn].forEach(el=>{
+      el.addEventListener("click", () => go(ROUTES.wallet));
+      el.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.key === " ") go(ROUTES.wallet); });
+    });
+
+    // Нижняя навигация (если нужна)
+    document.getElementById("navHome").addEventListener("click", (e)=>{ e.preventDefault(); go(ROUTES.home); });
+    document.getElementById("navHistory").addEventListener("click", (e)=>{ e.preventDefault(); go(ROUTES.history); });
+    document.getElementById("navProfile").addEventListener("click", (e)=>{ e.preventDefault(); go(ROUTES.profile); });
+
+    // Фокус-менеджмент: удерживаем доступность
+    const focusables = document.querySelectorAll('[role="button"], .cta');
+    focusables.forEach(el=>{
+      el.setAttribute("tabindex", el.getAttribute("tabindex") ?? "0");
+    });
+
+    // Опционально: защита от двойного клика
+    function lockCTA(btn){
+      btn.disabled = true;
+      btn.style.opacity = "0.7";
+      setTimeout(()=>{ btn.disabled = false; btn.style.opacity = "1"; }, 1200);
+    }
+    [startRecountBtn, subscriptionBtn, walletBtn].forEach(btn=>{
+      btn.addEventListener("click", ()=> lockCTA(btn));
+    });
+  </script>
+</body>
+</html>
 
