@@ -15,6 +15,7 @@
       --border: #1f232a;
       --radius: 16px;
       --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --success: #3ccf8e;
     }
     body {
       margin:0;
@@ -31,7 +32,8 @@
       justify-content:space-between;
       align-items:center;
     }
-    .brand { font-weight:700; font-size:20px; }
+    .brand { font-weight:700; font-size:20px; letter-spacing:0.2px; }
+    .back { color:var(--muted); text-decoration:none; }
     main {
       flex:1;
       display:flex;
@@ -39,16 +41,17 @@
       align-items:center;
       padding:20px;
     }
-    h1 { margin-bottom:10px; }
-    p { color:var(--muted); margin-bottom:30px; }
+    h1 { margin-bottom:10px; font-size:28px; }
+    p { color:var(--muted); margin-bottom:26px; max-width:720px; text-align:center; }
     .plans {
       display:grid;
       gap:20px;
       width:100%;
       max-width:900px;
+      grid-template-columns: 1fr;
     }
-    @media(min-width:700px){
-      .plans { grid-template-columns: repeat(3,1fr); }
+    @media(min-width:800px){
+      .plans { grid-template-columns: repeat(2,1fr); }
     }
     .plan {
       background:var(--card);
@@ -59,10 +62,30 @@
       display:flex;
       flex-direction:column;
       justify-content:space-between;
+      position:relative;
+      overflow:hidden;
     }
-    .plan h2 { margin:0 0 10px; font-size:22px; }
-    .price { font-size:26px; font-weight:700; margin:10px 0; }
-    ul { padding-left:20px; margin:0 0 20px; }
+    .plan.featured {
+      border-color: color-mix(in oklab, var(--brand) 25%, var(--border));
+      background:
+        radial-gradient(500px 240px at 100% 0%, color-mix(in oklab, var(--brand) 12%, transparent), transparent 70%),
+        var(--card);
+    }
+    .badge {
+      position:absolute;
+      top:16px; right:16px;
+      font-size:12px;
+      color:white;
+      background:linear-gradient(135deg,var(--brand),var(--brand-2));
+      padding:6px 10px;
+      border-radius:999px;
+      letter-spacing:0.2px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    }
+    .plan h2 { margin:0 0 6px; font-size:22px; }
+    .price { font-size:26px; font-weight:700; margin:8px 0 12px; }
+    .subnote { color:var(--muted); font-size:13px; margin:2px 0 16px; }
+    ul { padding-left:20px; margin:0 0 18px; }
     li { margin-bottom:6px; color:var(--muted); }
     .cta {
       padding:12px;
@@ -72,9 +95,16 @@
       color:white;
       font-weight:600;
       cursor:pointer;
-      transition:transform .15s ease;
+      transition:transform .15s ease, box-shadow .15s ease;
     }
-    .cta:hover { transform:translateY(-2px); }
+    .cta:hover { transform:translateY(-2px); box-shadow: 0 10px 22px rgba(0,0,0,0.25); }
+    .note {
+      margin-top:20px;
+      font-size:13px;
+      color:var(--muted);
+      text-align:center;
+      max-width:780px;
+    }
     footer {
       padding:16px;
       text-align:center;
@@ -86,55 +116,48 @@
 <body>
   <header>
     <div class="brand">RecountPro</div>
-    <a href="content.html" style="color:var(--muted);text-decoration:none;">← Назад</a>
+    <a href="content.html" class="back">← Назад</a>
   </header>
 
   <main>
     <h1>Выберите подписку</h1>
-    <p>Откройте доступ к истории пересчётов, интеграциям и премиальным функциям</p>
+    <p>Получите доступ к полному функционалу пересчёта. Бесплатный план даёт 3 пересчёта в месяц, а Премиум — без ограничений и с сохранением истории.</p>
 
     <div class="plans">
-      <!-- Базовый -->
-      <div class="plan">
+      <!-- Бесплатная -->
+      <div class="plan" id="plan-free">
         <div>
-          <h2>Базовый</h2>
+          <h2>Бесплатная</h2>
           <div class="price">0 ₽</div>
+          <div class="subnote">До 3 пересчётов в месяц</div>
           <ul>
-            <li>Доступ к пересчёту</li>
-            <li>Ограниченная история</li>
-            <li>Без интеграций</li>
+            <li>Основной пересчёт товаров</li>
+            <li>До 3 запусков пересчёта в месяц</li>
+            <li>Без сохранения полной истории</li>
           </ul>
         </div>
-        <button class="cta" onclick="selectPlan('basic')">Выбрать</button>
+        <button class="cta" onclick="selectPlan('free')">Выбрать бесплатный план</button>
       </div>
 
       <!-- Премиум -->
-      <div class="plan">
+      <div class="plan featured" id="plan-premium">
+        <div class="badge">Рекомендуем</div>
         <div>
           <h2>Премиум</h2>
           <div class="price">499 ₽ / мес</div>
+          <div class="subnote">Без ограничений + история пересчётов</div>
           <ul>
-            <li>Неограниченная история</li>
-            <li>Интеграции с сервисами</li>
-            <li>Приоритетная поддержка</li>
+            <li>Неограниченные пересчёты</li>
+            <li>Сохранение и просмотр истории пересчётов</li>
+            <li>Интеграции и приоритетная поддержка</li>
           </ul>
         </div>
-        <button class="cta" onclick="selectPlan('premium')">Оформить</button>
+        <button class="cta" onclick="selectPlan('premium')">Оформить подписку</button>
       </div>
+    </div>
 
-      <!-- Команда -->
-      <div class="plan">
-        <div>
-          <h2>Команда</h2>
-          <div class="price">1499 ₽ / мес</div>
-          <ul>
-            <li>Все функции Премиум</li>
-            <li>Мульти-аккаунты</li>
-            <li>Совместная работа</li>
-          </ul>
-        </div>
-        <button class="cta" onclick="selectPlan('team')">Оформить</button>
-      </div>
+    <div class="note">
+      Переход на платный план можно отменить в любой момент. Оплата помесячно. После покупки подписки доступ открывается сразу.
     </div>
   </main>
 
@@ -142,9 +165,15 @@
 
   <script>
     function selectPlan(plan){
-      alert("Вы выбрали тариф: " + plan);
-      // здесь можно сделать редирект на оплату
+      // Здесь вставь реальный процесс оформления:
+      // 1) редирект на checkout
+      // 2) вызов сервиса оплаты
+      // 3) создание/активация подписки в бэкенде
+      //
+      // Пример редиректа:
       // window.location.href = "checkout.html?plan=" + plan;
+
+      alert("Выбран план: " + (plan === "free" ? "Бесплатная" : "Премиум 499 ₽/мес"));
     }
   </script>
 </body>
