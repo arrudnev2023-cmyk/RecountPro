@@ -317,7 +317,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite">Готово</div>
 
-  <script>
+<script>
     // Tabs
     const tabLogin = document.getElementById('tab-login');
     const tabRegister = document.getElementById('tab-register');
@@ -429,9 +429,13 @@
 
       if(mode==='login'){
         showToast('Успешный вход');
+
+        // 🔹 Сохраняем флаг авторизации
+        localStorage.setItem("isAuth", "true");
+
+        // Переход на экран пересчёта
         window.location.href = '/content.html';
 
-        // window.location.href = '/demo.html'; // включите редирект при интеграции
       }else{
         // basic client-side check for stronger password during register
         const strong = scorePassword(passI.value) >= 60 && passI.value.length >= 8;
@@ -505,7 +509,7 @@
         if(p.y<0||p.y>H) p.vy*=-1;
 
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
         ctx.closePath();
         ctx.fillStyle = 'rgba(255,255,255,'+p.a*0.35+')';
         ctx.fill();
@@ -536,6 +540,6 @@
 
     // Initial focus
     loginI.focus();
-  </script>
+</script>
 </body>
 </html>
