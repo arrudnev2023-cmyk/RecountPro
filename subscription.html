@@ -165,15 +165,13 @@
 
   <script>
     function selectPlan(plan){
-      // Здесь вставь реальный процесс оформления:
-      // 1) редирект на checkout
-      // 2) вызов сервиса оплаты
-      // 3) создание/активация подписки в бэкенде
-      //
-      // Пример редиректа:
-      // window.location.href = "checkout.html?plan=" + plan;
+      const isPremium = plan === "premium";
+      const until = isPremium ? "2025-11-12" : null;
 
-      alert("Выбран план: " + (plan === "free" ? "Бесплатная" : "Премиум 499 ₽/мес"));
+      localStorage.setItem("subscriptionActive", isPremium ? "true" : "false");
+      localStorage.setItem("subscriptionUntil", until);
+
+      window.location.href = "content.html";
     }
   </script>
 </body>
