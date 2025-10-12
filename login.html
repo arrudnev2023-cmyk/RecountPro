@@ -318,7 +318,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite">Готово</div>
 
 <script type="module">
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 
   // 🔹 Твои данные Supabase
   const SUPABASE_URL = "https://iqiebsxvdspmtqzlihqyk.supabase.co"
@@ -331,7 +331,8 @@
   const tabRegister = document.getElementById('tab-register');
   const form = document.getElementById('form');
   const brandSub = document.getElementById('brand-subtitle');
-  let mode = 'login';
+
+  let mode = 'login'; // 'login' | 'register'
   function setMode(next){
     mode = next;
     tabLogin.setAttribute('aria-selected', String(next==='login'));
@@ -345,7 +346,9 @@
   }
   tabLogin.addEventListener('click',()=>setMode('login'));
   tabRegister.addEventListener('click',()=>setMode('register'));
-  document.getElementById('btnRegister').addEventListener('click',()=>setMode(mode==='login'?'register':'login'));
+  document.getElementById('btnRegister').addEventListener('click',()=>{
+    setMode(mode==='login'?'register':'login');
+  });
 
   // Inputs
   const loginI = document.getElementById('login');
@@ -395,12 +398,15 @@
   function showError(el, box){
     box.style.display = 'block';
     el.closest('.input').style.borderColor = 'rgba(255,107,107,0.7)';
+    el.closest('.input').style.boxShadow = '0 0 0 3px rgba(255,107,107,0.18)';
   }
   function clearError(el, box){
     box.style.display = 'none';
-    el.closest('.input').style.borderColor = '#444';
+    el.closest('.input').style.borderColor = 'var(--border)';
+    el.closest('.input').style.boxShadow = 'none';
   }
-   loginI.addEventListener('input',()=> clearError(loginI, loginErr));
+
+  loginI.addEventListener('input',()=> clearError(loginI, loginErr));
   passI.addEventListener('input',()=> clearError(passI, passErr));
 
   // Toast
@@ -408,7 +414,7 @@
   function showToast(text){
     toast.textContent = text;
     toast.classList.add('show');
-    setTimeout(()=> toast.classList.remove('show'), 2500);
+    setTimeout(()=> toast.classList.remove('show'), 2000);
   }
 
   // Submit
@@ -428,19 +434,20 @@
       const { data, error } = await supabase.auth.signInWithPassword({
         email: loginI.value.trim(),
         password: passI.value.trim()
-      });
+      })
 
       btnLogin.classList.remove('loading');
       btnLogin.disabled = false;
 
       if(error){
-        showToast("Ошибка входа: " + error.message);
+        showToast("Ошибка входа: " + error.message)
       } else {
         if(!data.session){
-          showToast("Подтвердите email перед входом");
+          showToast("Подтвердите email перед входом")
         } else {
-          showToast("Успешный вход");
-          window.location.href = '/content.html';
+          showToast("Успешный вход")
+          localStorage.setItem("isAuth", "true")
+          window.location.href = '/content.html'
         }
       }
 
@@ -456,22 +463,22 @@
         return;
       }
 
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: loginI.value.trim(),
         password: passI.value.trim(),
         options: {
           emailRedirectTo: window.location.origin + '/content.html'
         }
-      });
+      })
 
       btnLogin.classList.remove('loading');
       btnLogin.disabled = false;
 
       if(error){
-        showToast("Ошибка регистрации: " + error.message);
+        showToast("Ошибка регистрации: " + error.message)
       } else {
-        showToast("Проверьте почту для подтверждения");
-        setMode('login');
+        showToast("Проверьте почту для подтверждения")
+        setMode('login')
       }
     }
   });
@@ -486,7 +493,7 @@
     }
   });
 
-  // Background canvas animation
+  // Background canvas animation (оставляем без изменений)
   const canvas = document.getElementById('bg');
   const ctx = canvas.getContext('2d');
   let W = canvas.width = window.innerWidth;
@@ -503,7 +510,7 @@
   }));
 
   let t = 0;
-  function aurora(y, amp, freq, phase){
+   function aurora(y, amp, freq, phase){
     const grd = ctx.createLinearGradient(0, y-amp, 0, y+amp);
     grd.addColorStop(0, 'rgba(96,230,197,0.04)');
     grd.addColorStop(0.5, 'rgba(107,168,255,0.06)');
@@ -516,17 +523,19 @@
   function step(){
     ctx.clearRect(0,0,W,H);
 
-    // vignette
+    // subtle vignette
     const v = ctx.createRadialGradient(W/2, H/2, H*0.15, W/2, H/2, H*0.9);
     v.addColorStop(0, 'rgba(0,0,0,0)');
     v.addColorStop(1, 'rgba(0,0,0,0.35)');
     ctx.fillStyle = v;
     ctx.fillRect(0,0,W,H);
 
+    // layered aurora bands
     aurora(H*0.28, 140, 0.002, 0);
     aurora(H*0.58, 180, 0.002, 2.2);
     aurora(H*0.78, 220, 0.002, 4.4);
 
+    // particles
     for(const p of particles){
       p.x += p.vx; p.y += p.vy;
       if(p.x<0||p.x>W) p.vx*=-1;
@@ -538,11 +547,13 @@
       ctx.fillStyle = 'rgba(255,255,255,'+p.a*0.35+')';
       ctx.fill();
 
+      // glow
       ctx.shadowColor = 'rgba(255,215,107,0.25)';
       ctx.shadowBlur = 6;
     }
     ctx.shadowBlur = 0;
 
+    // soft beams
     ctx.globalCompositeOperation = 'lighter';
     ctx.strokeStyle = 'rgba(255,215,107,0.06)';
     ctx.lineWidth = 2;
@@ -563,12 +574,12 @@
   // Initial focus
   loginI.focus();
 
-  // 🔹 Автопроверка: если уже авторизован → редиректим
+  // 🔹 Автоматическая проверка: если уже авторизован в Supabase → редиректим
   supabase.auth.getSession().then(({ data }) => {
     if (data.session) {
-      window.location.href = '/content.html';
+      window.location.href = '/content.html'
     }
-  });
+  })
 </script>
 </body>
 </html>
