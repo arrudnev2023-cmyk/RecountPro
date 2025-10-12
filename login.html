@@ -317,229 +317,269 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite">Готово</div>
 
-<script>
-    // Tabs
-    const tabLogin = document.getElementById('tab-login');
-    const tabRegister = document.getElementById('tab-register');
-    const form = document.getElementById('form');
-    const brandSub = document.getElementById('brand-subtitle');
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 
-    let mode = 'login'; // 'login' | 'register'
-    function setMode(next){
-      mode = next;
-      tabLogin.setAttribute('aria-selected', String(next==='login'));
-      tabRegister.setAttribute('aria-selected', String(next==='register'));
-      brandSub.textContent = next==='login' ? 'Вход в систему' : 'Создание учётной записи';
-      document.getElementById('btnLogin').textContent = next==='login' ? 'Вход' : 'Продолжить';
-      document.getElementById('btnRegister').textContent = next==='login' ? 'Авторизация' : 'Назад к входу';
-      document.getElementById('pwHint').textContent = next==='login'
-        ? 'Минимум 8 символов, буквы верхнего/нижнего регистра и цифры.'
-        : 'Создайте надёжный пароль: 10+ символов, буквы, цифры, спецсимвол.';
-    }
-    tabLogin.addEventListener('click',()=>setMode('login'));
-    tabRegister.addEventListener('click',()=>setMode('register'));
-    document.getElementById('btnRegister').addEventListener('click',()=>{
-      setMode(mode==='login'?'register':'login');
-    });
+  // 🔹 Твои данные Supabase
+  const SUPABASE_URL = "https://iqiebsxvdspmtqzlihqyk.supabase.co"
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxZWJzeHZkc3BtdHF6bGlocXlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MTk1ODUsImV4cCI6MjA3NDM5NTU4NX0.KJpvUiuKDZDWagH4xW4UVul_nyAGnqqJ3QYJYy8-I-I"
 
-    // Inputs
-    const loginI = document.getElementById('login');
-    const passI  = document.getElementById('password');
-    const loginErr = document.getElementById('loginError');
-    const passErr  = document.getElementById('passwordError');
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-    // Show/Hide password
-    document.getElementById('toggle').addEventListener('click',()=>{
-      const showing = passI.type==='text';
-      passI.type = showing ? 'password' : 'text';
-      document.getElementById('toggle').textContent = showing ? 'Показать' : 'Скрыть';
-      passI.focus();
-    });
+  // Tabs
+  const tabLogin = document.getElementById('tab-login');
+  const tabRegister = document.getElementById('tab-register');
+  const form = document.getElementById('form');
+  const brandSub = document.getElementById('brand-subtitle');
 
-    // Caps lock indicator
-    function handleCaps(e){
-      const caps = e.getModifierState && e.getModifierState('CapsLock');
-      document.getElementById('capsNote').style.display = caps ? 'inline' : 'none';
-    }
-    passI.addEventListener('keydown',handleCaps);
-    passI.addEventListener('keyup',handleCaps);
+  let mode = 'login'; // 'login' | 'register'
+  function setMode(next){
+    mode = next;
+    tabLogin.setAttribute('aria-selected', String(next==='login'));
+    tabRegister.setAttribute('aria-selected', String(next==='register'));
+    brandSub.textContent = next==='login' ? 'Вход в систему' : 'Создание учётной записи';
+    document.getElementById('btnLogin').textContent = next==='login' ? 'Вход' : 'Продолжить';
+    document.getElementById('btnRegister').textContent = next==='login' ? 'Авторизация' : 'Назад к входу';
+    document.getElementById('pwHint').textContent = next==='login'
+      ? 'Минимум 8 символов, буквы верхнего/нижнего регистра и цифры.'
+      : 'Создайте надёжный пароль: 10+ символов, буквы, цифры, спецсимвол.';
+  }
+  tabLogin.addEventListener('click',()=>setMode('login'));
+  tabRegister.addEventListener('click',()=>setMode('register'));
+  document.getElementById('btnRegister').addEventListener('click',()=>{
+    setMode(mode==='login'?'register':'login');
+  });
 
-    // Password strength meter
-    const meterBar = document.getElementById('meterBar');
-    function scorePassword(pw){
-      let score = 0;
-      if(!pw) return 0;
-      const sets = [
-        /[a-z]/.test(pw),
-        /[A-Z]/.test(pw),
-        /\d/.test(pw),
-        /[^A-Za-z0-9]/.test(pw)
-      ].filter(Boolean).length;
-      score += sets*20;
-      score += Math.min(40, pw.length*3);
-      if(/(.)\1{2,}/.test(pw)) score -= 15; // penalize repeats
-      return Math.max(0, Math.min(100, score));
-    }
-    passI.addEventListener('input',()=>{
-      const s = scorePassword(passI.value);
-      meterBar.style.width = s+'%';
-      meterBar.style.filter = 'hue-rotate('+(s*1.2)+'deg)';
-    });
+  // Inputs
+  const loginI = document.getElementById('login');
+  const passI  = document.getElementById('password');
+  const loginErr = document.getElementById('loginError');
+  const passErr  = document.getElementById('passwordError');
 
-    // Validation
-    function showError(el, box){
-      box.style.display = 'block';
-      el.closest('.input').style.borderColor = 'rgba(255,107,107,0.7)';
-      el.closest('.input').style.boxShadow = '0 0 0 3px rgba(255,107,107,0.18)';
-    }
-    function clearError(el, box){
-      box.style.display = 'none';
-      el.closest('.input').style.borderColor = 'var(--border)';
-      el.closest('.input').style.boxShadow = 'none';
-    }
+  // Show/Hide password
+  document.getElementById('toggle').addEventListener('click',()=>{
+    const showing = passI.type==='text';
+    passI.type = showing ? 'password' : 'text';
+    document.getElementById('toggle').textContent = showing ? 'Показать' : 'Скрыть';
+    passI.focus();
+  });
 
-    loginI.addEventListener('input',()=> clearError(loginI, loginErr));
-    passI.addEventListener('input',()=> clearError(passI, passErr));
+  // Caps lock indicator
+  function handleCaps(e){
+    const caps = e.getModifierState && e.getModifierState('CapsLock');
+    document.getElementById('capsNote').style.display = caps ? 'inline' : 'none';
+  }
+  passI.addEventListener('keydown',handleCaps);
+  passI.addEventListener('keyup',handleCaps);
 
-    // Toast
-    const toast = document.getElementById('toast');
-    function showToast(text){
-      toast.textContent = text;
-      toast.classList.add('show');
-      setTimeout(()=> toast.classList.remove('show'), 2000);
-    }
+  // Password strength meter
+  const meterBar = document.getElementById('meterBar');
+  function scorePassword(pw){
+    let score = 0;
+    if(!pw) return 0;
+    const sets = [
+      /[a-z]/.test(pw),
+      /[A-Z]/.test(pw),
+      /\d/.test(pw),
+      /[^A-Za-z0-9]/.test(pw)
+    ].filter(Boolean).length;
+    score += sets*20;
+    score += Math.min(40, pw.length*3);
+    if(/(.)\1{2,}/.test(pw)) score -= 15;
+    return Math.max(0, Math.min(100, score));
+  }
+  passI.addEventListener('input',()=>{
+    const s = scorePassword(passI.value);
+    meterBar.style.width = s+'%';
+    meterBar.style.filter = 'hue-rotate('+(s*1.2)+'deg)';
+  });
 
-    // Submit
-    const btnLogin = document.getElementById('btnLogin');
-    form.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      let valid = true;
-      if(!loginI.value.trim()){ showError(loginI, loginErr); valid=false; }
-      if(!passI.value.trim()){  showError(passI, passErr);   valid=false; }
-      if(!valid) return;
+  // Validation
+  function showError(el, box){
+    box.style.display = 'block';
+    el.closest('.input').style.borderColor = 'rgba(255,107,107,0.7)';
+    el.closest('.input').style.boxShadow = '0 0 0 3px rgba(255,107,107,0.18)';
+  }
+  function clearError(el, box){
+    box.style.display = 'none';
+    el.closest('.input').style.borderColor = 'var(--border)';
+    el.closest('.input').style.boxShadow = 'none';
+  }
 
-      // Simulated request
-      btnLogin.classList.add('loading');
-      btnLogin.disabled = true;
+  loginI.addEventListener('input',()=> clearError(loginI, loginErr));
+  passI.addEventListener('input',()=> clearError(passI, passErr));
 
-      await new Promise(r=>setTimeout(r, 900)); // simulate latency
+  // Toast
+  const toast = document.getElementById('toast');
+  function showToast(text){
+    toast.textContent = text;
+    toast.classList.add('show');
+    setTimeout(()=> toast.classList.remove('show'), 2000);
+  }
+
+  // Submit
+  const btnLogin = document.getElementById('btnLogin');
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    let valid = true;
+    if(!loginI.value.trim()){ showError(loginI, loginErr); valid=false; }
+    if(!passI.value.trim()){  showError(passI, passErr);   valid=false; }
+    if(!valid) return;
+
+    btnLogin.classList.add('loading');
+    btnLogin.disabled = true;
+
+    if(mode==='login'){
+      // 🔹 Вход через Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginI.value.trim(),
+        password: passI.value.trim()
+      })
 
       btnLogin.classList.remove('loading');
       btnLogin.disabled = false;
 
-      if(mode==='login'){
-        showToast('Успешный вход');
-
-        // 🔹 Сохраняем флаг авторизации
-        localStorage.setItem("isAuth", "true");
-
-        // Переход на экран пересчёта
-        window.location.href = '/content.html';
-
-      }else{
-        // basic client-side check for stronger password during register
-        const strong = scorePassword(passI.value) >= 60 && passI.value.length >= 8;
-        if(!strong){
-          showToast('Усилите пароль');
-          showError(passI, passErr);
-          passErr.textContent = 'Пароль недостаточно надёжный.';
-          return;
+      if(error){
+        showToast("Ошибка входа: " + error.message)
+      } else {
+        if(!data.session){
+          showToast("Подтвердите email перед входом")
+        } else {
+          showToast("Успешный вход")
+          localStorage.setItem("isAuth", "true")
+          window.location.href = '/content.html'
         }
-        showToast('Учётная запись создана');
-        setMode('login');
       }
-    });
 
-    // Keyboard UX
-    document.addEventListener('keydown',(e)=>{
-      if(e.key==='Enter' && (document.activeElement===loginI || document.activeElement===passI)){
-        form.requestSubmit();
+    } else {
+      // 🔹 Регистрация с подтверждением email
+      const strong = scorePassword(passI.value) >= 60 && passI.value.length >= 8;
+      if(!strong){
+        showToast('Усилите пароль');
+        showError(passI, passErr);
+        passErr.textContent = 'Пароль недостаточно надёжный.';
+        btnLogin.classList.remove('loading');
+        btnLogin.disabled = false;
+        return;
       }
-      if(e.key==='Escape'){
-        loginI.blur(); passI.blur();
+
+      const { data, error } = await supabase.auth.signUp({
+        email: loginI.value.trim(),
+        password: passI.value.trim(),
+        options: {
+          emailRedirectTo: window.location.origin + '/content.html'
+        }
+      })
+
+      btnLogin.classList.remove('loading');
+      btnLogin.disabled = false;
+
+      if(error){
+        showToast("Ошибка регистрации: " + error.message)
+      } else {
+        showToast("Проверьте почту для подтверждения")
+        setMode('login')
       }
-    });
-
-    // Background canvas animation (aurora + particles)
-    const canvas = document.getElementById('bg');
-    const ctx = canvas.getContext('2d');
-    let W = canvas.width = window.innerWidth;
-    let H = canvas.height = window.innerHeight;
-    window.addEventListener('resize',()=>{ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; });
-
-    const particles = Array.from({length: 80}, ()=>({
-      x: Math.random()*W,
-      y: Math.random()*H,
-      r: Math.random()*1.8+0.6,
-      vx: (Math.random()-0.5)*0.6,
-      vy: (Math.random()-0.5)*0.6,
-      a: Math.random()*0.6+0.4
-    }));
-
-    let t = 0;
-    function aurora(y, amp, freq, phase){
-      const grd = ctx.createLinearGradient(0, y-amp, 0, y+amp);
-      grd.addColorStop(0, 'rgba(96,230,197,0.04)');
-      grd.addColorStop(0.5, 'rgba(107,168,255,0.06)');
-      grd.addColorStop(1, 'rgba(255,215,107,0.05)');
-      ctx.fillStyle = grd;
-      const h = amp*(Math.sin(t*0.6+phase)*0.4+0.6)+80;
-      ctx.fillRect(0, y-h, W, h*2);
     }
+  });
 
-    function step(){
-      ctx.clearRect(0,0,W,H);
-
-      // subtle vignette
-      const v = ctx.createRadialGradient(W/2, H/2, H*0.15, W/2, H/2, H*0.9);
-      v.addColorStop(0, 'rgba(0,0,0,0)');
-      v.addColorStop(1, 'rgba(0,0,0,0.35)');
-      ctx.fillStyle = v;
-      ctx.fillRect(0,0,W,H);
-
-      // layered aurora bands
-      aurora(H*0.28, 140, 0.002, 0);
-      aurora(H*0.58, 180, 0.002, 2.2);
-      aurora(H*0.78, 220, 0.002, 4.4);
-
-      // particles
-      for(const p of particles){
-        p.x += p.vx; p.y += p.vy;
-        if(p.x<0||p.x>W) p.vx*=-1;
-        if(p.y<0||p.y>H) p.vy*=-1;
-
-        ctx.beginPath();
-                ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(255,255,255,'+p.a*0.35+')';
-        ctx.fill();
-
-        // glow
-        ctx.shadowColor = 'rgba(255,215,107,0.25)';
-        ctx.shadowBlur = 6;
-      }
-      ctx.shadowBlur = 0;
-
-      // soft beams
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = 'rgba(255,215,107,0.06)';
-      ctx.lineWidth = 2;
-      for(let i=0;i<6;i++){
-        ctx.beginPath();
-        const px = W*(0.15 + i*0.14 + Math.sin(t*0.6+i)*0.02);
-        ctx.moveTo(px, H*0.1);
-        ctx.lineTo(px, H*0.9);
-        ctx.stroke();
-      }
-      ctx.globalCompositeOperation = 'source-over';
-
-      t += 0.01;
-      requestAnimationFrame(step);
+  // Keyboard UX
+  document.addEventListener('keydown',(e)=>{
+    if(e.key==='Enter' && (document.activeElement===loginI || document.activeElement===passI)){
+      form.requestSubmit();
     }
-    step();
+    if(e.key==='Escape'){
+      loginI.blur(); passI.blur();
+    }
+  });
 
-    // Initial focus
-    loginI.focus();
+  // Background canvas animation (оставляем без изменений)
+  const canvas = document.getElementById('bg');
+  const ctx = canvas.getContext('2d');
+  let W = canvas.width = window.innerWidth;
+  let H = canvas.height = window.innerHeight;
+  window.addEventListener('resize',()=>{ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; });
+
+  const particles = Array.from({length: 80}, ()=>({
+    x: Math.random()*W,
+    y: Math.random()*H,
+    r: Math.random()*1.8+0.6,
+    vx: (Math.random()-0.5)*0.6,
+    vy: (Math.random()-0.5)*0.6,
+    a: Math.random()*0.6+0.4
+  }));
+
+  let t = 0;
+   function aurora(y, amp, freq, phase){
+    const grd = ctx.createLinearGradient(0, y-amp, 0, y+amp);
+    grd.addColorStop(0, 'rgba(96,230,197,0.04)');
+    grd.addColorStop(0.5, 'rgba(107,168,255,0.06)');
+    grd.addColorStop(1, 'rgba(255,215,107,0.05)');
+    ctx.fillStyle = grd;
+    const h = amp*(Math.sin(t*0.6+phase)*0.4+0.6)+80;
+    ctx.fillRect(0, y-h, W, h*2);
+  }
+
+  function step(){
+    ctx.clearRect(0,0,W,H);
+
+    // subtle vignette
+    const v = ctx.createRadialGradient(W/2, H/2, H*0.15, W/2, H/2, H*0.9);
+    v.addColorStop(0, 'rgba(0,0,0,0)');
+    v.addColorStop(1, 'rgba(0,0,0,0.35)');
+    ctx.fillStyle = v;
+    ctx.fillRect(0,0,W,H);
+
+    // layered aurora bands
+    aurora(H*0.28, 140, 0.002, 0);
+    aurora(H*0.58, 180, 0.002, 2.2);
+    aurora(H*0.78, 220, 0.002, 4.4);
+
+    // particles
+    for(const p of particles){
+      p.x += p.vx; p.y += p.vy;
+      if(p.x<0||p.x>W) p.vx*=-1;
+      if(p.y<0||p.y>H) p.vy*=-1;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255,255,255,'+p.a*0.35+')';
+      ctx.fill();
+
+      // glow
+      ctx.shadowColor = 'rgba(255,215,107,0.25)';
+      ctx.shadowBlur = 6;
+    }
+    ctx.shadowBlur = 0;
+
+    // soft beams
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = 'rgba(255,215,107,0.06)';
+    ctx.lineWidth = 2;
+    for(let i=0;i<6;i++){
+      ctx.beginPath();
+      const px = W*(0.15 + i*0.14 + Math.sin(t*0.6+i)*0.02);
+      ctx.moveTo(px, H*0.1);
+      ctx.lineTo(px, H*0.9);
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+
+    t += 0.01;
+    requestAnimationFrame(step);
+  }
+  step();
+
+  // Initial focus
+  loginI.focus();
+
+  // 🔹 Автоматическая проверка: если уже авторизован в Supabase → редиректим
+  supabase.auth.getSession().then(({ data }) => {
+    if (data.session) {
+      window.location.href = '/content.html'
+    }
+  })
 </script>
 </body>
 </html>
