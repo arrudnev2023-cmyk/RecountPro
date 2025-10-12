@@ -180,6 +180,9 @@
       font-size: 0.9rem;
       cursor: pointer;
     }
+
+    /* Скрытие карточек при поиске */
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -229,8 +232,8 @@
   </div>
 
   <!-- Скрытый input для загрузки PDF -->
-  <input type="file" id="upload" accept=".pdf" style="display:none;" />
-  <!-- Модальное окно для итогов -->
+  <input type="file" id="upload" accept=".pdf" style="display:none;"
+      <!-- Модальное окно для итогов -->
   <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
        background:rgba(0,0,0,0.6); z-index:2000; justify-content:center; align-items:center;">
     <div style="background:#fff; max-width:600px; width:90%; max-height:80%; overflow-y:auto;
@@ -449,19 +452,18 @@
   }
 
   // Поиск
- searchInput.addEventListener("input", () => {
-  const query = searchInput.value.trim().toLowerCase();
-  document.querySelectorAll("#list .item").forEach(div => {
-    const code = div.dataset.code;
-    const item = allItems.find(i => i.code === code);
-    if (!item) return;
-    const name = (item.name || "").toString().trim().toLowerCase();
-    const codeStr = (item.code || "").toString();
-    const match = name.includes(query) || codeStr.includes(query);
-    div.classList.toggle("hidden", !match);
+  searchInput.addEventListener("input", () => {
+    const query = searchInput.value.trim().toLowerCase();
+    document.querySelectorAll("#list .item").forEach(div => {
+      const code = div.dataset.code;
+      const item = allItems.find(i => i.code === code);
+      if (!item) { div.classList.add("hidden"); return; }
+      const name = String(item.name || "").trim().toLowerCase();
+      const codeStr = String(item.code || "");
+      const match = name.includes(query) || codeStr.includes(query);
+      div.classList.toggle("hidden", !match);
+    });
   });
-});
-
 
   document.getElementById("clear-search").addEventListener("click", () => {
     searchInput.value = '';
