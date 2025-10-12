@@ -372,6 +372,33 @@
   </div>
 
   <script>
+    <script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js'
+
+  const SUPABASE_URL = "https://iqiebsxvdspmtqzlihqyk.supabase.co"
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxZWJzeHZkc3BtdHF6bGlocXlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MTk1ODUsImV4cCI6MjA3NDM5NTU4NX0.KJpvUiuKDZDWagH4xW4UVul_nyAGnqqJ3QYJYy8-I-I"
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  // Проверка авторизации и подтверждения email
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      window.location.href = "/login.html"
+      return
+    }
+
+    const user = session.user
+    if (!user.email_confirmed_at) {
+      alert("Подтвердите email, чтобы продолжить")
+      await supabase.auth.signOut()
+      window.location.href = "/login.html"
+    }
+  }
+
+  checkAuth()
+</script>
+<script>
   const ROUTES = {
     recount: "demo.html",
     subscription: "subscription.html",
