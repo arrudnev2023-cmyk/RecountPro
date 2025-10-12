@@ -255,6 +255,43 @@
     </table>
   </div>
 <script>
+  // Проверка авторизации при загрузке
+  const isAuth = localStorage.getItem("isAuth");
+  if (isAuth !== "true") {
+    window.location.href = "/login.html";
+  }
+
+  // Время последней активности
+  const LAST_ACTIVITY_KEY = "lastActivity";
+  const MAX_IDLE_TIME = 6 * 60 * 60 * 1000; // 6 часов в миллисекундах
+
+  function updateActivity() {
+    localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+  }
+
+  function checkIdleTime() {
+    const last = parseInt(localStorage.getItem(LAST_ACTIVITY_KEY) || "0", 10);
+    const now = Date.now();
+    if (last && now - last > MAX_IDLE_TIME) {
+      // Сбрасываем авторизацию и редиректим
+      localStorage.removeItem("isAuth");
+      window.location.href = "/login.html";
+    }
+  }
+
+  // Обновляем активность при любом действии пользователя
+  ["click", "keydown", "mousemove", "scroll", "touchstart"].forEach(evt => {
+    document.addEventListener(evt, updateActivity, { passive: true });
+  });
+
+  // Проверяем активность каждые 60 секунд
+  setInterval(checkIdleTime, 60 * 1000);
+
+  // При первой загрузке обновляем активность
+  updateActivity();
+</script>
+  <script>
+
   const list = document.getElementById("list");
   const searchInput = document.getElementById("search");
   const keyboard = document.getElementById("custom-keyboard");
