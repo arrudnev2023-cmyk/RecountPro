@@ -230,7 +230,7 @@
     </table>
   </div>
 <script>
-  // Фиксируем высоту экрана для мобильных (vh-баг)
+  // фиксируем высоту экрана для мобильных (vh-баг)
   function setVh() {
     document.documentElement.style.setProperty('--vh', window.innerHeight * 0.01 + 'px');
   }
@@ -243,7 +243,39 @@
   let allItems = [], activeInput = null;
   let sessionValues = {};
 
-  // Рендер списка товаров
+  // загрузка PDF и парсинг
+  document.getElementById("upload").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async function() {
+      const typedarray = new Uint8Array(this.result);
+      const pdf = await pdfjsLib.getDocument(typedarray).promise;
+      let textContent = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const text = await page.getTextContent();
+        text.items.forEach(item => textContent += item.str + " ");
+      }
+      // простейший парсер: строки вида "код название кол-во цена"
+      allItems = textContent.split(/\n|\r/).map(line => {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 4) {
+          return {
+            code: parts[0],
+            name: parts.slice(1, parts.length-2).join(" "),
+            unit: "шт",
+            price: parseFloat(parts[parts.length-1]) || 0,
+            docQty: parseInt(parts[parts.length-2]) || 0
+          };
+        }
+      }).filter(Boolean);
+      render(allItems);
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  // рендер списка
   function render(items) {
     list.innerHTML = '';
     items.forEach(item => {
@@ -267,7 +299,7 @@
     attachInputHandlers();
   }
 
-  // Обработчики для инпутов и клавиатуры
+  // обработчики для инпутов и клавиатуры
   function attachInputHandlers() {
     document.querySelectorAll('input[data-code]').forEach(input => {
       input.addEventListener('focus', () => {
@@ -300,13 +332,13 @@
     });
   }
 
-  // Поиск
+  // поиск
   searchInput.addEventListener("input", () => {
     const query = searchInput.value.toLowerCase();
     document.querySelectorAll("#list .item").forEach(div => {
       const code = div.dataset.code;
       const item = allItems.find(i => i.code === code);
-      const match = item.name.toLowerCase().includes(query) || item.code.includes(query);
+      const match = item && (item.name.toLowerCase().includes(query) || item.code.includes(query));
       div.classList.toggle("hidden", !match);
     });
   });
@@ -315,31 +347,49 @@
     document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
   });
 
-  // Экспорт PDF
+  // экспорт PDF
   function exportPDF() {
     const element = document.getElementById("export-area");
     document.getElementById("export-summary").innerText = "Итоговый пересчёт";
+    const tbody = document.getElementById("export-table-body");
+    tbody.innerHTML = "";
+    allItems.forEach(item => {
+      const fact = sessionValues[item.code] || 0;
+      const diff = fact - item.docQty;
+      tbody.innerHTML += `
+        <tr>
+          <td>${item.code}</td>
+          <td>${item.name}</td>
+          <td>${item.unit}</td>
+          <td>${item.price.toFixed(2)}</td>
+          <td>${item.docQty}</td>
+          <td>${fact}</td>
+          <td>${diff}</td>
+        </tr>`;
+    });
     const opt = {
-      margin:       0.2,
-      filename:     'recount.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2 },
-      jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+      margin: 0.2,
+      filename: 'recount.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
     html2pdf().set(opt).from(element).save();
   }
 
-  // Итоговое модальное окно
+  // итоговое модальное окно
   function showSummaryModal() {
     let html = "";
-    Object.keys(sessionValues).forEach(code => {
-      html += `<div>${code}: ${sessionValues[code]}</div>`;
+    allItems.forEach(item => {
+      const fact = sessionValues[item.code] || 0;
+      const diff = fact - item.docQty;
+      html += `<div>${item.code} — факт: ${fact}, по документам: ${item.docQty}, расхождение: ${diff}</div>`;
     });
     document.getElementById("modal-content").innerHTML = html || "Нет данных";
     document.getElementById("modal").style.display = "flex";
   }
 
-  // Сессии
+  // сессии
   function saveSession() {
     localStorage.setItem("recountSession", JSON.stringify(sessionValues));
     alert("Сессия сохранена");
@@ -354,18 +404,18 @@
     render(allItems);
   }
 
-  // Меню
+  // меню
   document.getElementById("menu-toggle").addEventListener("click", () => {
     const menu = document.getElementById("menu-actions");
     menu.style.display = menu.style.display === "flex" ? "none" : "flex";
   });
 
-  // Фонарик (заглушка)
+  // фонарик (заглушка)
   document.getElementById("flashlight-btn").addEventListener("click", () => {
     alert("Фонарик включен (демо)");
   });
 
-  // 🌌 Анимация фона
+  // 🌌 анимация фона
   const canvas = document.getElementById("bg");
   const ctx = canvas.getContext("2d");
   function resizeCanvas() {
@@ -396,14 +446,6 @@
     requestAnimationFrame(animate);
   }
   animate();
-
-  // Демо-данные
-  allItems = [
-    { code:"1001", name:"Товар A", unit:"шт", price:120, docQty:10 },
-    { code:"1002", name:"Товар B", unit:"шт", price:250, docQty:5 },
-    { code:"1003", name:"Товар C", unit:"шт", price:75, docQty:20 }
-  ];
-  render(allItems);
 </script>
 </body>
 </html>
