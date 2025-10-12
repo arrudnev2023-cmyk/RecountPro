@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>RecountPro — Профиль</title>
+  <style>
+    :root {
+      --accent: #6d28d9;
+      --accent-light: #a78bfa;
+      --text: #1f2937;
+      --border: #d1d5db;
+      --bg: #0a0a0a;
+      --card: #ffffff;
+      --muted: #6b7280;
+    }
+    html, body {
+      margin: 0; padding: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--text);
+      background: #f9fafb;
+    }
+    /* Фиксированная шапка */
+    h1 {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 1001;
+      background: var(--accent);
+      color: #fff;
+      padding: 1rem;
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 700;
+      text-align: center;
+    }
+    /* Контентный контейнер */
+    .page {
+      padding-top: 4.5rem; /* под шапку */
+      padding-bottom: 3rem;
+      max-width: 860px;
+      margin: 0 auto;
+      padding-left: 1rem; padding-right: 1rem;
+    }
+    /* Карточка профиля */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.07);
+      padding: 1rem;
+    }
+    .card h2 {
+      margin: 0 0 0.75rem 0;
+      font-size: 1.1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 1rem;
+    }
+    .field { margin-bottom: 0.75rem; }
+    .label { font-weight: 600; font-size: 0.95rem; }
+    .desc { font-size: 0.85rem; color: var(--muted); }
+    input[type="text"], input[type="email"], input[type="file"], select, textarea {
+      width: 100%;
+      padding: 0.6rem;
+      font-size: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-sizing: border-box;
+      background: #fff;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    .actions {
+      display: flex; gap: 0.5rem; flex-wrap: wrap;
+      margin-top: 0.75rem;
+    }
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .btn.secondary {
+      background: #fff;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .avatar {
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .avatar img {
+      width: 120px; height: 120px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+    .switch {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+    }
+    .pill {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      font-size: 0.8rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: #fff;
+    }
+    .section {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px dashed var(--border);
+    }
+  </style>
+</head>
+<body>
+  <h1>RecountPro — Профиль</h1>
+  <div class="page">
+    <div class="card">
+      <h2>Личные данные</h2>
+      <div class="grid">
+        <!-- Левая колонка: поля -->
+        <div>
+          <div class="field">
+            <div class="label">Имя</div>
+            <input type="text" id="firstName" placeholder="Иван" />
+          </div>
+          <div class="field">
+            <div class="label">Фамилия</div>
+            <input type="text" id="lastName" placeholder="Иванов" />
+          </div>
+          <div class="field">
+            <div class="label">Должность</div>
+            <input type="text" id="position" placeholder="Кладовщик / Менеджер / Руководитель" />
+          </div>
+          <div class="field">
+            <div class="label">Email</div>
+            <input type="email" id="email" placeholder="you@example.com" />
+          </div>
+          <div class="field">
+            <div class="label">Телефон</div>
+            <input type="text" id="phone" placeholder="+7 (___) ___‑__‑__" />
+          </div>
+          <div class="field">
+            <div class="label">О себе</div>
+            <textarea id="bio" placeholder="Короткое описание, примечания по учёту, зона ответственности..."></textarea>
+          </div>
+
+          <div class="section">
+            <h2 style="margin:0 0 0.5rem 0; font-size:1rem;">Настройки</h2>
+            <div class="field">
+              <label class="switch">
+                <input type="checkbox" id="twoFA" />
+                <span>Двухфакторная аутентификация</span>
+              </label>
+            </div>
+            <div class="field">
+              <label class="switch">
+                <input type="checkbox" id="notify" />
+                <span>Уведомления об итогах пересчёта</span>
+              </label>
+            </div>
+            <div class="field">
+              <div class="label">Тема</div>
+              <select id="theme">
+                <option value="system">Системная</option>
+                <option value="light">Светлая</option>
+                <option value="dark">Тёмная</option>
+              </select>
+            </div>
+            <div class="actions">
+              <button class="btn" id="saveProfile">💾 Сохранить</button>
+              <button class="btn secondary" id="resetProfile">↺ Сбросить</button>
+              <span class="pill" id="saveStatus">Не сохранено</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Правая колонка: фото -->
+        <div>
+          <div class="label">Фото профиля</div>
+          <div class="avatar">
+            <img id="avatarPreview" src="" alt="Фото" />
+            <div style="flex:1;">
+              <input type="file" id="avatarFile" accept="image/*" />
+              <div class="desc">Выберите изображение. Будет сохранено локально.</div>
+              <div class="actions" style="margin-top:0.5rem;">
+                <button class="btn secondary" id="removeAvatar">🗑 Удалить фото</button>
+                <button class="btn secondary" id="downloadVCard">📥 vCard</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2 style="margin:0 0 0.5rem 0; font-size:1rem;">Безопасность</h2>
+            <div class="field">
+              <div class="label">Сменить пароль</div>
+              <input type="text" id="newPassword" placeholder="Новый пароль" />
+              <div class="desc">Пароль хранится не в браузере. Здесь — только отправка на сервер (заглушка).</div>
+              <div class="actions">
+                <button class="btn secondary" id="changePassword">🔒 Сменить пароль</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="section card" style="margin-top:1rem;">
+      <h2>Профиль — действия</h2>
+      <div class="actions">
+        <button class="btn" id="goRecount">📦 Пересчёт</button>
+        <button class="btn secondary" id="logout">🚪 Выйти</button>
+      </div>
+      <div class="desc" style="margin-top:0.5rem;">
+        После выхода авторизация сбрасывается. При бездействии более 6 часов — автоматический выход.
+      </div>
+    </div>
+  </div>
+<script>
+  // Авторизация и таймаут активности
+  const LAST_ACTIVITY_KEY = "lastActivity";
+  const MAX_IDLE_TIME = 6 * 60 * 60 * 1000; // 6 часов
+  const isAuth = localStorage.getItem("isAuth");
+
+  if (isAuth !== "true") {
+    window.location.href = "/login.html";
+  }
+
+  function updateActivity() {
+    localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+  }
+  function checkIdleTime() {
+    const last = parseInt(localStorage.getItem(LAST_ACTIVITY_KEY) || "0", 10);
+    const now = Date.now();
+    if (last && now - last > MAX_IDLE_TIME) {
+      localStorage.removeItem("isAuth");
+      window.location.href = "/login.html";
+    }
+  }
+  ["click","keydown","mousemove","scroll","touchstart"].forEach(evt => {
+    document.addEventListener(evt, updateActivity, { passive: true });
+  });
+  setInterval(checkIdleTime, 60 * 1000);
+  updateActivity();
+
+  // Элементы
+  const $ = id => document.getElementById(id);
+  const fields = ["firstName","lastName","position","email","phone","bio","twoFA","notify","theme"];
+  const avatarPreview = $("avatarPreview");
+  const avatarFile = $("avatarFile");
+  const saveStatus = $("saveStatus");
+
+  // Загрузка профиля из localStorage
+  function loadProfile() {
+    const raw = localStorage.getItem("profile");
+    if (!raw) return;
+    try {
+      const p = JSON.parse(raw);
+      $("firstName").value = p.firstName || "";
+      $("lastName").value = p.lastName || "";
+      $("position").value = p.position || "";
+      $("email").value = p.email || "";
+      $("phone").value = p.phone || "";
+      $("bio").value = p.bio || "";
+      $("twoFA").checked = !!p.twoFA;
+      $("notify").checked = !!p.notify;
+      $("theme").value = p.theme || "system";
+      if (p.avatar) avatarPreview.src = p.avatar; else avatarPreview.removeAttribute("src");
+      applyTheme(p.theme || "system");
+      saveStatus.textContent = "Загружено";
+    } catch {
+      saveStatus.textContent = "Ошибка загрузки";
+    }
+  }
+
+  // Сохранение профиля в localStorage
+  function saveProfile() {
+    const p = {
+      firstName: $("firstName").value.trim(),
+      lastName: $("lastName").value.trim(),
+      position: $("position").value.trim(),
+      email: $("email").value.trim(),
+      phone: $("phone").value.trim(),
+      bio: $("bio").value.trim(),
+      twoFA: $("twoFA").checked,
+      notify: $("notify").checked,
+      theme: $("theme").value,
+      avatar: avatarPreview.src || ""
+    };
+    localStorage.setItem("profile", JSON.stringify(p));
+    saveStatus.textContent = "Сохранено";
+  }
+
+  // Сброс профиля (только локально)
+  function resetProfile() {
+    if (!confirm("Сбросить локальные данные профиля?")) return;
+    localStorage.removeItem("profile");
+    fields.forEach(f => {
+      if (["twoFA","notify"].includes(f)) $(f).checked = false;
+      else if (f === "theme") $(f).value = "system";
+      else $(f).value = "";
+    });
+    avatarPreview.removeAttribute("src");
+    saveStatus.textContent = "Сброшено";
+  }
+
+  // Загрузка изображения и предпросмотр
+  avatarFile.addEventListener("change", async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      avatarPreview.src = reader.result;
+      saveStatus.textContent = "Фото загружено (не сохранено)";
+    };
+    reader.readAsDataURL(file);
+  });
+  $("removeAvatar").addEventListener("click", () => {
+    avatarPreview.removeAttribute("src");
+    avatarFile.value = "";
+    saveStatus.textContent = "Фото удалено (не сохранено)";
+  });
+
+  // vCard генерация (скачать .vcf)
+  $("downloadVCard").addEventListener("click", () => {
+    const first = $("firstName").value.trim();
+    const last = $("lastName").value.trim();
+    const email = $("email").value.trim();
+    const phone = $("phone").value.trim();
+    const title = $("position").value.trim();
+    const vcf = [
+      "BEGIN:VCARD",
+      "VERSION:3.0",
+      `N:${last};${first};;;`,
+      `FN:${first} ${last}`.trim(),
+      title ? `TITLE:${title}` : "",
+      email ? `EMAIL;TYPE=INTERNET:${email}` : "",
+      phone ? `TEL;TYPE=CELL:${phone}` : "",
+      "END:VCARD"
+    ].filter(Boolean).join("\n");
+    const blob = new Blob([vcf], { type: "text/vcard;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `recountpro_${first || "user"}_${last || "profile"}.vcf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  // Тема
+  function applyTheme(theme) {
+    if (theme === "dark") {
+      document.documentElement.style.background = "#0b0b0c";
+      document.body.style.background = "#0b0b0c";
+      document.body.style.color = "#e5e7eb";
+    } else if (theme === "light") {
+      document.documentElement.style.background = "#f9fafb";
+      document.body.style.background = "#f9fafb";
+      document.body.style.color = varText();
+    } else {
+      document.documentElement.removeAttribute("style");
+      document.body.removeAttribute("style");
+    }
+  }
+  function varText(){ return getComputedStyle(document.documentElement).getPropertyValue('--text'); }
+  $("theme").addEventListener("change", e => {
+    applyTheme(e.target.value);
+    saveStatus.textContent = "Тема изменена (не сохранено)";
+  });
+
+  // Навигация и выход
+  $("goRecount").addEventListener("click", () => {
+    updateActivity();
+    window.location.href = "/recount.html";
+  });
+  $("logout").addEventListener("click", () => {
+    if (!confirm("Выйти из аккаунта?")) return;
+    localStorage.removeItem("isAuth");
+    window.location.href = "/login.html";
+  });
+
+  // Смена пароля (заглушка)
+  $("changePassword").addEventListener("click", () => {
+    const newPass = $("newPassword").value.trim();
+    if (!newPass) return alert("Введите новый пароль");
+    // Здесь был бы запрос к серверу. Пока просто информируем:
+    alert("Запрос на смену пароля отправлен (заглушка)");
+    $("newPassword").value = "";
+  });
+
+  // Сохранение/сброс
+  $("saveProfile").addEventListener("click", saveProfile);
+  $("resetProfile").addEventListener("click", resetProfile);
+
+  // Инициализация
+  loadProfile();
+</script>
+</body>
+</html>
