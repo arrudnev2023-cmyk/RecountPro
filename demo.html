@@ -9,20 +9,23 @@
   <style>
     :root {
       --accent: #6d28d9;
-      --accent-light: #a78bfa;
       --text: #1f2937;
       --border: #d1d5db;
-      --vh: 1vh; /* динамическая высота */
+      --vh: 1vh;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--text);
+      height: 100%;
+      overscroll-behavior: contain;
     }
     body {
-      font-family: "Segoe UI", system-ui, sans-serif;
-      margin: 0;
-      color: var(--text);
-      padding-top: 6.5rem; /* учтены фиксированные заголовок и поиск */
+      padding-top: 6.5rem; /* фиксированный header + поиск */
       padding-bottom: 14rem;
       overflow-x: hidden;
     }
-    /* Фон canvas */
     #bg {
       position: fixed;
       top:0; left:0;
@@ -32,9 +35,7 @@
     }
     h1 {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
       z-index: 1001;
       background: var(--accent);
       color: #fff;
@@ -46,9 +47,8 @@
     }
     #search-container {
       position: fixed;
-      top: 3.2rem; /* отступ под заголовок */
-      left: 0;
-      right: 0;
+      top: 3.2rem;
+      left: 0; right: 0;
       z-index: 1000;
       background: #fff;
       border-bottom: 1px solid var(--border);
@@ -65,13 +65,10 @@
     }
     #clear-search {
       position: absolute;
-      right: 0.5rem;
-      top: 50%;
+      right: 0.5rem; top: 50%;
       transform: translateY(-50%);
-      background: none;
-      border: none;
-      font-size: 1.2rem;
-      color: #888;
+      background: none; border: none;
+      font-size: 1.2rem; color: #888;
       cursor: pointer;
     }
     #upload {
@@ -79,49 +76,38 @@
       margin: 1rem auto;
       font-size: 1rem;
       padding: 0.6rem;
-      width: 90%;
-      max-width: 500px;
+      width: 90%; max-width: 500px;
       border-radius: 8px;
       border: 1px solid var(--border);
       background: #fff;
     }
     .item {
-      background: linear-gradient(135deg, #ffffff, #f9fafb);
+      background: #fff;
       margin: 0.5rem auto;
       padding: 1rem;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       max-width: 600px;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
     }
-    .item:hover {
-      transform: translateY(-2px) scale(1.01);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-    }
-    .item.match { background: linear-gradient(135deg, #e0ffe0, #f9fff9); }
-    .item.missing { background: linear-gradient(135deg, #ffe0e0, #fff9f9); }
-    .item.excess { background: linear-gradient(135deg, #e0f0ff, #f9fbff); }
+    .item.match { background: #e0ffe0; }
+    .item.missing { background: #ffe0e0; }
+    .item.excess { background: #e0f0ff; }
     .field { margin-bottom: 0.5rem; font-size: 0.95rem; }
-    .label { font-weight: 600; color: var(--text); }
+    .label { font-weight: 600; }
     input[data-code] {
       width: 100%;
       padding: 0.6rem;
       font-size: 1rem;
-      box-sizing: border-box;
       border: 1px solid var(--border);
       border-radius: 8px;
       background: #fefefe;
-      touch-action: manipulation;
     }
-
-    /* Кастомная клавиатура */
     #custom-keyboard {
       display: grid;
       position: fixed;
       bottom: -40vh;
-      left: 0;
-      width: 100%;
-      height: calc(var(--vh) * 33); /* вместо 33vh */
+      left: 0; width: 100%;
+      height: calc(var(--vh) * 33);
       background: #111;
       padding: 0.5rem;
       box-sizing: border-box;
@@ -133,69 +119,53 @@
     }
     #custom-keyboard.show { bottom: 0; }
     #custom-keyboard button {
-      width: 100%;
-      height: 100%;
       font-size: 1.6rem;
-      background: #333;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
+      background: #333; color: #fff;
+      border: none; border-radius: 8px;
       cursor: pointer;
     }
-
-    /* Меню */
     #menu-wrapper {
       position: fixed;
-      bottom: 1rem;
-      right: 1rem;
+      bottom: 1rem; right: 1rem;
       z-index: 1001;
-      display: flex;
-      flex-direction: column;
+      display: flex; flex-direction: column;
       align-items: flex-end;
     }
     #menu-toggle, #flashlight-btn {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 0.7rem 1rem;
-      border-radius: 8px;
-      font-size: 1rem;
+      background: var(--accent); color: #fff;
+      border: none; padding: 0.7rem 1rem;
+      border-radius: 8px; font-size: 1rem;
       cursor: pointer;
       box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
     #menu-actions {
-      display: none;
-      flex-direction: column;
-      gap: 0.4rem;
-      margin-top: 0.5rem;
-      background: #fff;
-      padding: 0.6rem;
+      display: none; flex-direction: column;
+      gap: 0.4rem; margin-top: 0.5rem;
+      background: #fff; padding: 0.6rem;
       border-radius: 10px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     }
     #menu-actions button {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 0.5rem;
-      border-radius: 6px;
-      font-size: 0.9rem;
+      background: var(--accent); color: #fff;
+      border: none; padding: 0.5rem;
+      border-radius: 6px; font-size: 0.9rem;
       cursor: pointer;
     }
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
-  <!-- Фон canvas -->
   <canvas id="bg"></canvas>
   <h1>RecountPro — Пересчёт</h1>
   <input type="file" id="upload" accept=".pdf" />
+
   <div id="search-container">
     <div id="search-wrapper">
       <input type="text" id="search" placeholder="Поиск..." autocomplete="off" />
       <button id="clear-search">×</button>
     </div>
   </div>
+
   <div id="list"></div>
 
   <div id="menu-wrapper">
@@ -218,64 +188,48 @@
     <button>7</button><button>8</button><button>9</button>
     <button>+</button><button>0</button><button>←</button>
   </div>
-  <!-- Модальное окно для итогов -->
+  <!-- Модалка итогового пересчёта -->
   <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
        background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center;">
     <div style="background:#fff; max-width:600px; width:90%; max-height:80%; overflow-y:auto;
-                border-radius:10px; padding:1rem; box-shadow:0 2px 10px rgba(0,0,0,0.3);">
-      <h2 style="margin-top:0;">Итог пересчёта</h2>
+                border-radius:10px; padding:1rem;">
+      <h2>Итог пересчёта</h2>
       <div id="modal-content"></div>
-      <button onclick="document.getElementById('modal').style.display='none'" 
-              style="margin-top:1rem; background:var(--border); border:none; padding:0.5rem 1rem;
-                     border-radius:8px; cursor:pointer;">Закрыть</button>
+      <button onclick="document.getElementById('modal').style.display='none'">Закрыть</button>
     </div>
   </div>
 
-  <!-- Модальное окно для сессий -->
+  <!-- Модалка управления сессиями -->
   <div id="session-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
        background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center;">
     <div style="background:#fff; max-width:600px; width:90%; max-height:80%; overflow-y:auto;
-                border-radius:10px; padding:1rem; box-shadow:0 2px 10px rgba(0,0,0,0.3);">
-      <h2 style="margin-top:0;">Сессии</h2>
+                border-radius:10px; padding:1rem;">
+      <h2>Сессии</h2>
       <div id="session-list"></div>
-      <button onclick="document.getElementById('session-modal').style.display='none'" 
-              style="margin-top:1rem; background:var(--border); border:none; padding:0.5rem 1rem;
-                     border-radius:8px; cursor:pointer;">Закрыть</button>
+      <button onclick="document.getElementById('session-modal').style.display='none'">Закрыть</button>
     </div>
   </div>
 
-  <!-- Область экспорта PDF -->
+  <!-- Зона для экспорта PDF -->
   <div id="export-area" style="display:none; padding:0.3rem; font-size:10px;">
     <h2 style="margin:0;">Итог пересчёта</h2>
     <div id="export-summary"></div>
     <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
       <thead>
         <tr>
-          <th style="width:60px;">Артикул</th>
-          <th style="width:140px;">Название</th>
-          <th style="width:60px;">Размерность</th>
-          <th style="width:50px;">Цена</th>
-          <th style="width:60px;">По документам</th>
-          <th style="width:140px;">Факт</th>
-          <th style="width:50px;">Расхождение</th>
+          <th>Артикул</th>
+          <th>Название</th>
+          <th>Размерность</th>
+          <th>Цена</th>
+          <th>По документам</th>
+          <th>Факт</th>
+          <th>Расхождение</th>
         </tr>
       </thead>
       <tbody id="export-table-body"></tbody>
     </table>
   </div>
 <script>
-  // Проверка авторизации
-  const isAuth = localStorage.getItem("isAuth");
-  if (isAuth !== "true") {
-    window.location.href = "/login.html";
-  }
-
-  const list = document.getElementById("list");
-  const searchInput = document.getElementById("search");
-  const keyboard = document.getElementById("custom-keyboard");
-  let allItems = [], activeInput = null;
-  let sessionValues = {};
-
   // Фиксируем высоту экрана для мобильных (vh-баг)
   function setVh() {
     document.documentElement.style.setProperty('--vh', window.innerHeight * 0.01 + 'px');
@@ -283,76 +237,12 @@
   window.addEventListener('resize', setVh);
   setVh();
 
-  // Восстановление при загрузке страницы
-  window.addEventListener("DOMContentLoaded", () => {
-    const savedSession = localStorage.getItem("autosave_session");
-    if (savedSession) {
-      try {
-        const session = JSON.parse(savedSession);
-        allItems = session.items || [];
-        sessionValues = session.values || {};
-        if (allItems.length > 0) render(allItems);
-      } catch {}
-    }
-  });
+  const list = document.getElementById("list");
+  const searchInput = document.getElementById("search");
+  const keyboard = document.getElementById("custom-keyboard");
+  let allItems = [], activeInput = null;
+  let sessionValues = {};
 
-  // Автосохранение
-  function autosave() {
-    const session = { items: allItems, values: sessionValues };
-    localStorage.setItem("autosave_session", JSON.stringify(session));
-  }
-
-  // Группировка текста по строкам PDF
-  function groupByY(items) {
-    const lines = {};
-    items.forEach(item => {
-      const y = Math.round(item.transform[5]);
-      if (!lines[y]) lines[y] = [];
-      lines[y].push({ str: item.str, x: item.transform[4] });
-    });
-    return Object.values(lines).map(words =>
-      words.sort((a, b) => a.x - b.x).map(w => w.str).join(' ')
-    );
-  }
-
-  // Парсинг строк в объекты товаров
-  function parseLines(lines) {
-    const items = [];
-    for (let line of lines) {
-      line = line.trim();
-      if (!/^\d+\s+\d{4,6}/.test(line)) continue;
-
-      const match = line.match(/^(\d+)\s+(\d{4,6})\s+(.+?)\s+(\d+\*\d+)?\s+([\d.,]+)\s+(.*)$/i);
-      if (match) {
-        const rawTail = match[6];
-        const qtyMatches = [...rawTail.matchAll(/(\d+)\s*шт/gi)];
-        const docQty = qtyMatches.length > 0 ? parseInt(qtyMatches[qtyMatches.length - 1][1]) : null;
-
-        items.push({
-          code: match[2],
-          name: match[3].trim(),
-          unit: match[4] || '',
-          price: parseFloat(match[5].replace(',', '.')),
-          docQty
-        });
-      }
-    }
-    return items;
-  }
-
-  // Обновление итогов (для экспорта/модалки)
-  function updateSummary(items) {
-    let match = 0, missing = 0, excess = 0, delta = 0;
-    items.forEach(item => {
-      const input = document.querySelector(`input[data-code="${item.code}"]`);
-      if (!input) return;
-      const raw = input.value.trim();
-      const actual = parseFloat(raw.replace(',', '.')) || 0;
-      if (actual === item.docQty) match++;
-      else if (actual < item.docQty) { missing++; delta += item.docQty - actual; }
-      else { excess++; delta += actual - item.docQty; }
-    });
-  }
   // Рендер списка товаров
   function render(items) {
     list.innerHTML = '';
@@ -372,31 +262,23 @@
           <input type="text" data-code="${item.code}" inputmode="none" value="${value}" />
         </div>
       `;
-      let actual = 0;
-      try { actual = Function("return " + value.replace(',', '.'))() || 0; } catch {}
-      if (actual === item.docQty) div.classList.add("match");
-      else if (actual < item.docQty) div.classList.add("missing");
-      else if (actual > item.docQty) div.classList.add("excess");
       list.appendChild(div);
     });
-    updateSummary(allItems);
     attachInputHandlers();
   }
 
-  // Подключение обработчиков для инпутов и клавиатуры
+  // Обработчики для инпутов и клавиатуры
   function attachInputHandlers() {
     document.querySelectorAll('input[data-code]').forEach(input => {
       input.addEventListener('focus', () => {
         activeInput = input;
         keyboard.classList.add("show");
-        // scrollIntoView убираем для поиска, оставляем только для карточек
-        if (input.dataset.code) {
-          setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-        }
+      });
+      input.addEventListener('input', () => {
+        sessionValues[input.dataset.code] = input.value;
       });
     });
 
-    // Клики по кнопкам клавиатуры
     keyboard.querySelectorAll('button').forEach(btn => {
       btn.onclick = () => {
         if (!activeInput) return;
@@ -410,7 +292,6 @@
       };
     });
 
-    // Клик вне клавиатуры скрывает её
     document.addEventListener("click", e => {
       if (!e.target.closest("#custom-keyboard") && !e.target.matches("input[data-code]")) {
         keyboard.classList.remove("show");
@@ -429,115 +310,48 @@
       div.classList.toggle("hidden", !match);
     });
   });
-
   document.getElementById("clear-search").addEventListener("click", () => {
     searchInput.value = '';
     document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
   });
 
-  // Обработка ввода значений
-  list.addEventListener("input", e => {
-    if (e.target.tagName === "INPUT") {
-      const code = e.target.dataset.code;
-      const value = e.target.value;
-      sessionValues[code] = value;
-      localStorage.setItem("qty_" + code, value);
-
-      const raw = value.replace(',', '.');
-      let actual = 0;
-      try { actual = Function("return " + raw)(); } catch {}
-      const item = allItems.find(i => i.code === code);
-      const card = e.target.closest(".item");
-      card.classList.remove("match", "missing", "excess");
-      if (actual === item.docQty) card.classList.add("match");
-      else if (actual < item.docQty) card.classList.add("missing");
-      else if (actual > item.docQty) card.classList.add("excess");
-
-      updateSummary(allItems);
-      autosave();
-    }
-  });
-
   // Экспорт PDF
   function exportPDF() {
-    const exportArea = document.getElementById("export-area");
-    const summary = document.getElementById("export-summary");
-    const tbody = document.getElementById("export-table-body");
-    summary.innerHTML = '';
-    tbody.innerHTML = '';
-    exportArea.style.display = "block";
-    window.scrollTo(0, 0);
-
-    let totalPlus = 0, totalMinus = 0;
-
-    allItems.forEach(item => {
-      const input = document.querySelector(`input[data-code="${item.code}"]`);
-      const raw = input ? input.value : "";
-      let actual = 0;
-      try { actual = Function("return " + raw.replace(',', '.'))() || 0; } catch {}
-      const delta = actual - item.docQty;
-      if (delta > 0) totalPlus += delta * item.price;
-      else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
-
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${item.code}</td>
-        <td>${item.name}</td>
-        <td>${item.unit}</td>
-        <td>${item.price.toFixed(2)}</td>
-        <td>${item.docQty}</td>
-        <td>${raw}</td>
-        <td>${delta}</td>
-      `;
-      tbody.appendChild(row);
-    });
-
-    summary.innerHTML = `
-      🧾 Недостача: –${totalMinus.toFixed(2)} ₽<br>
-      💰 Избыток: +${totalPlus.toFixed(2)} ₽
-    `;
-
-    const filename = prompt("Введите имя файла", "RecountPro.pdf");
-    if (filename) {
-      const opt = {
-        margin: 0.2,
-        filename,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 1.1 },
-        jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all'] }
-      };
-      html2pdf().set(opt).from(exportArea).toPdf().get('pdf').then(pdf => {
-        const totalPages = pdf.internal.getNumberOfPages();
-        for (let i = 1; i <= totalPages; i++) {
-          pdf.setPage(i);
-          pdf.setFontSize(8);
-          pdf.text(`Страница ${i} из ${totalPages}`,
-            pdf.internal.pageSize.getWidth() - 60,
-            pdf.internal.pageSize.getHeight() - 10);
-        }
-      }).save().then(() => {
-        exportArea.style.display = "none";
-      });
-    } else {
-      exportArea.style.display = "none";
-    }
+    const element = document.getElementById("export-area");
+    document.getElementById("export-summary").innerText = "Итоговый пересчёт";
+    const opt = {
+      margin:       0.2,
+      filename:     'recount.pdf',
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2 },
+      jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
   }
 
   // Итоговое модальное окно
   function showSummaryModal() {
-    let html = '';
-    allItems.forEach(item => {
-      const raw = sessionValues[item.code] || "";
-      let actual = 0;
-      try { actual = Function("return " + raw.replace(',', '.'))() || 0; } catch {}
-      const delta = actual - item.docQty;
-      if (delta !== 0) {
-        html += `<div><strong>${item.name}</strong> (${item.code}): ${actual} шт → ${delta > 0 ? '+' : ''}${delta}</div>`;
-      }
+    let html = "";
+    Object.keys(sessionValues).forEach(code => {
+      html += `<div>${code}: ${sessionValues[code]}</div>`;
     });
-    document.getElementById("modal-content").innerHTML = html || "<div>Нет расхождений</div>";
+    document.getElementById("modal-content").innerHTML = html || "Нет данных";
     document.getElementById("modal").style.display = "flex";
+  }
+
+  // Сессии
+  function saveSession() {
+    localStorage.setItem("recountSession", JSON.stringify(sessionValues));
+    alert("Сессия сохранена");
+  }
+  function openSessionModal() {
+    const data = localStorage.getItem("recountSession");
+    document.getElementById("session-list").innerText = data || "Нет сохранённых данных";
+    document.getElementById("session-modal").style.display = "flex";
+  }
+  function clearRecount() {
+    sessionValues = {};
+    render(allItems);
   }
 
   // Меню
@@ -546,140 +360,12 @@
     menu.style.display = menu.style.display === "flex" ? "none" : "flex";
   });
 
-  // Загрузка PDF
-  document.getElementById("upload").addEventListener("change", async e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const arrayBuffer = await file.arrayBuffer();
-
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
-
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let allLines = [];
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-            const grouped = groupByY(content.items);
-      allLines.push(...grouped);
-    }
-    allItems = parseLines(allLines);
-    sessionValues = {};
-    allItems.forEach(item => {
-      const saved = localStorage.getItem("qty_" + item.code);
-      if (saved) sessionValues[item.code] = saved;
-    });
-    render(allItems);
-    autosave();
+  // Фонарик (заглушка)
+  document.getElementById("flashlight-btn").addEventListener("click", () => {
+    alert("Фонарик включен (демо)");
   });
 
-  // Очистка пересчёта
-  function clearRecount() {
-    if (confirm("Очистить пересчёт?")) {
-      localStorage.removeItem("autosave_session");
-      allItems = [];
-      sessionValues = {};
-      list.innerHTML = '';
-      updateSummary([]);
-    }
-  }
-
-  // Сессии
-  function saveSession() {
-    const name = prompt("Введите имя сессии");
-    if (!name) return;
-    const session = { items: allItems, values: sessionValues };
-    localStorage.setItem("session_" + name, JSON.stringify(session));
-    localStorage.setItem("active_session", name);
-    alert("Сессия сохранена: " + name);
-  }
-
-  function openSessionModal() {
-    const container = document.getElementById("session-list");
-    container.innerHTML = '';
-    const keys = Object.keys(localStorage).filter(k => k.startsWith("session_"));
-    if (keys.length === 0) {
-      container.innerHTML = "<div>Нет сохранённых сессий</div>";
-    } else {
-      keys.forEach(key => {
-        const name = key.replace("session_", "");
-        const div = document.createElement("div");
-        div.style = "margin-bottom:0.5rem; padding:0.5rem; border:1px solid var(--border); border-radius:6px;";
-        div.innerHTML = `
-          <strong>${name}</strong>
-          <div style="margin-top:0.3rem;">
-            <button onclick="loadSession('${name}')">📂 Загрузить</button>
-            <button onclick="switchSession('${name}')">🔁 Активировать</button>
-            <button onclick="deleteSession('${name}')">🗑 Удалить</button>
-          </div>
-        `;
-        container.appendChild(div);
-      });
-    }
-    document.getElementById("session-modal").style.display = "flex";
-  }
-
-  function loadSession(name) {
-    const raw = localStorage.getItem("session_" + name);
-    if (!raw) return alert("Сессия не найдена");
-    try {
-      const session = JSON.parse(raw);
-      allItems = session.items;
-      sessionValues = session.values || {};
-      render(allItems);
-      alert("Сессия загружена: " + name);
-    } catch {
-      alert("Ошибка при загрузке сессии");
-    }
-  }
-
-  function switchSession(name) {
-    localStorage.setItem("active_session", name);
-    loadSession(name);
-  }
-
-  function deleteSession(name) {
-    if (!confirm("Удалить сессию: " + name + "?")) return;
-    localStorage.removeItem("session_" + name);
-    if (localStorage.getItem("active_session") === name) {
-      localStorage.removeItem("active_session");
-    }
-    openSessionModal();
-  }
-
-  // 🔦 Фонарик (аппаратный)
-  let flashlightStream = null;
-  let flashlightTrack = null;
-  let flashlightOn = false;
-
-  async function toggleFlashlight() {
-    try {
-      if (!flashlightOn) {
-        flashlightStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { exact: "environment" } }
-        });
-        flashlightTrack = flashlightStream.getVideoTracks()[0];
-        await flashlightTrack.applyConstraints({ advanced: [{ torch: true }] });
-        flashlightOn = true;
-      } else {
-        if (flashlightTrack) {
-          await flashlightTrack.applyConstraints({ advanced: [{ torch: false }] });
-          flashlightTrack.stop();
-        }
-        if (flashlightStream) {
-          flashlightStream.getTracks().forEach(t => t.stop());
-        }
-        flashlightOn = false;
-      }
-    } catch (err) {
-      alert("Фонарик не поддерживается на этом устройстве или браузере");
-      console.error(err);
-    }
-  }
-
-  document.getElementById("flashlight-btn").addEventListener("click", toggleFlashlight);
-
-  // 🌌 Анимация фона (мигающие пиксели)
+  // 🌌 Анимация фона
   const canvas = document.getElementById("bg");
   const ctx = canvas.getContext("2d");
   function resizeCanvas() {
@@ -689,7 +375,7 @@
   window.addEventListener("resize", resizeCanvas);
   resizeCanvas();
 
-  let pixels = Array.from({length:150}, () => ({
+  let pixels = Array.from({length:100}, () => ({
     x: Math.random()*canvas.width,
     y: Math.random()*canvas.height,
     r: Math.random()*2+1,
@@ -710,6 +396,14 @@
     requestAnimationFrame(animate);
   }
   animate();
+
+  // Демо-данные
+  allItems = [
+    { code:"1001", name:"Товар A", unit:"шт", price:120, docQty:10 },
+    { code:"1002", name:"Товар B", unit:"шт", price:250, docQty:5 },
+    { code:"1003", name:"Товар C", unit:"шт", price:75, docQty:20 }
+  ];
+  render(allItems);
 </script>
 </body>
 </html>
