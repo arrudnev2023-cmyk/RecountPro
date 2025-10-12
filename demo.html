@@ -62,12 +62,6 @@
       box-sizing: border-box;
       background: #fff;
     }
-    #search[autocomplete], #search {
-      autocomplete: off;
-      autocorrect: off;
-      autocapitalize: off;
-      spellcheck: false;
-    }
     #clear-search {
       position: absolute;
       right: 0.5rem;
@@ -217,6 +211,25 @@
     <button>7</button><button>8</button><button>9</button>
     <button>+</button><button>0</button><button>←</button>
   </div>
+
+  <!-- Меню -->
+  <div id="menu-wrapper">
+    <div style="display:flex; gap:0.5rem;">
+      <button id="flashlight-btn">🔦</button>
+      <button id="menu-toggle">📋 Меню</button>
+    </div>
+    <div id="menu-actions">
+      <button onclick="document.getElementById('upload').click()">📂 Загрузить PDF</button>
+      <button onclick="exportPDF()">📤 Скачать PDF</button>
+      <button onclick="saveSession()">💾 Сохранить сессию</button>
+      <button onclick="openSessionModal()">🗂 Управление сессиями</button>
+      <button onclick="showSummaryModal()">📊 Итог</button>
+      <button onclick="clearRecount()">🧹 Очистить пересчёт</button>
+    </div>
+  </div>
+
+  <!-- Скрытый input для загрузки PDF -->
+  <input type="file" id="upload" accept=".pdf" style="display:none;" />
   <!-- Модальное окно для итогов -->
   <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
        background:rgba(0,0,0,0.6); z-index:2000; justify-content:center; align-items:center;">
@@ -425,6 +438,14 @@
         activeInput.dispatchEvent(new Event("input"));
       };
     });
+
+    // Скрытие клавиатуры при клике вне
+    document.addEventListener("click", e => {
+      if (!e.target.closest("#custom-keyboard") && !e.target.matches("input[data-code]")) {
+        keyboard.classList.remove("show");
+        activeInput = null;
+      }
+    });
   }
 
   // Поиск
@@ -554,7 +575,7 @@
     menu.style.display = menu.style.display === "flex" ? "none" : "flex";
   });
 
-  // Загрузка PDF (перенесена в меню)
+  // Загрузка PDF
   document.getElementById("upload").addEventListener("change", async e => {
     const file = e.target.files[0];
     if (!file) return;
