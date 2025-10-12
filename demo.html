@@ -9,235 +9,168 @@
   <style>
     :root {
       --accent: #6d28d9;
-      --accent-light: #a78bfa;
       --text: #1f2937;
       --border: #d1d5db;
     }
-    body {
-  font-family: "Segoe UI", system-ui, sans-serif;
-  margin: 0;
-  color: var(--text);
-  /* увеличил отступ сверху, чтобы учесть фиксированный заголовок и поиск */
-  padding-top: 6.5rem;
-  padding-bottom: 14rem;
-  overflow-x: hidden;
-}
-    /* Фон canvas */
-    #bg {
-      position: fixed;
-      top:0; left:0;
-      width:100%; height:100%;
-      z-index:-1;
-      background: #0a0a0a;
+    body, html {
+      margin: 0; padding: 0;
+      height: 100%; width: 100%;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--text);
     }
-    h1 {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1001;
-  background: var(--accent);
-  color: #fff;
-  padding: 1rem;
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: bold;
-  text-align: center;
-}
-
-#search-container {
-  position: fixed;
-  top: 3.2rem; /* отступ под заголовок */
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  background: #fff;
-  border-bottom: 1px solid var(--border);
-}
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header#top-block {
+      flex: 0 0 auto;
+      background: var(--accent);
+      color: #fff;
+      padding: 0.5rem;
+      text-align: center;
+      position: relative;
+    }
+    header h1 { margin: 0; font-size: 1.3rem; }
+    #search-container {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 0.5rem;
+    }
     #search-wrapper { position: relative; max-width: 960px; margin: 0 auto; }
     #search {
-      width: 100%;
-      padding: 0.6rem 2.5rem 0.6rem 0.6rem;
-      font-size: 1rem;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      box-sizing: border-box;
-      background: #fff;
+      width: 100%; padding: 0.6rem 2.5rem 0.6rem 0.6rem;
+      font-size: 1rem; border: 1px solid var(--border);
+      border-radius: 8px; box-sizing: border-box;
     }
     #clear-search {
-      position: absolute;
-      right: 0.5rem;
-      top: 50%;
+      position: absolute; right: 0.5rem; top: 50%;
       transform: translateY(-50%);
-      background: none;
-      border: none;
-      font-size: 1.2rem;
-      color: #888;
-      cursor: pointer;
+      background: none; border: none; font-size: 1.2rem; cursor: pointer;
     }
-    #upload {
-      display: block;
-      margin: 1rem auto;
-      font-size: 1rem;
-      padding: 0.6rem;
-      width: 90%;
-      max-width: 500px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #fff;
+    main#middle-block {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding: 0.5rem;
+      background: #f9fafb;
     }
     .item {
-      background: linear-gradient(135deg, #ffffff, #f9fafb);
+      background: #fff;
       margin: 0.5rem auto;
       padding: 1rem;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       max-width: 600px;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
     }
-    .item:hover {
-      transform: translateY(-2px) scale(1.01);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-    }
-    .item.match { background: linear-gradient(135deg, #e0ffe0, #f9fff9); }
-    .item.missing { background: linear-gradient(135deg, #ffe0e0, #fff9f9); }
-    .item.excess { background: linear-gradient(135deg, #e0f0ff, #f9fbff); }
+    .item.match { background: #e0ffe0; }
+    .item.missing { background: #ffe0e0; }
+    .item.excess { background: #e0f0ff; }
     .field { margin-bottom: 0.5rem; font-size: 0.95rem; }
-    .label { font-weight: 600; color: var(--text); }
+    .label { font-weight: 600; }
     input[data-code] {
-      width: 100%;
-      padding: 0.6rem;
-      font-size: 1rem;
-      box-sizing: border-box;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: #fefefe;
-      touch-action: manipulation;
+      width: 100%; padding: 0.6rem; font-size: 1rem;
+      border: 1px solid var(--border); border-radius: 8px;
+    }
+    #menu-wrapper {
+      position: fixed; bottom: 1rem; right: 1rem;
+      z-index: 1001; display: flex; flex-direction: column; align-items: flex-end;
+    }
+    #menu-toggle, #flashlight-btn {
+      background: var(--accent); color: #fff;
+      border: none; padding: 0.7rem 1rem;
+      border-radius: 8px; font-size: 1rem; cursor: pointer;
+    }
+    #menu-actions {
+      display: none; flex-direction: column; gap: 0.4rem;
+      margin-top: 0.5rem; background: #fff; padding: 0.6rem;
+      border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    #menu-actions button {
+      background: var(--accent); color: #fff;
+      border: none; padding: 0.5rem;
+      border-radius: 6px; font-size: 0.9rem; cursor: pointer;
+    }
+    footer#bottom-block {
+      flex: 0 0 auto;
+      position: relative;
     }
     #custom-keyboard {
       display: grid;
       position: fixed;
-      bottom: -40vh;
-      left: 0;
-      width: 100%;
-      height: 33vh;
-      background: #111;
-      padding: 0.5rem;
-      box-sizing: border-box;
+      bottom: -40vh; left: 0; width: 100%;
+      height: 33vh; background: #111;
+      padding: 0.5rem; box-sizing: border-box;
       z-index: 3000;
       grid-template-columns: repeat(3, 1fr);
       grid-template-rows: repeat(4, 1fr);
-      gap: 0.5rem;
-      transition: bottom 0.3s ease;
+      gap: 0.5rem; transition: bottom 0.3s ease;
     }
     #custom-keyboard.show { bottom: 0; }
     #custom-keyboard button {
-      width: 100%;
-      height: 100%;
-      font-size: 1.6rem;
-      background: #333;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
+      font-size: 1.6rem; background: #333; color: #fff;
+      border: none; border-radius: 8px; cursor: pointer;
     }
-    #menu-wrapper {
-      position: fixed;
-      bottom: 1rem;
-      right: 1rem;
-      z-index: 1001;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
+    /* Стили таблицы экспорта */
+    #export-area table {
+      width: 100%; border-collapse: collapse; margin-top: 0.5rem;
     }
-    #menu-toggle, #flashlight-btn {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 0.7rem 1rem;
-      border-radius: 8px;
-      font-size: 1rem;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    #export-area th, #export-area td {
+      border: 1px solid #444; padding: 4px 6px;
+      font-size: 10px; text-align: center;
     }
-    #menu-actions {
-      display: none;
-      flex-direction: column;
-      gap: 0.4rem;
-      margin-top: 0.5rem;
-      background: #fff;
-      padding: 0.6rem;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    }
-    #menu-actions button {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 0.5rem;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
-    .hidden { display: none !important; }
+    #export-area th { background: #f0f0f0; }
   </style>
 </head>
 <body>
-  <!-- Фон canvas -->
-  <canvas id="bg"></canvas>
-  <h1>RecountPro — Пересчёт</h1>
-  <input type="file" id="upload" accept=".pdf" />
-  <div id="search-container">
-    <div id="search-wrapper">
-      <input type="text" id="search" placeholder="Поиск..." autocomplete="off" />
-      <button id="clear-search">×</button>
-    </div>
-  </div>
-  <div id="list"></div>
+  <div id="app">
+    <!-- Верхний блок -->
+    <header id="top-block">
+      <h1>RecountPro — Пересчёт</h1>
+      <div id="search-container">
+        <div id="search-wrapper">
+          <input type="text" id="search" placeholder="Поиск..." autocomplete="off" />
+          <button id="clear-search">×</button>
+        </div>
+      </div>
+    </header>
 
-  <div id="menu-wrapper">
-    <div style="display:flex; gap:0.5rem;">
-      <button id="flashlight-btn">🔦</button>
-      <button id="menu-toggle">📋 Меню</button>
-    </div>
-    <div id="menu-actions">
-      <button onclick="exportPDF()">📤 Скачать PDF</button>
-      <button onclick="saveSession()">💾 Сохранить сессию</button>
-      <button onclick="openSessionModal()">🗂 Управление сессиями</button>
-      <button onclick="showSummaryModal()">📊 Итог</button>
-      <button onclick="clearRecount()">🧹 Очистить пересчёт</button>
-    </div>
-  </div>
+    <!-- Средний блок -->
+    <main id="middle-block">
+      <input type="file" id="upload" accept=".pdf" />
+      <div id="list"></div>
+    </main>
 
-  <div id="custom-keyboard">
-    <button>1</button><button>2</button><button>3</button>
-    <button>4</button><button>5</button><button>6</button>
-    <button>7</button><button>8</button><button>9</button>
-    <button>+</button><button>0</button><button>←</button>
+    <!-- Нижний блок -->
+    <footer id="bottom-block">
+      <div id="custom-keyboard">
+        <button>1</button><button>2</button><button>3</button>
+        <button>4</button><button>5</button><button>6</button>
+        <button>7</button><button>8</button><button>9</button>
+        <button>+</button><button>0</button><button>←</button>
+      </div>
+    </footer>
   </div>
-  <!-- Модальное окно для итогов -->
+  <!-- Модалка итогов -->
   <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
        background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center;">
     <div style="background:#fff; max-width:600px; width:90%; max-height:80%; overflow-y:auto;
-                border-radius:10px; padding:1rem; box-shadow:0 2px 10px rgba(0,0,0,0.3);">
-      <h2 style="margin-top:0;">Итог пересчёта</h2>
+                border-radius:10px; padding:1rem;">
+      <h2>Итог пересчёта</h2>
       <div id="modal-content"></div>
-      <button onclick="document.getElementById('modal').style.display='none'" 
-              style="margin-top:1rem; background:var(--border); border:none; padding:0.5rem 1rem;
-                     border-radius:8px; cursor:pointer;">Закрыть</button>
+      <button onclick="document.getElementById('modal').style.display='none'">Закрыть</button>
     </div>
   </div>
 
-  <!-- Модальное окно для сессий -->
+  <!-- Модалка сессий -->
   <div id="session-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
        background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center;">
     <div style="background:#fff; max-width:600px; width:90%; max-height:80%; overflow-y:auto;
-                border-radius:10px; padding:1rem; box-shadow:0 2px 10px rgba(0,0,0,0.3);">
-      <h2 style="margin-top:0;">Сессии</h2>
+                border-radius:10px; padding:1rem;">
+      <h2>Сессии</h2>
       <div id="session-list"></div>
-      <button onclick="document.getElementById('session-modal').style.display='none'" 
-              style="margin-top:1rem; background:var(--border); border:none; padding:0.5rem 1rem;
-                     border-radius:8px; cursor:pointer;">Закрыть</button>
+           <button onclick="document.getElementById('session-modal').style.display='none'">
+        Закрыть
+      </button>
     </div>
   </div>
 
@@ -245,47 +178,27 @@
   <div id="export-area" style="display:none; padding:0.3rem; font-size:10px;">
     <h2 style="margin:0;">Итог пересчёта</h2>
     <div id="export-summary"></div>
-    <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+    <table>
       <thead>
         <tr>
-          <th style="width:60px;">Артикул</th>
-          <th style="width:140px;">Название</th>
-          <th style="width:60px;">Размерность</th>
-          <th style="width:50px;">Цена</th>
-          <th style="width:60px;">По документам</th>
-          <th style="width:140px;">Факт</th>
-          <th style="width:50px;">Расхождение</th>
+          <th>Артикул</th>
+          <th>Название</th>
+          <th>Размерность</th>
+          <th>Цена</th>
+          <th>По документам</th>
+          <th>Факт</th>
+          <th>Расхождение</th>
         </tr>
       </thead>
       <tbody id="export-table-body"></tbody>
     </table>
   </div>
 <script>
-  // Проверка авторизации
-  const isAuth = localStorage.getItem("isAuth");
-
-  if (isAuth !== "true") {
-    // если не авторизован — переброс на страницу логина
-    window.location.href = "/login.html";
-  }
   const list = document.getElementById("list");
   const searchInput = document.getElementById("search");
   const keyboard = document.getElementById("custom-keyboard");
   let allItems = [], activeInput = null;
   let sessionValues = {};
-
-  // Восстановление при загрузке страницы
-  window.addEventListener("DOMContentLoaded", () => {
-    const savedSession = localStorage.getItem("autosave_session");
-    if (savedSession) {
-      try {
-        const session = JSON.parse(savedSession);
-        allItems = session.items || [];
-        sessionValues = session.values || {};
-        if (allItems.length > 0) render(allItems);
-      } catch {}
-    }
-  });
 
   // Автосохранение
   function autosave() {
@@ -312,13 +225,11 @@
     for (let line of lines) {
       line = line.trim();
       if (!/^\d+\s+\d{4,6}/.test(line)) continue;
-
       const match = line.match(/^(\d+)\s+(\d{4,6})\s+(.+?)\s+(\d+\*\d+)?\s+([\d.,]+)\s+(.*)$/i);
       if (match) {
         const rawTail = match[6];
         const qtyMatches = [...rawTail.matchAll(/(\d+)\s*шт/gi)];
         const docQty = qtyMatches.length > 0 ? parseInt(qtyMatches[qtyMatches.length - 1][1]) : null;
-
         items.push({
           code: match[2],
           name: match[3].trim(),
@@ -329,21 +240,6 @@
       }
     }
     return items;
-  }
-
-  // Обновление итогов (для экспорта/модалки)
-  function updateSummary(items) {
-    let match = 0, missing = 0, excess = 0, delta = 0;
-    items.forEach(item => {
-      const input = document.querySelector(`input[data-code="${item.code}"]`);
-      if (!input) return;
-      const raw = input.value.trim();
-      const actual = parseFloat(raw.replace(',', '.')) || 0;
-      if (actual === item.docQty) match++;
-      else if (actual < item.docQty) { missing++; delta += item.docQty - actual; }
-      else { excess++; delta += actual - item.docQty; }
-    });
-    // строка снизу убрана, поэтому просто обновляем данные для экспорта
   }
 
   // Рендер списка товаров
@@ -365,27 +261,20 @@
           <input type="text" data-code="${item.code}" inputmode="none" value="${value}" />
         </div>
       `;
-      let actual = 0;
-      try { actual = Function("return " + value.replace(',', '.'))() || 0; } catch {}
-      if (actual === item.docQty) div.classList.add("match");
-      else if (actual < item.docQty) div.classList.add("missing");
-      else if (actual > item.docQty) div.classList.add("excess");
       list.appendChild(div);
     });
-    updateSummary(allItems);
     attachInputHandlers();
   }
-  // Подключение обработчиков для инпутов и клавиатуры
+
+  // Обработчики для инпутов и клавиатуры
   function attachInputHandlers() {
     document.querySelectorAll('input[data-code]').forEach(input => {
       input.addEventListener('focus', () => {
         activeInput = input;
-        keyboard.classList.add("show"); // выезжает снизу
+        keyboard.classList.add("show");
         setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       });
     });
-
-    // Клики по кнопкам клавиатуры
     keyboard.querySelectorAll('button').forEach(btn => {
       btn.onclick = () => {
         if (!activeInput) return;
@@ -398,8 +287,6 @@
         activeInput.dispatchEvent(new Event("input"));
       };
     });
-
-    // Клик вне клавиатуры скрывает её
     document.addEventListener("click", e => {
       if (!e.target.closest("#custom-keyboard") && !e.target.matches("input[data-code]")) {
         keyboard.classList.remove("show");
@@ -418,34 +305,11 @@
       div.classList.toggle("hidden", !match);
     });
   });
-
   document.getElementById("clear-search").addEventListener("click", () => {
     searchInput.value = '';
     document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
   });
 
-  // Обработка ввода значений
-  list.addEventListener("input", e => {
-    if (e.target.tagName === "INPUT") {
-      const code = e.target.dataset.code;
-      const value = e.target.value;
-      sessionValues[code] = value;
-      localStorage.setItem("qty_" + code, value);
-
-      const raw = value.replace(',', '.');
-      let actual = 0;
-      try { actual = Function("return " + raw)(); } catch {}
-      const item = allItems.find(i => i.code === code);
-      const card = e.target.closest(".item");
-      card.classList.remove("match", "missing", "excess");
-      if (actual === item.docQty) card.classList.add("match");
-      else if (actual < item.docQty) card.classList.add("missing");
-      else if (actual > item.docQty) card.classList.add("excess");
-
-      updateSummary(allItems);
-      autosave(); // сохраняем текущее состояние
-    }
-  });
   // Экспорт PDF
   function exportPDF() {
     const exportArea = document.getElementById("export-area");
@@ -457,7 +321,6 @@
     window.scrollTo(0, 0);
 
     let totalPlus = 0, totalMinus = 0;
-
     allItems.forEach(item => {
       const input = document.querySelector(`input[data-code="${item.code}"]`);
       const raw = input ? input.value : "";
@@ -466,7 +329,6 @@
       const delta = actual - item.docQty;
       if (delta > 0) totalPlus += delta * item.price;
       else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
-
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${item.code}</td>
@@ -479,12 +341,10 @@
       `;
       tbody.appendChild(row);
     });
-
     summary.innerHTML = `
       🧾 Недостача: –${totalMinus.toFixed(2)} ₽<br>
       💰 Избыток: +${totalPlus.toFixed(2)} ₽
     `;
-
     const filename = prompt("Введите имя файла", "RecountPro.pdf");
     if (filename) {
       const opt = {
@@ -495,7 +355,6 @@
         jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
         pagebreak: { mode: ['avoid-all'] }
       };
-
       html2pdf().set(opt).from(exportArea).toPdf().get('pdf').then(pdf => {
         const totalPages = pdf.internal.getNumberOfPages();
         for (let i = 1; i <= totalPages; i++) {
@@ -513,7 +372,7 @@
     }
   }
 
-  // Итоговое модальное окно
+    // Итоговое модальное окно
   function showSummaryModal() {
     let html = '';
     allItems.forEach(item => {
@@ -569,7 +428,6 @@
       allItems = [];
       sessionValues = {};
       list.innerHTML = '';
-      updateSummary([]);
     }
   }
 
@@ -636,7 +494,7 @@
     openSessionModal();
   }
 
-  // 🔦 Фонарик (аппаратный)
+  // 🔦 Фонарик
   let flashlightStream = null;
   let flashlightTrack = null;
   let flashlightOn = false;
@@ -665,11 +523,12 @@
       console.error(err);
     }
   }
-
   document.getElementById("flashlight-btn").addEventListener("click", toggleFlashlight);
 
-   // 🌌 Анимация фона (мигающие пиксели)
-  const canvas = document.getElementById("bg");
+  // 🌌 Анимация фона
+  const canvas = document.createElement("canvas");
+  canvas.id = "bg";
+  document.body.appendChild(canvas);
   const ctx = canvas.getContext("2d");
   function resizeCanvas() {
     canvas.width = window.innerWidth;
