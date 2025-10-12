@@ -449,15 +449,19 @@
   }
 
   // Поиск
-  searchInput.addEventListener("input", () => {
-    const query = searchInput.value.toLowerCase();
-    document.querySelectorAll("#list .item").forEach(div => {
-      const code = div.dataset.code;
-      const item = allItems.find(i => i.code === code);
-      const match = item.name.toLowerCase().includes(query) || item.code.includes(query);
-      div.classList.toggle("hidden", !match);
-    });
+ searchInput.addEventListener("input", () => {
+  const query = searchInput.value.trim().toLowerCase();
+  document.querySelectorAll("#list .item").forEach(div => {
+    const code = div.dataset.code;
+    const item = allItems.find(i => i.code === code);
+    if (!item) return;
+    const name = (item.name || "").toString().trim().toLowerCase();
+    const codeStr = (item.code || "").toString();
+    const match = name.includes(query) || codeStr.includes(query);
+    div.classList.toggle("hidden", !match);
   });
+});
+
 
   document.getElementById("clear-search").addEventListener("click", () => {
     searchInput.value = '';
