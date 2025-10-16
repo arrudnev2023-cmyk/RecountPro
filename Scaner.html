@@ -79,8 +79,10 @@ btnGenerate.addEventListener('click', async ()=>{
   const totalFrames=Math.ceil(fileBytes.length/payloadPerFrame);
   const frames=[];
   for(let i=0;i<totalFrames;i++){
-    const chunk=fileBytes.slice(i*payloadPerFrame,(i+1)*payloadPerFrame);
-    const frame=buildFrame(chunk,i,totalFrames,payloadPerFrame);
+    const start=i*payloadPerFrame;
+    const end=start+payloadPerFrame;
+    const chunk=fileBytes.slice(start,end);
+    const frame=buildFrame(chunk,i,totalFrames);
     frames.push(frame);
     encBar.style.width=`${((i+1)/totalFrames)*100}%`;
   }
@@ -100,13 +102,12 @@ btnGenerate.addEventListener('click', async ()=>{
   setTimeout(()=>rec.stop(),frames.length*100);
 });
 
-function buildFrame(chunk, index, total, payloadPerFrame){
+function buildFrame(chunk, index, total){
   const canvas=document.createElement('canvas');
   canvas.width=GRID; canvas.height=GRID;
   const ctx=canvas.getContext('2d');
   const img=ctx.createImageData(GRID,GRID);
 
-  // если первый кадр — пишем заголовок в R‑канал первых 512 пикселей
   if(index===0){
     const meta=JSON.stringify({name:fileName,size:fileBytes.length,total});
     const enc=new TextEncoder().encode(meta);
@@ -116,16 +117,24 @@ function buildFrame(chunk, index, total, payloadPerFrame){
       img.data[i*4+2]=0;        // B
       img.data[i*4+3]=255;      // A
     }
+    // полезные данные начинаем с HEADER_PIXELS
+    let ci=HEADER_PIXELS;
+    for(let i=0;i<chunk.length;i+=3){
+      const r=chunk[i]||0,g=chunk[i+1]||0,b=chunk[i+2]||0;
+      const idx=ci*4;
+      img.data[idx]=r; img.data[idx+1]=g; img.data[idx+2]=b; img.data[idx+3]=255;
+      ci++;
+    }
+  } else {
+    let ci=0;
+    for(let i=0;i<chunk.length;i+=3){
+      const r=chunk[i]||0,g=chunk[i+1]||0,b=chunk[i+2]||0;
+      const idx=ci*4;
+      img.data[idx]=r; img.data[idx+1]=g; img.data[idx+2]=b; img.data[idx+3]=255;
+      ci++;
+    }
   }
 
-  // полезные данные начинаем писать с пикселя HEADER_PIXELS
-  let ci=HEADER_PIXELS;
-  for(let i=0;i<chunk.length;i+=3){
-    const r=chunk[i]||0,g=chunk[i+1]||0,b=chunk[i+2]||0;
-    const idx=ci*4;
-    img.data[idx]=r; img.data[idx+1]=g; img.data[idx+2]=b; img.data[idx+3]=255;
-    ci++;
-  }
   ctx.putImageData(img,0,0);
   return canvas;
 }
@@ -178,11 +187,10 @@ async function decodeVideo(){
   for(let i=0;i<totalFrames;i++){
     video.currentTime=i/fps;
     await new Promise(r=>video.onseeked=r);
-    ctx.drawImage(video,0,0,GRID,GRID);
+        ctx.drawImage(video,0,0,GRID,GRID);
     const frame=ctx.getImageData(0,0,GRID,GRID).data;
 
     if(i===0){
-      // читаем заголовок из R‑канала первых 512 пик
       // читаем заголовок из R‑канала первых 512 пикселей
       let headerBytes = [];
       for(let j=0;j<HEADER_PIXELS;j++){
@@ -264,3 +272,4 @@ function assembleFile(){
 </script>
 </body>
 </html>
+
