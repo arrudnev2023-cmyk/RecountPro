@@ -49,6 +49,7 @@
 
 <script>
 const GRID=128, BYTES_PER_CELL=3, CELLS=GRID*GRID, PAYLOAD_PER_FRAME=CELLS*BYTES_PER_CELL;
+const HEADER_SIZE=512; // байт под заголовок
 
 // ===== КОДЕР =====
 const fileInput=document.getElementById('fileInput');
@@ -106,7 +107,7 @@ function buildFrame(chunk, index, total){
   if(index===0){
     const meta=JSON.stringify({name:fileName,size:fileBytes.length,total});
     const enc=new TextEncoder().encode(meta);
-    for(let i=0;i<enc.length && i<chunk.length;i++){
+    for(let i=0;i<enc.length && i<HEADER_SIZE;i++){
       chunk[i]=enc[i];
     }
   }
@@ -177,7 +178,7 @@ async function decodeVideo(){
     }
     const arr=new Uint8Array(chunk);
     if(i===0){
-      const raw=new TextDecoder().decode(arr);
+      const raw=new TextDecoder().decode(arr.slice(0,HEADER_SIZE));
       const end=raw.indexOf("}");
       if(end!==-1){
         try{
@@ -185,13 +186,17 @@ async function decodeVideo(){
           metaInfo=JSON.parse(json);
         }catch(e){ console.warn("Ошибка парсинга заголовка",e); }
       }
+            // убираем заголовок из полезных данных
+      framesData.push(arr.slice(HEADER_SIZE));
+    } else {
+      framesData.push(arr);
     }
-    framesData.push(arr);
     decBar.style.width=`${((i+1)/totalFrames)*100}%`;
     decStatus.textContent=`Кадров обработано: ${i+1}/${totalFrames}`;
   }
   assembleFile();
 }
+
 function assembleFile(){
   const totalLen = framesData.reduce((s,b)=>s+b.length,0);
   const out = new Uint8Array(totalLen);
@@ -201,7 +206,7 @@ function assembleFile(){
     o += c.length; 
   }
 
-  // Используем имя из метаданных, если оно есть
+  // Используем имя из метаданных
   let fileName = "output.bin";
   if(metaInfo && metaInfo.name){
     fileName = metaInfo.name;
@@ -220,5 +225,3 @@ function assembleFile(){
 </body>
 </html>
 
-
- 
