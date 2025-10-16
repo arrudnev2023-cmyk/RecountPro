@@ -15,7 +15,7 @@
     .bar { height:100%; width:0%; background:linear-gradient(90deg,#4b8cff,#7aa6ff); }
     video,canvas { width:100%; max-width:320px; margin-top:8px; border-radius:8px; }
     .muted { color:#8b949e; font-size:13px; margin-top:4px; }
-    .debug { color:#58a6ff; font-size:13px; margin-top:6px; }
+    .debug { color:#58a6ff; font-size:13px; margin-top:6px; white-space:pre-wrap; }
   </style>
 </head>
 <body>
@@ -186,9 +186,14 @@ async function decodeVideo(){
         try{
           const json=raw.slice(0,end+1);
           metaInfo=JSON.parse(json);
-        }catch(e){ console.warn("Ошибка парсинга заголовка",e); }
+                    debugInfo.textContent = "Заголовок прочитан: " + json;
+        }catch(e){ 
+          debugInfo.textContent = "Ошибка парсинга заголовка: " + e;
+        }
+      } else {
+        debugInfo.textContent = "Закрывающая скобка не найдена в заголовке";
       }
-            // убираем заголовок из полезных данных
+      // убираем заголовок из полезных данных
       framesData.push(arr.slice(HEADER_SIZE));
     } else {
       framesData.push(arr);
@@ -216,13 +221,14 @@ function assembleFile(){
 
   // Определяем MIME по расширению
   let mime = "application/octet-stream";
-  if(fileName.toLowerCase().endsWith(".jpg") || fileName.toLowerCase().endsWith(".jpeg")) mime = "image/jpeg";
-  if(fileName.toLowerCase().endsWith(".png")) mime = "image/png";
-  if(fileName.toLowerCase().endsWith(".gif")) mime = "image/gif";
-  if(fileName.toLowerCase().endsWith(".pdf")) mime = "application/pdf";
-  if(fileName.toLowerCase().endsWith(".mp3")) mime = "audio/mpeg";
-  if(fileName.toLowerCase().endsWith(".mp4")) mime = "video/mp4";
-  if(fileName.toLowerCase().endsWith(".zip")) mime = "application/zip";
+  const lower = fileName.toLowerCase();
+  if(lower.endsWith(".jpg") || lower.endsWith(".jpeg")) mime = "image/jpeg";
+  if(lower.endsWith(".png")) mime = "image/png";
+  if(lower.endsWith(".gif")) mime = "image/gif";
+  if(lower.endsWith(".pdf")) mime = "application/pdf";
+  if(lower.endsWith(".mp3")) mime = "audio/mpeg";
+  if(lower.endsWith(".mp4")) mime = "video/mp4";
+  if(lower.endsWith(".zip")) mime = "application/zip";
 
   const blob = new Blob([out], {type: mime});
   const url = URL.createObjectURL(blob);
@@ -232,7 +238,7 @@ function assembleFile(){
   downloadLink.style.display = "block";
 
   decStatus.textContent = `✅ Файл собран: ${fileName}`;
-  debugInfo.textContent = `Формат определён как ${mime} (по расширению ${fileName.split('.').pop()})`;
+  debugInfo.textContent += `\nИтоговое имя файла: ${fileName}\nФормат определён как ${mime}`;
 }
 </script>
 </body>
