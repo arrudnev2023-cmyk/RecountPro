@@ -27,6 +27,9 @@
     <button id="btnGenerate" disabled>Преобразовать в видео</button>
     <div class="progress"><div class="bar" id="encBar"></div></div>
     <video id="genVideo" controls></video>
+    <a id="downloadVideo" href="#" download="visualdrop.webm" style="display:none;">
+      <button>Скачать видео</button>
+    </a>
     <div class="muted" id="encStatus">Файл не выбран</div>
   </div>
 
@@ -53,6 +56,7 @@ const btnGenerate=document.getElementById('btnGenerate');
 const encBar=document.getElementById('encBar');
 const encStatus=document.getElementById('encStatus');
 const genVideo=document.getElementById('genVideo');
+const downloadVideo=document.getElementById('downloadVideo');
 
 let fileBytes=null;
 
@@ -85,6 +89,8 @@ btnGenerate.addEventListener('click', async ()=>{
     const blob=new Blob(chunks,{type:"video/webm"});
     const url=URL.createObjectURL(blob);
     genVideo.src=url;
+    downloadVideo.href=url;
+    downloadVideo.style.display="block";
     encStatus.textContent=`Видео готово (${totalFrames} кадров)`;
   };
   rec.start();
