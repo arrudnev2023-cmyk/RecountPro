@@ -28,7 +28,7 @@
     <button id="btnGenerate" disabled>Преобразовать в видео</button>
     <div class="progress"><div class="bar" id="encBar"></div></div>
     <video id="genVideo" controls></video>
-    <a id="downloadVideo" href="#" download="visualdrop.webm" style="display:none;">
+    <a id="downloadVideo" href="#" download="visualdrop.mp4" style="display:none;">
       <button>Скачать видео</button>
     </a>
     <div class="muted" id="encStatus">Файл не выбран</div>
@@ -87,16 +87,21 @@ btnGenerate.addEventListener('click', async ()=>{
     encBar.style.width=`${((i+1)/totalFrames)*100}%`;
   }
   const stream=canvasStream(frames,10);
-  const rec=new MediaRecorder(stream,{mimeType:"video/webm"});
+  let rec;
+  try {
+    rec=new MediaRecorder(stream,{mimeType:"video/mp4"}); // пробуем mp4
+  } catch(e){
+    rec=new MediaRecorder(stream,{mimeType:"video/webm"}); // fallback
+  }
   const chunks=[];
   rec.ondataavailable=e=>chunks.push(e.data);
   rec.onstop=()=>{
-    const blob=new Blob(chunks,{type:"video/webm"});
+    const blob=new Blob(chunks,{type:rec.mimeType});
     const url=URL.createObjectURL(blob);
     genVideo.src=url;
     downloadVideo.href=url;
     downloadVideo.style.display="block";
-    encStatus.textContent=`Видео готово (${totalFrames} кадров)`;
+    encStatus.textContent=`Видео готово (${frames.length} кадров, формат ${rec.mimeType})`;
   };
   rec.start();
   setTimeout(()=>rec.stop(),frames.length*100);
@@ -111,14 +116,19 @@ function buildFrame(chunk, index, total){
   if(index===0){
     const meta=JSON.stringify({name:fileName,size:fileBytes.length,total});
     const enc=new TextEncoder().encode(meta);
-    for(let i=0;i<HEADER_PIXELS && i<enc.length;i++){
-      img.data[i*4]=enc[i];     // R
-      img.data[i*4+1]=0;        // G
-      img.data[i*4+2]=0;        // B
-      img.data[i*4+3]=255;      // A
+    // дублируем заголовок три раза подряд
+    for(let d=0; d<3; d++){
+      for(let i=0;i<HEADER_PIXELS && i<enc.length;i++){
+        const pos=i+d*HEADER_PIXELS;
+        if(pos>=HEADER_PIXELS*3) break;
+        img.data[pos*4]=enc[i]; // R
+        img.data[pos*4+1]=0;
+        img.data[pos*4+2]=0;
+        img.data[pos*4+3]=255;
+      }
     }
-    // полезные данные начинаем с HEADER_PIXELS
-    let ci=HEADER_PIXELS;
+    // данные начинаем после зоны заголовка
+    let ci=HEADER_PIXELS*3;
     for(let i=0;i<chunk.length;i+=3){
       const r=chunk[i]||0,g=chunk[i+1]||0,b=chunk[i+2]||0;
       const idx=ci*4;
@@ -170,7 +180,7 @@ videoInput.addEventListener('change',()=>{
   const url=URL.createObjectURL(f);
   video.src=url;
   btnDecode.disabled=false;
-  decStatus.textContent=`Загружено видео: ${f.name}`;
+    decStatus.textContent=`Загружено видео: ${f.name}`;
 });
 
 btnDecode.addEventListener('click',async ()=>{
@@ -187,14 +197,14 @@ async function decodeVideo(){
   for(let i=0;i<totalFrames;i++){
     video.currentTime=i/fps;
     await new Promise(r=>video.onseeked=r);
-        ctx.drawImage(video,0,0,GRID,GRID);
+    ctx.drawImage(video,0,0,GRID,GRID);
     const frame=ctx.getImageData(0,0,GRID,GRID).data;
 
     if(i===0){
-      // читаем заголовок из R‑канала первых 512 пикселей
+      // читаем заголовок из R‑канала первых 512*3 пикселей (3 копии)
       let headerBytes = [];
-      for(let j=0;j<HEADER_PIXELS;j++){
-        headerBytes.push(frame[j*4]); // берём только R-канал
+      for(let j=0;j<HEADER_PIXELS*3;j++){
+        headerBytes.push(frame[j*4]);
       }
       const raw = new TextDecoder().decode(new Uint8Array(headerBytes));
       const end = raw.indexOf("}");
@@ -210,9 +220,9 @@ async function decodeVideo(){
         debugInfo.textContent = "Закрывающая скобка не найдена в заголовке";
       }
 
-      // полезные данные начинаем читать с пикселя HEADER_PIXELS
+      // полезные данные начинаем читать с пикселя HEADER_PIXELS*3
       let chunk=[];
-      for(let j=HEADER_PIXELS;j<CELLS;j++){
+      for(let j=HEADER_PIXELS*3;j<CELLS;j++){
         const idx=j*4;
         chunk.push(frame[idx],frame[idx+1],frame[idx+2]);
       }
