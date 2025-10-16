@@ -15,6 +15,7 @@
     .bar { height:100%; width:0%; background:linear-gradient(90deg,#4b8cff,#7aa6ff); }
     video,canvas { width:100%; max-width:320px; margin-top:8px; border-radius:8px; }
     .muted { color:#8b949e; font-size:13px; margin-top:4px; }
+    .debug { color:#58a6ff; font-size:13px; margin-top:6px; }
   </style>
 </head>
 <body>
@@ -45,6 +46,7 @@
     <video id="video" controls></video>
     <canvas id="canvas" width="128" height="128" style="display:none;"></canvas>
     <div class="muted" id="decStatus">Видео не выбрано</div>
+    <div class="debug" id="debugInfo"></div>
   </div>
 
 <script>
@@ -142,7 +144,7 @@ const video=document.getElementById('video');
 const canvas=document.getElementById('canvas');
 const ctx=canvas.getContext('2d');
 const downloadLink=document.getElementById('downloadLink');
-const btnDownload=document.getElementById('btnDownload');
+const debugInfo=document.getElementById('debugInfo');
 
 let framesData=[], metaInfo=null;
 
@@ -206,13 +208,23 @@ function assembleFile(){
     o += c.length; 
   }
 
-  // Используем имя из метаданных
+  // Имя файла из метаданных
   let fileName = "output.bin";
   if(metaInfo && metaInfo.name){
     fileName = metaInfo.name;
   }
 
-  const blob = new Blob([out], {type:"application/octet-stream"});
+  // Определяем MIME по расширению
+  let mime = "application/octet-stream";
+  if(fileName.toLowerCase().endsWith(".jpg") || fileName.toLowerCase().endsWith(".jpeg")) mime = "image/jpeg";
+  if(fileName.toLowerCase().endsWith(".png")) mime = "image/png";
+  if(fileName.toLowerCase().endsWith(".gif")) mime = "image/gif";
+  if(fileName.toLowerCase().endsWith(".pdf")) mime = "application/pdf";
+  if(fileName.toLowerCase().endsWith(".mp3")) mime = "audio/mpeg";
+  if(fileName.toLowerCase().endsWith(".mp4")) mime = "video/mp4";
+  if(fileName.toLowerCase().endsWith(".zip")) mime = "application/zip";
+
+  const blob = new Blob([out], {type: mime});
   const url = URL.createObjectURL(blob);
 
   downloadLink.href = url;
@@ -220,6 +232,7 @@ function assembleFile(){
   downloadLink.style.display = "block";
 
   decStatus.textContent = `✅ Файл собран: ${fileName}`;
+  debugInfo.textContent = `Формат определён как ${mime} (по расширению ${fileName.split('.').pop()})`;
 }
 </script>
 </body>
