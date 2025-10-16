@@ -1,473 +1,182 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>VisualDrop — Кодер и сканер</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8">
+  <title>VisualDrop — Кодер и Сканер</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <style>
-    :root {
-      --bg:#0b0e12; --card:#12161c; --accent:#4b8cff; --text:#e6edf3; --muted:#8b949e; --ok:#22c55e; --warn:#f59e0b;
-    }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "SF Pro Display"; background: var(--bg); color: var(--text); }
-    header { padding: 20px; border-bottom: 1px solid #1f2329; }
-    header h1 { margin:0; font-size: 20px; font-weight: 600; }
-    header small { color: var(--muted); }
-    main { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 24px; }
-    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
-    .card { background: var(--card); border: 1px solid #1f2329; border-radius: 12px; padding: 16px; }
-    h2 { margin: 0 0 12px; font-size: 18px; }
-    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
-    button { background: var(--accent); color:white; border:none; border-radius:10px; padding:10px 14px; font-weight:600; cursor:pointer; }
-    button:disabled { opacity:.5; cursor:not-allowed; }
-    .muted { color: var(--muted); font-size: 13px; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
-    .progress { height:10px; background:#1f2329; border-radius:999px; overflow:hidden; }
-    .bar { height:100%; width:0%; background: linear-gradient(90deg, var(--accent), #7aa6ff); }
-    .grid-wrap { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
-    canvas { background:#0a0d12; border:1px solid #1f2329; border-radius:8px; image-rendering: pixelated; }
-    .pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; font-size:12px; background:#0d1117; border:1px solid #1f2329; }
-    .ok { color: var(--ok); }
-    .warn { color: var(--warn); }
-    .qr { width:256px; height:256px; background:white; display:grid; place-items:center; border-radius:8px; overflow:hidden; }
-    .codebox { background:#0d1117; border:1px dashed #2a2f37; padding:10px; border-radius:8px; font-size:12px; }
-    footer { padding: 12px 20px; border-top: 1px solid #1f2329; color: var(--muted); font-size: 12px; }
+    body { font-family: sans-serif; background:#0d1117; color:#e6edf3; margin:0; padding:12px; }
+    h1 { font-size:18px; margin:12px 0; }
+    .card { background:#161b22; padding:16px; border-radius:12px; margin-bottom:16px; }
+    button,input[type=file] { width:100%; margin:6px 0; padding:10px; border-radius:8px; border:none; font-weight:600; }
+    button { background:#4b8cff; color:white; }
+    button:disabled { opacity:.5; }
+    .progress { height:10px; background:#30363d; border-radius:999px; overflow:hidden; margin:8px 0; }
+    .bar { height:100%; width:0%; background:linear-gradient(90deg,#4b8cff,#7aa6ff); }
+    video,canvas { width:100%; max-width:320px; margin-top:8px; border-radius:8px; }
+    .muted { color:#8b949e; font-size:13px; margin-top:4px; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>VisualDrop — офлайн передача файла через камеру</h1>
-    <small>Кодер (ноутбук) → cканер (телефон). Для больших файлов используется анимированная последовательность кадров.</small>
-  </header>
+  <h1>📲 VisualDrop — Кодер и Сканер</h1>
 
-  <main>
-    <!-- КОДЕР -->
-    <section class="card" id="encoder">
-      <h2>Кодер</h2>
-      <div class="row">
-        <input type="file" id="fileInput" />
-        <button id="btnLoad">Загрузить файл</button>
-        <button id="btnGenerate" disabled>Получить визуальный код</button>
-      </div>
-      <div class="muted" id="fileInfo">Файл не выбран</div>
-      <div class="progress" style="margin:12px 0;"><div class="bar" id="encProgress"></div></div>
-      <div class="grid-wrap">
-        <div>
-          <canvas id="vdCanvas" width="512" height="512"></canvas>
-          <div class="muted">Анимированный VisualDrop код (для файлов > 1 МБ)</div>
-          <div class="row">
-            <button id="btnPlay" disabled>Пуск</button>
-            <button id="btnStop" disabled>Стоп</button>
-            <span class="pill"><span>Кадр:</span><span class="mono" id="frameIdx">—</span></span>
-            <span class="pill"><span>Всего кадров:</span><span class="mono" id="frameTotal">—</span></span>
-          </div>
-        </div>
-        <div>
-          <div class="qr" id="qrBox"><canvas id="qrCanvas" width="256" height="256"></canvas></div>
-          <div class="muted">QR c data:URL (только для маленьких файлов). Для больших используйте анимацию и вкладку “Сканер”.</div>
-        </div>
-      </div>
-      <div class="codebox mono" id="debugEnc"></div>
-    </section>
+  <!-- КОДЕР -->
+  <div class="card">
+    <h2>Кодер</h2>
+    <input type="file" id="fileInput">
+    <button id="btnGenerate" disabled>Преобразовать в видео</button>
+    <div class="progress"><div class="bar" id="encBar"></div></div>
+    <video id="genVideo" controls></video>
+    <div class="muted" id="encStatus">Файл не выбран</div>
+  </div>
 
-    <!-- СКАНЕР -->
-    <section class="card" id="scanner">
-      <h2>Сканер</h2>
-      <div class="row">
-        <button id="btnStartCam">Запустить камеру</button>
-        <button id="btnStopCam" disabled>Остановить</button>
-        <span class="pill"><span>Статус:</span><span id="scanStatus" class="ok">Готов</span></span>
-      </div>
-      <div class="row" style="margin-top:12px;">
-        <video id="video" playsinline muted style="width:320px; height:240px; background:#0d1117; border:1px solid #1f2329; border-radius:8px;"></video>
-        <canvas id="scanCanvas" width="512" height="512"></canvas>
-      </div>
-      <div class="progress" style="margin:12px 0;"><div class="bar" id="decProgress"></div></div>
-      <div class="row">
-        <button id="btnAssemble" disabled>Собрать файл</button>
-        <a id="downloadLink" href="#" download style="display:none;"><button>Скачать файл</button></a>
-      </div>
-      <div class="codebox mono" id="debugDec"></div>
-    </section>
-  </main>
+  <!-- СКАНЕР -->
+  <div class="card">
+    <h2>Сканер</h2>
+    <input type="file" id="videoInput" accept="video/mp4,video/webm">
+    <button id="btnDecode" disabled>Собрать файл</button>
+    <div class="progress"><div class="bar" id="decBar"></div></div>
+    <a id="downloadLink" href="#" download="output.bin" style="display:none;">
+      <button>Скачать восстановленный файл</button>
+    </a>
+    <video id="video" controls></video>
+    <canvas id="canvas" width="128" height="128" style="display:none;"></canvas>
+    <div class="muted" id="decStatus">Видео не выбрано</div>
+  </div>
 
-  <footer>
-    VisualDrop MVP: без внешних библиотек, простой кодирование блоков в цветные кадры + примитивная синхронизация. Для продакшна добавьте шифрование, исправление ошибок и сжатие.
-  </footer>
+<script>
+const GRID=128, BYTES_PER_CELL=3, CELLS=GRID*GRID, PAYLOAD_PER_FRAME=CELLS*BYTES_PER_CELL;
 
-  <script>
-    // УТИЛИТЫ
-    const encBar = document.getElementById('encProgress');
-    const decBar = document.getElementById('decProgress');
-    const setEncProgress = p => encBar.style.width = `${Math.max(0, Math.min(100, p))}%`;
-    const setDecProgress = p => decBar.style.width = `${Math.max(0, Math.min(100, p))}%`;
-    const fmtBytes = n => {
-      const u = ['Б','КБ','МБ','ГБ']; let i=0; let v=n;
-      while(v>=1024 && i<u.length-1){ v/=1024; i++; }
-      return `${v.toFixed(1)} ${u[i]}`;
-    };
-    const crc32 = (buf) => { // простая CRC32
-      let table = crc32.table;
-      if (!table) {
-        table = crc32.table = new Uint32Array(256);
-        for (let i=0;i<256;i++){
-          let c=i;
-          for(let j=0;j<8;j++){ c = ((c&1)?(0xEDB88320 ^ (c>>>1)):(c>>>1)); }
-          table[i]=c>>>0;
-        }
-      }
-      let crc=0^(-1);
-      for (let k=0;k<buf.length;k++){
-        crc = (crc>>>8) ^ table[(crc ^ buf[k]) & 0xFF];
-      }
-      return (crc ^ (-1))>>>0;
-    };
+// ===== КОДЕР =====
+const fileInput=document.getElementById('fileInput');
+const btnGenerate=document.getElementById('btnGenerate');
+const encBar=document.getElementById('encBar');
+const encStatus=document.getElementById('encStatus');
+const genVideo=document.getElementById('genVideo');
 
-    // КОНСТАНТЫ КАДРА
-    const FRAME_SIZE = 512;       // размер холста
-    const GRID = 32;              // 32x32 ячеек
-    const CELLS = GRID*GRID;      // 1024 ячейки
-    const BYTES_PER_CELL = 3;     // RGB → 3 байта полезной нагрузки на ячейку
-    const PAYLOAD_PER_FRAME = CELLS * BYTES_PER_CELL; // 3072 байт
-    const HEADER_BYTES = 32;      // заголовок в первых 32 ячейках (96 байт)
-    const SYNC_COLOR = [0,0,0];   // маркер синхронизации на углах
+let fileBytes=null;
 
-    // СОСТОЯНИЕ КОДЕРА
-    let fileBytes = null;
-    let meta = null;
-    let frames = [];
-    let animTimer = null;
-    let playing = false;
+fileInput.addEventListener('change', async ()=>{
+  const f=fileInput.files[0];
+  if(!f) return;
+  if(f.size>100*1024*1024){ alert("Максимум 100 МБ"); return; }
+  fileBytes=new Uint8Array(await f.arrayBuffer());
+  btnGenerate.disabled=false;
+  encStatus.textContent=`Файл: ${f.name} (${(f.size/1024/1024).toFixed(1)} МБ)`;
+});
 
-    // ЭЛЕМЕНТЫ КОДЕРА
-    const fileInput = document.getElementById('fileInput');
-    const btnLoad = document.getElementById('btnLoad');
-    const btnGenerate = document.getElementById('btnGenerate');
-    const btnPlay = document.getElementById('btnPlay');
-    const btnStop = document.getElementById('btnStop');
-    const fileInfo = document.getElementById('fileInfo');
-    const vdCanvas = document.getElementById('vdCanvas');
-    const vdCtx = vdCanvas.getContext('2d');
-    const qrCanvas = document.getElementById('qrCanvas');
-    const qrCtx = qrCanvas.getContext('2d');
-    const frameIdxEl = document.getElementById('frameIdx');
-    const frameTotalEl = document.getElementById('frameTotal');
-    const debugEnc = document.getElementById('debugEnc');
+btnGenerate.addEventListener('click', async ()=>{
+  if(!fileBytes) return;
+  encStatus.textContent="Генерация кадров...";
+  const totalFrames=Math.ceil(fileBytes.length/PAYLOAD_PER_FRAME);
+  const frames=[];
+  for(let i=0;i<totalFrames;i++){
+    const chunk=fileBytes.slice(i*PAYLOAD_PER_FRAME,(i+1)*PAYLOAD_PER_FRAME);
+    const frame=buildFrame(chunk);
+    frames.push(frame);
+    encBar.style.width=`${((i+1)/totalFrames)*100}%`;
+  }
+  // Собираем видео через MediaRecorder
+  const stream=canvasStream(frames,10); // 10 fps
+  const rec=new MediaRecorder(stream,{mimeType:"video/webm"});
+  const chunks=[];
+  rec.ondataavailable=e=>chunks.push(e.data);
+  rec.onstop=()=>{
+    const blob=new Blob(chunks,{type:"video/webm"});
+    const url=URL.createObjectURL(blob);
+    genVideo.src=url;
+    encStatus.textContent=`Видео готово (${totalFrames} кадров)`;
+  };
+  rec.start();
+  setTimeout(()=>rec.stop(),frames.length*100); // frames/fps сек
+});
 
-    // ЗАГРУЗКА ФАЙЛА
-    btnLoad.addEventListener('click', async () => {
-      const f = fileInput.files?.[0];
-      if (!f) { alert('Выбери файл'); return; }
-      if (f.size > 100*1024*1024) { alert('Максимум 100 МБ'); return; }
-      setEncProgress(5);
-      fileInfo.textContent = `Файл: ${f.name} (${fmtBytes(f.size)})`;
-      const ab = await f.arrayBuffer();
-      fileBytes = new Uint8Array(ab);
-      meta = {
-        name: f.name,
-        size: fileBytes.length,
-        crc: crc32(fileBytes),
-      };
-      btnGenerate.disabled = false;
-      debugEnc.textContent = `META: name="${meta.name}", size=${meta.size}, crc=${meta.crc}`;
-      setEncProgress(15);
-      // Попытка сделать QR с data:URL для маленьких файлов
-      if (fileBytes.length < 1*1024*1024) {
-        const b64 = btoa(String.fromCharCode.apply(null, fileBytes));
-        const mime = 'application/octet-stream';
-        const dataUrl = `data:${mime};base64,${b64}`;
-        drawSimpleQR(qrCtx, dataUrl);
-      } else {
-        qrCtx.clearRect(0,0,qrCanvas.width,qrCanvas.height);
-        qrCtx.fillStyle = '#fff'; qrCtx.fillRect(0,0,qrCanvas.width,qrCanvas.height);
-        qrCtx.fillStyle = '#000';
-        qrCtx.font = '12px sans-serif';
-        qrCtx.fillText('QR только для малых файлов', 16, 24);
-        qrCtx.fillText('Используйте анимированный код', 16, 44);
-      }
-      setEncProgress(20);
-    });
+function buildFrame(chunk){
+  const canvas=document.createElement('canvas');
+  canvas.width=GRID; canvas.height=GRID;
+  const ctx=canvas.getContext('2d');
+  const img=ctx.createImageData(GRID,GRID);
+  let ci=0;
+  for(let i=0;i<chunk.length;i+=3){
+    const r=chunk[i]||0,g=chunk[i+1]||0,b=chunk[i+2]||0;
+    const idx=ci*4;
+    img.data[idx]=r; img.data[idx+1]=g; img.data[idx+2]=b; img.data[idx+3]=255;
+    ci++;
+  }
+  ctx.putImageData(img,0,0);
+  return canvas;
+}
 
-    // ГЕНЕРАЦИЯ КАДРОВ
-    btnGenerate.addEventListener('click', () => {
-      if (!fileBytes) { alert('Сначала загрузите файл'); return; }
-      setEncProgress(25);
-      frames = buildFrames(fileBytes, meta);
-      frameTotalEl.textContent = frames.length;
-      frameIdxEl.textContent = '0';
-      renderFrame(0);
-      btnPlay.disabled = false;
-      btnStop.disabled = false;
-      setEncProgress(100);
-    });
+function canvasStream(frames,fps){
+  const canvas=document.createElement('canvas');
+  canvas.width=GRID; canvas.height=GRID;
+  const ctx=canvas.getContext('2d');
+  let i=0;
+  setInterval(()=>{
+    ctx.drawImage(frames[i],0,0);
+    i=(i+1)%frames.length;
+  },1000/fps);
+  return canvas.captureStream(fps);
+}
 
-    // АНИМАЦИЯ
-    btnPlay.addEventListener('click', () => {
-      if (!frames.length) return;
-      playing = true;
-      let i = 0;
-      clearInterval(animTimer);
-      animTimer = setInterval(() => {
-        renderFrame(i);
-        frameIdxEl.textContent = `${i+1}`;
-        i = (i+1) % frames.length;
-      }, 75); // ~13 fps
-    });
-    btnStop.addEventListener('click', () => {
-      playing = false;
-      clearInterval(animTimer);
-    });
+// ===== СКАНЕР =====
+const videoInput=document.getElementById('videoInput');
+const btnDecode=document.getElementById('btnDecode');
+const decBar=document.getElementById('decBar');
+const decStatus=document.getElementById('decStatus');
+const video=document.getElementById('video');
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+const downloadLink=document.getElementById('downloadLink');
 
-    // ПОСТРОЕНИЕ КАДРОВ
-    function buildFrames(bytes, meta){
-      const totalPayload = bytes.length;
-      const overhead = HEADER_BYTES;
-      const payloadPerFrame = PAYLOAD_PER_FRAME - (HEADER_BYTES * BYTES_PER_CELL);
-      const totalFrames = Math.ceil(totalPayload / payloadPerFrame);
-      const frames = [];
-      for (let fi=0; fi<totalFrames; fi++){
-        const start = fi * payloadPerFrame;
-        const end = Math.min(bytes.length, start + payloadPerFrame);
-        const chunk = bytes.slice(start, end);
-        const header = buildHeader(meta, fi, totalFrames, start, end);
-        const rgbFrame = mapToRGBFrame(header, chunk);
-        frames.push(rgbFrame);
-      }
-      return frames;
+let framesData=[];
+
+videoInput.addEventListener('change',()=>{
+  const f=videoInput.files[0];
+  if(!f) return;
+  const url=URL.createObjectURL(f);
+  video.src=url;
+  btnDecode.disabled=false;
+  decStatus.textContent=`Загружено видео: ${f.name}`;
+});
+
+btnDecode.addEventListener('click',async ()=>{
+  framesData=[];
+  decStatus.textContent="Декодирование...";
+  await decodeVideo();
+});
+
+async function decodeVideo(){
+  const duration=video.duration;
+  const fps=10;
+  const totalFrames=Math.floor(duration*fps);
+  for(let i=0;i<totalFrames;i++){
+    video.currentTime=i/fps;
+    await new Promise(r=>video.onseeked=r);
+    ctx.drawImage(video,0,0,GRID,GRID);
+    const frame=ctx.getImageData(0,0,GRID,GRID).data;
+    const chunk=[];
+    for(let j=0;j<CELLS;j++){
+      const idx=j*4;
+      chunk.push(frame[idx],frame[idx+1],frame[idx+2]);
     }
+    framesData.push(new Uint8Array(chunk));
+    decBar.style.width=`${((i+1)/totalFrames)*100}%`;
+    decStatus.textContent=`Кадров обработано: ${i+1}/${totalFrames}`;
+  }
+  assembleFile();
+}
 
-    function buildHeader(meta, index, total, start, end){
-      // 96 байт заголовка: сигнатура, версия, имя (обрезанная), размеры, crc, смещения, простая чексумма
-      const buf = new Uint8Array(96);
-      let o=0;
-      const putStr = (s, n) => {
-        const enc = new TextEncoder().encode(s);
-        for(let i=0;i<n;i++){ buf[o+i] = enc[i] ?? 0; }
-        o += n;
-      };
-      const putU32 = (v) => { buf[o++] = (v>>>24)&255; buf[o++] = (v>>>16)&255; buf[o++] = (v>>>8)&255; buf[o++] = v&255; };
-      const putU16 = (v) => { buf[o++] = (v>>>8)&255; buf[o++] = v&255; };
-      putStr('VDROP', 8);              // сигнатура + паддинг
-      putU16(1);                        // версия
-      putStr(meta.name.slice(0,48), 48);// имя (до 48 байт)
-      putU32(meta.size);                // размер файла
-      putU32(meta.crc);                 // crc всего файла
-      putU32(index);                    // индекс кадра
-      putU32(total);                    // всего кадров
-      putU32(start); putU32(end);       // смещение полезной части (в файле)
-      // простая контрольная сумма заголовка
-      let s=0; for(let i=0;i<o;i++){ s=(s+buf[i])&0xFFFFFFFF; }
-      putU32(s);
-      return buf;
-    }
-
-    function mapToRGBFrame(header, chunk){
-      // Каждая ячейка несёт 3 байта (R,G,B). Первые HEADER_BYTES ячеек заняты заголовком.
-      const cellCount = CELLS;
-      const payloadBytes = chunk.length;
-      const frameRGB = new Uint8ClampedArray(FRAME_SIZE*FRAME_SIZE*4);
-      // сетка → относительные размеры
-      const cellW = Math.floor(FRAME_SIZE / GRID);
-      const cellH = Math.floor(FRAME_SIZE / GRID);
-      const padX = Math.floor((FRAME_SIZE - cellW*GRID)/2);
-      const padY = Math.floor((FRAME_SIZE - cellH*GRID)/2);
-      const putCell = (cx, cy, r,g,b) => {
-        // рисуем заливку ячейки
-        for(let y=0;y<cellH;y++){
-          for(let x=0;x<cellW;x++){
-            const px = padX + cx*cellW + x;
-            const py = padY + cy*cellH + y;
-            const idx = (py*FRAME_SIZE + px)*4;
-            frameRGB[idx+0]=r; frameRGB[idx+1]=g; frameRGB[idx+2]=b; frameRGB[idx+3]=255;
-          }
-        }
-      };
-      // маркеры синхронизации на углах
-      for (let k=0;k<3;k++){
-        putCell(k,0, ...SYNC_COLOR);
-        putCell(0,k, ...SYNC_COLOR);
-        putCell(GRID-1-k,0, ...SYNC_COLOR);
-        putCell(GRID-1, k, ...SYNC_COLOR);
-        putCell(0, GRID-1-k, ...SYNC_COLOR);
-        putCell(k, GRID-1, ...SYNC_COLOR);
-        putCell(GRID-1, GRID-1-k, ...SYNC_COLOR);
-        putCell(GRID-1-k, GRID-1, ...SYNC_COLOR);
-      }
-      // заголовок
-      let ci=0;
-      for(let i=0;i<header.length;i+=3){
-        const r=header[i] ?? 0, g=header[i+1] ?? 0, b=header[i+2] ?? 0;
-        const cx = ci % GRID, cy = Math.floor(ci / GRID);
-        putCell(cx, cy, r,g,b); ci++;
-      }
-      // полезная нагрузка
-      for(let j=0;j<payloadBytes;j+=3){
-        const r=chunk[j] ?? 0, g=chunk[j+1] ?? 0, b=chunk[j+2] ?? 0;
-        const cx = ci % GRID, cy = Math.floor(ci / GRID);
-        if (cy >= GRID) break;
-        putCell(cx, cy, r,g,b); ci++;
-      }
-      return frameRGB;
-    }
-
-    function renderFrame(i){
-      const rgb = frames[i];
-      const imgData = new ImageData(rgb, FRAME_SIZE, FRAME_SIZE);
-      vdCtx.putImageData(imgData, 0, 0);
-    }
-
-    // ПРОСТЕЙШИЙ QR (СТИЛИЗАЦИЯ, НЕ СТАНДАРТ!)
-    function drawSimpleQR(ctx, data){
-      ctx.clearRect(0,0,256,256);
-      ctx.fillStyle='#fff'; ctx.fillRect(0,0,256,256);
-      // Заглушка: рисуем псевдо-QR на основе хеша строки
-      const w=32, h=32, cw=8, ch=8;
-      const enc = new TextEncoder().encode(data);
-      let hash = 0; for (let i=0;i<enc.length;i++){ hash = (hash*131 + enc[i]) >>> 0; }
-      for (let y=0;y<h;y++){
-        for(let x=0;x<w;x++){
-          const idx = ((y*w)+x);
-          const v = ((hash >>> (idx%32)) & 1) ^ ((enc[idx%enc.length]>>> (idx%8)) & 1);
-          ctx.fillStyle = v ? '#000' : '#fff';
-          ctx.fillRect(x*cw, y*ch, cw, ch);
-        }
-      }
-    }
-
-    // СКАНЕР С КАМЕРЫ
-    const btnStartCam = document.getElementById('btnStartCam');
-    const btnStopCam = document.getElementById('btnStopCam');
-    const scanStatus = document.getElementById('scanStatus');
-    const video = document.getElementById('video');
-    const scanCanvas = document.getElementById('scanCanvas');
-    const scanCtx = scanCanvas.getContext('2d');
-    const btnAssemble = document.getElementById('btnAssemble');
-    const downloadLink = document.getElementById('downloadLink');
-    const debugDec = document.getElementById('debugDec');
-
-    let stream = null;
-    let capturedFrames = []; // массив Uint8Array полезных данных
-    let headerSeen = null;
-    let totalExpectedFrames = null;
-
-    btnStartCam.addEventListener('click', async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio:false });
-        video.srcObject = stream; await video.play();
-        btnStopCam.disabled = false; scanStatus.textContent = 'Камера запущена';
-        startScanLoop();
-      } catch (e){
-        alert('Не удалось запустить камеру: ' + e);
-      }
-    });
-    btnStopCam.addEventListener('click', () => {
-      if (stream) {
-        stream.getTracks().forEach(t => t.stop());
-        stream = null;
-        btnStopCam.disabled = true;
-        scanStatus.textContent = 'Остановлено';
-      }
-    });
-
-    function startScanLoop(){
-      const loop = () => {
-        if (!stream) return;
-        // Перерисовываем видеокадр на канвас и пытаемся распознать нашу сетку
-        scanCtx.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
-        const frame = scanCtx.getImageData(0,0,scanCanvas.width, scanCanvas.height);
-        const payload = tryDecodeFrame(frame);
-        if (payload) {
-          capturedFrames.push(payload.chunk);
-          if (!totalExpectedFrames && payload.total) totalExpectedFrames = payload.total;
-          setDecProgress((capturedFrames.length / (totalExpectedFrames || 1))*100);
-          debugDec.textContent = `Кадров получено: ${capturedFrames.length}/${totalExpectedFrames || '—'}; файл: ${payload.name || '—'}`;
-          if (totalExpectedFrames && capturedFrames.length >= totalExpectedFrames) {
-            btnAssemble.disabled = false;
-            scanStatus.textContent = 'Все кадры получены';
-          } else {
-            scanStatus.textContent = 'Кадр распознан';
-          }
-        }
-        requestAnimationFrame(loop);
-      };
-      requestAnimationFrame(loop);
-    }
-
-    function tryDecodeFrame(imgData){
-      // Пытаемся найти нашу 32x32 сетку по цветам — упрощённо предполагаем центрированный грид
-      const cellW = Math.floor(FRAME_SIZE / GRID);
-      const cellH = Math.floor(FRAME_SIZE / GRID);
-      const padX = Math.floor((FRAME_SIZE - cellW*GRID)/2);
-      const padY = Math.floor((FRAME_SIZE - cellH*GRID)/2);
-
-      // Проверим маркеры синхронизации (углы должны быть черные)
-      const sampleCell = (cx, cy) => {
-        const x = padX + cx*cellW + Math.floor(cellW/2);
-        const y = padY + cy*cellH + Math.floor(cellH/2);
-        const i = (y*FRAME_SIZE + x)*4;
-        return [imgData.data[i], imgData.data[i+1], imgData.data[i+2]];
-      };
-      const black = ([r,g,b]) => r<10 && g<10 && b<10;
-      const syncCheck =
-        black(sampleCell(0,0)) && black(sampleCell(GRID-1,0)) &&
-        black(sampleCell(0,GRID-1)) && black(sampleCell(GRID-1,GRID-1));
-      if (!syncCheck) return null;
-
-      // Считать заголовок (первые HEADER_BYTES ячеек → 96 байт)
-      const header = new Uint8Array(96);
-      let ci=0;
-      for(let i=0;i<header.length;i+=3){
-        const cx = ci % GRID, cy = Math.floor(ci / GRID);
-        const [r,g,b] = sampleCell(cx, cy);
-        header[i]=r; header[i+1]=g; header[i+2]=b; ci++;
-      }
-      // Расшифровка заголовка
-      const getU32 = (o) => (header[o]<<24)|(header[o+1]<<16)|(header[o+2]<<8)|(header[o+3]);
-      const getU16 = (o) => (header[o]<<8)|(header[o+1]);
-      const getStr = (o, n) => {
-        const s = header.slice(o,o+n);
-        return new TextDecoder().decode(s).replace(/\x00+$/,'').trim();
-      };
-      const sig = getStr(0,8);
-      if (sig.indexOf('VDROP') !== 0) return null;
-      const ver = getU16(8);
-      const name = getStr(10,48);
-      const size = getU32(58);
-      const crc = getU32(62);
-      const index = getU32(66);
-      const total = getU32(70);
-      const start = getU32(74);
-      const end = getU32(78);
-      // контрольная сумма заголовка (простая)
-      const sum = getU32(82);
-
-      // Полезная нагрузка
-      const chunkBytes = [];
-      while(true){
-        const cx = ci % GRID, cy = Math.floor(ci / GRID);
-        if (cy >= GRID) break;
-        const [r,g,b] = sampleCell(cx, cy);
-        chunkBytes.push(r,g,b);
-        ci++;
-      }
-      const chunk = new Uint8Array(chunkBytes);
-      return { name, index, total, chunk: chunk };
-    }
-
-    // СБОРКА ФАЙЛА И СКАЧИВАНИЕ
-    btnAssemble.addEventListener('click', () => {
-      if (!capturedFrames.length) return;
-      // Склейка
-      const totalLen = capturedFrames.reduce((s,b)=>s+b.length,0);
-      const out = new Uint8Array(totalLen);
-      let o=0; for (const c of capturedFrames){ out.set(c, o); o+=c.length; }
-      const blob = new Blob([out], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      downloadLink.href = url;
-      downloadLink.download = 'visualdrop.bin';
-      downloadLink.style.display = 'inline-block';
-      scanStatus.textContent = 'Готово к скачиванию';
-    });
-  </script>
+function assembleFile(){
+  const totalLen=framesData.reduce((s,b)=>s+b.length,0);
+  const out=new Uint8Array(totalLen);
+  let o=0; for(const c of framesData){ out.set(c,o); o+=c.length; }
+  const blob=new Blob([out],{type:"application/octet-stream"});
+  const url=URL.createObjectURL(blob);
+  downloadLink.href=url;
+  downloadLink.style.display="block";
+  decStatus.textContent="✅ Файл собран";
+}
+</script>
 </body>
 </html>
