@@ -39,8 +39,8 @@
     <input type="file" id="videoInput" accept="video/mp4,video/webm">
     <button id="btnDecode" disabled>Собрать файл</button>
     <div class="progress"><div class="bar" id="decBar"></div></div>
-    <a id="downloadLink" href="#" download="output.bin" style="display:none;">
-      <button>Скачать восстановленный файл</button>
+    <a id="downloadLink" href="#" style="display:none;">
+      <button id="btnDownload">Скачать восстановленный файл</button>
     </a>
     <video id="video" controls></video>
     <canvas id="canvas" width="128" height="128" style="display:none;"></canvas>
@@ -58,13 +58,14 @@ const encStatus=document.getElementById('encStatus');
 const genVideo=document.getElementById('genVideo');
 const downloadVideo=document.getElementById('downloadVideo');
 
-let fileBytes=null;
+let fileBytes=null, fileName="";
 
 fileInput.addEventListener('change', async ()=>{
   const f=fileInput.files[0];
   if(!f) return;
   if(f.size>100*1024*1024){ alert("Максимум 100 МБ"); return; }
   fileBytes=new Uint8Array(await f.arrayBuffer());
+  fileName=f.name;
   btnGenerate.disabled=false;
   encStatus.textContent=`Файл: ${f.name} (${(f.size/1024/1024).toFixed(1)} МБ)`;
 });
@@ -76,7 +77,7 @@ btnGenerate.addEventListener('click', async ()=>{
   const frames=[];
   for(let i=0;i<totalFrames;i++){
     const chunk=fileBytes.slice(i*PAYLOAD_PER_FRAME,(i+1)*PAYLOAD_PER_FRAME);
-    const frame=buildFrame(chunk);
+    const frame=buildFrame(chunk,i,totalFrames);
     frames.push(frame);
     encBar.style.width=`${((i+1)/totalFrames)*100}%`;
   }
@@ -97,12 +98,20 @@ btnGenerate.addEventListener('click', async ()=>{
   setTimeout(()=>rec.stop(),frames.length*100); // frames/fps сек
 });
 
-function buildFrame(chunk){
+function buildFrame(chunk, index, total){
   const canvas=document.createElement('canvas');
   canvas.width=GRID; canvas.height=GRID;
   const ctx=canvas.getContext('2d');
   const img=ctx.createImageData(GRID,GRID);
   let ci=0;
+  // В первый кадр пишем заголовок
+  if(index===0){
+    const meta=JSON.stringify({name:fileName,size:fileBytes.length,total});
+    const enc=new TextEncoder().encode(meta);
+    for(let i=0;i<enc.length && i<chunk.length;i++){
+      chunk[i]=enc[i];
+    }
+  }
   for(let i=0;i<chunk.length;i+=3){
     const r=chunk[i]||0,g=chunk[i+1]||0,b=chunk[i+2]||0;
     const idx=ci*4;
@@ -134,8 +143,9 @@ const video=document.getElementById('video');
 const canvas=document.getElementById('canvas');
 const ctx=canvas.getContext('2d');
 const downloadLink=document.getElementById('downloadLink');
+const btnDownload=document.getElementById('btnDownload');
 
-let framesData=[];
+let framesData=[], metaInfo=null;
 
 videoInput.addEventListener('change',()=>{
   const f=videoInput.files[0];
@@ -148,6 +158,7 @@ videoInput.addEventListener('change',()=>{
 
 btnDecode.addEventListener('click',async ()=>{
   framesData=[];
+  metaInfo=null;
   decStatus.textContent="Декодирование...";
   await decodeVideo();
 });
@@ -166,9 +177,15 @@ async function decodeVideo(){
       const idx=j*4;
       chunk.push(frame[idx],frame[idx+1],frame[idx+2]);
     }
-    framesData.push(new Uint8Array(chunk));
+    const arr=new Uint8Array(chunk);
+    if(i===0){
+      // читаем заголовок
+      const text=new TextDecoder().decode(arr.slice(0,512));
+      try{ metaInfo=JSON.parse(text.replace(/\0/g,'')); }catch(e){}
+    }
+    framesData.push(arr);
     decBar.style.width=`${((i+1)/totalFrames)*100}%`;
-    decStatus.textContent=`Кадров обработано: ${i+1}/${totalFrames}`;
+        decStatus.textContent=`Кадров обработано: ${i+1}/${totalFrames}`;
   }
   assembleFile();
 }
@@ -176,13 +193,26 @@ async function decodeVideo(){
 function assembleFile(){
   const totalLen=framesData.reduce((s,b)=>s+b.length,0);
   const out=new Uint8Array(totalLen);
-  let o=0; for(const c of framesData){ out.set(c,o); o+=c.length; }
+  let o=0; 
+  for(const c of framesData){ 
+    out.set(c,o); 
+    o+=c.length; 
+  }
+
+  // Если есть метаданные — используем имя файла
+  let fileName="output.bin";
+  if(metaInfo && metaInfo.name){
+    fileName=metaInfo.name;
+  }
+
   const blob=new Blob([out],{type:"application/octet-stream"});
   const url=URL.createObjectURL(blob);
   downloadLink.href=url;
+  downloadLink.download=fileName;
   downloadLink.style.display="block";
-  decStatus.textContent="✅ Файл собран";
+  decStatus.textContent=`✅ Файл собран: ${fileName}`;
 }
 </script>
 </body>
 </html>
+
