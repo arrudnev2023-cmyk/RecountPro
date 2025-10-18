@@ -477,7 +477,8 @@ function attachInputHandlers() {
       } else {
         activeInput.value += val;
       }
-      activeInput.dispatchEvent(new Event("input"));
+      // 🔥 теперь событие всплывает и ловится глобальным обработчиком
+      activeInput.dispatchEvent(new Event("input", { bubbles: true }));
     };
   });
 
@@ -490,6 +491,7 @@ function attachInputHandlers() {
     }
   });
 }
+
 
 // Поиск
 searchInput.addEventListener("input", () => {
