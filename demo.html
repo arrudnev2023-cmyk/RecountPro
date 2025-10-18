@@ -121,31 +121,56 @@
 
     /* Клавиатура */
     #custom-keyboard {
-      position: fixed;
-      bottom: -40vh;
-      left: 0; right: 0;
-      height: 33vh;
-      background: #111;
-      padding: 0.5rem;
-      box-sizing: border-box;
-      z-index: 3000;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      grid-template-rows: repeat(4, 1fr);
-      gap: 0.5rem;
-      transition: bottom 0.3s ease;
-    }
-    #custom-keyboard.show { bottom: 0; }
-    #custom-keyboard button {
-      width: 100%;
-      height: 100%;
-      font-size: 1.6rem;
-      background: #333;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
+  position: fixed;
+  bottom: -40vh;
+  left: 0; right: 0;
+  height: 33vh;
+  background: #111;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  z-index: 3000;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 0.5rem;
+  transition: bottom 0.3s ease;
+
+  /* 🔒 отключаем выделение и вызовы по долгому тапу */
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+#custom-keyboard.show { bottom: 0; }
+
+#custom-keyboard button {
+  width: 100%;
+  height: 100%;
+  font-size: 1.6rem;           /* ≥16px, чтобы iOS не зумил */
+  background: #333;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+
+  /* 🔥 убираем двойной тап‑зум */
+  touch-action: manipulation;
+
+  /* отключаем выделение текста на кнопках */
+  -webkit-user-select: none;
+  user-select: none;
+
+  /* плавный отклик */
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+/* Эффект нажатия */
+#custom-keyboard button:active {
+  background: #555;
+  transform: scale(0.95);
+}
+
 
     /* Меню */
     #menu-wrapper {
