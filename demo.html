@@ -361,15 +361,39 @@
   let allItems = [], activeInput = null;
   let sessionValues = {};
 
-// Восстановление при загрузке страницы
+// Восстановление при обновлении страницы
 window.addEventListener("DOMContentLoaded", () => {
-  // ❌ убираем автоподтягивание старой сессии
-  allItems = [];
+  const savedSession = localStorage.getItem("autosave_session");
+  if (savedSession) {
+    try {
+      const session = JSON.parse(savedSession);
+      allItems = session.items || [];
+      sessionValues = session.values || {};
+    } catch {
+      allItems = [];
+      sessionValues = {};
+    }
+  } else {
+    allItems = [];
+    sessionValues = {};
+  }
+
+  if (allItems.length > 0) {
+    render(allItems);
+  }
+});
+
+// Загрузка новой локалки
+function loadLocalka(data) {
+  // ❌ очищаем автосейв, чтобы не тянуло старое
+  localStorage.removeItem("autosave_session");
+
+  allItems = data;
   sessionValues = {};
 
-  // экран будет пустым до загрузки новой локалки
   render(allItems);
-});
+}
+
 
 // Автосохранение
 function autosave() {
