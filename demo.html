@@ -916,7 +916,8 @@ function showSummaryModal() {
 
   document.getElementById("flashlight-btn").addEventListener("click", toggleFlashlight);
 
-// 🌌 Анимация фона (звёзды + несколько комет + параллакс)
+<script>
+// 🌌 Анимация фона (звёзды + кометы + клики)
 const canvas = document.getElementById("bg");
 const ctx = canvas.getContext("2d");
 
@@ -935,13 +936,12 @@ for (let i = 0; i < 200; i++) {
     y: Math.random() * canvas.height,
     r: Math.random() * 1.5 + 0.5,
     alpha: Math.random(),
-    speed: Math.random() * 0.2 + 0.05 // скорость для параллакса
+    speed: Math.random() * 0.2 + 0.05
   });
 }
 
 // --- Несколько комет ---
 let comets = [];
-
 function spawnComet() {
   comets.push({
     x: -100,
@@ -950,6 +950,43 @@ function spawnComet() {
     vy: 2 + Math.random(),
     life: 0,
     maxLife: 300
+  });
+}
+
+// --- Частицы от кликов ---
+let clickParticles = [];
+canvas.addEventListener("click", e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  for (let i = 0; i < 20; i++) {
+    clickParticles.push({
+      x,
+      y,
+      vx: (Math.random() - 0.5) * 4,
+      vy: (Math.random() - 0.5) * 4,
+      life: 0,
+      maxLife: 60,
+      r: Math.random() * 2 + 1
+    });
+  }
+});
+
+function drawClickParticles() {
+  clickParticles.forEach((p, i) => {
+    ctx.fillStyle = `rgba(255,255,200,${1 - p.life / p.maxLife})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life++;
+
+    if (p.life > p.maxLife) {
+      clickParticles.splice(i, 1);
+    }
   });
 }
 
@@ -963,7 +1000,6 @@ function animate() {
     if (s.alpha < 0) s.alpha = 0;
     if (s.alpha > 1) s.alpha = 1;
 
-    // параллакс — медленное движение вниз
     s.y += s.speed;
     if (s.y > canvas.height) {
       s.y = 0;
@@ -983,7 +1019,6 @@ function animate() {
 
   // Кометы
   comets.forEach((c, i) => {
-    // хвост через градиент
     let grad = ctx.createLinearGradient(c.x, c.y, c.x - 120, c.y - 60);
     grad.addColorStop(0, "rgba(255,255,255,0.8)");
     grad.addColorStop(1, "rgba(255,255,255,0)");
@@ -995,26 +1030,28 @@ function animate() {
     ctx.lineTo(c.x - 120, c.y - 60);
     ctx.stroke();
 
-    // голова кометы
     ctx.fillStyle = "#fff";
     ctx.beginPath();
     ctx.arc(c.x, c.y, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // движение
     c.x += c.vx;
     c.y += c.vy;
     c.life++;
 
-    // удаляем, если вышла за экран или прожила слишком долго
     if (c.x > canvas.width + 150 || c.y > canvas.height + 150 || c.life > c.maxLife) {
       comets.splice(i, 1);
     }
   });
 
+  // Частицы от кликов
+  drawClickParticles();
+
   requestAnimationFrame(animate);
 }
 animate();
+
+
 
 </script>
 </body>
