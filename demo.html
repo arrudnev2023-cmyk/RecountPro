@@ -329,18 +329,25 @@
   let allItems = [], activeInput = null;
   let sessionValues = {};
 
-  // Восстановление при загрузке страницы
-  window.addEventListener("DOMContentLoaded", () => {
-    const savedSession = localStorage.getItem("autosave_session");
-    if (savedSession) {
-      try {
-        const session = JSON.parse(savedSession);
-        allItems = session.items || [];
-        sessionValues = session.values || {};
-        if (allItems.length > 0) render(allItems);
-      } catch {}
-    }
-  });
+  // Восстановление при загрузке страницы (с подтягиванием qty_* из localStorage)
+window.addEventListener("DOMContentLoaded", () => {
+  const savedSession = localStorage.getItem("autosave_session");
+  if (savedSession) {
+    try {
+      const session = JSON.parse(savedSession);
+      allItems = session.items || [];
+      sessionValues = session.values || {};
+
+      // подтягиваем все qty_* из localStorage
+      allItems.forEach(item => {
+        const saved = localStorage.getItem("qty_" + item.code);
+        if (saved) sessionValues[item.code] = saved;
+      });
+
+      if (allItems.length > 0) render(allItems);
+    } catch {}
+  }
+});
 
   // Автосохранение
   function autosave() {
@@ -576,47 +583,50 @@
       exportArea.style.display = "none";
     }
   }
-  // Итоговое окно (таблица с реальными расхождениями)
-  function showSummaryModal() {
-    const tbody = [];
-    allItems.forEach(item => {
-      const input = document.querySelector(`input[data-code="${item.code}"]`);
-      const raw = input ? input.value.trim() : (sessionValues[item.code] || "");
-      let actual = 0;
-      try { actual = Function("return " + raw.replace(',', '.'))() || 0; } catch {}
-      const delta = actual - item.docQty;
+  // Итоговое окно (все позиции + цветовая индикация)
+function showSummaryModal() {
+  const rows = allItems.map(item => {
+    const input = document.querySelector(`input[data-code="${item.code}"]`);
+    const raw = input ? input.value.trim() : (sessionValues[item.code] || "");
+    let actual = 0;
+    try { actual = Function("return " + raw.replace(',', '.'))() || 0; } catch {}
+    const delta = actual - item.docQty;
 
-      if (delta !== 0) {
-        tbody.push(`
-          <tr>
-            <td style="border:1px solid #ccc; padding:4px;">${item.code}</td>
-            <td style="border:1px solid #ccc; padding:4px;">${item.name}</td>
-            <td style="border:1px solid #ccc; padding:4px;">${item.docQty}</td>
-            <td style="border:1px solid #ccc; padding:4px;">${actual}</td>
-            <td style="border:1px solid #ccc; padding:4px;">${delta > 0 ? '+' : ''}${delta}</td>
-          </tr>
-        `);
-      }
-    });
+    let color = "gray";
+    if (delta > 0) color = "green";
+    else if (delta < 0) color = "red";
 
-    const html = tbody.length > 0
-      ? `<table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
-           <thead>
-             <tr style="background:#f3f4f6;">
-               <th style="border:1px solid #ccc; padding:4px;">Артикул</th>
-               <th style="border:1px solid #ccc; padding:4px;">Название</th>
-               <th style="border:1px solid #ccc; padding:4px;">Документы</th>
-               <th style="border:1px solid #ccc; padding:4px;">Факт</th>
-               <th style="border:1px solid #ccc; padding:4px;">Δ</th>
-             </tr>
-           </thead>
-           <tbody>${tbody.join("")}</tbody>
-         </table>`
-      : "<div>Нет расхождений</div>";
+    return `
+      <tr>
+        <td style="border:1px solid #ccc; padding:4px;">${item.code}</td>
+        <td style="border:1px solid #ccc; padding:4px;">${item.name}</td>
+        <td style="border:1px solid #ccc; padding:4px;">${item.docQty}</td>
+        <td style="border:1px solid #ccc; padding:4px;">${actual}</td>
+        <td style="border:1px solid #ccc; padding:4px; color:${color};">
+          ${delta > 0 ? '+' : ''}${delta}
+        </td>
+      </tr>
+    `;
+  });
 
-    document.getElementById("modal-content").innerHTML = html;
-    document.getElementById("modal").style.display = "flex";
-  }
+  const html = `
+    <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+      <thead>
+        <tr style="background:#f3f4f6;">
+          <th style="border:1px solid #ccc; padding:4px;">Артикул</th>
+          <th style="border:1px solid #ccc; padding:4px;">Название</th>
+          <th style="border:1px solid #ccc; padding:4px;">Документы</th>
+          <th style="border:1px solid #ccc; padding:4px;">Факт</th>
+          <th style="border:1px solid #ccc; padding:4px;">Δ</th>
+        </tr>
+      </thead>
+      <tbody>${rows.join("")}</tbody>
+    </table>
+  `;
+
+  document.getElementById("modal-content").innerHTML = html;
+  document.getElementById("modal").style.display = "flex";
+}
 
   // Меню
   document.getElementById("menu-toggle").addEventListener("click", () => {
