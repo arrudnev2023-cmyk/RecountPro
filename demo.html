@@ -916,64 +916,106 @@ function showSummaryModal() {
 
   document.getElementById("flashlight-btn").addEventListener("click", toggleFlashlight);
 
-  // 🌌 Анимация фона (звёзды + комета)
-  const canvas = document.getElementById("bg");
-  const ctx = canvas.getContext("2d");
-  function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  window.addEventListener("resize", resizeCanvas);
-  resizeCanvas();
+// 🌌 Анимация фона (звёзды + несколько комет + параллакс)
+const canvas = document.getElementById("bg");
+const ctx = canvas.getContext("2d");
 
-  let stars = Array.from({length:200}, () => ({
-    x: Math.random()*canvas.width,
-    y: Math.random()*canvas.height,
-    r: Math.random()*1.5+0.5,
-    alpha: Math.random()
-  }));
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
 
-  let comet = { x: -100, y: Math.random()*canvas.height/2, vx: 4, vy: 1.5, active: false };
+// --- Звёзды с параллаксом ---
+let stars = [];
+for (let i = 0; i < 200; i++) {
+  stars.push({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 1.5 + 0.5,
+    alpha: Math.random(),
+    speed: Math.random() * 0.2 + 0.05 // скорость для параллакса
+  });
+}
 
-  function animate() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+// --- Несколько комет ---
+let comets = [];
 
-    // Звёзды
-    stars.forEach(s => {
-      s.alpha += (Math.random()-0.5)*0.05;
-      if (s.alpha<0) s.alpha=0;
-      if (s.alpha>1) s.alpha=1;
-      ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
-      ctx.beginPath();
-      ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-      ctx.fill();
-    });
+function spawnComet() {
+  comets.push({
+    x: -100,
+    y: Math.random() * canvas.height * 0.5,
+    vx: 6 + Math.random() * 2,
+    vy: 2 + Math.random(),
+    life: 0,
+    maxLife: 300
+  });
+}
 
-    // Комета
-    if (!comet.active && Math.random()<0.002) {
-      comet.x = -100;
-      comet.y = Math.random()*canvas.height/2;
-      comet.active = true;
+// --- Анимация ---
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Звёзды
+  stars.forEach(s => {
+    s.alpha += (Math.random() - 0.5) * 0.05;
+    if (s.alpha < 0) s.alpha = 0;
+    if (s.alpha > 1) s.alpha = 1;
+
+    // параллакс — медленное движение вниз
+    s.y += s.speed;
+    if (s.y > canvas.height) {
+      s.y = 0;
+      s.x = Math.random() * canvas.width;
     }
-    if (comet.active) {
-      ctx.strokeStyle = "rgba(180,220,255,0.7)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(comet.x, comet.y);
-      ctx.lineTo(comet.x-80, comet.y-30);
-      ctx.stroke();
-      ctx.fillStyle = "#fff";
-      ctx.beginPath();
-      ctx.arc(comet.x, comet.y, 3, 0, Math.PI*2);
-      ctx.fill();
-      comet.x += comet.vx;
-      comet.y += comet.vy;
-      if (comet.x > canvas.width+100 || comet.y > canvas.height) comet.active = false;
-    }
 
-    requestAnimationFrame(animate);
+    ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Случайный запуск кометы
+  if (Math.random() < 0.005) {
+    spawnComet();
   }
-  animate();
+
+  // Кометы
+  comets.forEach((c, i) => {
+    // хвост через градиент
+    let grad = ctx.createLinearGradient(c.x, c.y, c.x - 120, c.y - 60);
+    grad.addColorStop(0, "rgba(255,255,255,0.8)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(c.x - 120, c.y - 60);
+    ctx.stroke();
+
+    // голова кометы
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // движение
+    c.x += c.vx;
+    c.y += c.vy;
+    c.life++;
+
+    // удаляем, если вышла за экран или прожила слишком долго
+    if (c.x > canvas.width + 150 || c.y > canvas.height + 150 || c.life > c.maxLife) {
+      comets.splice(i, 1);
+    }
+  });
+
+  requestAnimationFrame(animate);
+}
+animate();
+
 </script>
 </body>
 </html>
