@@ -417,7 +417,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
   // Рендер списка товаров
- function render(items) {
+function render(items) {
   list.innerHTML = '';
   items.forEach(item => {
     const value = sessionValues[item.code] || localStorage.getItem("qty_" + item.code) || "";
@@ -445,9 +445,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const input = div.querySelector("input");
 
-    // 🔥 кастомная клавиатура при фокусе
+    // кастомная клавиатура при фокусе/клике
     input.addEventListener("focus", () => {
-      openCustomKeyboardFor(input); // твоя функция кастомной клавиатуры
+      openCustomKeyboardFor(input);
+    });
+    input.addEventListener("click", () => {
+      openCustomKeyboardFor(input);
     });
 
     // обработчик ввода для мгновенной перекраски
@@ -479,6 +482,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   updateSummary(allItems);
 }
+
 
   // Подключение обработчиков для инпутов и клавиатуры
   function attachInputHandlers() {
