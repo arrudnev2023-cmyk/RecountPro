@@ -433,7 +433,7 @@ function render(items) {
       <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
       <div class="field">
         <span class="label">Фактическое количество:</span>
-        <input type="text" data-code="${item.code}" value="${value}" readonly />
+        <input type="text" data-code="${item.code}" value="${value}" inputmode="none" readonly />
       </div>
     `;
 
@@ -444,122 +444,102 @@ function render(items) {
     else if (actual < item.docQty) div.classList.add("missing");
     else if (actual > item.docQty) div.classList.add("excess");
 
-    const input = div.querySelector("input");
-
-    // кастомная клавиатура при фокусе/клике
-    input.addEventListener("focus", () => {
-      openCustomKeyboardFor(input);
-    });
-    input.addEventListener("click", () => {
-      openCustomKeyboardFor(input);
-    });
-
-    // обработчик ввода для мгновенной перекраски
-    input.addEventListener("input", e => {
-      const val = e.target.value.trim();
-      sessionValues[item.code] = val;
-      localStorage.setItem("qty_" + item.code, val);
-      autosave();
-
-      let fact = 0;
-      try { fact = Function("return " + val.replace(',', '.'))() || 0; } catch {}
-      const delta = fact - item.docQty;
-
-      // сбрасываем старые классы
-      div.classList.remove("match", "missing", "excess");
-
-      if (!val) {
-        // если поле пустое — нейтральный вид
-      } else if (delta === 0) {
-        div.classList.add("match");
-      } else if (delta < 0) {
-        div.classList.add("missing");
-      } else {
-        div.classList.add("excess");
-      }
-    });
-
     list.appendChild(div);
   });
   updateSummary(allItems);
+  attachInputHandlers(); // подключаем твою кастомную клавиатуру и обработку ввода
 }
 
-  // Подключение обработчиков для инпутов и клавиатуры
-  function attachInputHandlers() {
-    document.querySelectorAll('input[data-code]').forEach(input => {
-      input.addEventListener('focus', () => {
-        activeInput = input;
-        keyboard.classList.add("show");
-        document.getElementById("content").classList.add("with-keyboard");
-        setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
-      });
+// Подключение обработчиков для инпутов и клавиатуры
+function attachInputHandlers() {
+  document.querySelectorAll('input[data-code]').forEach(input => {
+    input.addEventListener('focus', () => {
+      activeInput = input;
+      keyboard.classList.add("show");
+      document.getElementById("content").classList.add("with-keyboard");
+      setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
     });
-
-    // Клики по кнопкам клавиатуры
-    keyboard.querySelectorAll('button').forEach(btn => {
-      btn.onclick = () => {
-        if (!activeInput) return;
-        const val = btn.textContent;
-        if (val === "←") {
-          activeInput.value = activeInput.value.slice(0, -1);
-        } else {
-          activeInput.value += val;
-        }
-        activeInput.dispatchEvent(new Event("input"));
-      };
+    input.addEventListener('click', () => {
+      activeInput = input;
+      keyboard.classList.add("show");
+      document.getElementById("content").classList.add("with-keyboard");
+      setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
     });
+  });
 
-    // Скрытие клавиатуры при клике вне
-    document.addEventListener("click", e => {
-      if (!e.target.closest("#custom-keyboard") && !e.target.matches("input[data-code]")) {
-        keyboard.classList.remove("show");
-        document.getElementById("content").classList.remove("with-keyboard");
-        activeInput = null;
+  // Клики по кнопкам клавиатуры
+  keyboard.querySelectorAll('button').forEach(btn => {
+    btn.onclick = () => {
+      if (!activeInput) return;
+      const val = btn.textContent;
+      if (val === "←") {
+        activeInput.value = activeInput.value.slice(0, -1);
+      } else {
+        activeInput.value += val;
       }
-    });
-  }
-
-  // Поиск
-  searchInput.addEventListener("input", () => {
-    const query = searchInput.value.trim().toLowerCase();
-    document.querySelectorAll("#list .item").forEach(div => {
-      const code = div.dataset.code;
-      const item = allItems.find(i => i.code === code);
-      if (!item) { div.classList.add("hidden"); return; }
-      const name = String(item.name || "").trim().toLowerCase();
-      const codeStr = String(item.code || "");
-      const match = name.includes(query) || codeStr.includes(query);
-      div.classList.toggle("hidden", !match);
-    });
+      activeInput.dispatchEvent(new Event("input"));
+    };
   });
 
-  document.getElementById("clear-search").addEventListener("click", () => {
-    searchInput.value = '';
-    document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
-  });
-
-  // Обработка ввода значений
-  list.addEventListener("input", e => {
-    if (e.target.tagName === "INPUT") {
-      const code = e.target.dataset.code;
-      const value = e.target.value;
-      sessionValues[code] = value;
-      localStorage.setItem("qty_" + code, value);
-
-      const raw = value.replace(',', '.');
-      let actual = 0;
-      try { actual = Function("return " + raw)(); } catch {}
-      const item = allItems.find(i => i.code === code);
-      const card = e.target.closest(".item");
-      card.classList.remove("match", "missing", "excess");
-      if (actual === item.docQty) card.classList.add("match");
-      else if (actual < item.docQty) card.classList.add("missing");
-      else if (actual > item.docQty) card.classList.add("excess");
-
-      updateSummary(allItems);
-      autosave();
+  // Скрытие клавиатуры при клике вне
+  document.addEventListener("click", e => {
+    if (!e.target.closest("#custom-keyboard") && !e.target.matches("input[data-code]")) {
+      keyboard.classList.remove("show");
+      document.getElementById("content").classList.remove("with-keyboard");
+      activeInput = null;
     }
   });
+}
+
+// Поиск
+searchInput.addEventListener("input", () => {
+  const query = searchInput.value.trim().toLowerCase();
+  document.querySelectorAll("#list .item").forEach(div => {
+    const code = div.dataset.code;
+    const item = allItems.find(i => i.code === code);
+    if (!item) { div.classList.add("hidden"); return; }
+    const name = String(item.name || "").trim().toLowerCase();
+    const codeStr = String(item.code || "");
+    const match = name.includes(query) || codeStr.includes(query);
+    div.classList.toggle("hidden", !match);
+  });
+});
+
+document.getElementById("clear-search").addEventListener("click", () => {
+  searchInput.value = '';
+  document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
+});
+
+// Обработка ввода значений и перекраска карточек
+list.addEventListener("input", e => {
+  if (e.target.tagName === "INPUT") {
+    const code = e.target.dataset.code;
+    const value = e.target.value;
+    sessionValues[code] = value;
+    localStorage.setItem("qty_" + code, value);
+
+    const raw = value.replace(',', '.');
+    let actual = 0;
+    try { actual = Function("return " + raw)(); } catch {}
+    const item = allItems.find(i => i.code === code);
+    const card = e.target.closest(".item");
+    card.classList.remove("match", "missing", "excess");
+
+    if (!value) {
+      // нейтральный вид
+    } else if (actual === item.docQty) {
+      card.classList.add("match");
+    } else if (actual < item.docQty) {
+      card.classList.add("missing");
+    } else if (actual > item.docQty) {
+      card.classList.add("excess");
+    }
+
+    updateSummary(allItems);
+    autosave();
+  }
+});
+
 
   // Экспорт PDF
   function exportPDF() {
