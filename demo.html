@@ -784,15 +784,37 @@ function showSummaryModal() {
   });
 
   // Очистка пересчёта
-  function clearRecount() {
-    if (confirm("Очистить пересчёт?")) {
-      localStorage.removeItem("autosave_session");
-      allItems = [];
-      sessionValues = {};
-      list.innerHTML = '';
-      updateSummary([]);
+ function clearRecount() {
+  if (confirm("Очистить пересчёт?")) {
+    // определяем ID текущей локалки (если есть)
+    const currentLocalkaId = (window.localkaData && window.localkaData.docId)
+      ? window.localkaData.docId
+      : "loc_" + new Date().toISOString().slice(0,10);
+
+    const sessionKey = "autosave_session_" + currentLocalkaId;
+
+    // 1) удаляем автосессию
+    localStorage.removeItem(sessionKey);
+
+    // 2) удаляем все qty_* значения для текущих товаров
+    if (Array.isArray(allItems) && allItems.length > 0) {
+      allItems.forEach(item => {
+        if (item && item.code) {
+          localStorage.removeItem("qty_" + item.code);
+        }
+      });
     }
+
+    // 3) сбрасываем состояние в памяти
+    allItems = [];
+    sessionValues = {};
+
+    // 4) чистим интерфейс
+    list.innerHTML = '';
+    updateSummary([]);
   }
+}
+
 
   // Сессии
   function saveSession() {
