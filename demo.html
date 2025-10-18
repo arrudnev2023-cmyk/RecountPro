@@ -526,19 +526,45 @@ function attachInputHandlers() {
 
 
 // Поиск
+
+// Функция нормализации текста для поиска
+function normalize(str) {
+  return String(str || "")
+    .toLowerCase()
+    .replace(/ё/g, "е")   // ё → е
+    .replace(/№/g, "")    // убираем символ №
+    .replace(/\s+/g, " ") // схлопываем пробелы
+    .trim();
+}
+
+// Проверка: все ли слова из запроса встречаются в строке
+function matchesQuery(text, query) {
+  const words = query.split(" ");
+  return words.every(w => text.includes(w));
+}
+
+// Поиск
 searchInput.addEventListener("input", () => {
-  const query = searchInput.value.trim().toLowerCase();
+  const q = normalize(searchInput.value);
+
   document.querySelectorAll("#list .item").forEach(div => {
-    const code = div.dataset.code;
-    const item = allItems.find(i => i.code === code);
-    if (!item) { div.classList.add("hidden"); return; }
-    const name = String(item.name || "").trim().toLowerCase();
-    const codeStr = String(item.code || "");
-    const match = name.includes(query) || codeStr.includes(query);
+    const code = normalize(div.dataset.code);
+    const item = allItems.find(i => i.code === div.dataset.code);
+    if (!item) { 
+      div.classList.add("hidden"); 
+      return; 
+    }
+
+    const name = normalize(item.name);
+
+    // теперь ищем по частям: каждое слово из запроса должно встретиться
+    const match = matchesQuery(name, q) || matchesQuery(code, q);
+
     div.classList.toggle("hidden", !match);
   });
 });
 
+// Очистка поиска
 document.getElementById("clear-search").addEventListener("click", () => {
   searchInput.value = '';
   document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
