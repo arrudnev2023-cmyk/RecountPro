@@ -362,6 +362,7 @@
   let sessionValues = {};
 
 // Восстановление при загрузке страницы
+// Восстановление при загрузке страницы
 window.addEventListener("DOMContentLoaded", () => {
   // 🔑 уникальный ключ для каждой локалки
   const currentLocalkaId = "loc123"; // <-- сюда подставляй ID текущей локалки
@@ -382,18 +383,17 @@ window.addEventListener("DOMContentLoaded", () => {
     allItems = [];
     sessionValues = {};
   }
-}
 
   // 🔑 подтягиваем все qty_* из localStorage
-if (allItems.length > 0) {
-  allItems.forEach(item => {
-    const saved = localStorage.getItem("qty_" + item.code);
-    if (saved !== null) {
-      sessionValues[item.code] = saved;
-    }
-  });
-  render(allItems);
-}
+  if (allItems.length > 0) {
+    allItems.forEach(item => {
+      const saved = localStorage.getItem("qty_" + item.code);
+      if (saved !== null) {
+        sessionValues[item.code] = saved;
+      }
+    });
+    render(allItems);
+  }
 });
 
   // Автосохранение
