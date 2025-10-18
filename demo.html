@@ -417,34 +417,62 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
   // Рендер списка товаров
-  function render(items) {
-    list.innerHTML = '';
-    items.forEach(item => {
-      const value = sessionValues[item.code] || localStorage.getItem("qty_" + item.code) || "";
-      const div = document.createElement("div");
-      div.className = "item";
-      div.dataset.code = item.code;
-      div.innerHTML = `
-        <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
-        <div class="field"><span class="label">Название:</span> ${item.name}</div>
-        <div class="field"><span class="label">Размерность:</span> ${item.unit}</div>
-        <div class="field"><span class="label">Цена:</span> ${item.price.toFixed(2)} ₽</div>
-        <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
-        <div class="field">
-          <span class="label">Фактическое количество:</span>
-          <input type="text" data-code="${item.code}" inputmode="none" value="${value}" />
-        </div>
-      `;
-      let actual = 0;
-      try { actual = Function("return " + value.replace(',', '.'))() || 0; } catch {}
-      if (actual === item.docQty) div.classList.add("match");
-      else if (actual < item.docQty) div.classList.add("missing");
-      else if (actual > item.docQty) div.classList.add("excess");
-      list.appendChild(div);
+ function render(items) {
+  list.innerHTML = '';
+  items.forEach(item => {
+    const value = sessionValues[item.code] || localStorage.getItem("qty_" + item.code) || "";
+    const div = document.createElement("div");
+    div.className = "item";
+    div.dataset.code = item.code;
+    div.innerHTML = `
+      <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
+      <div class="field"><span class="label">Название:</span> ${item.name}</div>
+      <div class="field"><span class="label">Размерность:</span> ${item.unit}</div>
+      <div class="field"><span class="label">Цена:</span> ${item.price.toFixed(2)} ₽</div>
+      <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
+      <div class="field">
+        <span class="label">Фактическое количество:</span>
+        <input type="text" data-code="${item.code}" inputmode="none" value="${value}" />
+      </div>
+    `;
+
+    // начальная окраска при рендере
+    let actual = 0;
+    try { actual = Function("return " + value.replace(',', '.'))() || 0; } catch {}
+    if (actual === item.docQty) div.classList.add("match");
+    else if (actual < item.docQty) div.classList.add("missing");
+    else if (actual > item.docQty) div.classList.add("excess");
+
+    // обработчик ввода для мгновенной перекраски
+    const input = div.querySelector("input");
+    input.addEventListener("input", e => {
+      const val = e.target.value.trim();
+      sessionValues[item.code] = val;
+      localStorage.setItem("qty_" + item.code, val);
+      autosave();
+
+      let fact = 0;
+      try { fact = Function("return " + val.replace(',', '.'))() || 0; } catch {}
+      const delta = fact - item.docQty;
+
+      // сбрасываем старые классы
+      div.classList.remove("match", "missing", "excess");
+
+      if (!val) {
+        // если поле пустое — нейтральный вид
+      } else if (delta === 0) {
+        div.classList.add("match");
+      } else if (delta < 0) {
+        div.classList.add("missing");
+      } else {
+        div.classList.add("excess");
+      }
     });
-    updateSummary(allItems);
-    attachInputHandlers();
-  }
+
+    list.appendChild(div);
+  });
+  updateSummary(allItems);
+}
 
   // Подключение обработчиков для инпутов и клавиатуры
   function attachInputHandlers() {
