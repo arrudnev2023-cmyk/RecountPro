@@ -329,23 +329,30 @@
   let allItems = [], activeInput = null;
   let sessionValues = {};
 
-  // Восстановление при загрузке страницы (с подтягиванием qty_* из localStorage)
+// Восстановление при загрузке страницы
 window.addEventListener("DOMContentLoaded", () => {
+  // пробуем восстановить сохранённую сессию
   const savedSession = localStorage.getItem("autosave_session");
   if (savedSession) {
     try {
       const session = JSON.parse(savedSession);
       allItems = session.items || [];
       sessionValues = session.values || {};
+    } catch {
+      allItems = [];
+      sessionValues = {};
+    }
+  }
 
-      // подтягиваем все qty_* из localStorage
-      allItems.forEach(item => {
-        const saved = localStorage.getItem("qty_" + item.code);
-        if (saved) sessionValues[item.code] = saved;
-      });
-
-      if (allItems.length > 0) render(allItems);
-    } catch {}
+  // 🔑 подтягиваем все qty_* из localStorage
+  if (allItems.length > 0) {
+    allItems.forEach(item => {
+      const saved = localStorage.getItem("qty_" + item.code);
+      if (saved !== null) {
+        sessionValues[item.code] = saved;
+      }
+    });
+    render(allItems);
   }
 });
 
