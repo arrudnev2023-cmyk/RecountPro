@@ -377,16 +377,26 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   // 🔑 подтягиваем все qty_* из localStorage
-  if (allItems.length > 0) {
-    allItems.forEach(item => {
-      const saved = localStorage.getItem("qty_" + item.code);
-      if (saved !== null) {
-        sessionValues[item.code] = saved;
-      }
-    });
-    render(allItems);
-  }
-});
+if (allItems.length > 0) {
+  // 🔥 Очистка старых qty_* перед загрузкой новой локалки
+  Object.keys(localStorage).forEach(k => {
+    if (k.startsWith("qty_")) {
+      localStorage.removeItem(k);
+    }
+  });
+  sessionValues = {}; // сброс кэша значений
+
+  // Теперь уже можно работать с новой локалкой
+  allItems.forEach(item => {
+    const saved = localStorage.getItem("qty_" + item.code);
+    if (saved !== null) {
+      sessionValues[item.code] = saved;
+    }
+  });
+
+  render(allItems);
+}
+
 
   // Автосохранение
   function autosave() {
