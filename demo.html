@@ -363,9 +363,14 @@
 
 // Восстановление при загрузке страницы
 window.addEventListener("DOMContentLoaded", () => {
-  const currentLocalkaId = "loc123"; // сюда подставляй ID текущей локалки
+  // 🔑 определяем ID локалки: берём docId из JSON, если нет — fallback по дате
+  const currentLocalkaId = (window.localkaData && window.localkaData.docId)
+    ? window.localkaData.docId
+    : "loc_" + new Date().toISOString().slice(0,10);
+
   const sessionKey = "autosave_session_" + currentLocalkaId;
 
+  // пробуем восстановить сохранённую сессию именно этой локалки
   const savedSession = localStorage.getItem(sessionKey);
   if (savedSession) {
     try {
@@ -388,21 +393,28 @@ window.addEventListener("DOMContentLoaded", () => {
 
 // Загрузка новой локалки
 function loadLocalka(data) {
-  const currentLocalkaId = "loc123"; // ID новой локалки
+  // определяем ID локалки
+  const currentLocalkaId = data.docId || "loc_" + new Date().toISOString().slice(0,10);
   const sessionKey = "autosave_session_" + currentLocalkaId;
 
-  // ❌ очищаем автосейв, чтобы не тянулось старое
+  // ❌ очищаем автосейв для этой локалки (чистый старт)
   localStorage.removeItem(sessionKey);
 
   allItems = data;
   sessionValues = {};
+
+  // сохраняем ссылку на текущую локалку глобально, чтобы autosave знал её ID
+  window.localkaData = data;
 
   render(allItems);
 }
 
 // Автосохранение
 function autosave() {
-  const currentLocalkaId = "loc123";
+  const currentLocalkaId = (window.localkaData && window.localkaData.docId)
+    ? window.localkaData.docId
+    : "loc_" + new Date().toISOString().slice(0,10);
+
   const sessionKey = "autosave_session_" + currentLocalkaId;
 
   const session = {
@@ -412,7 +424,6 @@ function autosave() {
 
   localStorage.setItem(sessionKey, JSON.stringify(session));
 }
-
 
   // Автосохранение при закрытии вкладки
   window.addEventListener("beforeunload", autosave);
