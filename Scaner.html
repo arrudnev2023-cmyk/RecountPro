@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>RecountPro — Подключение подписки</title>
+  <title>RecountPro — Подключение подписки (без бэкенда)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     :root {
@@ -11,6 +11,8 @@
       --accent: #3a7afe;
       --text: #eaeef3;
       --border: #2a3550;
+      --bot: #141b26;
+      --user: #1b2434;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -34,51 +36,51 @@
       font-size: 18px;
       margin: 0;
       color: var(--accent);
+      letter-spacing: 0.2px;
     }
     .container {
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 10px;
-      max-width: 600px;
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+      max-width: 680px;
       margin: 0 auto;
       width: 100%;
     }
-    .chat {
-      flex: 1;
+    .card {
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
+      border-radius: 14px;
       background: var(--card);
-      overflow-y: auto;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    }
+    .chat {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      height: 56vh;
+      min-height: 380px;
+      padding: 12px;
+      overflow-y: auto;
     }
     .msg {
       padding: 10px 14px;
       border-radius: 12px;
       max-width: 80%;
       font-size: 15px;
-      line-height: 1.4;
+      line-height: 1.45;
       word-wrap: break-word;
+      white-space: pre-wrap;
     }
-    .msg.user {
-      align-self: flex-end;
-      background: #1b2434;
-    }
-    .msg.bot {
-      align-self: flex-start;
-      background: #141b26;
-    }
-    .inputRow {
-      display: flex;
-      margin-top: 12px;
+    .msg.user { align-self: flex-end; background: var(--user); }
+    .msg.bot  { align-self: flex-start; background: var(--bot); }
+    .composer {
+      display: grid;
+      grid-template-columns: 1fr auto;
       gap: 8px;
+      padding: 12px;
+      border-top: 1px solid var(--border);
     }
-    .inputRow input {
-      flex: 1;
+    .composer input[type="text"] {
       padding: 12px;
       border-radius: 10px;
       border: 1px solid var(--border);
@@ -86,7 +88,7 @@
       color: var(--text);
       font-size: 15px;
     }
-    .inputRow button {
+    .composer button {
       padding: 12px 16px;
       border-radius: 10px;
       border: none;
@@ -96,14 +98,36 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-    .inputRow button:hover {
-      background: #2f63d6;
+    .composer button:hover { background: #2f63d6; }
+    .panel {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
     }
-    @media (max-width: 480px) {
+    .hint { font-size: 13px; opacity: 0.85; }
+    .quick {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 12px; border-radius: 999px;
+      border: 1px solid var(--border); background: #162036;
+      color: var(--text); font-size: 13px; cursor: pointer;
+    }
+    .quick:hover { background: #1a2948; }
+    .upload {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px;
+    }
+    input[type="file"] {
+      padding: 10px; border-radius: 10px; border: 1px solid var(--border);
+      background: #0f1624; color: var(--text); font-size: 13px;
+    }
+    .primary {
+      padding: 10px 12px; border-radius: 10px; border: none;
+      background: var(--accent); color: #fff; font-weight: 600; cursor: pointer;
+    }
+    @media (max-width: 460px) {
+      .chat { height: 60vh; }
+      .composer input[type="text"] { font-size: 14px; padding: 11px; }
+      .composer button { font-size: 14px; padding: 11px 12px; }
       header h1 { font-size: 16px; }
-      .msg { font-size: 14px; }
-      .inputRow input { font-size: 14px; }
-      .inputRow button { font-size: 14px; padding: 10px 12px; }
     }
   </style>
 </head>
@@ -113,40 +137,152 @@
   </header>
 
   <div class="container">
-    <div id="chat" class="chat"></div>
-    <div class="inputRow">
-      <input id="msg" type="text" placeholder="Напишите: Хочу доступ, Статус, Оплатил..." />
-      <button id="send">Отправить</button>
+    <!-- Чат -->
+    <div class="card">
+      <div id="chat" class="chat"></div>
+      <div class="composer">
+        <input id="msg" type="text" placeholder="Напишите: Хочу доступ, Статус, Оплатил..." />
+        <button id="send">Отправить</button>
+      </div>
+    </div>
+
+    <!-- Панель действий -->
+    <div class="card panel">
+      <div class="hint">Цена подписки: 799 руб./мес. Реквизиты для оплаты: 2202 2022 1234 5678</div>
+      <div style="display:flex; gap:8px; flex-wrap: wrap;">
+        <button class="quick" data-text="Хочу доступ">Хочу доступ</button>
+        <button class="quick" data-text="Статус">Статус</button>
+        <button class="quick" data-text="Оплатил, отправляю чек">Оплатил</button>
+      </div>
+      <div class="hint">Отправьте скрин оплаты (эмуляция проверки без сервера):</div>
+      <div class="upload">
+        <input id="file" type="file" accept="image/*" />
+        <button id="uploadBtn" class="primary">Отправить чек</button>
+      </div>
     </div>
   </div>
 
   <script>
-    const chat = document.getElementById('chat');
-    const msg = document.getElementById('msg');
-    const sendBtn = document.getElementById('send');
+    // Простейшее состояние без бэкенда — в localStorage
+    const stateKey = 'recountpro_sub';
+    let state = loadState();
 
+    const chat = document.getElementById('chat');
+    const msg  = document.getElementById('msg');
+    const sendBtn = document.getElementById('send');
+    const fileInput = document.getElementById('file');
+    const uploadBtn = document.getElementById('uploadBtn');
+
+    // Инициализация приветствия
+    pushBot('Привет! Я агент RecountPro.\n— Напишите “Хочу доступ”\n— Загрузите чек оплаты\n— Получите логин и пароль на месяц.');
+
+    // Быстрые команды
+    document.querySelectorAll('.quick').forEach(b => {
+      b.addEventListener('click', () => {
+        msg.value = b.dataset.text;
+        handleSend();
+      });
+    });
+
+    sendBtn.addEventListener('click', handleSend);
+    msg.addEventListener('keydown', e => { if (e.key === 'Enter') handleSend(); });
+    uploadBtn.addEventListener('click', handleUpload);
+
+    function handleSend() {
+      const text = (msg.value || '').trim();
+      if (!text) return;
+      pushUser(text);
+      msg.value = '';
+      respond(text);
+    }
+
+    function handleUpload() {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) {
+        pushBot('Пожалуйста, выберите изображение чека и нажмите “Отправить чек”.');
+        return;
+      }
+      // Эмуляция проверки: принимаем любой файл как валидный чек
+      issueCredentials();
+    }
+
+    // Логика ответов без бэкенда
+    function respond(input) {
+      const text = input.toLowerCase();
+
+      if (text.includes('хочу доступ')) {
+        pushBot([
+          '💳 Подписка на RecountPro стоит 799 руб./мес.',
+          'Переведите по реквизитам: 2202 2022 1234 5678',
+          'После оплаты загрузите чек — я выдам логин и пароль.'
+        ].join('\n'));
+        return;
+      }
+
+      if (text.includes('оплатил') || text.includes('чек')) {
+        pushBot('📷 Загрузите изображение чека через форму ниже — после проверки выдам доступ.');
+        return;
+      }
+
+      if (text.includes('статус')) {
+        const s = loadState();
+        if (s && s.login && s.expires) {
+          pushBot(`🔐 Ваш доступ активен\nЛогин: ${s.login}\nПароль: ${s.password}\n⏳ Действует до: ${formatDateRU(new Date(s.expires))}`);
+        } else {
+          pushBot('❌ У вас нет активной подписки. Напишите “Хочу доступ” и отправьте чек оплаты.');
+        }
+        return;
+      }
+
+      pushBot('🤖 Я вас понял. Доступ: “Хочу доступ”, затем загрузите чек. Проверка — “Статус”.');
+    }
+
+    // Выдача данных доступа
+    function issueCredentials() {
+      const s = loadState();
+      // Если уже активна подписка и не истекла — не выдаём заново
+      if (s && s.login && s.expires && new Date(s.expires) > new Date()) {
+        pushBot(`🔐 Доступ уже выдан ранее.\nЛогин: ${s.login}\nПароль: ${s.password}\n⏳ Действует до: ${formatDateRU(new Date(s.expires))}`);
+        return;
+      }
+      const creds = generateCredentials();
+      saveState({ ...s, ...creds });
+      pushBot(`✅ Оплата принята!\n🔐 Логин: ${creds.login}\n🔑 Пароль: ${creds.password}\n⏳ Действует до: ${formatDateRU(new Date(creds.expires))}\n\nℹ️ Если потеряете данные — напишите “Статус”.`);
+    }
+
+    // Генерация логина/пароля и срока
+    function generateCredentials() {
+      const login = 'user' + Math.floor(1000 + Math.random() * 9000);
+      const password = Math.random().toString(36).slice(-10);
+      const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 дней
+      return { login, password, expires: expires.toISOString() };
+    }
+
+    // Состояние
+    function loadState() {
+      try {
+        const s = localStorage.getItem(stateKey);
+        return s ? JSON.parse(s) : {};
+      } catch { return {}; }
+    }
+    function saveState(s) {
+      state = s;
+      localStorage.setItem(stateKey, JSON.stringify(s));
+    }
+
+    // UI helpers
     function push(text, who='bot') {
       const div = document.createElement('div');
       div.className = 'msg ' + who;
-      div.textContent = (who==='user'?'🧑 ':'🤖 ') + text;
+      div.textContent = (who === 'user' ? '🧑 ' : '🤖 ') + text;
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
-
-    // Приветствие
-    push('Привет! Я агент RecountPro.\\n— Напишите “Хочу доступ”\\n— Отправьте чек оплаты\\n— Получите логин и пароль на месяц.');
-
-    async function sendMessage() {
-      const text = msg.value.trim();
-      if (!text) return;
-      push(text,'user');
-      msg.value='';
-      const res = await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})});
-      const data = await res.json();
-      push(data.reply,'bot');
+    function pushBot(text) { push(text, 'bot'); }
+    function pushUser(text) { push(text, 'user'); }
+    function formatDateRU(date) {
+      return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
     }
-    sendBtn.addEventListener('click',sendMessage);
-    msg.addEventListener('keydown',e=>{if(e.key==='Enter')sendMessage();});
   </script>
 </body>
 </html>
