@@ -634,84 +634,18 @@ list.addEventListener("input", e => {
 
   // Экспорт PDF
  function exportPDF() {
-  autosave(); // гарантируем сохранение перед экспортом
+  autosave();
   const exportArea = document.getElementById("export-area");
-  const summary = document.getElementById("export-summary");
-  const tbody = document.getElementById("export-table-body");
-  summary.innerHTML = '';
-  tbody.innerHTML = '';
+  exportArea.innerHTML = ""; // очищаем перед генерацией
   exportArea.style.display = "block";
   window.scrollTo(0, 0);
 
   let totalPlus = 0, totalMinus = 0;
 
-  // сортировка товаров по алфавиту
+  // сортировка по алфавиту
   const sortedItems = [...allItems].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 
-  // делим таблицу на блоки по 45 строк
-  const rowsPerPage = 45;
-  const chunks = [];
-  for (let i = 0; i < sortedItems.length; i += rowsPerPage) {
-    chunks.push(sortedItems.slice(i, i + rowsPerPage));
-  }
-
-  // создаём таблицы по блокам
-  chunks.forEach((chunk, index) => {
-    const table = document.createElement("table");
-    table.style.borderCollapse = "collapse";
-    table.style.width = "100%";
-    table.style.marginBottom = "10px";
-    table.style.fontSize = "10px"; // компактный, но читаемый шрифт
-
-    const thead = document.createElement("thead");
-    thead.innerHTML = `
-      <tr>
-        <th style="border:1px solid #444; padding:2px;">Артикул</th>
-        <th style="border:1px solid #444; padding:2px;">Название</th>
-        <th style="border:1px solid #444; padding:2px;">Ед.</th>
-        <th style="border:1px solid #444; padding:2px;">Цена</th>
-        <th style="border:1px solid #444; padding:2px;">Остаток</th>
-        <th style="border:1px solid #444; padding:2px;">Факт</th>
-        <th style="border:1px solid #444; padding:2px;">Δ</th>
-      </tr>
-    `;
-    table.appendChild(thead);
-
-    const tbodyBlock = document.createElement("tbody");
-
-    chunk.forEach(item => {
-      const input = document.querySelector(`input[data-code="${item.code}"]`);
-      const raw = input ? input.value : "";
-      let actual = 0;
-      try { actual = Function("return " + raw.replace(',', '.'))() || 0; } catch {}
-      const delta = actual - item.docQty;
-      if (delta > 0) totalPlus += delta * item.price;
-      else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
-
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td style="border:1px solid #444; padding:2px; word-break:break-word; overflow-wrap:break-word;">${item.code}</td>
-        <td style="border:1px solid #444; padding:2px; word-break:break-word; overflow-wrap:break-word;">${item.name}</td>
-        <td style="border:1px solid #444; padding:2px;">${item.unit}</td>
-        <td style="border:1px solid #444; padding:2px;">${item.price.toFixed(2)}</td>
-        <td style="border:1px solid #444; padding:2px;">${item.docQty}</td>
-        <td style="border:1px solid #444; padding:2px; white-space:pre-wrap; word-break:break-word; overflow-wrap:break-word; max-width:100px;">${raw}</td>
-        <td style="border:1px solid #444; padding:2px;">${delta}</td>
-      `;
-      tbodyBlock.appendChild(row);
-    });
-
-    table.appendChild(tbodyBlock);
-    exportArea.appendChild(table);
-  });
-
-  // заменили "Избыток" на "Излишек"
-  summary.innerHTML = `
-    🧾 Недостача: –${totalMinus.toFixed(2)} ₽<br>
-    💰 Излишек: +${totalPlus.toFixed(2)} ₽
-  `;
-
-  // новые поля для ввода
+  // ввод данных
   const filename = prompt("Введите имя файла", "RecountPro.pdf");
   if (!filename) {
     exportArea.style.display = "none";
@@ -720,17 +654,70 @@ list.addEventListener("input", e => {
   const groupName = prompt("Введите название группы", "");
   const countedBy = prompt("Кто считал?", "");
 
-  // добавляем «шапку» в начало exportArea
-  const header = document.createElement("div");
-  header.style.textAlign = "center";
-  header.style.marginBottom = "10px";
-  header.innerHTML = `
-    <h2 style="margin:4px 0;">${groupName || ""}</h2>
-    <div style="font-size:12px; margin:2px 0;">Составил: ${countedBy || ""}</div>
-    <hr style="margin:6px 0;">
-  `;
-  exportArea.insertBefore(header, exportArea.firstChild);
+  // создаём таблицу
+  const table = document.createElement("table");
+  table.style.borderCollapse = "collapse";
+  table.style.width = "100%";
+  table.style.fontSize = "10px";
 
+  // thead с шапкой
+  const thead = document.createElement("thead");
+  thead.innerHTML = `
+    <tr>
+      <th colspan="7" style="text-align:center; border:1px solid #444; padding:4px;">
+        <h2 style="margin:4px 0;">${groupName || ""}</h2>
+        <div style="font-size:12px; margin:2px 0;">Составил: ${countedBy || ""}</div>
+        <hr style="margin:6px 0;">
+      </th>
+    </tr>
+    <tr>
+      <th style="border:1px solid #444; padding:2px;">Артикул</th>
+      <th style="border:1px solid #444; padding:2px;">Название</th>
+      <th style="border:1px solid #444; padding:2px;">Ед.</th>
+      <th style="border:1px solid #444; padding:2px;">Цена</th>
+      <th style="border:1px solid #444; padding:2px;">Остаток</th>
+      <th style="border:1px solid #444; padding:2px;">Факт</th>
+      <th style="border:1px solid #444; padding:2px;">Δ</th>
+    </tr>
+  `;
+  table.appendChild(thead);
+
+  // тело таблицы
+  const tbody = document.createElement("tbody");
+  sortedItems.forEach(item => {
+    const input = document.querySelector(`input[data-code="${item.code}"]`);
+    const raw = input ? input.value : "";
+    let actual = 0;
+    try { actual = Function("return " + raw.replace(',', '.'))() || 0; } catch {}
+    const delta = actual - item.docQty;
+    if (delta > 0) totalPlus += delta * item.price;
+    else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td style="border:1px solid #444; padding:2px; word-break:break-word; overflow-wrap:break-word;">${item.code}</td>
+      <td style="border:1px solid #444; padding:2px; word-break:break-word; overflow-wrap:break-word;">${item.name}</td>
+      <td style="border:1px solid #444; padding:2px;">${item.unit}</td>
+      <td style="border:1px solid #444; padding:2px;">${item.price.toFixed(2)}</td>
+      <td style="border:1px solid #444; padding:2px;">${item.docQty}</td>
+      <td style="border:1px solid #444; padding:2px; white-space:pre-wrap; word-break:break-word; overflow-wrap:break-word; max-width:100px;">${raw}</td>
+      <td style="border:1px solid #444; padding:2px;">${delta}</td>
+    `;
+    tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
+  exportArea.appendChild(table);
+
+  // итоги
+  const summary = document.createElement("div");
+  summary.style.marginTop = "10px";
+  summary.innerHTML = `
+    🧾 Недостача: –${totalMinus.toFixed(2)} ₽<br>
+    💰 Излишек: +${totalPlus.toFixed(2)} ₽
+  `;
+  exportArea.appendChild(summary);
+
+  // экспорт
   const opt = {
     margin: 0.2,
     filename,
@@ -742,15 +729,12 @@ list.addEventListener("input", e => {
 
   html2pdf().set(opt).from(exportArea).toPdf().get('pdf').then(pdf => {
     const totalPages = pdf.internal.getNumberOfPages();
-
-    // если страниц больше 4 — уменьшаем масштаб
     if (totalPages > 4) {
       opt.html2canvas.scale = 0.9;
       return html2pdf().set(opt).from(exportArea).save().then(() => {
         exportArea.style.display = "none";
       });
     }
-
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
       pdf.setFontSize(8);
