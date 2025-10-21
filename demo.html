@@ -633,7 +633,8 @@ list.addEventListener("input", e => {
 
 
   // Экспорт PDF
- function exportPDF() {
+ 
+function exportPDF() {
   autosave();
   const exportArea = document.getElementById("export-area");
   exportArea.innerHTML = ""; 
@@ -670,9 +671,10 @@ list.addEventListener("input", e => {
   `;
   exportArea.appendChild(header);
 
-  // итоги (сверху, как раньше)
+  // итоги (сразу под шапкой)
   const summary = document.createElement("div");
   summary.style.margin = "10px 0";
+  summary.style.fontWeight = "bold";
   summary.innerHTML = `
     🧾 Недостача: –${totalMinus.toFixed(2)} ₽<br>
     💰 Излишек: +${totalPlus.toFixed(2)} ₽
@@ -712,7 +714,7 @@ list.addEventListener("input", e => {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td style="border:1px solid #444; padding:2px; word-break:break-word;">${item.code}</td>
-      <td style="border:1px solid #444; padding:2px; word-break:break-word;">${item.name}</td>
+      <td style="border:1px solid #444; padding:2px; word-break:break-word; font-size:9px;">${item.name}</td>
       <td style="border:1px solid #444; padding:2px;">${item.unit}</td>
       <td style="border:1px solid #444; padding:2px; text-align:right;">${item.price.toFixed(2)}</td>
       <td style="border:1px solid #444; padding:2px; text-align:right;">${item.docQty}</td>
