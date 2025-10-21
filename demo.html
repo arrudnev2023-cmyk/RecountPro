@@ -648,26 +648,61 @@ list.addEventListener("input", e => {
   // сортировка товаров по алфавиту
   const sortedItems = [...allItems].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 
-  sortedItems.forEach(item => {
-    const input = document.querySelector(`input[data-code="${item.code}"]`);
-    const raw = input ? input.value : "";
-    let actual = 0;
-    try { actual = Function("return " + raw.replace(',', '.'))() || 0; } catch {}
-    const delta = actual - item.docQty;
-    if (delta > 0) totalPlus += delta * item.price;
-    else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
+  // делим таблицу на блоки по 45 строк
+  const rowsPerPage = 45;
+  const chunks = [];
+  for (let i = 0; i < sortedItems.length; i += rowsPerPage) {
+    chunks.push(sortedItems.slice(i, i + rowsPerPage));
+  }
 
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td style="border:1px solid #444; padding:4px; word-break:break-word;">${item.code}</td>
-      <td style="border:1px solid #444; padding:4px; word-break:break-word;">${item.name}</td>
-      <td style="border:1px solid #444; padding:4px;">${item.unit}</td>
-      <td style="border:1px solid #444; padding:4px;">${item.price.toFixed(2)}</td>
-      <td style="border:1px solid #444; padding:4px;">${item.docQty}</td>
-      <td style="border:1px solid #444; padding:4px; white-space:normal; word-break:break-word;">${raw}</td>
-      <td style="border:1px solid #444; padding:4px;">${delta}</td>
+  // создаём таблицы по блокам
+  chunks.forEach((chunk, index) => {
+    const table = document.createElement("table");
+    table.style.borderCollapse = "collapse";
+    table.style.width = "100%";
+    table.style.marginBottom = "10px";
+    table.style.fontSize = "10px"; // компактный, но читаемый шрифт
+
+    const thead = document.createElement("thead");
+    thead.innerHTML = `
+      <tr>
+        <th style="border:1px solid #444; padding:2px;">Артикул</th>
+        <th style="border:1px solid #444; padding:2px;">Название</th>
+        <th style="border:1px solid #444; padding:2px;">Ед.</th>
+        <th style="border:1px solid #444; padding:2px;">Цена</th>
+        <th style="border:1px solid #444; padding:2px;">Остаток</th>
+        <th style="border:1px solid #444; padding:2px;">Факт</th>
+        <th style="border:1px solid #444; padding:2px;">Δ</th>
+      </tr>
     `;
-    tbody.appendChild(row);
+    table.appendChild(thead);
+
+    const tbodyBlock = document.createElement("tbody");
+
+    chunk.forEach(item => {
+      const input = document.querySelector(`input[data-code="${item.code}"]`);
+      const raw = input ? input.value : "";
+      let actual = 0;
+      try { actual = Function("return " + raw.replace(',', '.'))() || 0; } catch {}
+      const delta = actual - item.docQty;
+      if (delta > 0) totalPlus += delta * item.price;
+      else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td style="border:1px solid #444; padding:2px; word-break:break-word; overflow-wrap:break-word;">${item.code}</td>
+        <td style="border:1px solid #444; padding:2px; word-break:break-word; overflow-wrap:break-word;">${item.name}</td>
+        <td style="border:1px solid #444; padding:2px;">${item.unit}</td>
+        <td style="border:1px solid #444; padding:2px;">${item.price.toFixed(2)}</td>
+        <td style="border:1px solid #444; padding:2px;">${item.docQty}</td>
+        <td style="border:1px solid #444; padding:2px; white-space:pre-wrap; word-break:break-word; overflow-wrap:break-word; max-width:100px;">${raw}</td>
+        <td style="border:1px solid #444; padding:2px;">${delta}</td>
+      `;
+      tbodyBlock.appendChild(row);
+    });
+
+    table.appendChild(tbodyBlock);
+    exportArea.appendChild(table);
   });
 
   // заменили "Избыток" на "Излишек"
@@ -700,7 +735,7 @@ list.addEventListener("input", e => {
     margin: 0.2,
     filename,
     image: { type: 'jpeg', quality: 0.95 },
-    html2canvas: { scale: 1 },
+    html2canvas: { scale: 1, useCORS: true },
     jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
     pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
   };
