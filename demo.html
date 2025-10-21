@@ -633,72 +633,101 @@ list.addEventListener("input", e => {
 
 
   // Экспорт PDF
-  function exportPDF() {
-    autosave(); // гарантируем сохранение перед экспортом
-    const exportArea = document.getElementById("export-area");
-    const summary = document.getElementById("export-summary");
-    const tbody = document.getElementById("export-table-body");
-    summary.innerHTML = '';
-    tbody.innerHTML = '';
-    exportArea.style.display = "block";
-    window.scrollTo(0, 0);
+ function exportPDF() {
+  autosave(); // гарантируем сохранение перед экспортом
+  const exportArea = document.getElementById("export-area");
+  const summary = document.getElementById("export-summary");
+  const tbody = document.getElementById("export-table-body");
+  summary.innerHTML = '';
+  tbody.innerHTML = '';
+  exportArea.style.display = "block";
+  window.scrollTo(0, 0);
 
-    let totalPlus = 0, totalMinus = 0;
+  let totalPlus = 0, totalMinus = 0;
 
-    allItems.forEach(item => {
-      const input = document.querySelector(`input[data-code="${item.code}"]`);
-      const raw = input ? input.value : "";
-      let actual = 0;
-      try { actual = Function("return " + raw.replace(',', '.'))() || 0; } catch {}
-      const delta = actual - item.docQty;
-      if (delta > 0) totalPlus += delta * item.price;
-      else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
+  // сортировка товаров по алфавиту
+  const sortedItems = [...allItems].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td style="border:1px solid #444; padding:4px;">${item.code}</td>
-        <td style="border:1px solid #444; padding:4px;">${item.name}</td>
-        <td style="border:1px solid #444; padding:4px;">${item.unit}</td>
-        <td style="border:1px solid #444; padding:4px;">${item.price.toFixed(2)}</td>
-        <td style="border:1px solid #444; padding:4px;">${item.docQty}</td>
-        <td style="border:1px solid #444; padding:4px;">${raw}</td>
-        <td style="border:1px solid #444; padding:4px;">${delta}</td>
-      `;
-      tbody.appendChild(row);
-    });
+  sortedItems.forEach(item => {
+    const input = document.querySelector(`input[data-code="${item.code}"]`);
+    const raw = input ? input.value : "";
+    let actual = 0;
+    try { actual = Function("return " + raw.replace(',', '.'))() || 0; } catch {}
+    const delta = actual - item.docQty;
+    if (delta > 0) totalPlus += delta * item.price;
+    else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
 
-    summary.innerHTML = `
-      🧾 Недостача: –${totalMinus.toFixed(2)} ₽<br>
-      💰 Избыток: +${totalPlus.toFixed(2)} ₽
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td style="border:1px solid #444; padding:4px; word-break:break-word;">${item.code}</td>
+      <td style="border:1px solid #444; padding:4px; word-break:break-word;">${item.name}</td>
+      <td style="border:1px solid #444; padding:4px;">${item.unit}</td>
+      <td style="border:1px solid #444; padding:4px;">${item.price.toFixed(2)}</td>
+      <td style="border:1px solid #444; padding:4px;">${item.docQty}</td>
+      <td style="border:1px solid #444; padding:4px; white-space:normal; word-break:break-word;">${raw}</td>
+      <td style="border:1px solid #444; padding:4px;">${delta}</td>
     `;
+    tbody.appendChild(row);
+  });
 
-    const filename = prompt("Введите имя файла", "RecountPro.pdf");
-    if (filename) {
-      const opt = {
-        margin: 0.2,
-        filename,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 0.8 }, // уменьшили масштаб
-        jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all'] }
-      };
+  // заменили "Избыток" на "Излишек"
+  summary.innerHTML = `
+    🧾 Недостача: –${totalMinus.toFixed(2)} ₽<br>
+    💰 Излишек: +${totalPlus.toFixed(2)} ₽
+  `;
 
-      html2pdf().set(opt).from(exportArea).toPdf().get('pdf').then(pdf => {
-        const totalPages = pdf.internal.getNumberOfPages();
-        for (let i = 1; i <= totalPages; i++) {
-          pdf.setPage(i);
-          pdf.setFontSize(8);
-          pdf.text(`Страница ${i} из ${totalPages}`,
-            pdf.internal.pageSize.getWidth() - 60,
-            pdf.internal.pageSize.getHeight() - 10);
-        }
-      }).save().then(() => {
+  // новые поля для ввода
+  const filename = prompt("Введите имя файла", "RecountPro.pdf");
+  if (!filename) {
+    exportArea.style.display = "none";
+    return;
+  }
+  const groupName = prompt("Введите название группы", "");
+  const countedBy = prompt("Кто считал?", "");
+
+  // добавляем «шапку» в начало exportArea
+  const header = document.createElement("div");
+  header.style.textAlign = "center";
+  header.style.marginBottom = "10px";
+  header.innerHTML = `
+    <h2 style="margin:4px 0;">${groupName || ""}</h2>
+    <div style="font-size:12px; margin:2px 0;">Составил: ${countedBy || ""}</div>
+    <hr style="margin:6px 0;">
+  `;
+  exportArea.insertBefore(header, exportArea.firstChild);
+
+  const opt = {
+    margin: 0.2,
+    filename,
+    image: { type: 'jpeg', quality: 0.95 },
+    html2canvas: { scale: 1 },
+    jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+  };
+
+  html2pdf().set(opt).from(exportArea).toPdf().get('pdf').then(pdf => {
+    const totalPages = pdf.internal.getNumberOfPages();
+
+    // если страниц больше 4 — уменьшаем масштаб
+    if (totalPages > 4) {
+      opt.html2canvas.scale = 0.9;
+      return html2pdf().set(opt).from(exportArea).save().then(() => {
         exportArea.style.display = "none";
       });
-    } else {
-      exportArea.style.display = "none";
     }
-  }
+
+    for (let i = 1; i <= totalPages; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(8);
+      pdf.text(`Страница ${i} из ${totalPages}`,
+        pdf.internal.pageSize.getWidth() - 60,
+        pdf.internal.pageSize.getHeight() - 10);
+    }
+  }).save().then(() => {
+    exportArea.style.display = "none";
+  });
+}
+
   // Итоговое окно (все позиции + цветовая индикация)
 function showSummaryModal() {
   const rows = allItems.map(item => {
