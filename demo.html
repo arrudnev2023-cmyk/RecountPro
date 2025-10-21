@@ -683,8 +683,8 @@ function exportPDF() {
     </div>
     <div style="flex:0; text-align:right; font-size:12px; white-space:nowrap;">
       Считал: ${countedBy || ""}<br>
-      <span style="display:inline-block; border-bottom:1px solid #000; width:${countedBy.length * 7 || 70}px;"></span><br>
-      <span style="display:inline-block; border-bottom:1px solid #000; width:${countedBy.length * 7 || 70}px;"></span>
+      <span style="display:inline-block; border-bottom:1px solid #000; width:150px;"></span><br>
+      <span style="display:inline-block; border-bottom:1px solid #000; width:150px;"></span>
     </div>
   `;
   exportArea.appendChild(header);
@@ -713,7 +713,7 @@ function exportPDF() {
       <th style="border:1px solid #444; padding:2px; width:40px;">Ед.</th>
       <th style="border:1px solid #444; padding:2px; width:45px;">Цена</th>
       <th style="border:1px solid #444; padding:2px; width:45px;">Остаток</th>
-      <th style="border:1px solid #444; padding:2px; width:100px;">Факт</th>
+      <th style="border:1px solid #444; padding:2px; width:120px;">Факт</th>
       <th style="border:1px solid #444; padding:2px; width:55px;">Δ</th>
     </tr>
   `;
@@ -736,7 +736,7 @@ function exportPDF() {
       <td style="border:1px solid #444; padding:2px;">${item.unit}</td>
       <td style="border:1px solid #444; padding:2px; text-align:right; width:45px;">${item.price.toFixed(2)}</td>
       <td style="border:1px solid #444; padding:2px; text-align:right; width:45px;">${item.docQty}</td>
-      <td style="border:1px solid #444; padding:2px; max-width:100px; width:100px; word-break:break-word;">${raw}</td>
+      <td style="border:1px solid #444; padding:2px; text-align:right; width:120px; overflow-wrap:break-word; word-break:break-word;">${raw}</td>
       <td style="border:1px solid #444; padding:2px; text-align:right; width:55px;">${delta}</td>
     `;
     tbody.appendChild(row);
@@ -787,6 +787,7 @@ function exportPDF() {
     exportArea.style.display = "none";
   });
 }
+
 
   // Итоговое окно (все позиции + цветовая индикация)
 function showSummaryModal() {
