@@ -633,7 +633,10 @@ list.addEventListener("input", e => {
 
 
   // Экспорт PDF
- function exportPDF() {
+ // глобальная переменная для фиксации времени загрузки локалки
+let startTime = new Date();
+
+function exportPDF() {
   autosave();
   const exportArea = document.getElementById("export-area");
   exportArea.innerHTML = ""; 
@@ -654,7 +657,20 @@ list.addEventListener("input", e => {
   const groupName = prompt("Введите название группы", "");
   const countedBy = prompt("Кто считал?", "");
 
-  // верхняя шапка (только для первого листа)
+  // фиксируем время окончания
+  const endTime = new Date();
+
+  // форматируем дату и время
+  const formattedDate = endTime.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+  const formatTime = d => d.toLocaleTimeString("ru-RU", {hour: "2-digit", minute: "2-digit"});
+  const startStr = formatTime(startTime);
+  const endStr = formatTime(endTime);
+
+  // верхняя шапка
   const header = document.createElement("div");
   header.style.display = "flex";
   header.style.justifyContent = "space-between";
@@ -662,15 +678,18 @@ list.addEventListener("input", e => {
   header.style.marginBottom = "10px";
   header.innerHTML = `
     <div style="flex:1; text-align:center;">
+      <div style="font-size:12px; margin-bottom:4px;">${formattedDate}</div>
       <h2 style="margin:0;">${groupName || ""}</h2>
     </div>
     <div style="flex:0; text-align:right; font-size:12px; white-space:nowrap;">
-      Считал: ${countedBy || ""}
+      Считал: ${countedBy || ""}<br>
+      <span style="display:inline-block; border-bottom:1px solid #000; width:${countedBy.length * 7 || 70}px;"></span><br>
+      <span style="display:inline-block; border-bottom:1px solid #000; width:${countedBy.length * 7 || 70}px;"></span>
     </div>
   `;
   exportArea.appendChild(header);
 
-  // итоги (сразу под шапкой)
+  // итоги
   const summary = document.createElement("div");
   summary.style.margin = "10px 0";
   summary.style.fontWeight = "bold";
@@ -692,9 +711,9 @@ list.addEventListener("input", e => {
       <th style="border:1px solid #444; padding:2px; width:60px;">Артикул</th>
       <th style="border:1px solid #444; padding:2px;">Название</th>
       <th style="border:1px solid #444; padding:2px; width:40px;">Ед.</th>
-      <th style="border:1px solid #444; padding:2px; width:55px;">Цена</th>
-      <th style="border:1px solid #444; padding:2px; width:55px;">Остаток</th>
-      <th style="border:1px solid #444; padding:2px; width:70px;">Факт</th>
+      <th style="border:1px solid #444; padding:2px; width:45px;">Цена</th>
+      <th style="border:1px solid #444; padding:2px; width:45px;">Остаток</th>
+      <th style="border:1px solid #444; padding:2px; width:100px;">Факт</th>
       <th style="border:1px solid #444; padding:2px; width:55px;">Δ</th>
     </tr>
   `;
@@ -712,24 +731,32 @@ list.addEventListener("input", e => {
 
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td style="border:1px solid #444; padding:2px; word-break:break-word;">${item.code}</td>
-      <td style="border:1px solid #444; padding:2px; word-break:break-word; font-size:8px;">${item.name}</td>
+      <td style="border:1px solid #444; padding:2px;">${item.code}</td>
+      <td style="border:1px solid #444; padding:2px; font-size:8px;">${item.name}</td>
       <td style="border:1px solid #444; padding:2px;">${item.unit}</td>
-      <td style="border:1px solid #444; padding:2px; text-align:right;">${item.price.toFixed(2)}</td>
-      <td style="border:1px solid #444; padding:2px; text-align:right;">${item.docQty}</td>
-      <td style="border:1px solid #444; padding:2px; white-space:pre-wrap; word-break:break-word; overflow-wrap:break-word; max-width:70px;">${raw}</td>
-      <td style="border:1px solid #444; padding:2px; text-align:right;">${delta}</td>
+      <td style="border:1px solid #444; padding:2px; text-align:right; width:45px;">${item.price.toFixed(2)}</td>
+      <td style="border:1px solid #444; padding:2px; text-align:right; width:45px;">${item.docQty}</td>
+      <td style="border:1px solid #444; padding:2px; max-width:100px; width:100px; word-break:break-word;">${raw}</td>
+      <td style="border:1px solid #444; padding:2px; text-align:right; width:55px;">${delta}</td>
     `;
     tbody.appendChild(row);
   });
   table.appendChild(tbody);
   exportArea.appendChild(table);
 
-  // обновляем итоги после подсчёта
+  // обновляем итоги
   summary.innerHTML = `
     🧾 Недостача: –${totalMinus.toFixed(2)} ₽<br>
     💰 Излишек: +${totalPlus.toFixed(2)} ₽
   `;
+
+  // подпись снизу справа
+  const footer = document.createElement("div");
+  footer.style.textAlign = "right";
+  footer.style.fontSize = "8px";
+  footer.style.marginTop = "5px";
+  footer.innerText = `Время пересчёта: с ${startStr} по ${endStr}`;
+  exportArea.appendChild(footer);
 
   // экспорт
   const opt = {
