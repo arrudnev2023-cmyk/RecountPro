@@ -263,6 +263,13 @@
       .btn{width:100%}
     }
   </style>
+  <script src="https://unpkg.com/@supabase/supabase-js"></script>
+<script>
+  const supabaseUrl = "https://YOUR_PROJECT_ID.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxZWJzeHZkc3BtdHF6bGlocXlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MTk1ODUsImV4cCI6MjA3NDM5NTU4NX0.KJpvUiuKDZDWagH4xW4UVul_nyAGnqqJ3QYJYy8-I-I"; // anon key
+  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+</script>
+
 </head>
 <body>
   <canvas id="bg" aria-hidden="true"></canvas>
@@ -411,44 +418,53 @@
 
     // Submit
     const btnLogin = document.getElementById('btnLogin');
-    form.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      let valid = true;
-      if(!loginI.value.trim()){ showError(loginI, loginErr); valid=false; }
-      if(!passI.value.trim()){  showError(passI, passErr);   valid=false; }
-      if(!valid) return;
+    btnLogin.classList.add('loading');
+btnLogin.disabled = true;
 
-      // Simulated request
-      btnLogin.classList.add('loading');
-      btnLogin.disabled = true;
+try {
+  if(mode==='login'){
+    // 🔹 Вход через Supabase
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: loginI.value.trim(),
+      password: passI.value.trim(),
+    });
 
-      await new Promise(r=>setTimeout(r, 900)); // simulate latency
+    if(error){
+      showToast(error.message);
+    } else {
+      showToast('Успешный вход');
+      localStorage.setItem("isAuth", "true");
+      window.location.href = '/content.html';
+    }
 
-      btnLogin.classList.remove('loading');
-      btnLogin.disabled = false;
-
-      if(mode==='login'){
-        showToast('Успешный вход');
-
-        // 🔹 Сохраняем флаг авторизации
-        localStorage.setItem("isAuth", "true");
-
-        // Переход на экран пересчёта
-        window.location.href = '/content.html';
-
-      }else{
-        // basic client-side check for stronger password during register
-        const strong = scorePassword(passI.value) >= 60 && passI.value.length >= 8;
-        if(!strong){
-          showToast('Усилите пароль');
-          showError(passI, passErr);
-          passErr.textContent = 'Пароль недостаточно надёжный.';
-          return;
+  } else {
+    // 🔹 Регистрация через Supabase
+    const { data, error } = await supabase.auth.signUp({
+      email: loginI.value.trim(),
+      password: passI.value.trim(),
+      options: {
+        data: {
+          full_name: loginI.value.trim(),
+          username: loginI.value.trim()
         }
-        showToast('Учётная запись создана');
-        setMode('login');
       }
     });
+
+    if(error){
+      showToast(error.message);
+    } else {
+      showToast('Учётная запись создана');
+      setMode('login');
+    }
+  }
+} catch(err){
+  console.error(err);
+  showToast('Ошибка подключения');
+}
+
+btnLogin.classList.remove('loading');
+btnLogin.disabled = false;
+
 
     // Keyboard UX
     document.addEventListener('keydown',(e)=>{
