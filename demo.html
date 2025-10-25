@@ -172,45 +172,86 @@
 }
 
 
-    /* Меню */
-    #menu-wrapper {
-      position: fixed;
-      bottom: 1rem;
-      right: 1rem;
-      z-index: 1001;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-    }
-    #menu-toggle, #flashlight-btn {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 0.7rem 1rem;
-      border-radius: 8px;
-      font-size: 1rem;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    }
-    #menu-actions {
-      display: none;
-      flex-direction: column;
-      gap: 0.4rem;
-      margin-top: 0.5rem;
-      background: #fff;
-      padding: 0.6rem;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    }
-    #menu-actions button {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 0.5rem;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
+   /* Меню */
+#menu-wrapper {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-family: "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Кнопки-триггеры */
+#menu-toggle, #flashlight-btn {
+  background: linear-gradient(135deg, var(--accent), #6a11cb);
+  color: #fff;
+  border: none;
+  padding: 0.7rem 1.1rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  transition: all 0.25s ease;
+}
+
+#menu-toggle:hover, #flashlight-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+
+#menu-toggle:active, #flashlight-btn:active {
+  transform: translateY(0);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.4);
+}
+
+/* Выпадающее меню */
+#menu-actions {
+  display: none;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  background: #111;
+  padding: 0.8rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  animation: fadeIn 0.3s ease;
+}
+
+/* Кнопки меню */
+#menu-actions button {
+  background: linear-gradient(145deg, #1e1e1e, #2a2a2a);
+  color: #f5f5f5;
+  border: none;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 10px rgba(0,0,0,0.3);
+}
+
+#menu-actions button:hover {
+  background: linear-gradient(145deg, #2a2a2a, #3a3a3a);
+  transform: translateX(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+}
+
+#menu-actions button:active {
+  transform: translateX(0);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.6);
+}
+
+/* Анимация появления */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 
     /* Скрытие карточек при поиске */
     .hidden { display: none !important; }
