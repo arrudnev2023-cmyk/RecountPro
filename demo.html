@@ -234,13 +234,26 @@
   box-shadow: 0 6px 20px rgba(0,0,0,0.35), 0 0 12px rgba(106,17,203,0.6);
   transition: all 0.3s ease;
   backdrop-filter: blur(6px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* SVG внутри кнопок */
+#menu-toggle svg, #flashlight-btn svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+  fill: #fff;
+}
+
+/* Hover‑эффект */
 #menu-toggle:hover, #flashlight-btn:hover {
   transform: translateY(-3px) scale(1.03);
   box-shadow: 0 10px 28px rgba(0,0,0,0.5), 0 0 18px rgba(37,117,252,0.8);
 }
 
+/* Active‑состояние */
 #menu-toggle:active, #flashlight-btn:active {
   transform: translateY(0) scale(0.98);
   box-shadow: inset 0 3px 8px rgba(0,0,0,0.6);
@@ -342,8 +355,27 @@
   <!-- Меню -->
   <div id="menu-wrapper">
     <div style="display:flex; gap:0.5rem;">
-      <button id="flashlight-btn">🔦</button>
-      <button id="menu-toggle">📋 Меню</button>
+     <!-- Кнопки -->
+<div style="display:flex; gap:0.5rem;">
+  <button id="flashlight-btn" aria-label="Flashlight">
+    <!-- SVG фонарика -->
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M9 4h6l2 3-2 3H9L7 7l2-3z" fill="white" opacity="0.9"/>
+      <rect x="10" y="10" width="4" height="8" rx="1.2" fill="white"/>
+      <circle cx="12" cy="17" r="1.2" fill="#111"/>
+    </svg>
+  </button>
+
+  <button id="menu-toggle" aria-label="Menu">
+    <!-- SVG меню (три полоски) -->
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <rect x="4" y="6" width="16" height="2.2" rx="1.1" fill="white"/>
+      <rect x="4" y="11" width="16" height="2.2" rx="1.1" fill="white"/>
+      <rect x="4" y="16" width="16" height="2.2" rx="1.1" fill="white"/>
+    </svg>
+  </button>
+</div>
+
     </div>
     <div id="menu-actions">
       <button onclick="document.getElementById('upload').click()">📂 Загрузить PDF</button>
