@@ -5,277 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <title>RecountPro — Авторизация</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
   <style>
     :root{
-      --bg-1:#0b0f19;
-      --bg-2:#0e1324;
-      --card:#12182a;
-      --glass:rgba(255,255,255,0.06);
-      --border:rgba(255,255,255,0.14);
-      --text:#e7eefb;
-      --muted:#9fb0d0;
-      --gold:#ffd76b;
-      --accent:#60e6c5;
-      --danger:#ff6b6b;
-      --success:#5cf29b;
-      --focus:#6ba8ff;
+      --bg-1:#0b0f19; --bg-2:#0e1324; --card:#12182a; --glass:rgba(255,255,255,0.06);
+      --border:rgba(255,255,255,0.14); --text:#e7eefb; --muted:#9fb0d0;
+      --gold:#ffd76b; --accent:#60e6c5; --danger:#ff6b6b; --success:#5cf29b; --focus:#6ba8ff;
     }
-
-    *{box-sizing:border-box}
-    html,body{height:100%}
+    *{box-sizing:border-box} html,body{height:100%}
     body{
-      margin:0;
-      font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial,sans-serif;
-      color:var(--text);
+      margin:0; font-family:'Inter',system-ui,sans-serif; color:var(--text);
       background: radial-gradient(1200px 600px at 20% 10%, #111936 0%, var(--bg-1) 40%, var(--bg-2) 100%),
                   radial-gradient(900px 500px at 80% 90%, #0f1b3a 0%, var(--bg-2) 60%, #0b0f19 100%);
       overflow:hidden;
     }
-
-    /* Animated canvas background */
-    canvas#bg{
-      position:fixed; inset:0;
-      width:100%; height:100%;
-      z-index:-1; filter:saturate(1.2) blur(0.2px);
+    canvas#bg{ position:fixed; inset:0; width:100%; height:100%; z-index:-1; filter:saturate(1.2) blur(0.2px); }
+    .wrap{ display:grid; place-items:center; min-height:100vh; padding:24px; }
+    .card{ width:100%; max-width:420px; background:linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+      border:1px solid var(--border); border-radius:20px; backdrop-filter:saturate(1.2) blur(10px);
+      box-shadow:0 20px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+      overflow:hidden; animation:cardIn .7s ease both;
     }
-
-    /* Layout */
-    .wrap{
-      display:grid;
-      place-items:center;
-      min-height:100vh;
-      padding:24px;
-    }
-
-    /* Card */
-    .card{
-      width:100%;
-      max-width:420px;
-      background:linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
-      border:1px solid var(--border);
-      border-radius:20px;
-      backdrop-filter:saturate(1.2) blur(10px);
-      box-shadow:
-        0 20px 50px rgba(0,0,0,0.5),
-        inset 0 1px 0 rgba(255,255,255,0.05);
-      overflow:hidden;
-      animation:cardIn .7s ease both;
-    }
-    @keyframes cardIn{
-      from{opacity:0; transform:translateY(18px) scale(.98)}
-      to{opacity:1; transform:translateY(0) scale(1)}
-    }
-
-    /* Header */
-    .header{
-      padding:24px 24px 12px;
-      text-align:center;
-      position:relative;
-    }
-    .brand{
-      display:inline-grid;
-      place-items:center;
-      gap:6px;
-    }
-    .brand h1{
-      margin:0;
-      font-size:24px;
-      letter-spacing:2px;
-      font-weight:700;
-      color:var(--gold);
-      text-shadow:0 0 12px rgba(255,215,107,0.25);
-    }
-    .brand .tag{
-      font-size:12px;
-      padding:4px 10px;
-      border:1px solid rgba(255,215,107,0.6);
-      color:var(--gold);
-      border-radius:999px;
-      background:linear-gradient(180deg, rgba(255,215,107,0.12), rgba(255,215,107,0.04));
-    }
-    .subtitle{
-      margin:10px 0 0;
-      color:var(--muted);
-      font-size:14px;
-    }
-
-    /* Tabs */
-    .tabs{
-      display:flex;
-      gap:8px;
-      padding:16px 16px 0;
-      justify-content:center;
-    }
-    .tab{
-      flex:0 0 auto;
-      padding:10px 14px;
-      font-weight:600;
-      font-size:14px;
-      color:var(--muted);
-      border-radius:12px;
-      background:transparent;
-      border:1px solid transparent;
-      cursor:pointer;
-      transition:.2s ease;
-    }
-    .tab[aria-selected="true"]{
-      color:var(--text);
-      border-color:var(--border);
-      background:linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
-      box-shadow:0 6px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06);
-    }
-    .tab:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
-
-    /* Form */
-    form{
-      padding:18px 20px 22px;
-    }
-    .field{
-      margin:12px 0;
-    }
-    .label{
-      font-size:12px; color:var(--muted); margin-bottom:6px;
-      display:flex; align-items:center; gap:6px;
-    }
-    .input{
-      display:flex; align-items:center; gap:8px;
-      background:rgba(255,255,255,0.06);
-      border:1px solid var(--border);
-      border-radius:12px;
-      padding:10px 12px;
-      transition:.2s ease;
-    }
-    .input:focus-within{
-      border-color:rgba(96,230,197,0.8);
-      box-shadow:0 0 0 3px rgba(96,230,197,0.18);
-      background:rgba(255,255,255,0.08);
-    }
-    .input input{
-      flex:1;
-      background:transparent;
-      border:0;
-      color:var(--text);
-      font-size:15px;
-      padding:6px 2px;
-      outline:none;
-    }
-    .suffix-btn{
-      background:rgba(255,255,255,0.08);
-      border:1px solid var(--border);
-      color:var(--muted);
-      font-size:12px;
-      padding:6px 10px;
-      border-radius:10px;
-      cursor:pointer; transition:.2s ease;
-    }
-    .suffix-btn:hover{color:var(--text); border-color:rgba(255,255,255,0.2)}
-
-    .hint{
-      font-size:12px; color:var(--muted);
-      margin-top:6px;
-    }
-    .caps{ color:var(--danger); display:none }
-    .error{
-      display:none; margin-top:8px; font-size:13px;
-      color:var(--danger);
-    }
-
-    /* Password meter */
-    .meter{
-      height:8px; border-radius:999px;
-      background:rgba(255,255,255,0.06);
-      border:1px solid var(--border);
-      overflow:hidden; margin-top:8px;
-    }
-    .meter > span{
-      display:block; height:100%; width:0%;
-      background:linear-gradient(90deg, #ff6b6b, #ffd76b, #60e6c5);
-      transition:width .25s ease;
-    }
-
-    /* Actions */
-    .actions{
-      display:flex; gap:10px; margin-top:14px;
-    }
-    .btn{
-      flex:1;
-      padding:12px 14px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.12);
-      cursor:pointer; font-weight:700; font-size:14px;
-      transition:.2s ease; position:relative; overflow:hidden;
-    }
-    .btn.primary{
-      color:#0b0f19;
-      background:linear-gradient(180deg, var(--gold), #ffc84d);
-      box-shadow:0 8px 24px rgba(255,200,77,0.35);
-    }
-    .btn.primary:hover{ filter:saturate(1.05) brightness(1.05) }
-    .btn.secondary{
-      color:var(--text);
-      background:linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
-    }
-    .btn.secondary:hover{ border-color:rgba(255,255,255,0.2) }
-
-    .btn:focus-visible{ outline:2px solid var(--focus); outline-offset:2px }
-
-    /* Loader dot trail */
-    .btn.loading{ pointer-events:none; opacity:.88 }
-    .btn.loading::after{
-      content:'';
-      position:absolute; inset:0;
-      background:
-        radial-gradient(8px 8px at 20% 50%, rgba(0,0,0,0.0) 49%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.0) 60%) no-repeat,
-        radial-gradient(8px 8px at 40% 50%, rgba(0,0,0,0.0) 49%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.0) 60%) no-repeat,
-        radial-gradient(8px 8px at 60% 50%, rgba(0,0,0,0.0) 49%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.0) 60%) no-repeat;
-      animation:dots 1s infinite linear;
-    }
-    @keyframes dots{
-      0%{background-position:10% 50%, 50% 50%, 90% 50%}
-      50%{background-position:20% 50%, 50% 50%, 80% 50%}
-      100%{background-position:10% 50%, 50% 50%, 90% 50%}
-    }
-
-    /* Footer */
-    .foot{
-      padding:8px 18px 20px;
-      text-align:center; font-size:12px; color:var(--muted);
-    }
-
-    /* Success toast */
-    .toast{
-      position:fixed; left:50%; bottom:24px;
-      transform:translateX(-50%) translateY(20px);
-      background:linear-gradient(180deg, rgba(96,230,197,0.20), rgba(96,230,197,0.08));
-      border:1px solid rgba(96,230,197,0.4);
-      color:var(--text);
-      padding:10px 14px; border-radius:12px;
-      box-shadow:0 10px 30px rgba(0,0,0,0.35);
-      opacity:0; pointer-events:none;
-      transition:.35s ease;
-    }
+    @keyframes cardIn{ from{opacity:0; transform:translateY(18px) scale(.98)} to{opacity:1; transform:translateY(0) scale(1)} }
+    .header{ padding:24px 24px 12px; text-align:center; }
+    .brand h1{ margin:0; font-size:24px; letter-spacing:2px; font-weight:700; color:var(--gold); }
+    .brand .tag{ font-size:12px; padding:4px 10px; border:1px solid rgba(255,215,107,0.6); color:var(--gold); border-radius:999px; }
+    .subtitle{ margin:10px 0 0; color:var(--muted); font-size:14px; }
+    .tabs{ display:flex; gap:8px; padding:16px; justify-content:center; }
+    .tab{ flex:0 0 auto; padding:10px 14px; font-weight:600; font-size:14px; color:var(--muted); border-radius:12px; background:transparent; border:1px solid transparent; cursor:pointer; }
+    .tab[aria-selected="true"]{ color:var(--text); border-color:var(--border); background:rgba(255,255,255,0.08); }
+    form{ padding:18px 20px 22px; }
+    .field{ margin:12px 0; }
+    .label{ font-size:12px; color:var(--muted); margin-bottom:6px; }
+    .input{ display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:12px; padding:10px 12px; }
+    .input input{ flex:1; background:transparent; border:0; color:var(--text); font-size:15px; outline:none; }
+    .suffix-btn{ background:rgba(255,255,255,0.08); border:1px solid var(--border); color:var(--muted); font-size:12px; padding:6px 10px; border-radius:10px; cursor:pointer; }
+    .error{ display:none; margin-top:8px; font-size:13px; color:var(--danger); }
+    .meter{ height:8px; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid var(--border); overflow:hidden; margin-top:8px; }
+    .meter > span{ display:block; height:100%; width:0%; background:linear-gradient(90deg, #ff6b6b, #ffd76b, #60e6c5); transition:width .25s ease; }
+    .actions{ display:flex; gap:10px; margin-top:14px; }
+    .btn{ flex:1; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); cursor:pointer; font-weight:700; font-size:14px; }
+    .btn.primary{ color:#0b0f19; background:linear-gradient(180deg, var(--gold), #ffc84d); }
+    .btn.secondary{ color:var(--text); background:rgba(255,255,255,0.1); }
+    .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(96,230,197,0.2); border:1px solid rgba(96,230,197,0.4); color:var(--text); padding:10px 14px; border-radius:12px; opacity:0; transition:.35s ease; }
     .toast.show{ opacity:1; transform:translateX(-50%) translateY(0) }
-
-    /* Responsive */
-    @media (max-width:440px){
-      .card{border-radius:16px}
-      .actions{flex-direction:column}
-      .btn{width:100%}
-    }
   </style>
-  <script src="https://unpkg.com/@supabase/supabase-js"></script>
-<script>
-  const supabaseUrl = "https://YOUR_PROJECT_ID.supabase.co";
-  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxZWJzeHZkc3BtdHF6bGlocXlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4MTk1ODUsImV4cCI6MjA3NDM5NTU4NX0.KJpvUiuKDZDWagH4xW4UVul_nyAGnqqJ3QYJYy8-I-I"; // anon key
-  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-</script>
 
+  <!-- Supabase SDK -->
+  <script src="https://unpkg.com/@supabase/supabase-js"></script>
+  <script>
+    const supabaseUrl = "https://YOUR_PROJECT_ID.supabase.co"; // ← сюда твой Project URL
+    const supabaseKey = "YOUR_ANON_KEY"; // ← сюда твой anon public key
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+  </script>
 </head>
 <body>
   <canvas id="bg" aria-hidden="true"></canvas>
 
   <div class="wrap">
-    <section class="card" role="dialog" aria-labelledby="brand-title" aria-describedby="brand-subtitle">
+    <section class="card">
       <header class="header">
         <div class="brand">
           <h1 id="brand-title">RECOUNT • PRO</h1>
@@ -284,76 +72,67 @@
         <p class="subtitle">Минимум лишнего — максимум контроля.</p>
       </header>
 
-      <nav class="tabs" role="tablist" aria-label="Режимы">
-        <button class="tab" role="tab" aria-selected="true" id="tab-login">Вход</button>
-        <button class="tab" role="tab" aria-selected="false" id="tab-register">Авторизация</button>
+      <nav class="tabs">
+        <button class="tab" aria-selected="true" id="tab-login">Вход</button>
+        <button class="tab" aria-selected="false" id="tab-register">Регистрация</button>
       </nav>
 
       <form id="form" novalidate>
         <div class="field">
-          <div class="label">Логин</div>
+          <div class="label">Email</div>
           <div class="input">
-            <input id="login" name="login" type="text" autocomplete="username" placeholder="Введите логин" required aria-required="true">
+            <input id="login" type="email" placeholder="Введите email" required>
           </div>
-          <div class="error" id="loginError">Введите логин.</div>
+          <div class="error" id="loginError">Введите email.</div>
         </div>
 
         <div class="field">
-          <div class="label">
-            Пароль
-            <span class="caps" id="capsNote">Caps Lock включен</span>
-          </div>
+          <div class="label">Пароль <span class="caps" id="capsNote">Caps Lock включен</span></div>
           <div class="input">
-            <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Введите пароль" required aria-required="true">
+            <input id="password" type="password" placeholder="Введите пароль" required>
             <button type="button" class="suffix-btn" id="toggle">Показать</button>
           </div>
-          <div class="meter" aria-hidden="true"><span id="meterBar"></span></div>
-          <div class="hint" id="pwHint">Минимум 8 символов, буквы верхнего/нижнего регистра и цифры.</div>
+          <div class="meter"><span id="meterBar"></span></div>
           <div class="error" id="passwordError">Введите пароль.</div>
         </div>
 
         <div class="actions">
-          <button type="button" class="btn secondary" id="btnRegister">Авторизация</button>
+          <button type="button" class="btn secondary" id="btnRegister">Регистрация</button>
           <button type="submit" class="btn primary" id="btnLogin">Вход</button>
         </div>
       </form>
 
-      <div class="foot">Нажимая кнопку, вы принимаете условия обработки данных.</div>
+        <div class="foot">Нажимая кнопку, вы принимаете условия обработки данных.</div>
     </section>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite">Готово</div>
 
-<script>
+  <script>
     // Tabs
     const tabLogin = document.getElementById('tab-login');
     const tabRegister = document.getElementById('tab-register');
     const form = document.getElementById('form');
     const brandSub = document.getElementById('brand-subtitle');
+    let mode = 'login';
 
-    let mode = 'login'; // 'login' | 'register'
     function setMode(next){
       mode = next;
       tabLogin.setAttribute('aria-selected', String(next==='login'));
       tabRegister.setAttribute('aria-selected', String(next==='register'));
       brandSub.textContent = next==='login' ? 'Вход в систему' : 'Создание учётной записи';
       document.getElementById('btnLogin').textContent = next==='login' ? 'Вход' : 'Продолжить';
-      document.getElementById('btnRegister').textContent = next==='login' ? 'Авторизация' : 'Назад к входу';
-      document.getElementById('pwHint').textContent = next==='login'
-        ? 'Минимум 8 символов, буквы верхнего/нижнего регистра и цифры.'
-        : 'Создайте надёжный пароль: 10+ символов, буквы, цифры, спецсимвол.';
+      document.getElementById('btnRegister').textContent = next==='login' ? 'Регистрация' : 'Назад к входу';
     }
     tabLogin.addEventListener('click',()=>setMode('login'));
     tabRegister.addEventListener('click',()=>setMode('register'));
-    document.getElementById('btnRegister').addEventListener('click',()=>{
-      setMode(mode==='login'?'register':'login');
-    });
+    document.getElementById('btnRegister').addEventListener('click',()=>{ setMode(mode==='login'?'register':'login'); });
 
     // Inputs
     const loginI = document.getElementById('login');
-    const passI  = document.getElementById('password');
+    const passI = document.getElementById('password');
     const loginErr = document.getElementById('loginError');
-    const passErr  = document.getElementById('passwordError');
+    const passErr = document.getElementById('passwordError');
 
     // Show/Hide password
     document.getElementById('toggle').addEventListener('click',()=>{
@@ -376,15 +155,10 @@
     function scorePassword(pw){
       let score = 0;
       if(!pw) return 0;
-      const sets = [
-        /[a-z]/.test(pw),
-        /[A-Z]/.test(pw),
-        /\d/.test(pw),
-        /[^A-Za-z0-9]/.test(pw)
-      ].filter(Boolean).length;
+      const sets = [ /[a-z]/.test(pw), /[A-Z]/.test(pw), /\d/.test(pw), /[^A-Za-z0-9]/.test(pw) ].filter(Boolean).length;
       score += sets*20;
       score += Math.min(40, pw.length*3);
-      if(/(.)\1{2,}/.test(pw)) score -= 15; // penalize repeats
+      if(/(.)\1{2,}/.test(pw)) score -= 15;
       return Math.max(0, Math.min(100, score));
     }
     passI.addEventListener('input',()=>{
@@ -394,104 +168,67 @@
     });
 
     // Validation
-    function showError(el, box){
-      box.style.display = 'block';
-      el.closest('.input').style.borderColor = 'rgba(255,107,107,0.7)';
-      el.closest('.input').style.boxShadow = '0 0 0 3px rgba(255,107,107,0.18)';
-    }
-    function clearError(el, box){
-      box.style.display = 'none';
-      el.closest('.input').style.borderColor = 'var(--border)';
-      el.closest('.input').style.boxShadow = 'none';
-    }
-
+    function showError(el, box){ box.style.display = 'block'; }
+    function clearError(el, box){ box.style.display = 'none'; }
     loginI.addEventListener('input',()=> clearError(loginI, loginErr));
     passI.addEventListener('input',()=> clearError(passI, passErr));
 
     // Toast
     const toast = document.getElementById('toast');
-    function showToast(text){
-      toast.textContent = text;
-      toast.classList.add('show');
-      setTimeout(()=> toast.classList.remove('show'), 2000);
-    }
+    function showToast(text){ toast.textContent = text; toast.classList.add('show'); setTimeout(()=> toast.classList.remove('show'), 2000); }
 
     // Submit
     const btnLogin = document.getElementById('btnLogin');
-    btnLogin.classList.add('loading');
-btnLogin.disabled = true;
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      let valid = true;
+      if(!loginI.value.trim()){ showError(loginI, loginErr); valid=false; }
+      if(!passI.value.trim()){ showError(passI, passErr); valid=false; }
+      if(!valid) return;
 
-try {
-  if(mode==='login'){
-    // 🔹 Вход через Supabase
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: loginI.value.trim(),
-      password: passI.value.trim(),
-    });
+      btnLogin.classList.add('loading');
+      btnLogin.disabled = true;
 
-    if(error){
-      showToast(error.message);
-    } else {
-      showToast('Успешный вход');
-      localStorage.setItem("isAuth", "true");
-      window.location.href = '/content.html';
-    }
-
-  } else {
-    // 🔹 Регистрация через Supabase
-    const { data, error } = await supabase.auth.signUp({
-      email: loginI.value.trim(),
-      password: passI.value.trim(),
-      options: {
-        data: {
-          full_name: loginI.value.trim(),
-          username: loginI.value.trim()
+      try {
+        if(mode==='login'){
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: loginI.value.trim(),
+            password: passI.value.trim(),
+          });
+          if(error){ showToast(error.message); }
+          else {
+            showToast('Успешный вход');
+            localStorage.setItem("isAuth", "true");
+            window.location.href = '/content.html';
+          }
+        } else {
+          const { data, error } = await supabase.auth.signUp({
+            email: loginI.value.trim(),
+            password: passI.value.trim(),
+            options: { data: { full_name: loginI.value.trim(), username: loginI.value.trim() } }
+          });
+          if(error){ showToast(error.message); }
+          else { showToast('Учётная запись создана'); setMode('login'); }
         }
-      }
+      } catch(err){ console.error(err); showToast('Ошибка подключения'); }
+
+      btnLogin.classList.remove('loading');
+      btnLogin.disabled = false;
     });
-
-    if(error){
-      showToast(error.message);
-    } else {
-      showToast('Учётная запись создана');
-      setMode('login');
-    }
-  }
-} catch(err){
-  console.error(err);
-  showToast('Ошибка подключения');
-}
-
-btnLogin.classList.remove('loading');
-btnLogin.disabled = false;
-
 
     // Keyboard UX
     document.addEventListener('keydown',(e)=>{
-      if(e.key==='Enter' && (document.activeElement===loginI || document.activeElement===passI)){
-        form.requestSubmit();
-      }
-      if(e.key==='Escape'){
-        loginI.blur(); passI.blur();
-      }
+      if(e.key==='Enter' && (document.activeElement===loginI || document.activeElement===passI)){ form.requestSubmit(); }
+      if(e.key==='Escape'){ loginI.blur(); passI.blur(); }
     });
 
-    // Background canvas animation (aurora + particles)
+    // Background canvas animation
     const canvas = document.getElementById('bg');
     const ctx = canvas.getContext('2d');
     let W = canvas.width = window.innerWidth;
     let H = canvas.height = window.innerHeight;
     window.addEventListener('resize',()=>{ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; });
-
-    const particles = Array.from({length: 80}, ()=>({
-      x: Math.random()*W,
-      y: Math.random()*H,
-      r: Math.random()*1.8+0.6,
-      vx: (Math.random()-0.5)*0.6,
-      vy: (Math.random()-0.5)*0.6,
-      a: Math.random()*0.6+0.4
-    }));
-
+    const particles = Array.from({length: 80}, ()=>({ x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.8+0.6, vx: (Math.random()-0.5)*0.6, vy: (Math.random()-0.5)*0.6, a: Math.random()*0.6+0.4 }));
     let t = 0;
     function aurora(y, amp, freq, phase){
       const grd = ctx.createLinearGradient(0, y-amp, 0, y+amp);
@@ -502,53 +239,30 @@ btnLogin.disabled = false;
       const h = amp*(Math.sin(t*0.6+phase)*0.4+0.6)+80;
       ctx.fillRect(0, y-h, W, h*2);
     }
-
     function step(){
       ctx.clearRect(0,0,W,H);
-
-      // subtle vignette
       const v = ctx.createRadialGradient(W/2, H/2, H*0.15, W/2, H/2, H*0.9);
       v.addColorStop(0, 'rgba(0,0,0,0)');
       v.addColorStop(1, 'rgba(0,0,0,0.35)');
-      ctx.fillStyle = v;
-      ctx.fillRect(0,0,W,H);
-
-      // layered aurora bands
+      ctx.fillStyle = v; ctx.fillRect(0,0,W,H);
       aurora(H*0.28, 140, 0.002, 0);
       aurora(H*0.58, 180, 0.002, 2.2);
       aurora(H*0.78, 220, 0.002, 4.4);
-
-      // particles
       for(const p of particles){
         p.x += p.vx; p.y += p.vy;
         if(p.x<0||p.x>W) p.vx*=-1;
         if(p.y<0||p.y>H) p.vy*=-1;
-
-        ctx.beginPath();
-                ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(255,255,255,'+p.a*0.35+')';
-        ctx.fill();
-
-        // glow
-        ctx.shadowColor = 'rgba(255,215,107,0.25)';
-        ctx.shadowBlur = 6;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.closePath();
+        ctx.fillStyle = 'rgba(255,255,255,'+p.a*0.35+')'; ctx.fill();
       }
-      ctx.shadowBlur = 0;
-
-      // soft beams
       ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = 'rgba(255,215,107,0.06)';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255,215,107,0.06)'; ctx.lineWidth = 2;
       for(let i=0;i<6;i++){
         ctx.beginPath();
         const px = W*(0.15 + i*0.14 + Math.sin(t*0.6+i)*0.02);
-        ctx.moveTo(px, H*0.1);
-        ctx.lineTo(px, H*0.9);
-        ctx.stroke();
+        ctx.moveTo(px, H*0.1); ctx.lineTo(px, H*0.9); ctx.stroke();
       }
       ctx.globalCompositeOperation = 'source-over';
-
       t += 0.01;
       requestAnimationFrame(step);
     }
@@ -556,6 +270,6 @@ btnLogin.disabled = false;
 
     // Initial focus
     loginI.focus();
-</script>
+  </script>
 </body>
 </html>
