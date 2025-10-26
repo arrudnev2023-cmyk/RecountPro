@@ -802,6 +802,21 @@ function exportPDF() {
   const startStr = formatTime(startTime);
   const endStr = formatTime(endTime);
 
+  // постоянная фраза сверху
+  const title = document.createElement("div");
+  title.style.textAlign = "center";
+  title.style.fontSize = "10px";
+  title.style.marginBottom = "4px";
+  title.innerText = "Акт контрольно-ревизионной проверки по количеству и качеству";
+  exportArea.appendChild(title);
+
+  const dateLine = document.createElement("div");
+  dateLine.style.textAlign = "center";
+  dateLine.style.fontSize = "12px";
+  dateLine.style.marginBottom = "10px";
+  dateLine.innerText = formattedDate;
+  exportArea.appendChild(dateLine);
+
   // верхняя шапка
   const header = document.createElement("div");
   header.style.display = "flex";
@@ -810,27 +825,21 @@ function exportPDF() {
   header.style.marginBottom = "10px";
   header.innerHTML = `
     <div style="flex:1; text-align:center;">
-      <div style="font-size:12px; margin-bottom:4px;">${formattedDate}</div>
       <h2 style="margin:0;">${groupName || ""}</h2>
     </div>
     <div style="flex:0; text-align:right; font-size:12px; white-space:nowrap;">
       Считал: ${countedBy || ""}<br>
-      <span style="display:inline-block; border-bottom:1px solid #000; width:150px;"></span><br>
-      <span style="display:inline-block; border-bottom:1px solid #000; width:150px;"></span>
+      <span style="display:inline-block; border-bottom:1px solid #000; width:300px;"></span><br>
+      <span style="display:inline-block; border-bottom:1px solid #000; width:300px;"></span>
     </div>
   `;
   exportArea.appendChild(header);
 
-  // итоги
+  // итоги (будет обновлён после цикла)
   const summary = document.createElement("div");
-summary.style.margin = "10px 0";
-summary.style.fontWeight = "bold";
-summary.innerHTML = `
-  Итог:<br>
-  <span style="color:green;">+${totalPlus.toFixed(2)} ₽</span><br>
-  <span style="color:red;">–${totalMinus.toFixed(2)} ₽</span>
-`;
-exportArea.appendChild(summary);
+  summary.style.margin = "10px 0";
+  summary.style.fontWeight = "bold";
+  exportArea.appendChild(summary);
 
   // таблица
   const table = document.createElement("table");
@@ -841,6 +850,7 @@ exportArea.appendChild(summary);
   const thead = document.createElement("thead");
   thead.innerHTML = `
     <tr>
+      <th style="border:1px solid #444; padding:2px; width:25px;">№</th>
       <th style="border:1px solid #444; padding:2px; width:60px;">Артикул</th>
       <th style="border:1px solid #444; padding:2px;">Название</th>
       <th style="border:1px solid #444; padding:2px; width:40px;">Ед.</th>
@@ -853,17 +863,18 @@ exportArea.appendChild(summary);
   table.appendChild(thead);
 
   const tbody = document.createElement("tbody");
+  let index = 1;
   sortedItems.forEach(item => {
     const input = document.querySelector(`input[data-code="${item.code}"]`);
     const raw = input ? input.value : "";
-    let actual = 0;
-    try { actual = Function("return " + raw.replace(',', '.'))() || 0; } catch {}
+    const actual = parseFloat(raw.replace(',', '.')) || 0;
     const delta = actual - item.docQty;
     if (delta > 0) totalPlus += delta * item.price;
     else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
 
     const row = document.createElement("tr");
     row.innerHTML = `
+      <td style="border:1px solid #444; padding:2px; text-align:center;">${index}</td>
       <td style="border:1px solid #444; padding:2px;">${item.code}</td>
       <td style="border:1px solid #444; padding:2px; font-size:9px;">${item.name}</td>
       <td style="border:1px solid #444; padding:2px;">${item.unit}</td>
@@ -873,14 +884,16 @@ exportArea.appendChild(summary);
       <td style="border:1px solid #444; padding:2px; text-align:right; width:55px;">${delta}</td>
     `;
     tbody.appendChild(row);
+    index++;
   });
   table.appendChild(tbody);
   exportArea.appendChild(table);
 
   // обновляем итоги
   summary.innerHTML = `
-    🧾 Недостача: –${totalMinus.toFixed(2)} ₽<br>
-    💰 Излишек: +${totalPlus.toFixed(2)} ₽
+    <div style="font-weight:bold;">Итог:</div>
+    <div style="color:red;">–${totalMinus.toFixed(2)} ₽</div>
+    <div style="color:green;">+${totalPlus.toFixed(2)} ₽</div>
   `;
 
   // подпись снизу справа
@@ -920,6 +933,7 @@ exportArea.appendChild(summary);
     exportArea.style.display = "none";
   });
 }
+
 
 
   // Итоговое окно (все позиции + цветовая индикация)
