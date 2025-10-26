@@ -817,15 +817,7 @@ function exportPDF() {
   dateLine.innerText = formattedDate;
   exportArea.appendChild(dateLine);
 
-  // название группы по центру
-  const groupLine = document.createElement("div");
-  groupLine.style.textAlign = "center";
-  groupLine.style.fontSize = "14px";
-  groupLine.style.marginBottom = "10px";
-  groupLine.innerText = groupName || "";
-  exportArea.appendChild(groupLine);
-
-  // верхняя строка: слева "Считал", справа "Итог"
+  // верхняя строка: слева "Итог", справа "Считал"
   const topRow = document.createElement("div");
   topRow.style.display = "flex";
   topRow.style.justifyContent = "space-between";
@@ -836,23 +828,31 @@ function exportPDF() {
   leftBlock.style.textAlign = "left";
   leftBlock.style.fontSize = "12px";
   leftBlock.innerHTML = `
-    Считал: ${countedBy || ""}<br>
-    <span style="display:inline-block; border-bottom:1px solid #000; width:300px;"></span><br>
-    <span style="display:inline-block; border-bottom:1px solid #000; width:300px;"></span>
+    Итог:<br>
+    –${totalMinus.toFixed(2)} ₽<br>
+    +${totalPlus.toFixed(2)} ₽
   `;
 
   const rightBlock = document.createElement("div");
   rightBlock.style.textAlign = "right";
   rightBlock.style.fontSize = "12px";
   rightBlock.innerHTML = `
-    Итог:<br>
-    –${totalMinus.toFixed(2)} ₽<br>
-    +${totalPlus.toFixed(2)} ₽
+    Считал: ${countedBy || ""}<br>
+    <span style="display:inline-block; border-bottom:1px solid #000; width:300px;"></span><br>
+    <span style="display:inline-block; border-bottom:1px solid #000; width:300px;"></span>
   `;
 
   topRow.appendChild(leftBlock);
   topRow.appendChild(rightBlock);
   exportArea.appendChild(topRow);
+
+  // название группы теперь перед таблицей
+  const groupLine = document.createElement("div");
+  groupLine.style.textAlign = "center";
+  groupLine.style.fontSize = "14px";
+  groupLine.style.margin = "10px 0";
+  groupLine.innerText = groupName || "";
+  exportArea.appendChild(groupLine);
 
   // таблица
   const table = document.createElement("table");
@@ -899,7 +899,7 @@ function exportPDF() {
   exportArea.appendChild(table);
 
   // обновляем итоговые суммы
-  rightBlock.innerHTML = `
+  leftBlock.innerHTML = `
     Итог:<br>
     –${totalMinus.toFixed(2)} ₽<br>
     +${totalPlus.toFixed(2)} ₽
@@ -928,7 +928,6 @@ function exportPDF() {
   });
 }
 
-  
   // Итоговое окно (все позиции + цветовая индикация)
 function showSummaryModal() {
   const rows = allItems.map(item => {
