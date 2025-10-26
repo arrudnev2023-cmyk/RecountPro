@@ -825,32 +825,34 @@ function exportPDF() {
   groupLine.innerText = groupName || "";
   exportArea.appendChild(groupLine);
 
-  // итоги в левом верхнем углу
-  const summary = document.createElement("div");
-  summary.style.textAlign = "left";
-  summary.style.fontSize = "12px";
-  summary.style.marginBottom = "10px";
-  summary.innerHTML = `
+  // верхняя строка: слева "Считал", справа "Итог"
+  const topRow = document.createElement("div");
+  topRow.style.display = "flex";
+  topRow.style.justifyContent = "space-between";
+  topRow.style.alignItems = "flex-start";
+  topRow.style.marginBottom = "10px";
+
+  const leftBlock = document.createElement("div");
+  leftBlock.style.textAlign = "left";
+  leftBlock.style.fontSize = "12px";
+  leftBlock.innerHTML = `
+    Считал: ${countedBy || ""}<br>
+    <span style="display:inline-block; border-bottom:1px solid #000; width:300px;"></span><br>
+    <span style="display:inline-block; border-bottom:1px solid #000; width:300px;"></span>
+  `;
+
+  const rightBlock = document.createElement("div");
+  rightBlock.style.textAlign = "right";
+  rightBlock.style.fontSize = "12px";
+  rightBlock.innerHTML = `
     Итог:<br>
     –${totalMinus.toFixed(2)} ₽<br>
     +${totalPlus.toFixed(2)} ₽
   `;
-  exportArea.appendChild(summary);
 
-  // верхняя шапка (только "Считал" и линии)
-  const header = document.createElement("div");
-  header.style.display = "flex";
-  header.style.justifyContent = "flex-end";
-  header.style.alignItems = "flex-start";
-  header.style.marginBottom = "10px";
-  header.innerHTML = `
-    <div style="flex:0; text-align:right; font-size:12px; white-space:nowrap;">
-      Считал: ${countedBy || ""}<br>
-      <span style="display:inline-block; border-bottom:1px solid #000; width:300px;"></span><br>
-      <span style="display:inline-block; border-bottom:1px solid #000; width:300px;"></span>
-    </div>
-  `;
-  exportArea.appendChild(header);
+  topRow.appendChild(leftBlock);
+  topRow.appendChild(rightBlock);
+  exportArea.appendChild(topRow);
 
   // таблица
   const table = document.createElement("table");
@@ -861,7 +863,6 @@ function exportPDF() {
   const thead = document.createElement("thead");
   thead.innerHTML = `
     <tr>
-      <th style="border:1px solid #444; padding:2px; width:25px;">№</th>
       <th style="border:1px solid #444; padding:2px; width:60px;">Артикул</th>
       <th style="border:1px solid #444; padding:2px;">Название</th>
       <th style="border:1px solid #444; padding:2px; width:40px;">Ед.</th>
@@ -874,7 +875,6 @@ function exportPDF() {
   table.appendChild(thead);
 
   const tbody = document.createElement("tbody");
-  let index = 1;
   sortedItems.forEach(item => {
     const input = document.querySelector(`input[data-code="${item.code}"]`);
     const raw = input ? input.value : "";
@@ -885,7 +885,6 @@ function exportPDF() {
 
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td style="border:1px solid #444; padding:2px; text-align:center;">${index}</td>
       <td style="border:1px solid #444; padding:2px;">${item.code}</td>
       <td style="border:1px solid #444; padding:2px; font-size:9px;">${item.name}</td>
       <td style="border:1px solid #444; padding:2px;">${item.unit}</td>
@@ -895,13 +894,12 @@ function exportPDF() {
       <td style="border:1px solid #444; padding:2px; text-align:right; width:55px;">${delta}</td>
     `;
     tbody.appendChild(row);
-    index++;
   });
   table.appendChild(tbody);
   exportArea.appendChild(table);
 
-  // обновляем итоги (после подсчёта)
-  summary.innerHTML = `
+  // обновляем итоговые суммы
+  rightBlock.innerHTML = `
     Итог:<br>
     –${totalMinus.toFixed(2)} ₽<br>
     +${totalPlus.toFixed(2)} ₽
@@ -920,30 +918,16 @@ function exportPDF() {
     margin: 0.2,
     filename,
     image: { type: 'jpeg', quality: 0.95 },
-    html2canvas: { scale: 2, useCORS: true }, // увеличили scale для чёткости
+    html2canvas: { scale: 2, useCORS: true },
     jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
     pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
   };
 
-  html2pdf().set(opt).from(exportArea).toPdf().get('pdf').then(pdf => {
-    const totalPages = pdf.internal.getNumberOfPages();
-    if (totalPages > 4) {
-      opt.html2canvas.scale = 0.9;
-      return html2pdf().set(opt).from(exportArea).save().then(() => {
-        exportArea.style.display = "none";
-      });
-    }
-    for (let i = 1; i <= totalPages; i++) {
-      pdf.setPage(i);
-      pdf.setFontSize(8);
-      pdf.text(`Страница ${i} из ${totalPages}`,
-        pdf.internal.pageSize.getWidth() - 60,
-        pdf.internal.pageSize.getHeight() - 10);
-    }
-  }).save().then(() => {
+  html2pdf().set(opt).from(exportArea).save().then(() => {
     exportArea.style.display = "none";
   });
 }
+
   
   // Итоговое окно (все позиции + цветовая индикация)
 function showSummaryModal() {
