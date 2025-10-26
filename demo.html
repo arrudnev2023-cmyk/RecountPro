@@ -817,16 +817,33 @@ function exportPDF() {
   dateLine.innerText = formattedDate;
   exportArea.appendChild(dateLine);
 
-  // верхняя шапка
+  // название группы по центру
+  const groupLine = document.createElement("div");
+  groupLine.style.textAlign = "center";
+  groupLine.style.fontSize = "14px";
+  groupLine.style.marginBottom = "10px";
+  groupLine.innerText = groupName || "";
+  exportArea.appendChild(groupLine);
+
+  // итоги в левом верхнем углу
+  const summary = document.createElement("div");
+  summary.style.textAlign = "left";
+  summary.style.fontSize = "12px";
+  summary.style.marginBottom = "10px";
+  summary.innerHTML = `
+    Итог:<br>
+    –${totalMinus.toFixed(2)} ₽<br>
+    +${totalPlus.toFixed(2)} ₽
+  `;
+  exportArea.appendChild(summary);
+
+  // верхняя шапка (только "Считал" и линии)
   const header = document.createElement("div");
   header.style.display = "flex";
-  header.style.justifyContent = "space-between";
+  header.style.justifyContent = "flex-end";
   header.style.alignItems = "flex-start";
   header.style.marginBottom = "10px";
   header.innerHTML = `
-    <div style="flex:1; text-align:center;">
-      <h2 style="margin:0;">${groupName || ""}</h2>
-    </div>
     <div style="flex:0; text-align:right; font-size:12px; white-space:nowrap;">
       Считал: ${countedBy || ""}<br>
       <span style="display:inline-block; border-bottom:1px solid #000; width:300px;"></span><br>
@@ -834,12 +851,6 @@ function exportPDF() {
     </div>
   `;
   exportArea.appendChild(header);
-
-  // итоги (будет обновлён после цикла)
-  const summary = document.createElement("div");
-  summary.style.margin = "10px 0";
-  summary.style.fontWeight = "bold";
-  exportArea.appendChild(summary);
 
   // таблица
   const table = document.createElement("table");
@@ -857,7 +868,7 @@ function exportPDF() {
       <th style="border:1px solid #444; padding:2px; width:45px;">Цена</th>
       <th style="border:1px solid #444; padding:2px; width:45px;">Остаток</th>
       <th style="border:1px solid #444; padding:2px; width:120px;">Факт</th>
-      <th style="border:1px solid #444; padding:2px; width:55px;">Δ</th>
+      <th style="border:1px solid #444; padding:2px; width:55px;">Разн.</th>
     </tr>
   `;
   table.appendChild(thead);
@@ -889,11 +900,11 @@ function exportPDF() {
   table.appendChild(tbody);
   exportArea.appendChild(table);
 
-  // обновляем итоги
+  // обновляем итоги (после подсчёта)
   summary.innerHTML = `
-    <div style="font-weight:bold;">Итог:</div>
-    <div style="color:red;">–${totalMinus.toFixed(2)} ₽</div>
-    <div style="color:green;">+${totalPlus.toFixed(2)} ₽</div>
+    Итог:<br>
+    –${totalMinus.toFixed(2)} ₽<br>
+    +${totalPlus.toFixed(2)} ₽
   `;
 
   // подпись снизу справа
@@ -909,7 +920,7 @@ function exportPDF() {
     margin: 0.2,
     filename,
     image: { type: 'jpeg', quality: 0.95 },
-    html2canvas: { scale: 1, useCORS: true },
+    html2canvas: { scale: 2, useCORS: true }, // увеличили scale для чёткости
     jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
     pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
   };
@@ -933,9 +944,7 @@ function exportPDF() {
     exportArea.style.display = "none";
   });
 }
-
-
-
+  
   // Итоговое окно (все позиции + цветовая индикация)
 function showSummaryModal() {
   const rows = allItems.map(item => {
