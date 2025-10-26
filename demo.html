@@ -827,11 +827,8 @@ function exportPDF() {
   const leftBlock = document.createElement("div");
   leftBlock.style.textAlign = "left";
   leftBlock.style.fontSize = "12px";
-  leftBlock.innerHTML = `
-    Итог:<br>
-    –${totalMinus.toFixed(2)} ₽<br>
-    +${totalPlus.toFixed(2)} ₽
-  `;
+  // временная заглушка, обновим после цикла
+  leftBlock.innerHTML = `Итог:<br>–0 ₽<br>+0 ₽`;
 
   const rightBlock = document.createElement("div");
   rightBlock.style.textAlign = "right";
@@ -854,7 +851,6 @@ function exportPDF() {
 
   const thead = document.createElement("thead");
   thead.innerHTML = `
-    <!-- строка с названием группы: ширина ровно как у таблицы, стиль как у остальных ячеек -->
     <tr>
       <th colspan="8" style="border:1px solid #444; padding:4px; text-align:center; font-size:12px; font-weight:bold;">
         ${groupName || ""}
@@ -889,10 +885,10 @@ function exportPDF() {
       <td style="border:1px solid #444; padding:2px;">${item.code}</td>
       <td style="border:1px solid #444; padding:2px; font-size:9px;">${item.name}</td>
       <td style="border:1px solid #444; padding:2px;">${item.unit}</td>
-      <td style="border:1px solid #444; padding:2px; text-align:right; width:45px;">${item.price.toFixed(2)}</td>
-      <td style="border:1px solid #444; padding:2px; text-align:right; width:45px;">${item.docQty}</td>
-      <td style="border:1px solid #444; padding:2px; text-align:right; width:120px; overflow-wrap:break-word; word-break:break-word;">${raw}</td>
-      <td style="border:1px solid #444; padding:2px; text-align:right; width:55px;">${delta}</td>
+      <td style="border:1px solid #444; padding:2px; text-align:right;">${item.price.toFixed(2)}</td>
+      <td style="border:1px solid #444; padding:2px; text-align:right;">${item.docQty}</td>
+      <td style="border:1px solid #444; padding:2px; text-align:right; overflow-wrap:break-word; word-break:break-word;">${raw}</td>
+      <td style="border:1px solid #444; padding:2px; text-align:right;">${delta}</td>
     `;
     tbody.appendChild(row);
     index++;
@@ -900,7 +896,7 @@ function exportPDF() {
   table.appendChild(tbody);
   exportArea.appendChild(table);
 
-  // обновляем итоговые суммы
+  // обновляем итоговые суммы после цикла
   leftBlock.innerHTML = `
     Итог:<br>
     –${totalMinus.toFixed(2)} ₽<br>
@@ -929,7 +925,6 @@ function exportPDF() {
     exportArea.style.display = "none";
   });
 }
-
 
   // Итоговое окно (все позиции + цветовая индикация)
 function showSummaryModal() {
