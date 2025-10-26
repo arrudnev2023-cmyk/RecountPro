@@ -846,14 +846,6 @@ function exportPDF() {
   topRow.appendChild(rightBlock);
   exportArea.appendChild(topRow);
 
-  // название группы теперь перед таблицей
-  const groupLine = document.createElement("div");
-  groupLine.style.textAlign = "center";
-  groupLine.style.fontSize = "14px";
-  groupLine.style.margin = "10px 0";
-  groupLine.innerText = groupName || "";
-  exportArea.appendChild(groupLine);
-
   // таблица
   const table = document.createElement("table");
   table.style.borderCollapse = "collapse";
@@ -862,6 +854,11 @@ function exportPDF() {
 
   const thead = document.createElement("thead");
   thead.innerHTML = `
+    <tr>
+      <th colspan="7" style="border:1px solid #444; padding:4px; text-align:center; font-size:14px;">
+        ${groupName || ""}
+      </th>
+    </tr>
     <tr>
       <th style="border:1px solid #444; padding:2px; width:60px;">Артикул</th>
       <th style="border:1px solid #444; padding:2px;">Название</th>
