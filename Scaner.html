@@ -1,88 +1,242 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Конвертер OXPS → PDF</title>
+  <meta charset="utf-8" />
+  <title>OXPS → PDF (полностью в браузере, без серверов)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
+    :root { color-scheme: light dark; }
     body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      font-family: -apple-system, system-ui, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 20% -20%, rgba(255,255,255,0.75), transparent),
+        linear-gradient(135deg,#f5f7fa,#e6ebf1);
     }
-    .glass-box {
-      background: rgba(255, 255, 255, 0.6);
-      backdrop-filter: blur(12px);
-      border-radius: 16px;
-      padding: 40px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-      text-align: center;
-      max-width: 400px;
-      width: 100%;
+    .glass {
+      width: min(620px, 92vw); padding: 28px; border-radius: 22px;
+      background: rgba(255,255,255,0.55); backdrop-filter: blur(14px);
+      box-shadow: 0 24px 70px rgba(0,0,0,0.14); text-align: center;
+      animation: fade .45s ease-out;
     }
-    h1 {
-      font-size: 24px;
-      margin-bottom: 20px;
-      color: #333;
-    }
+    @keyframes fade { from{opacity:0; transform:translateY(12px)} to{opacity:1; transform:translateY(0)} }
+    h1 { margin: 0 0 12px; font-size: 22px; letter-spacing: .2px; color: #1d1d1f; }
+    p.sub { margin: 0 0 18px; color: #4b4b4d; font-size: 14px; }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
     input[type="file"] {
-      margin-bottom: 20px;
-      font-size: 16px;
+      width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid #d0d7de;
+      background: rgba(255,255,255,0.85); font-size: 14px;
     }
     button {
-      background: #0078D4;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      font-size: 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.3s ease;
+      padding: 12px 18px; border: 0; border-radius: 12px; font-weight: 600; font-size: 14px;
+      color: white; background: linear-gradient(180deg,#0a84ff,#0066cc);
+      box-shadow: 0 10px 24px rgba(10,132,255,0.25); cursor: pointer; transition: transform .06s ease, filter .2s;
     }
-    button:hover {
-      background: #005fa3;
-    }
-    #result {
-      margin-top: 20px;
-      font-size: 16px;
-    }
-    a {
-      color: #0078D4;
-      text-decoration: none;
-      font-weight: bold;
-    }
+    button:hover { filter: brightness(1.06); }
+    button:active { transform: translateY(1px); }
+    .progress { margin-top: 14px; font-size: 13px; color: #555; }
+    .error { margin-top: 10px; color: #b00020; font-size: 13px; }
+    .hint { margin-top: 16px; font-size: 12px; color: #6b6b6d; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
-  <div class="glass-box">
+  <div class="glass">
     <h1>Конвертер OXPS → PDF</h1>
-    <form id="oxpsForm" enctype="multipart/form-data">
-      <input type="file" name="oxpsFile" accept=".oxps" required />
-      <br />
-      <button type="submit">Конвертировать</button>
-    </form>
-    <div id="result"></div>
+    <p class="sub">Локальная конвертация в браузере. Файл никуда не отправляется.</p>
+
+    <div class="row">
+      <input id="fileInput" type="file" accept=".oxps,.xps" />
+      <button id="convertBtn">Конвертировать</button>
+    </div>
+
+    <div id="progress" class="progress hidden"></div>
+    <div id="error" class="error hidden"></div>
+    <p class="hint">Требуется MuPDF WebAssembly (mupdf.js + mupdf.wasm) как статика на этом же домене.</p>
   </div>
 
+  <!-- pdf-lib для сборки PDF из изображений страниц -->
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+
   <script>
-    document.getElementById('oxpsForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const formData = new FormData(e.target);
-      const response = await fetch('/convert-oxps', {
-        method: 'POST',
-        body: formData
+    // Укажи пути к WASM-артефактам MuPDF, которые ты разместишь у себя:
+    // Пример: положи файлы в /mupdf/ рядом со страницей
+    const MUPDF_SCRIPT_URL = '/mupdf/mupdf.js';   // путь к JS-обёртке MuPDF
+    const MUPDF_WASM_URL   = '/mupdf/mupdf.wasm'; // путь к WASM бинарнику MuPDF
+
+    let mupdfModule = null;
+
+    function setText(id, text, show = true) {
+      const el = document.getElementById(id);
+      el.textContent = text || '';
+      el.classList.toggle('hidden', !show);
+    }
+
+    async function loadMuPDF() {
+      if (mupdfModule) return mupdfModule;
+
+      // Загружаем mupdf.js
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = MUPDF_SCRIPT_URL;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('Не удалось загрузить MuPDF JS'));
+        document.head.appendChild(s);
       });
-      if (!response.ok) {
-        document.getElementById('result').textContent = 'Ошибка конвертации';
+
+      // Инициализация Emscripten Module (большинство сборок MuPDF используют именно его)
+      if (typeof Module !== 'function' && typeof Module !== 'object') {
+        throw new Error('MuPDF Module не найден. Проверь mupdf.js');
+      }
+
+      // Если Module — объект-фабрика:
+      if (typeof Module === 'function') {
+        mupdfModule = await Module({
+          locateFile: (path) => (path.endsWith('.wasm') ? MUPDF_WASM_URL : path),
+        });
+      } else {
+        // Если Module уже инициализирован как объект, но требует locateFile:
+        if (Module.locateFile == null) {
+          Module.locateFile = (path) => (path.endsWith('.wasm') ? MUPDF_WASM_URL : path);
+        }
+        mupdfModule = await Module; // ожидаем готовности
+      }
+
+      return mupdfModule;
+    }
+
+    // Обертки вокруг C-функций MuPDF через cwrap (имена функций могут отличаться в твоем билде)
+    // ЗАМЕТКА: Проверь реальные имена экспортов в твоей сборке (например через Module.cwrap или документацию).
+    function bindMuPDFAPI(mod) {
+      // Ниже — типичные названия. Если твоя сборка отличается, замени на актуальные.
+      const api = {
+        // open_document(const char* path) -> doc_ptr
+        openDocument: mod.cwrap('open_document', 'number', ['string']),
+        // close_document(doc_ptr)
+        closeDocument: mod.cwrap('close_document', null, ['number']),
+        // count_pages(doc_ptr) -> int
+        countPages: mod.cwrap('count_pages', 'number', ['number']),
+        // get_page_size(doc_ptr, page_index, out_w_ptr, out_h_ptr)
+        getPageSize: mod.cwrap('get_page_size', null, ['number','number','number','number']),
+        // render_page_png(doc_ptr, page_index, dpi, out_ptr, out_len_ptr) — рендерит PNG в память
+        // Если у тебя другой API (например, рендер в RGBA буфер), адаптируй функцию ниже.
+        renderPagePNG: mod.cwrap('render_page_png', 'number', ['number','number','number','number','number']),
+        freeBuffer: mod.cwrap('free_buffer', null, ['number']),
+        // malloc/free (для выделения out_w/out_h/out_len и получения указателей)
+        malloc: mod._malloc.bind(mod),
+        free: mod._free.bind(mod),
+        HEAPU8: mod.HEAPU8,
+        HEAP32: mod.HEAP32,
+      };
+      return api;
+    }
+
+    async function convertOxpsToPdf(file) {
+      setText('progress', 'Загрузка MuPDF…', true);
+      const mod = await loadMuPDF();
+      const api = bindMuPDFAPI(mod);
+
+      setText('progress', 'Чтение файла…', true);
+      const buf = new Uint8Array(await file.arrayBuffer());
+
+      // Записываем OXPS в виртуальную FS Emscripten
+      const inPath = 'input.oxps';
+      mod.FS.writeFile(inPath, buf);
+
+      setText('progress', 'Открытие документа…', true);
+      const docPtr = api.openDocument(inPath);
+      if (!docPtr) throw new Error('Не удалось открыть документ');
+
+      try {
+        const pageCount = api.countPages(docPtr);
+        if (!pageCount || pageCount < 1) throw new Error('В документе нет страниц');
+
+        setText('progress', `Рендер страниц… (0/${pageCount})`, true);
+
+        // Создаем PDF
+        const { PDFDocument } = PDFLib;
+        const pdfDoc = await PDFDocument.create();
+
+        // DPI рендера: 144 даст ~2x от 72dpi
+        const dpi = 144;
+
+        // Вспомогательные указатели для возвратов размеров и длины буфера
+        const outWPtr = api.malloc(4);
+        const outHPtr = api.malloc(4);
+        const outLenPtr = api.malloc(4);
+
+        for (let i = 0; i < pageCount; i++) {
+          // Получаем размер страницы
+          api.getPageSize(docPtr, i, outWPtr, outHPtr);
+          const w = api.HEAP32[outWPtr >> 2];
+          const h = api.HEAP32[outHPtr >> 2];
+
+          // Рендер PNG страницы в память WASM → получаем указатель на буфер
+          // renderPagePNG возвращает указатель на PNG-байты, длина — в outLenPtr
+          const pngPtr = api.renderPagePNG(docPtr, i, dpi, outLenPtr, 0);
+          if (!pngPtr) throw new Error(`Не удалось отрендерить страницу ${i+1}`);
+
+          const pngLen = api.HEAP32[outLenPtr >> 2];
+          const pngBytes = api.HEAPU8.slice(pngPtr, pngPtr + pngLen);
+
+          // Встраиваем PNG в PDF
+          const img = await pdfDoc.embedPng(pngBytes);
+          const page = pdfDoc.addPage([img.width, img.height]);
+          page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+
+          // Освобождаем PNG-буфер в WASM
+          api.freeBuffer(pngPtr);
+
+          setText('progress', `Сборка PDF… (${i+1}/${pageCount})`, true);
+        }
+
+        // Освобождаем служебные указатели
+        api.free(outWPtr);
+        api.free(outHPtr);
+        api.free(outLenPtr);
+
+        setText('progress', 'Формирование файла…', true);
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        return blob;
+
+      } finally {
+        api.closeDocument(docPtr);
+        // Чистим FS
+        try { mod.FS.unlink(inPath); } catch {}
+      }
+    }
+
+    document.getElementById('convertBtn').addEventListener('click', async () => {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files && fileInput.files[0];
+
+      setText('error', '', false);
+      setText('progress', '', false);
+
+      if (!file) {
+        setText('error', 'Выберите OXPS/XPS файл.', true);
         return;
       }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      document.getElementById('result').innerHTML = `<a href="${url}" download="converted.pdf">⬇ Скачать PDF</a>`;
+      if (!(/\.(oxps|xps)$/i).test(file.name)) {
+        setText('error', 'Поддерживаются только .oxps / .xps.', true);
+        return;
+      }
+
+      try {
+        const blob = await convertOxpsToPdf(file);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (file.name.replace(/\.(oxps|xps)$/i, '') || 'converted') + '.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setText('progress', 'Готово ✅', true);
+      } catch (err) {
+        console.error(err);
+        setText('error', 'Ошибка: ' + (err?.message || 'непредвиденная'), true);
+      }
     });
   </script>
 </body>
