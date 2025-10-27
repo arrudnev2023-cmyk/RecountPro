@@ -1,124 +1,89 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>RecountPro — Чат-агент</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Конвертер OXPS → PDF</title>
   <style>
     body {
-      margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background:#0d0f14; color:#fff; display:flex; flex-direction:column; height:100vh;
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-    header {
-      background:#11141a; padding:14px; text-align:center; border-bottom:1px solid #222;
-      position:sticky; top:0; z-index:10;
+    .glass-box {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
     }
-    header h1 { font-size:18px; margin:0; color:#3a7afe; }
-    .chat {
-      flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:12px;
-      background:linear-gradient(180deg,#0d0f14 0%,#141821 100%);
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #333;
     }
-    .msg {
-      display:flex; align-items:flex-end; gap:8px; max-width:85%;
-      animation: fadeIn 0.3s ease;
-    }
-    .bubble {
-      padding:10px 14px; border-radius:18px; line-height:1.4; font-size:15px;
-      box-shadow:0 2px 6px rgba(0,0,0,0.4);
-    }
-    .user { align-self:flex-end; flex-direction:row-reverse; }
-    .user .bubble { background:#3a7afe; color:#fff; border-bottom-right-radius:4px; }
-    .bot .bubble { background:#1b1f2a; border-bottom-left-radius:4px; }
-    .avatar {
-      width:32px; height:32px; border-radius:50%; background:#2a2f3a; flex-shrink:0;
-      display:flex; align-items:center; justify-content:center; font-size:16px;
-    }
-    .typing .bubble { font-style:italic; opacity:0.7; }
-    .inputRow {
-      display:flex; gap:8px; padding:10px; border-top:1px solid #222; background:#11141a;
-      position:sticky; bottom:0; z-index:10;
-    }
-    input {
-      flex:1; padding:12px; border-radius:20px; border:none; background:#1b1f2a; color:#fff;
-      font-size:15px;
+    input[type="file"] {
+      margin-bottom: 20px;
+      font-size: 16px;
     }
     button {
-      padding:0 18px; border:none; border-radius:20px; background:#3a7afe; color:#fff;
-      font-weight:600; cursor:pointer; font-size:15px;
+      background: #0078D4;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s ease;
     }
-    button:active { background:#2f63d6; }
-    @keyframes fadeIn { from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+    button:hover {
+      background: #005fa3;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 16px;
+    }
+    a {
+      color: #0078D4;
+      text-decoration: none;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <header><h1>RecountPro — Подключение подписки</h1></header>
-  <div id="chat" class="chat"></div>
-  <div class="inputRow">
-    <input id="msg" type="text" placeholder="Напишите сообщение...">
-    <button id="send">➤</button>
+  <div class="glass-box">
+    <h1>Конвертер OXPS → PDF</h1>
+    <form id="oxpsForm" enctype="multipart/form-data">
+      <input type="file" name="oxpsFile" accept=".oxps" required />
+      <br />
+      <button type="submit">Конвертировать</button>
+    </form>
+    <div id="result"></div>
   </div>
 
   <script>
-    const chat = document.getElementById('chat');
-    const msg = document.getElementById('msg');
-    const sendBtn = document.getElementById('send');
-
-    const replies = {
-      hello: ["Привет 👋 Рад видеть! Чем могу помочь?","Здравствуйте! Готов помочь с подпиской 🙂"],
-      access: ["Подписка стоит 799₽/мес.\nРеквизиты: 2202 2022 1234 5678\nПосле оплаты пришлите чек 📷"],
-      paid: ["Секунду, проверяю оплату... ✅ Всё ок!\nЛогин: user123\nПароль: passXYZ\nДоступ до 20.11.2025"],
-      status: ["Ваш доступ активен до 20.11.2025 🔐"],
-      fallback: ["Я вас понял 🙂 Попробуйте написать: \"Хочу доступ\" или \"Статус\"."]
-    };
-
-    function push(text, who='bot') {
-      const msgDiv = document.createElement('div');
-      msgDiv.className = 'msg ' + who;
-      const avatar = document.createElement('div');
-      avatar.className = 'avatar';
-      avatar.textContent = who==='user' ? '🧑' : '🤖';
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      bubble.textContent = text;
-      msgDiv.appendChild(avatar);
-      msgDiv.appendChild(bubble);
-      chat.appendChild(msgDiv);
-      chat.scrollTop = chat.scrollHeight;
-    }
-
-    function botReply(options, delay=1200) {
-      const typing = document.createElement('div');
-      typing.className = 'msg bot typing';
-      typing.innerHTML = '<div class="avatar">🤖</div><div class="bubble">печатает...</div>';
-      chat.appendChild(typing);
-      chat.scrollTop = chat.scrollHeight;
-
-      setTimeout(() => {
-        typing.remove();
-        const text = options[Math.floor(Math.random()*options.length)];
-        push(text, 'bot');
-      }, delay);
-    }
-
-    function handleSend() {
-      const text = msg.value.trim();
-      if (!text) return;
-      push(text, 'user');
-      msg.value = '';
-
-      const lower = text.toLowerCase();
-      if (lower.includes('привет')) botReply(replies.hello);
-      else if (lower.includes('хочу доступ')) botReply(replies.access);
-      else if (lower.includes('оплатил') || lower.includes('чек')) botReply(replies.paid, 2000);
-      else if (lower.includes('статус')) botReply(replies.status);
-      else botReply(replies.fallback);
-    }
-
-    sendBtn.addEventListener('click', handleSend);
-    msg.addEventListener('keydown', e => { if (e.key==='Enter') handleSend(); });
-
-    // Первое приветствие
-    botReply(replies.hello, 1000);
+    document.getElementById('oxpsForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const response = await fetch('/convert-oxps', {
+        method: 'POST',
+        body: formData
+      });
+      if (!response.ok) {
+        document.getElementById('result').textContent = 'Ошибка конвертации';
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      document.getElementById('result').innerHTML = `<a href="${url}" download="converted.pdf">⬇ Скачать PDF</a>`;
+    });
   </script>
 </body>
 </html>
