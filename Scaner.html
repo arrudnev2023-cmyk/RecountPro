@@ -1,191 +1,117 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Cosmic Timer</title>
+  <meta charset="UTF-8">
+  <title>Cosmic Background</title>
   <style>
     html, body {
       margin: 0;
       height: 100%;
       background: #000;
       overflow: hidden;
-      font-family: 'Segoe UI', sans-serif;
-      color: #e0e0e0;
     }
-    canvas { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; }
-
-    .time-display {
-      position: absolute;
-      top: 40%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-    }
-    .time-display .progress {
-      width: 220px; height: 220px;
-      border-radius: 50%;
-      border: 6px solid rgba(255,255,255,0.1);
-      position: relative;
-      margin: auto;
-    }
-    .time-display .progress::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      background: conic-gradient(#00e0ff var(--angle,0deg), transparent 0deg);
-      filter: drop-shadow(0 0 8px #00e0ff);
-    }
-    .time-display .digits {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%,-50%);
-      font-size: 32px;
-      font-weight: bold;
-      text-shadow: 0 0 8px rgba(0,224,255,0.6);
-    }
-
-    .controls {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-    }
-    .controls input[type="time"] {
-      background: rgba(255,255,255,0.05);
-      border: none;
-      border-radius: 10px;
-      padding: 8px 12px;
-      color: #e0e0e0;
-      font-size: 16px;
-      text-align: center;
-    }
-    .buttons {
-      display: flex;
-      gap: 10px;
-    }
-    .buttons button {
-      background: rgba(20,20,20,0.7);
-      border: 1px solid rgba(0,224,255,0.4);
-      border-radius: 10px;
-      padding: 10px 20px;
-      color: #e0e0e0;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .buttons button:hover {
-      background: #0f0f0f;
-      color: #00e0ff;
-      box-shadow: 0 0 12px rgba(0,224,255,0.5);
+    canvas {
+      display: block;
     }
   </style>
 </head>
 <body>
-  <canvas id="bg"></canvas>
+<canvas id="space"></canvas>
 
-  <div class="time-display">
-    <div class="progress" id="progress">
-      <div class="digits" id="digits">00:00</div>
-    </div>
-  </div>
+<script>
+const canvas = document.getElementById('space');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
 
-  <div class="controls">
-    <input type="time" id="timeInput" step="60" value="00:25">
-    <div class="buttons">
-      <button id="start">Start</button>
-      <button id="pause">Pause</button>
-      <button id="reset">Reset</button>
-    </div>
-  </div>
+// === Звёзды ===
+const stars = Array.from({length: 300}, () => ({
+  x: Math.random() * W,
+  y: Math.random() * H,
+  r: Math.random() * 1.5 + 0.5,
+  alpha: Math.random()
+}));
 
-  <script>
-    // === Космический фон ===
-    const canvas = document.getElementById('bg');
-    const ctx = canvas.getContext('2d');
-    function resize(){ canvas.width=innerWidth; canvas.height=innerHeight; }
-    resize(); window.addEventListener('resize',resize);
+// === Планеты ===
+const planets = [
+  { x: W*0.25, y: H*0.6, r: 80, color: '#4455ff' },
+  { x: W*0.75, y: H*0.3, r: 120, color: '#ff4499' }
+];
 
-    const stars = Array.from({length:150},()=>({
-      x:Math.random()*canvas.width,
-      y:Math.random()*canvas.height,
-      r:Math.random()*1.5+0.5,
-      a:Math.random()
-    }));
-    const comets = [];
+// === Кометы ===
+const comets = [];
+function spawnComet() {
+  if (Math.random() < 0.002) {
+    comets.push({
+      x: Math.random() * W,
+      y: -50,
+      dx: -2 - Math.random()*2,
+      dy: 3 + Math.random()*2,
+      len: 150
+    });
+  }
+}
 
-    function drawStars(){
-      stars.forEach(s=>{
-        ctx.beginPath();
-        ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-        ctx.fillStyle=`rgba(255,255,255,${s.a})`;
-        ctx.fill();
-        s.a += (Math.random()-0.5)*0.02;
-        if(s.a<0.1) s.a=0.1; if(s.a>1) s.a=1;
-      });
-    }
-    function drawComets(){
-      if(Math.random()<0.003){
-        comets.push({x:Math.random()*canvas.width,y:0,dx:-2,dy:3,len:100});
-      }
-      for(let i=comets.length-1;i>=0;i--){
-        const c=comets[i];
-        ctx.beginPath();
-        const grad=ctx.createLinearGradient(c.x,c.y,c.x-c.dx*c.len,c.y-c.dy*c.len);
-        grad.addColorStop(0,'rgba(255,255,255,0.8)');
-        grad.addColorStop(1,'rgba(255,255,255,0)');
-        ctx.strokeStyle=grad;
-        ctx.lineWidth=2;
-        ctx.moveTo(c.x,c.y);
-        ctx.lineTo(c.x-c.dx*c.len,c.y-c.dy*c.len);
-        ctx.stroke();
-        c.x+=c.dx; c.y+=c.dy;
-        if(c.y>canvas.height+100) comets.splice(i,1);
-      }
-    }
-    function animateBG(){
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      drawStars(); drawComets();
-      requestAnimationFrame(animateBG);
-    }
-    animateBG();
+// === Рендер ===
+function drawStars() {
+  stars.forEach(s => {
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+    ctx.fill();
+    s.alpha += (Math.random()-0.5)*0.02;
+    if (s.alpha < 0.1) s.alpha = 0.1;
+    if (s.alpha > 1) s.alpha = 1;
+  });
+}
 
-    // === Таймер ===
-    const digits=document.getElementById('digits');
-    const progress=document.getElementById('progress');
-    const timeInput=document.getElementById('timeInput');
-    let total=0, remaining=0, timer=null;
+function drawPlanets() {
+  planets.forEach(p => {
+    const grad = ctx.createRadialGradient(p.x, p.y, p.r*0.2, p.x, p.y, p.r);
+    grad.addColorStop(0, p.color);
+    grad.addColorStop(1, '#000');
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fillStyle = grad;
+    ctx.shadowBlur = 40;
+    ctx.shadowColor = p.color;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  });
+}
 
-    function updateDisplay(){
-      const m=Math.floor(remaining/60);
-      const s=remaining%60;
-      digits.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-      const angle=total>0?((total-remaining)/total)*360:0;
-      progress.style.setProperty('--angle',`${angle}deg`);
-    }
+function drawComets() {
+  for (let i=comets.length-1; i>=0; i--) {
+    const c = comets[i];
+    const grad = ctx.createLinearGradient(c.x, c.y, c.x-c.dx*c.len, c.y-c.dy*c.len);
+    grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(c.x-c.dx*c.len, c.y-c.dy*c.len);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    c.x += c.dx;
+    c.y += c.dy;
+    if (c.y > H+100 || c.x < -100) comets.splice(i,1);
+  }
+}
 
-    document.getElementById('start').onclick=()=>{
-      if(timer) return;
-      if(remaining<=0){
-        const [h,m]=timeInput.value.split(':').map(Number);
-        total=h*3600+m*60; remaining=total;
-      }
-      if(remaining<=0) return;
-      timer=setInterval(()=>{
-        if(remaining>0){ remaining--; updateDisplay(); }
-        else { clearInterval(timer); timer=null; alert("⏰ Время вышло!"); }
-      },1000);
-    };
-    document.getElementById('pause').onclick=()=>{ clearInterval(timer); timer=null; };
-    document.getElementById('reset').onclick=()=>{
-      clearInterval(timer); timer=null; remaining=0; total=0;
-      digits.textContent="00:00"; progress.style.setProperty('--angle','0deg');
-    };
-  </script>
+function animate() {
+  ctx.clearRect(0,0,W,H);
+  drawStars();
+  drawPlanets();
+  drawComets();
+  spawnComet();
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
 </body>
 </html>
