@@ -15,18 +15,16 @@
     }
     canvas { position: fixed; inset: 0; display: block; z-index: 0; }
 
-    /* Нижние контролы: не мешают фону */
     .controls {
       position: fixed;
       left: 50%;
-      bottom: env(safe-area-inset-bottom, 20px);
+      bottom: 20px;
       transform: translateX(-50%);
       display: flex;
       flex-direction: column;
       gap: 12px;
       align-items: center;
       z-index: 10;
-      pointer-events: auto;
     }
     .controls input[type="time"] {
       background: rgba(255,255,255,0.06);
@@ -53,25 +51,10 @@
       color: #00e0ff;
       box-shadow: 0 0 12px rgba(0,224,255,0.45);
     }
-
-    /* Вспомогательная подсказка о статусе (над ракетой) */
-    .status {
-      position: fixed;
-      left: 50%; top: 8%;
-      transform: translateX(-50%);
-      color: rgba(180,220,255,0.8);
-      font-weight: 500;
-      letter-spacing: 0.3px;
-      text-shadow: 0 0 8px rgba(0,224,255,0.3);
-      z-index: 5;
-      pointer-events: none;
-    }
   </style>
 </head>
 <body>
   <canvas id="c"></canvas>
-
-  <div class="status" id="status">Tap Start — подготовка к запуску</div>
 
   <div class="controls">
     <input type="time" id="timeInput" step="60" value="00:25">
@@ -83,388 +66,158 @@
   </div>
 
   <script>
-    // ===== Canvas setup =====
     const canvas = document.getElementById('c');
     const ctx = canvas.getContext('2d');
+    let W,H;
     function resize(){
-      const dpr = Math.max(1, window.devicePixelRatio || 1);
-      canvas.width = Math.floor(innerWidth * dpr);
-      canvas.height = Math.floor(innerHeight * dpr);
-      canvas.style.width = innerWidth + 'px';
-      canvas.style.height = innerHeight + 'px';
-      ctx.setTransform(dpr,0,0,dpr,0,0);
-      W = innerWidth; H = innerHeight;
+      W = canvas.width = innerWidth;
+      H = canvas.height = innerHeight;
     }
-    let W = innerWidth, H = innerHeight;
     resize(); addEventListener('resize', resize);
 
-    // ===== Utilities =====
     const TAU = Math.PI*2;
     const rnd = (a=1,b=0)=>Math.random()*(a-b)+b;
     const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
 
-    // ===== Scene elements =====
-    const stars = [];
-    const comets = [];
-    const planets = [];
-    const smoke = []; // дымовые частицы при старте и взлёте
+    // Звёзды
+    const stars = Array.from({length:200},()=>({
+      x:Math.random()*W,y:Math.random()*H,r:rnd(1.5,0.5),a:Math.random()
+    }));
 
-    function initStars(){
-      stars.length = 0;
-      const count = Math.floor((W*H)/9000);
-      for(let i=0;i<count;i++){
-        stars.push({
-          x: Math.random()*W,
-          y: Math.random()*H,
-          r: rnd(1.5,0.6),
-          a: rnd(1,0.2),
-          tw: rnd(0.02,0.005)
-        });
-      }
-    }
-    function initPlanets(){
-      planets.length = 0;
-      const P = Math.max(1, Math.floor(W/900));
-      for(let i=0;i<P;i++){
-        const r = rnd(Math.min(W,H)*0.12, Math.min(W,H)*0.08);
-        const x = rnd(W*0.8, W*0.2);
-        const y = rnd(H*0.75, H*0.25);
-        const hue = rnd(220,180); // холодные тона
-        planets.push({x,y,r,hue});
-      }
-    }
-    initStars(); initPlanets();
+    // Ракета
+    const rocket = {x:W*0.5,y:H*0.8,w:60,h:180,lift:false,vy:0,flame:0.6};
 
-    // ===== Rocket & pad =====
-    const pad = {
-      x: W*0.5, y: H*0.82,
-      w: Math.min(260, W*0.35), h: 18
-    };
-    const rocket = {
-      x: W*0.5, y: pad.y - 140,
-      w: 50, h: 140,
-      lift: false, // флаг взлёта
-      vy: 0,       // скорость по Y
-      flamePower: 0.6 // мощность пламени (растёт при старте)
-    };
+    // Таймер
+    let total=0,remaining=0,running=false,lastTick=performance.now();
 
-    // ===== Timer state =====
-    const statusEl = document.getElementById('status');
-    const timeInput = document.getElementById('timeInput');
-    let total = 0;        // секунд всего
-    let remaining = 0;    // секунд осталось
-    let running = false;  // идёт ли отсчёт
-    let lastTick = performance.now();
-    let finishedBurst = 0; // момент завершения (для вспышки)
-
-    function setStatus(text){ statusEl.textContent = text; }
-
-    // ===== Background render =====
     function drawStars(){
       for(const s of stars){
-        s.a += (Math.random()-0.5)*s.tw;
-        s.a = clamp(s.a, 0.1, 1);
         ctx.beginPath();
         ctx.arc(s.x,s.y,s.r,0,TAU);
-        ctx.fillStyle = `rgba(255,255,255,${s.a})`;
-        ctx.shadowColor = 'rgba(255,255,255,0.6)';
-        ctx.shadowBlur = 12;
+        ctx.fillStyle=`rgba(255,255,255,${s.a})`;
         ctx.fill();
-      }
-      ctx.shadowBlur = 0;
-    }
-    function drawPlanets(){
-      for(const p of planets){
-        const grad = ctx.createRadialGradient(p.x,p.y,p.r*0.25, p.x,p.y,p.r);
-        grad.addColorStop(0, `hsla(${p.hue},70%,65%,0.9)`);
-        grad.addColorStop(1, `rgba(0,0,0,0)`);
-        ctx.beginPath();
-        ctx.arc(p.x,p.y,p.r,0,TAU);
-        ctx.fillStyle = grad;
-        ctx.shadowColor = `hsla(${p.hue},80%,60%,0.5)`;
-        ctx.shadowBlur = 40;
-        ctx.fill();
-      }
-      ctx.shadowBlur = 0;
-    }
-    function spawnComet(){
-      if(Math.random()<0.004){
-        comets.push({
-          x: rnd(W*0.2, W*0.9),
-          y: -60,
-          dx: rnd(-2.5,-1.2),
-          dy: rnd(2.8,1.6),
-          len: rnd(140,90),
-          life: rnd(300,200)
-        });
-      }
-    }
-    function drawComets(){
-      for(let i=comets.length-1;i>=0;i--){
-        const c = comets[i];
-        c.life--;
-        c.x += c.dx; c.y += c.dy;
-        const grad = ctx.createLinearGradient(c.x,c.y, c.x-c.dx*c.len, c.y-c.dy*c.len);
-        grad.addColorStop(0,'rgba(255,255,255,0.85)');
-        grad.addColorStop(1,'rgba(255,255,255,0)');
-        ctx.beginPath();
-        ctx.moveTo(c.x,c.y);
-        ctx.lineTo(c.x-c.dx*c.len, c.y-c.dy*c.len);
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        if(c.life<=0 || c.y>H+120 || c.x<-120) comets.splice(i,1);
+        s.a += (Math.random()-0.5)*0.02;
+        s.a=clamp(s.a,0.1,1);
       }
     }
 
-    // ===== Smoke particles =====
-    function emitSmoke(x,y,amount=6,dirUp=false){
-      for(let i=0;i<amount;i++){
-        smoke.push({
-          x: x + rnd(20,-20),
-          y: y + rnd(10,-10),
-          vx: rnd(0.6,-0.6),
-          vy: dirUp ? rnd(-1.2,-2.3) : rnd(-0.4, -1.0),
-          r: rnd(10,5),
-          alpha: rnd(0.5,0.25)
-        });
-      }
-    }
-    function drawSmoke(){
-      for(let i=smoke.length-1;i>=0;i--){
-        const s = smoke[i];
-        s.x += s.vx;
-        s.y += s.vy;
-        s.r *= 0.995;
-        s.alpha -= 0.006;
-        ctx.beginPath();
-        ctx.arc(s.x,s.y,s.r,0,TAU);
-        ctx.fillStyle = `rgba(180,180,180,${s.alpha})`;
-        ctx.shadowColor = 'rgba(200,200,200,0.35)';
-        ctx.shadowBlur = 10;
-        ctx.fill();
-        if(s.alpha<=0.02 || s.r<1) smoke.splice(i,1);
-      }
-      ctx.shadowBlur = 0;
-    }
-
-    // ===== Pad & rocket render =====
-    function drawPad(){
-      // платформа
-      ctx.fillStyle = 'rgba(120,120,140,0.25)';
-      ctx.fillRect(pad.x - pad.w/2, pad.y, pad.w, pad.h);
-
-      // башня обслуживания (минималистично)
-      ctx.fillStyle = 'rgba(100,110,130,0.2)';
-      const towerW = Math.min(14, pad.w*0.05);
-      ctx.fillRect(pad.x + pad.w/2 - towerW - 10, pad.y - 160, towerW, 160);
-    }
     function drawRocket(){
       ctx.save();
-      ctx.translate(rocket.x, rocket.y);
+      ctx.translate(rocket.x,rocket.y);
 
       // корпус
+      const grad = ctx.createLinearGradient(0,-rocket.h/2,0,rocket.h/2);
+      grad.addColorStop(0,'#ddd');
+      grad.addColorStop(1,'#555');
+      ctx.fillStyle=grad;
+      ctx.fillRect(-rocket.w/2,-rocket.h/2,rocket.w,rocket.h);
+
+      // носовой обтекатель
       ctx.beginPath();
-      ctx.moveTo(0, -rocket.h/2);
-      ctx.quadraticCurveTo(rocket.w/2, -rocket.h/4, rocket.w/2, rocket.h/2);
-      ctx.lineTo(-rocket.w/2, rocket.h/2);
-      ctx.quadraticCurveTo(-rocket.w/2, -rocket.h/4, 0, -rocket.h/2);
+      ctx.moveTo(-rocket.w/2,-rocket.h/2);
+      ctx.lineTo(0,-rocket.h/2-40);
+      ctx.lineTo(rocket.w/2,-rocket.h/2);
       ctx.closePath();
-      const bodyGrad = ctx.createLinearGradient(-rocket.w/2, -rocket.h/2, rocket.w/2, rocket.h/2);
-      bodyGrad.addColorStop(0, 'rgba(220,220,230,0.9)');
-      bodyGrad.addColorStop(1, 'rgba(160,160,170,0.9)');
-      ctx.fillStyle = bodyGrad;
-      ctx.shadowColor = 'rgba(255,255,255,0.25)';
-      ctx.shadowBlur = 8;
+      ctx.fillStyle='#ccc';
       ctx.fill();
 
-      // окно
+      // стабилизаторы
+      ctx.fillStyle='#666';
       ctx.beginPath();
-      ctx.arc(0, -rocket.h*0.15, 9, 0, TAU);
-      ctx.fillStyle = 'rgba(0,224,255,0.85)';
-      ctx.shadowColor = 'rgba(0,224,255,0.6)';
-      ctx.shadowBlur = 12;
+      ctx.moveTo(-rocket.w/2,rocket.h/4);
+      ctx.lineTo(-rocket.w/2-25,rocket.h/2);
+      ctx.lineTo(-rocket.w/2,rocket.h/2);
+      ctx.closePath();
       ctx.fill();
-
-      // лапы/решётки
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = 'rgba(120,120,130,0.7)';
-      ctx.fillRect(-rocket.w/2 - 8, rocket.h/2 - 6, 16, 12);
-      ctx.fillRect(rocket.w/2 - 8, rocket.h/2 - 6, 16, 12);
-
-      // пламя двигателя (интенсивность зависит от состояния)
-      const flame = 18 + Math.sin(performance.now()*0.02)*6;
-      const power = rocket.flamePower; // 0..1.5
-      const baseY = rocket.h/2 + 4;
       ctx.beginPath();
-      ctx.moveTo(0, baseY);
-      ctx.quadraticCurveTo(10, baseY + flame*power, 0, baseY + 28*power);
-      ctx.quadraticCurveTo(-10, baseY + flame*power, 0, baseY);
-      const flameGrad = ctx.createLinearGradient(0, baseY, 0, baseY + 28*power);
-      flameGrad.addColorStop(0, 'rgba(255,220,120,0.95)');
-      flameGrad.addColorStop(1, 'rgba(255,120,0,0.85)');
-      ctx.fillStyle = flameGrad;
-      ctx.shadowColor = 'rgba(255,140,0,0.7)';
-      ctx.shadowBlur = 18;
+      ctx.moveTo(rocket.w/2,rocket.h/4);
+      ctx.lineTo(rocket.w/2+25,rocket.h/2);
+      ctx.lineTo(rocket.w/2,rocket.h/2);
+      ctx.closePath();
       ctx.fill();
 
-      // дым из-под сопла
-      emitSmoke(rocket.x, rocket.y + rocket.h/2 + 8, Math.floor(3*power), rocket.lift);
+      // сопло
+      ctx.fillStyle='#444';
+      ctx.fillRect(-15,rocket.h/2,30,20);
+
+      // пламя
+      const flame=30+Math.sin(performance.now()*0.02)*8;
+      ctx.beginPath();
+      ctx.moveTo(0,rocket.h/2+20);
+      ctx.quadraticCurveTo(15,rocket.h/2+flame,0,rocket.h/2+70);
+      ctx.quadraticCurveTo(-15,rocket.h/2+flame,0,rocket.h/2+20);
+      const flameGrad=ctx.createLinearGradient(0,rocket.h/2+20,0,rocket.h/2+70);
+      flameGrad.addColorStop(0,'rgba(255,220,120,0.95)');
+      flameGrad.addColorStop(1,'rgba(255,80,0,0.85)');
+      ctx.fillStyle=flameGrad;
+      ctx.fill();
 
       ctx.restore();
-      ctx.shadowBlur = 0;
     }
 
-    // ===== Timer drawing =====
-    function drawTimerDisplay(){
-      const cx = W/2, cy = rocket.y - rocket.h/2 - 40;
-      const R = Math.min(W,H)*0.12;
-      const progress = total>0 ? (1 - remaining/total) : 0;
+    function drawTimer(){
+      const cx=W*0.8, cy=H*0.25;
+      const R=80;
+      const progress=total>0?(1-remaining/total):0;
 
-      // тонкое кольцо
       ctx.beginPath();
-      ctx.arc(cx, cy, R, 0, TAU);
-      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-      ctx.lineWidth = Math.max(6, R*0.06);
+      ctx.arc(cx,cy,R,0,TAU);
+      ctx.strokeStyle='rgba(255,255,255,0.1)';
+      ctx.lineWidth=8;
       ctx.stroke();
 
-      // прогресс-дуга
-      const end = -Math.PI/2 + progress*TAU;
+      const end=-Math.PI/2+progress*TAU;
       ctx.beginPath();
-      ctx.arc(cx, cy, R, -Math.PI/2, end, false);
-      const grad = ctx.createLinearGradient(cx-R, cy-R, cx+R, cy+R);
-      grad.addColorStop(0, 'rgba(0,224,255,0.85)');
-      grad.addColorStop(1, 'rgba(122,0,255,0.85)');
-      ctx.strokeStyle = grad;
-      ctx.lineCap = 'round';
-      ctx.lineWidth = Math.max(8, R*0.08);
-      ctx.shadowColor = 'rgba(0,224,255,0.5)';
-      ctx.shadowBlur = 16;
+      ctx.arc(cx,cy,R,-Math.PI/2,end);
+      ctx.strokeStyle='#0ff';
+      ctx.lineWidth=10;
       ctx.stroke();
-      ctx.shadowBlur = 0;
 
-      // цифры
-      const m = Math.floor(remaining/60), s = Math.floor(remaining%60);
-      const text = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-      ctx.font = `bold ${Math.max(28, Math.floor(R*0.42))}px Segoe UI, Inter, system-ui`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#e6f7fb';
-      ctx.shadowColor = 'rgba(0,224,255,0.35)';
-      ctx.shadowBlur = 8;
-      ctx.fillText(text, cx, cy);
-      ctx.shadowBlur = 0;
+      const m=Math.floor(remaining/60),s=Math.floor(remaining%60);
+      ctx.font='bold 28px Segoe UI';
+      ctx.fillStyle='#fff';
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.fillText(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`,cx,cy);
     }
 
-    // ===== Animation loop =====
     function loop(now){
-      // update time
       if(running && !rocket.lift){
-        const dt = (now - lastTick)/1000;
-        lastTick = now;
-        remaining = clamp(remaining - dt, 0, total);
-        rocket.flamePower = clamp(0.6 + (1 - remaining/total)*0.6, 0.6, 1.2); // плавный рост энергии
-        if(remaining === 0){
-          // старт!
-          rocket.lift = true;
-          rocket.vy = -220; // начальная скорость взлёта (px/s)
-          finishedBurst = now;
-          setStatus('Запуск! Взлёт начинается');
-        }
-      } else {
-        lastTick = now;
-      }
+        const dt=(now-lastTick)/1000;
+        lastTick=now;
+        remaining=clamp(remaining-dt,0,total);
+        if(remaining===0){ rocket.lift=true; rocket.vy=-200; }
+      } else lastTick=now;
 
-      // rocket motion if lift
       if(rocket.lift){
-        const dt = 1/60;
-        rocket.y += rocket.vy * dt;
-        rocket.vy -= 8; // убывание (уходит вверх быстрее)
-        rocket.flamePower = clamp(1.2 + (performance.now()%1000)/1000*0.3, 1.2, 1.5);
-        emitSmoke(rocket.x, rocket.y + rocket.h/2 + 8, 8, true);
-        if(rocket.y + rocket.h < -50){
-          // улетела — остановить и оставить след
-          rocket.lift = false;
-          running = false;
-          setStatus('Полёт выполнен. Готов к следующему запуску');
-        }
+        rocket.y+=rocket.vy/60;
+        rocket.vy-=5;
       }
 
-      // clear & bg
       ctx.clearRect(0,0,W,H);
       drawStars();
-      drawPlanets();
-      spawnComet();
-      drawComets();
-
-      // pad & rocket
-      drawPad();
       drawRocket();
-
-      // timer over rocket
-      drawTimerDisplay();
-
-      // smoke
-      drawSmoke();
-
-      // финальная вспышка в момент T=0
-      if(finishedBurst && now - finishedBurst < 600){
-        const t = (now - finishedBurst)/600;
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.beginPath();
-        ctx.arc(rocket.x, pad.y, (1-t)*200 + 40, 0, TAU);
-        ctx.fillStyle = `rgba(255,255,255,${(1-t)*0.25})`;
-        ctx.fill();
-        ctx.globalCompositeOperation = 'source-over';
-      }
+      drawTimer();
 
       requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
 
-    // ===== Controls =====
-    const startBtn = document.getElementById('start');
-    const pauseBtn = document.getElementById('pause');
-    const resetBtn = document.getElementById('reset');
-
-    startBtn.addEventListener('click', ()=>{
+    // Управление
+    const timeInput=document.getElementById('timeInput');
+    document.getElementById('start').onclick=()=>{
       if(running) return;
       if(remaining<=0){
-        const [h,m] = timeInput.value.split(':').map(Number);
-        total = h*3600 + m*60;
-        remaining = total;
+        const [h,m]=timeInput.value.split(':').map(Number);
+        total=h*3600+m*60; remaining=total;
       }
-      if(remaining<=0){ setStatus('Выбери время и нажми Start'); return; }
-      running = true;
-      rocket.lift = false;
-      rocket.y = pad.y - 140;
-      rocket.vy = 0;
-      rocket.flamePower = 0.7;
-      setStatus('Отсчёт запущен');
-    });
-    pauseBtn.addEventListener('click', ()=>{
-      running = false;
-      setStatus('Пауза');
-    });
-    resetBtn.addEventListener('click', ()=>{
-      running = false;
-      rocket.lift = false;
-      rocket.y = pad.y - 140;
-      rocket.vy = 0;
-      rocket.flamePower = 0.6;
-      remaining = 0; total = 0;
-      finishedBurst = 0;
-      setStatus('Готов к запуску: выбери время');
-    });
-
-    // На изменение времени — если таймер не идёт, обновим оставшееся
-    timeInput.addEventListener('change', ()=>{
-      if(!running){
-        const [h,m] = timeInput.value.split(':').map(Number);
-        total = h*3600 + m*60;
-        remaining = total;
-      }
-    });
+      running=true; rocket.lift=false; rocket.y=H*0.8; rocket.vy=0;
+    };
+    document.getElementById('pause').onclick=()=>{ running=false; };
+    document.getElementById('reset').onclick=()=>{
+      running=false; rocket.lift=false; rocket.y=H*0.8; rocket.vy=0;
+      remaining=0; total=0;
+    };
   </script>
 </body>
 </html>
