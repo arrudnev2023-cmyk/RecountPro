@@ -866,8 +866,10 @@ function exportPDF() {
   table.style.borderCollapse = "collapse";
   table.style.width = "100%";
   table.style.fontSize = "10px";
+  table.style.pageBreakInside = "avoid"; // 🔑 не рвать таблицу
 
   const thead = document.createElement("thead");
+  thead.style.pageBreakInside = "avoid"; // 🔑 не рвать шапку
   thead.innerHTML = `
     <tr>
       <th colspan="8" style="border:1px solid #444; padding:4px; text-align:center; font-size:12px; font-weight:bold;">
@@ -888,25 +890,31 @@ function exportPDF() {
   table.appendChild(thead);
 
   const tbody = document.createElement("tbody");
+  tbody.style.pageBreakInside = "avoid"; // 🔑 не рвать тело таблицы
   let index = 1;
   sortedItems.forEach(item => {
     const input = document.querySelector(`input[data-code="${item.code}"]`);
-    const raw = input ? input.value : "";
+    const raw = input ? input.value.trim() : "";
+    let actual = NaN;
 
-    // вычисляем выражение (поддержка + - * /)
-    let actual = 0;
     try {
-      const safe = raw.replace(',', '.').replace(/[^0-9+\-*/().]/g, '');
-      actual = Function(`"use strict"; return (${safe})`)() || 0;
+      let safe = raw.replace(',', '.').replace(/[^0-9+\-*/().]/g, '').trim();
+      if (/[\+\-\*\/]$/.test(safe)) {
+        safe = safe.slice(0, -1);
+      }
+      if (safe) {
+        actual = Function(`"use strict"; return (${safe})`)();
+      }
     } catch {
-      actual = 0;
+      actual = NaN;
     }
 
-    const delta = actual - item.docQty;
+    const delta = !isNaN(actual) ? actual - item.docQty : 0;
     if (delta > 0) totalPlus += delta * item.price;
     else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
 
     const row = document.createElement("tr");
+    row.style.pageBreakInside = "avoid"; // 🔑 не рвать строки
     row.innerHTML = `
       <td style="border:1px solid #444; padding:2px; text-align:center;">${index}</td>
       <td style="border:1px solid #444; padding:2px;">${item.code}</td>
@@ -945,14 +953,13 @@ function exportPDF() {
     image: { type: 'jpeg', quality: 0.95 },
     html2canvas: { scale: 2, useCORS: true },
     jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    pagebreak: { mode: ['avoid-all'] } // 🔑 не рвать блоки
   };
 
   html2pdf().set(opt).from(exportArea).save().then(() => {
     exportArea.style.display = "none";
   });
 }
-
 
   // Итоговое окно (все позиции + цветовая индикация)
 function showSummaryModal() {
