@@ -959,9 +959,24 @@ function showSummaryModal() {
   const rows = allItems.map(item => {
     const input = document.querySelector(`input[data-code="${item.code}"]`);
     const raw = input ? input.value.trim() : (sessionValues[item.code] || "");
-    let actual = 0;
-    try { actual = Function("return " + raw.replace(',', '.'))() || 0; } catch {}
-    const delta = actual - item.docQty;
+    let actual = NaN;
+
+    try {
+      let safeRaw = raw.replace(',', '.').trim();
+
+      // если строка оканчивается на оператор (+ - * /), убираем его
+      if (/[\+\-\*\/]$/.test(safeRaw)) {
+        safeRaw = safeRaw.slice(0, -1);
+      }
+
+      if (safeRaw) {
+        actual = Function("return " + safeRaw)();
+      }
+    } catch {
+      actual = NaN;
+    }
+
+    const delta = !isNaN(actual) ? actual - item.docQty : 0;
 
     let color = "gray";
     if (delta > 0) color = "green";
@@ -972,7 +987,7 @@ function showSummaryModal() {
         <td style="border:1px solid #ccc; padding:4px;">${item.code}</td>
         <td style="border:1px solid #ccc; padding:4px;">${item.name}</td>
         <td style="border:1px solid #ccc; padding:4px;">${item.docQty}</td>
-        <td style="border:1px solid #ccc; padding:4px;">${actual}</td>
+        <td style="border:1px solid #ccc; padding:4px;">${!isNaN(actual) ? actual : ""}</td>
         <td style="border:1px solid #ccc; padding:4px; color:${color};">
           ${delta > 0 ? '+' : ''}${delta}
         </td>
