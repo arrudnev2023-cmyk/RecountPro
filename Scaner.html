@@ -9,7 +9,7 @@
       margin: 0;
       padding: 0;
       overflow: hidden;
-      background: linear-gradient(to bottom, #111, #333);
+      background: #000;
       font-family: sans-serif;
     }
     canvas {
@@ -46,9 +46,11 @@
     .joystick {
       width: 100px;
       height: 100px;
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid #fff;
       border-radius: 50%;
       touch-action: none;
+      backdrop-filter: blur(4px);
     }
     button {
       background: #fff;
@@ -56,7 +58,7 @@
       padding: 10px 20px;
       font-weight: bold;
       border-radius: 10px;
-      margin-left: 10px;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -82,6 +84,16 @@
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
+    const map = [
+      [1,1,1,1,1,1,1,1],
+      [1,0,0,0,0,0,0,1],
+      [1,0,1,0,1,0,0,1],
+      [1,0,1,0,1,0,0,1],
+      [1,0,0,0,0,0,0,1],
+      [1,1,1,1,1,1,1,1],
+    ];
+    const tileSize = 64;
+
     let hp = 100;
     let score = 0;
     let player = { x: 100, y: 100, angle: 0 };
@@ -93,31 +105,53 @@
       document.getElementById('score').textContent = `Score: ${score}`;
     }
 
-    function drawWorld() {
-      // Пол
+    function castRays() {
+      const fov = Math.PI / 3;
+      const numRays = canvas.width;
+      const step = fov / numRays;
+
+      for (let i = 0; i < numRays; i++) {
+        const rayAngle = player.angle - fov / 2 + step * i;
+        let dist = 0;
+        let hit = false;
+
+        while (!hit && dist < 500) {
+          dist += 1;
+          const testX = Math.floor((player.x + Math.cos(rayAngle) * dist) / tileSize);
+          const testY = Math.floor((player.y + Math.sin(rayAngle) * dist) / tileSize);
+          if (map[testY] && map[testY][testX] === 1) hit = true;
+        }
+
+        const wallHeight = canvas.height / (dist * 0.02);
+        const shade = 255 - dist * 0.5;
+        ctx.fillStyle = `rgb(${shade},${shade},${shade})`;
+        ctx.fillRect(i, canvas.height / 2 - wallHeight / 2, 1, wallHeight);
+      }
+    }
+
+    function drawFloorSky() {
       ctx.fillStyle = '#f5e6c8';
       ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
-      // Небо
       const grad = ctx.createLinearGradient(0, 0, 0, canvas.height / 2);
       grad.addColorStop(0, '#111');
       grad.addColorStop(1, '#333');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
-      // Стены (простая raycasting-заглушка)
-      ctx.fillStyle = '#e0e0e0';
-      for (let i = 0; i < canvas.width; i += 20) {
-        const height = Math.random() * canvas.height / 2;
-        ctx.fillRect(i, canvas.height / 2 - height, 18, height);
-      }
     }
 
     function drawEnemies() {
       ctx.fillStyle = 'black';
       enemies.forEach(e => {
+        const dx = e.x - player.x;
+        const dy = e.y - player.y;
+        const dist = Math.hypot(dx, dy);
+        const angleToEnemy = Math.atan2(dy, dx) - player.angle;
+        const screenX = canvas.width / 2 + Math.sin(angleToEnemy) * 300;
+        const size = 40 / dist * 100;
         ctx.beginPath();
-        ctx.arc(e.x, e.y, 10, 0, Math.PI * 2); // голова
+        ctx.arc(screenX, canvas.height / 2, size / 2, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillRect(e.x - 5, e.y + 10, 10, 20); // тело
+        ctx.fillRect(screenX - size / 4, canvas.height / 2, size / 2, size);
       });
     }
 
@@ -139,7 +173,7 @@
       bullets.forEach((b, bi) => {
         enemies.forEach((e, ei) => {
           const dist = Math.hypot(b.x - e.x, b.y - e.y);
-          if (dist < 15) {
+          if (dist < 20) {
             enemies.splice(ei, 1);
             bullets.splice(bi, 1);
             score += 10;
@@ -151,9 +185,12 @@
         const dx = player.x - e.x;
         const dy = player.y - e.y;
         const dist = Math.hypot(dx, dy);
-        if (dist < 20) {
+        if (dist < 30) {
           hp -= 1;
-          if (hp <= 0) alert('Game Over');
+          if (hp <= 0) {
+            alert('Game Over');
+            resetGame();
+          }
         } else {
           e.x += dx * 0.01;
           e.y += dy * 0.01;
@@ -162,11 +199,20 @@
     }
 
     function spawnEnemy() {
-      enemies.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height });
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 300;
+      enemies.push({
+        x: player.x + Math.cos(angle) * radius,
+        y: player.y + Math.sin(angle) * radius
+      });
     }
 
     function shootBullet() {
-      bullets.push({ x: player.x, y: player.y, angle: player.angle });
+      bullets.push({
+        x: player.x,
+        y: player.y,
+        angle: player.angle
+      });
     }
 
     function resetGame() {
@@ -180,17 +226,35 @@
     document.getElementById('shoot').addEventListener('click', shootBullet);
     document.getElementById('reset').addEventListener('click', resetGame);
 
-    // Простейшее управление (заглушка)
+    let leftTouch = null;
+    let rightTouch = null;
+
+    document.getElementById('joystick-left').addEventListener('touchstart', e => {
+      leftTouch = e.targetTouches[0];
+    });
     document.getElementById('joystick-left').addEventListener('touchmove', e => {
-      player.x += 2;
+      const touch = e.targetTouches[0];
+      const dx = touch.clientX - leftTouch.clientX;
+      const dy = touch.clientY - leftTouch.clientY;
+           player.x += dx * 0.1;
+      player.y += dy * 0.1;
+      leftTouch = touch;
+    });
+
+    document.getElementById('joystick-right').addEventListener('touchstart', e => {
+      rightTouch = e.targetTouches[0];
     });
     document.getElementById('joystick-right').addEventListener('touchmove', e => {
-      player.angle += 0.1;
+      const touch = e.targetTouches[0];
+      const dx = touch.clientX - rightTouch.clientX;
+      player.angle += dx * 0.005;
+      rightTouch = touch;
     });
 
     function gameLoop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawWorld();
+      drawFloorSky();
+      castRays();
       drawEnemies();
       drawBullets();
       checkCollisions();
@@ -203,3 +267,4 @@
   </script>
 </body>
 </html>
+ 
