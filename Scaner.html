@@ -4,49 +4,32 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Focus Timer</title>
-  <link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;Focus Timer&quot;,&quot;short_name&quot;:&quot;Timer&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;#1f1f1f&quot;,&quot;theme_color&quot;:&quot;#00ffff&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;https://via.placeholder.com/192&quot;,&quot;sizes&quot;:&quot;192x192&quot;,&quot;type&quot;:&quot;image/png&quot;}]}">
   <style>
     html, body {
       margin: 0;
       padding: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #1f1f1f, #2c2c2c);
+      background: radial-gradient(circle at top left, #1f1f1f, #2c2c2c);
       color: white;
       height: 100vh;
-      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
     .container {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
       background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(12px);
-      border-radius: 20px;
+      backdrop-filter: blur(14px);
+      border-radius: 24px;
       padding: 30px;
       width: 90%;
       max-width: 400px;
-      box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+      box-shadow: 0 0 40px rgba(255, 255, 255, 0.1);
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 20px;
+      gap: 24px;
       animation: fadeIn 0.6s ease-out;
-      transition: all 0.4s ease;
-    }
-
-    .container.mini {
-      top: auto;
-      left: auto;
-      bottom: 20px;
-      right: 20px;
-      transform: none;
-      width: 120px;
-      height: 120px;
-      padding: 10px;
-      border-radius: 60px;
-      justify-content: center;
     }
 
     @keyframes fadeIn {
@@ -56,8 +39,27 @@
 
     h1 {
       font-weight: 600;
-      font-size: 24px;
+      font-size: 26px;
       margin-bottom: 10px;
+      background: linear-gradient(to right, #00ffff, #ffffff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 12px;
+      border-radius: 14px;
+      border: none;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      font-size: 16px;
+      outline: none;
+      text-align: center;
+    }
+
+    input::placeholder {
+      color: #aaa;
     }
 
     .circle {
@@ -72,18 +74,12 @@
       animation: pulse 2s infinite;
     }
 
-    .container.mini .circle {
-      width: 100px;
-      height: 100px;
-      border-width: 4px;
-    }
-
     .progress {
       position: absolute;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
+      width: 200px;
+      height: 200px;
       border-radius: 50%;
       clip-path: circle(50%);
       background: conic-gradient(#00ffff var(--angle, 0deg), transparent 0deg);
@@ -96,28 +92,26 @@
       z-index: 1;
     }
 
-    .container.mini .time {
-      font-size: 18px;
-    }
-
     .buttons {
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
     }
 
     button {
-      background: #fff;
+      background: linear-gradient(to right, #00ffff, #ffffff);
       border: none;
       padding: 10px 20px;
       font-weight: bold;
-      border-radius: 10px;
+      border-radius: 14px;
       color: #000;
       cursor: pointer;
+      transition: transform 0.2s ease;
     }
 
     button:hover {
-      background: #00ffff;
-      color: #000;
+      transform: scale(1.05);
     }
 
     @keyframes pulse {
@@ -128,16 +122,17 @@
   </style>
 </head>
 <body>
-  <div class="container" id="container">
+  <div class="container">
     <h1>⏱️ Фокус‑таймер</h1>
+    <input type="number" id="minutesInput" placeholder="Введите время (мин)" />
     <div class="circle">
       <div class="progress" id="progress"></div>
-      <div class="time" id="time">25:00</div>
+      <div class="time" id="time">00:00</div>
     </div>
     <div class="buttons">
-      <button id="start">Start</button>
-      <button id="reset">Reset</button>
-      <button id="toggle">Mini</button>
+      <button id="start">Старт</button>
+      <button id="pause">Пауза</button>
+      <button id="reset">Сброс</button>
     </div>
   </div>
 
@@ -145,25 +140,30 @@
     const timeDisplay = document.getElementById('time');
     const progress = document.getElementById('progress');
     const startBtn = document.getElementById('start');
+    const pauseBtn = document.getElementById('pause');
     const resetBtn = document.getElementById('reset');
-    const toggleBtn = document.getElementById('toggle');
-    const container = document.getElementById('container');
+    const minutesInput = document.getElementById('minutesInput');
 
-    let totalSeconds = 25 * 60;
-    let remaining = totalSeconds;
+    let totalSeconds = 0;
+    let remaining = 0;
     let timer = null;
 
     function updateDisplay() {
       const min = Math.floor(remaining / 60);
       const sec = remaining % 60;
       timeDisplay.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
-      const angle = ((totalSeconds - remaining) / totalSeconds) * 360;
+      const angle = totalSeconds > 0 ? ((totalSeconds - remaining) / totalSeconds) * 360 : 0;
       progress.style.setProperty('--angle', `${angle}deg`);
     }
 
     function startTimer() {
       if (timer) return;
-      container.querySelector('.circle').style.animation = 'pulse 1.5s infinite';
+      if (remaining <= 0) {
+        const inputMinutes = parseInt(minutesInput.value);
+        if (isNaN(inputMinutes) || inputMinutes <= 0) return;
+        totalSeconds = inputMinutes * 60;
+        remaining = totalSeconds;
+      }
       timer = setInterval(() => {
         if (remaining > 0) {
           remaining--;
@@ -171,33 +171,27 @@
         } else {
           clearInterval(timer);
           timer = null;
-          container.querySelector('.circle').style.animation = 'none';
         }
       }, 1000);
+    }
+
+    function pauseTimer() {
+      clearInterval(timer);
+      timer = null;
     }
 
     function resetTimer() {
       clearInterval(timer);
       timer = null;
-      remaining = totalSeconds;
-      updateDisplay();
-      container.querySelector('.circle').style.animation = 'none';
-    }
-
-    function toggleMini() {
-      container.classList.toggle('mini');
+      remaining = 0;
+      totalSeconds = 0;
+      timeDisplay.textContent = '00:00';
+      progress.style.setProperty('--angle', `0deg`);
     }
 
     startBtn.addEventListener('click', startTimer);
+    pauseBtn.addEventListener('click', pauseTimer);
     resetBtn.addEventListener('click', resetTimer);
-    toggleBtn.addEventListener('click', toggleMini);
-
-    updateDisplay();
-
-    // PWA install prompt (optional)
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('data:text/javascript;base64,').catch(() => {});
-    }
   </script>
 </body>
 </html>
