@@ -740,15 +740,19 @@ list.addEventListener("input", e => {
     sessionValues[code] = value;
     localStorage.setItem("qty_" + code, value);
 
-    const raw = value.replace(',', '.');
-    let actual = 0;
+    const raw = value.replace(',', '.').trim();
+    let actual = NaN;
 
     try {
-      // если строка оканчивается на оператор (+ - * /), не вычисляем
-      if (/[\+\-\*\/]$/.test(raw.trim())) {
-        actual = NaN; // пока пользователь дописывает выражение
-      } else {
-        actual = Function("return " + raw)();
+      let safeRaw = raw;
+
+      // если строка оканчивается на оператор (+ - * /), убираем его
+      if (/[\+\-\*\/]$/.test(safeRaw)) {
+        safeRaw = safeRaw.slice(0, -1);
+      }
+
+      if (safeRaw) {
+        actual = Function("return " + safeRaw)();
       }
     } catch {
       actual = NaN;
@@ -774,6 +778,7 @@ list.addEventListener("input", e => {
     autosave();
   }
 });
+
 
 
 
