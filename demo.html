@@ -784,6 +784,7 @@ list.addEventListener("input", e => {
 
   // Экспорт PDF
  // глобальная переменная для фиксации времени загрузки локалки
+
 let startTime = new Date();
 
 function exportPDF() {
@@ -911,6 +912,8 @@ function exportPDF() {
     }
 
     const delta = actual - item.docQty;
+    const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
+
     if (delta > 0) totalPlus += delta * item.price;
     else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
 
@@ -924,7 +927,7 @@ function exportPDF() {
       <td style="border:1px solid #444; padding:2px; text-align:right;">${item.price.toFixed(2)}</td>
       <td style="border:1px solid #444; padding:2px; text-align:right;">${item.docQty}</td>
       <td style="border:1px solid #444; padding:2px; text-align:right;">${raw}</td>
-      <td style="border:1px solid #444; padding:2px; text-align:right;">${delta}</td>
+      <td style="border:1px solid #444; padding:2px; text-align:right;">${deltaStr}</td>
     `;
     tbody.appendChild(row);
     index++;
