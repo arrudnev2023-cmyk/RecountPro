@@ -2,242 +2,516 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>OXPS → PDF (полностью в браузере, без серверов)</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LuxTasks — премиальный список дел</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { color-scheme: light dark; }
+    :root{
+      --bg:#0b0f18;
+      --panel:rgba(255,255,255,0.08);
+      --panel-strong:rgba(255,255,255,0.12);
+      --glass:rgba(255,255,255,0.06);
+      --blur: 16px;
+      --text:#e6eaf2;
+      --muted:#9aa6b2;
+      --accent:#6a11cb;
+      --accent-2:#2575fc;
+      --success:#22c55e;
+      --danger:#ef4444;
+      --warning:#f59e0b;
+      --border:rgba(255,255,255,0.18);
+      --shadow: 0 20px 40px rgba(0,0,0,0.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
-      margin: 0; min-height: 100vh; display: grid; place-items: center;
-      font-family: -apple-system, system-ui, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "SF Pro Text", Arial;
+      color: var(--text);
       background:
-        radial-gradient(1200px 600px at 20% -20%, rgba(255,255,255,0.75), transparent),
-        linear-gradient(135deg,#f5f7fa,#e6ebf1);
+        radial-gradient(1200px 800px at 10% 10%, #0e1422 0%, #0b0f18 60%, #0a0e17 100%),
+        linear-gradient(135deg, rgba(38,83,240,0.2), rgba(106,17,203,0.2));
     }
-    .glass {
-      width: min(620px, 92vw); padding: 28px; border-radius: 22px;
-      background: rgba(255,255,255,0.55); backdrop-filter: blur(14px);
-      box-shadow: 0 24px 70px rgba(0,0,0,0.14); text-align: center;
-      animation: fade .45s ease-out;
+    .app {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 18px;
     }
-    @keyframes fade { from{opacity:0; transform:translateY(12px)} to{opacity:1; transform:translateY(0)} }
-    h1 { margin: 0 0 12px; font-size: 22px; letter-spacing: .2px; color: #1d1d1f; }
-    p.sub { margin: 0 0 18px; color: #4b4b4d; font-size: 14px; }
-    .row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
-    input[type="file"] {
-      width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid #d0d7de;
-      background: rgba(255,255,255,0.85); font-size: 14px;
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px;
+      background: var(--glass);
+      backdrop-filter: blur(var(--blur)) saturate(130%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
     }
-    button {
-      padding: 12px 18px; border: 0; border-radius: 12px; font-weight: 600; font-size: 14px;
-      color: white; background: linear-gradient(180deg,#0a84ff,#0066cc);
-      box-shadow: 0 10px 24px rgba(10,132,255,0.25); cursor: pointer; transition: transform .06s ease, filter .2s;
+    .brand {
+      display:flex; align-items:center; gap:12px;
     }
-    button:hover { filter: brightness(1.06); }
-    button:active { transform: translateY(1px); }
-    .progress { margin-top: 14px; font-size: 13px; color: #555; }
-    .error { margin-top: 10px; color: #b00020; font-size: 13px; }
-    .hint { margin-top: 16px; font-size: 12px; color: #6b6b6d; }
-    .hidden { display: none; }
+    .logo {
+      width: 36px; height: 36px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 8px 20px rgba(99,102,241,0.45);
+    }
+    .title {
+      font-weight: 700; letter-spacing: 0.2px;
+    }
+    .subtitle {
+      font-size: 12px; color: var(--muted);
+    }
+    .actions { display:flex; gap:10px; }
+    .btn {
+      appearance: none; border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      padding: 8px 12px; border-radius: 12px;
+      cursor: pointer;
+      transition: transform .15s ease, box-shadow .15s ease, background .15s;
+    }
+    .btn:hover { transform: translateY(-1px); background: var(--panel-strong); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
+    .btn:active { transform: translateY(0); }
+    .btn.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border: none;
+      box-shadow: 0 12px 28px rgba(37,117,252,0.35);
+    }
+    .grid {
+      margin-top: 16px;
+      display: grid; gap: 16px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 860px) {
+      .grid { grid-template-columns: 2fr 1fr; }
+    }
+    .card {
+      background: var(--glass); backdrop-filter: blur(var(--blur)) saturate(130%);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 16px;
+      box-shadow: var(--shadow);
+    }
+    .card h2 {
+      margin: 0 0 12px; font-size: 16px; letter-spacing: .2px;
+    }
+    .inputs { display:grid; gap:10px; grid-template-columns: 1fr 120px 140px auto; }
+    @media (max-width: 640px) {
+      .inputs { grid-template-columns: 1fr 110px 130px; }
+      .inputs .btn { grid-column: 1 / -1; }
+    }
+    .input {
+      width: 100%; border: 1px solid var(--border); border-radius: 12px;
+      padding: 10px 12px; background: rgba(255,255,255,0.05); color: var(--text);
+      caret-color: var(--accent);
+      transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+    .input::placeholder { color: #a8b3c1; }
+    .input:focus {
+      outline: none; border-color: rgba(37,117,252,0.7);
+      box-shadow: 0 0 0 4px rgba(37,117,252,0.15);
+      background: rgba(255,255,255,0.08);
+    }
+    .toolbar { display:flex; gap:10px; margin-top: 12px; }
+    .filter { flex:1; }
+    .select {
+      width: 100%; border: 1px solid var(--border); border-radius: 12px;
+      padding: 10px 12px; background: rgba(255,255,255,0.05); color: var(--text);
+    }
+    .list { display:flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .item {
+      position: relative;
+      display:grid; grid-template-columns: 1fr auto auto;
+      gap: 12px; align-items: center;
+      padding: 12px; border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      transition: transform .12s ease, background .15s ease, border-color .15s ease;
+    }
+    .item:hover { transform: translateY(-1px); background: rgba(255,255,255,0.09); }
+    .item.done { opacity: .78; }
+    .item-title { font-weight: 600; }
+    .item-meta { font-size: 12px; color: var(--muted); }
+    .priority {
+      padding: 6px 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.07);
+    }
+    .priority.low    { color:#8bd4a7; }
+    .priority.medium { color:#ffd27a; }
+    .priority.high   { color:#ff9aa2; }
+    .item-actions { display:flex; gap:8px; }
+    .chip {
+      font-size: 11px; color: var(--muted);
+      border: 1px dashed var(--border); border-radius: 999px;
+      padding: 6px 10px;
+    }
+    .stat {
+      display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+      margin-top: 10px;
+    }
+    .stat .box {
+      padding: 12px; border-radius: 12px; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      text-align: center;
+    }
+    .box .num { font-size: 18px; font-weight: 700; }
+    .box .lbl { font-size: 12px; color: var(--muted); }
+    .footer {
+      margin-top: 16px; font-size: 12px; color: var(--muted);
+      display:flex; justify-content: space-between; align-items:center;
+    }
+    .kbd {
+      border:1px solid var(--border); border-bottom-width: 3px;
+      padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.06);
+      font-size: 11px;
+    }
+    .hidden { display:none !important; }
+    .inline-edit {
+      border: none; background: transparent; color: var(--text);
+      width: 100%;
+    }
+    .inline-edit:focus { outline: none; }
   </style>
 </head>
 <body>
-  <div class="glass">
-    <h1>Конвертер OXPS → PDF</h1>
-    <p class="sub">Локальная конвертация в браузере. Файл никуда не отправляется.</p>
-
-    <div class="row">
-      <input id="fileInput" type="file" accept=".oxps,.xps" />
-      <button id="convertBtn">Конвертировать</button>
+  <div class="app">
+    <div class="header">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <div class="title">LuxTasks</div>
+          <div class="subtitle">Минималистичный премиальный список дел</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="btnExport">Экспорт JSON</button>
+        <button class="btn" id="btnImport">Импорт JSON</button>
+        <button class="btn primary" id="btnClear">Очистить</button>
+      </div>
     </div>
 
-    <div id="progress" class="progress hidden"></div>
-    <div id="error" class="error hidden"></div>
-    <p class="hint">Требуется MuPDF WebAssembly (mupdf.js + mupdf.wasm) как статика на этом же домене.</p>
+    <div class="grid">
+      <div class="card">
+        <h2>Добавить задачу</h2>
+        <div class="inputs">
+          <input id="taskTitle" class="input" type="text" placeholder="Заголовок задачи" />
+          <select id="taskPriority" class="select" title="Приоритет">
+            <option value="low">Низкий</option>
+            <option value="medium" selected>Средний</option>
+            <option value="high">Высокий</option>
+          </select>
+          <input id="taskTags" class="input" type="text" placeholder="Теги через запятую" />
+          <button id="btnAdd" class="btn">Добавить</button>
+        </div>
+
+        <div class="toolbar">
+          <input id="search" class="input filter" type="text" placeholder="Поиск по заголовку или тегам…" />
+          <select id="filterPriority" class="select" title="Фильтр по приоритету">
+            <option value="all" selected>Все приоритеты</option>
+            <option value="low">Низкий</option>
+            <option value="medium">Средний</option>
+            <option value="high">Высокий</option>
+          </select>
+        </div>
+
+        <div class="list" id="taskList"></div>
+
+        <div class="stat">
+          <div class="box">
+            <div class="num" id="statTotal">0</div>
+            <div class="lbl">Всего задач</div>
+          </div>
+          <div class="box">
+            <div class="num" id="statDone">0</div>
+            <div class="lbl">Выполнено</div>
+          </div>
+          <div class="box">
+            <div class="num" id="statHigh">0</div>
+            <div class="lbl">Высокий приоритет</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Быстрые заметки</h2>
+        <div style="display:grid; gap:10px;">
+          <textarea id="notes" class="input" rows="8" placeholder="Любые мысли, идеи, чек‑лист..."></textarea>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="btnCopyNotes">Копировать</button>
+            <button class="btn" id="btnClearNotes">Очистить</button>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div>
+            Сохранение локально. Горячие клавиши:
+            <span class="kbd">Enter</span> — добавить,
+            <span class="kbd">⌘/Ctrl + K</span> — поиск.
+          </div>
+          <div id="status" aria-live="polite">Готово</div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- pdf-lib для сборки PDF из изображений страниц -->
-  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
-
   <script>
-    // Укажи пути к WASM-артефактам MuPDF, которые ты разместишь у себя:
-    // Пример: положи файлы в /mupdf/ рядом со страницей
-    const MUPDF_SCRIPT_URL = '/mupdf/mupdf.js';   // путь к JS-обёртке MuPDF
-    const MUPDF_WASM_URL   = '/mupdf/mupdf.wasm'; // путь к WASM бинарнику MuPDF
+    // Модель
+    const storeKey = 'luxtasks.v1';
+    let tasks = loadTasks();
+    let notes = localStorage.getItem('luxtasks.notes') || '';
 
-    let mupdfModule = null;
+    // DOM
+    const el = {
+      list: document.getElementById('taskList'),
+      title: document.getElementById('taskTitle'),
+      priority: document.getElementById('taskPriority'),
+      tags: document.getElementById('taskTags'),
+      add: document.getElementById('btnAdd'),
+      search: document.getElementById('search'),
+      filterPriority: document.getElementById('filterPriority'),
+      statTotal: document.getElementById('statTotal'),
+      statDone: document.getElementById('statDone'),
+      statHigh: document.getElementById('statHigh'),
+      btnExport: document.getElementById('btnExport'),
+      btnImport: document.getElementById('btnImport'),
+      btnClear: document.getElementById('btnClear'),
+      notes: document.getElementById('notes'),
+      btnCopyNotes: document.getElementById('btnCopyNotes'),
+      btnClearNotes: document.getElementById('btnClearNotes'),
+      status: document.getElementById('status')
+    };
 
-    function setText(id, text, show = true) {
-      const el = document.getElementById(id);
-      el.textContent = text || '';
-      el.classList.toggle('hidden', !show);
-    }
+    // Инициализация
+    el.notes.value = notes;
+    render();
 
-    async function loadMuPDF() {
-      if (mupdfModule) return mupdfModule;
-
-      // Загружаем mupdf.js
-      await new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = MUPDF_SCRIPT_URL;
-        s.onload = resolve;
-        s.onerror = () => reject(new Error('Не удалось загрузить MuPDF JS'));
-        document.head.appendChild(s);
-      });
-
-      // Инициализация Emscripten Module (большинство сборок MuPDF используют именно его)
-      if (typeof Module !== 'function' && typeof Module !== 'object') {
-        throw new Error('MuPDF Module не найден. Проверь mupdf.js');
-      }
-
-      // Если Module — объект-фабрика:
-      if (typeof Module === 'function') {
-        mupdfModule = await Module({
-          locateFile: (path) => (path.endsWith('.wasm') ? MUPDF_WASM_URL : path),
-        });
-      } else {
-        // Если Module уже инициализирован как объект, но требует locateFile:
-        if (Module.locateFile == null) {
-          Module.locateFile = (path) => (path.endsWith('.wasm') ? MUPDF_WASM_URL : path);
-        }
-        mupdfModule = await Module; // ожидаем готовности
-      }
-
-      return mupdfModule;
-    }
-
-    // Обертки вокруг C-функций MuPDF через cwrap (имена функций могут отличаться в твоем билде)
-    // ЗАМЕТКА: Проверь реальные имена экспортов в твоей сборке (например через Module.cwrap или документацию).
-    function bindMuPDFAPI(mod) {
-      // Ниже — типичные названия. Если твоя сборка отличается, замени на актуальные.
-      const api = {
-        // open_document(const char* path) -> doc_ptr
-        openDocument: mod.cwrap('open_document', 'number', ['string']),
-        // close_document(doc_ptr)
-        closeDocument: mod.cwrap('close_document', null, ['number']),
-        // count_pages(doc_ptr) -> int
-        countPages: mod.cwrap('count_pages', 'number', ['number']),
-        // get_page_size(doc_ptr, page_index, out_w_ptr, out_h_ptr)
-        getPageSize: mod.cwrap('get_page_size', null, ['number','number','number','number']),
-        // render_page_png(doc_ptr, page_index, dpi, out_ptr, out_len_ptr) — рендерит PNG в память
-        // Если у тебя другой API (например, рендер в RGBA буфер), адаптируй функцию ниже.
-        renderPagePNG: mod.cwrap('render_page_png', 'number', ['number','number','number','number','number']),
-        freeBuffer: mod.cwrap('free_buffer', null, ['number']),
-        // malloc/free (для выделения out_w/out_h/out_len и получения указателей)
-        malloc: mod._malloc.bind(mod),
-        free: mod._free.bind(mod),
-        HEAPU8: mod.HEAPU8,
-        HEAP32: mod.HEAP32,
-      };
-      return api;
-    }
-
-    async function convertOxpsToPdf(file) {
-      setText('progress', 'Загрузка MuPDF…', true);
-      const mod = await loadMuPDF();
-      const api = bindMuPDFAPI(mod);
-
-      setText('progress', 'Чтение файла…', true);
-      const buf = new Uint8Array(await file.arrayBuffer());
-
-      // Записываем OXPS в виртуальную FS Emscripten
-      const inPath = 'input.oxps';
-      mod.FS.writeFile(inPath, buf);
-
-      setText('progress', 'Открытие документа…', true);
-      const docPtr = api.openDocument(inPath);
-      if (!docPtr) throw new Error('Не удалось открыть документ');
-
-      try {
-        const pageCount = api.countPages(docPtr);
-        if (!pageCount || pageCount < 1) throw new Error('В документе нет страниц');
-
-        setText('progress', `Рендер страниц… (0/${pageCount})`, true);
-
-        // Создаем PDF
-        const { PDFDocument } = PDFLib;
-        const pdfDoc = await PDFDocument.create();
-
-        // DPI рендера: 144 даст ~2x от 72dpi
-        const dpi = 144;
-
-        // Вспомогательные указатели для возвратов размеров и длины буфера
-        const outWPtr = api.malloc(4);
-        const outHPtr = api.malloc(4);
-        const outLenPtr = api.malloc(4);
-
-        for (let i = 0; i < pageCount; i++) {
-          // Получаем размер страницы
-          api.getPageSize(docPtr, i, outWPtr, outHPtr);
-          const w = api.HEAP32[outWPtr >> 2];
-          const h = api.HEAP32[outHPtr >> 2];
-
-          // Рендер PNG страницы в память WASM → получаем указатель на буфер
-          // renderPagePNG возвращает указатель на PNG-байты, длина — в outLenPtr
-          const pngPtr = api.renderPagePNG(docPtr, i, dpi, outLenPtr, 0);
-          if (!pngPtr) throw new Error(`Не удалось отрендерить страницу ${i+1}`);
-
-          const pngLen = api.HEAP32[outLenPtr >> 2];
-          const pngBytes = api.HEAPU8.slice(pngPtr, pngPtr + pngLen);
-
-          // Встраиваем PNG в PDF
-          const img = await pdfDoc.embedPng(pngBytes);
-          const page = pdfDoc.addPage([img.width, img.height]);
-          page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
-
-          // Освобождаем PNG-буфер в WASM
-          api.freeBuffer(pngPtr);
-
-          setText('progress', `Сборка PDF… (${i+1}/${pageCount})`, true);
-        }
-
-        // Освобождаем служебные указатели
-        api.free(outWPtr);
-        api.free(outHPtr);
-        api.free(outLenPtr);
-
-        setText('progress', 'Формирование файла…', true);
-        const pdfBytes = await pdfDoc.save();
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        return blob;
-
-      } finally {
-        api.closeDocument(docPtr);
-        // Чистим FS
-        try { mod.FS.unlink(inPath); } catch {}
-      }
-    }
-
-    document.getElementById('convertBtn').addEventListener('click', async () => {
-      const fileInput = document.getElementById('fileInput');
-      const file = fileInput.files && fileInput.files[0];
-
-      setText('error', '', false);
-      setText('progress', '', false);
-
-      if (!file) {
-        setText('error', 'Выберите OXPS/XPS файл.', true);
-        return;
-      }
-      if (!(/\.(oxps|xps)$/i).test(file.name)) {
-        setText('error', 'Поддерживаются только .oxps / .xps.', true);
-        return;
-      }
-
-      try {
-        const blob = await convertOxpsToPdf(file);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = (file.name.replace(/\.(oxps|xps)$/i, '') || 'converted') + '.pdf';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setText('progress', 'Готово ✅', true);
-      } catch (err) {
-        console.error(err);
-        setText('error', 'Ошибка: ' + (err?.message || 'непредвиденная'), true);
+    // События
+    el.add.addEventListener('click', onAdd);
+    el.title.addEventListener('keydown', e => { if (e.key === 'Enter') onAdd(); });
+    el.search.addEventListener('input', render);
+    el.filterPriority.addEventListener('change', render);
+    el.btnExport.addEventListener('click', onExport);
+    el.btnImport.addEventListener('click', onImport);
+    el.btnClear.addEventListener('click', onClear);
+    el.notes.addEventListener('input', () => {
+      localStorage.setItem('luxtasks.notes', el.notes.value || '');
+      ok('Заметки сохранены');
+    });
+    el.btnCopyNotes.addEventListener('click', () => {
+      navigator.clipboard.writeText(el.notes.value || '').then(()=>ok('Скопировано'));
+    });
+    el.btnClearNotes.addEventListener('click', () => {
+      el.notes.value = ''; localStorage.setItem('luxtasks.notes',''); ok('Заметки очищены');
+    });
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault(); el.search.focus();
       }
     });
+
+    // Логика
+    function onAdd(){
+      const title = (el.title.value || '').trim();
+      if (!title) { warn('Введите заголовок'); return; }
+      const priority = el.priority.value;
+      const tags = (el.tags.value || '').split(',').map(t => t.trim()).filter(Boolean);
+
+      tasks.push({
+        id: cryptoRandom(),
+        title, priority, tags,
+        createdAt: new Date().toISOString(),
+        done: false
+      });
+      el.title.value = ''; el.tags.value = '';
+      saveTasks(); render(); ok('Добавлено');
+    }
+
+    function render(){
+      const term = (el.search.value || '').trim().toLowerCase();
+      const pr = el.filterPriority.value;
+
+      const filtered = tasks.filter(t => {
+        const text = (t.title + ' ' + t.tags.join(' ')).toLowerCase();
+        const match = !term || text.includes(term);
+        const prMatch = pr === 'all' || t.priority === pr;
+        return match && prMatch;
+      });
+
+      // Статистика
+      el.statTotal.textContent = tasks.length;
+      el.statDone.textContent = tasks.filter(t => t.done).length;
+      el.statHigh.textContent = tasks.filter(t => t.priority === 'high' && !t.done).length;
+
+      // Рендер списка
+      el.list.innerHTML = '';
+      if (!filtered.length) {
+        const empty = document.createElement('div');
+        empty.className = 'chip';
+        empty.textContent = 'Нет задач по текущему фильтру';
+        el.list.appendChild(empty);
+        return;
+      }
+
+      filtered
+        .sort((a,b)=>{
+          // Сортировка: невыполненные выше, затем приоритет high/medium/low, потом дата
+          const doneDiff = (a.done === b.done) ? 0 : (a.done ? 1 : -1);
+          if (doneDiff !== 0) return doneDiff;
+          const pOrder = { high:0, medium:1, low:2 };
+          const prDiff = pOrder[a.priority] - pOrder[b.priority];
+          if (prDiff !== 0) return prDiff;
+          return new Date(a.createdAt) - new Date(b.createdAt);
+        })
+        .forEach(task => {
+          const row = document.createElement('div');
+          row.className = 'item' + (task.done ? ' done' : '');
+          row.dataset.id = task.id;
+
+          // Левая зона: заголовок + теги + inline edit
+          const left = document.createElement('div');
+          const title = document.createElement('input');
+          title.className = 'inline-edit item-title';
+          title.value = task.title;
+          title.title = 'Кликните, чтобы отредактировать заголовок';
+          title.addEventListener('change', () => {
+            const v = title.value.trim(); if (!v) return;
+            task.title = v; saveTasks(); ok('Обновлено');
+          });
+
+          const meta = document.createElement('div');
+          meta.className = 'item-meta';
+          meta.textContent = task.tags.length ? '#' + task.tags.join(' #') : '—';
+
+          left.appendChild(title);
+          left.appendChild(meta);
+
+          // Средняя зона: приоритет
+          const pri = document.createElement('div');
+          pri.className = 'priority ' + task.priority;
+          pri.textContent = task.priority === 'high' ? 'Высокий' :
+                            task.priority === 'medium' ? 'Средний' : 'Низкий';
+          pri.title = 'Кликните, чтобы сменить приоритет';
+          pri.style.cursor = 'pointer';
+          pri.addEventListener('click', () => {
+            task.priority = nextPriority(task.priority);
+            saveTasks(); render();
+          });
+
+          // Правая зона: кнопки
+          const actions = document.createElement('div');
+          actions.className = 'item-actions';
+
+          const btnDone = document.createElement('button');
+          btnDone.className = 'btn';
+          btnDone.textContent = task.done ? 'Вернуть' : 'Готово';
+          btnDone.addEventListener('click', () => {
+            task.done = !task.done; saveTasks(); render();
+          });
+
+          const btnEditTags = document.createElement('button');
+          btnEditTags.className = 'btn';
+          btnEditTags.textContent = 'Теги';
+          btnEditTags.addEventListener('click', () => {
+            const v = prompt('Теги через запятую', task.tags.join(', '));
+            if (v !== null) {
+              task.tags = v.split(',').map(s=>s.trim()).filter(Boolean);
+              saveTasks(); render(); ok('Теги обновлены');
+            }
+          });
+
+          const btnDel = document.createElement('button');
+          btnDel.className = 'btn';
+          btnDel.textContent = 'Удалить';
+          btnDel.addEventListener('click', () => {
+            if (confirm('Удалить задачу?')) {
+              tasks = tasks.filter(x => x.id !== task.id);
+              saveTasks(); render(); warn('Удалено');
+            }
+          });
+
+          actions.appendChild(btnDone);
+          actions.appendChild(btnEditTags);
+          actions.appendChild(btnDel);
+
+          row.appendChild(left);
+          row.appendChild(pri);
+          row.appendChild(actions);
+
+          el.list.appendChild(row);
+        });
+    }
+
+    function onExport(){
+      const payload = JSON.stringify({ tasks, notes: el.notes.value }, null, 2);
+      const blob = new Blob([payload], { type:'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'LuxTasks.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      ok('Экспортировано в JSON');
+    }
+
+    function onImport(){
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = 'application/json';
+      input.onchange = () => {
+        const file = input.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const data = JSON.parse(reader.result);
+            tasks = Array.isArray(data.tasks) ? data.tasks : [];
+            el.notes.value = data.notes || '';
+            localStorage.setItem('luxtasks.notes', el.notes.value);
+            saveTasks(); render(); ok('Импорт завершён');
+          } catch(e){
+            warn('Ошибка импорта: неверный формат');
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    }
+
+    function onClear(){
+      if (!confirm('Очистить всё?')) return;
+      tasks = []; saveTasks(); render();
+      el.notes.value = ''; localStorage.setItem('luxtasks.notes','');
+      warn('Данные очищены');
+    }
+
+    function saveTasks(){
+      localStorage.setItem(storeKey, JSON.stringify(tasks));
+    }
+
+    function loadTasks(){
+      try {
+        const v = localStorage.getItem(storeKey);
+        return v ? JSON.parse(v) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function nextPriority(p){
+      return p === 'low' ? 'medium' : p === 'medium' ? 'high' : 'low';
+    }
+
+    function cryptoRandom(){
+      const arr = new Uint32Array(4);
+      (window.crypto || window.msCrypto).getRandomValues(arr);
+      return [...arr].map(x => x.toString(16)).join('');
+    }
+
+    function ok(msg){ setStatus(msg, 'ok'); }
+    function warn(msg){ setStatus(msg, 'warn'); }
+    function setStatus(msg, type){
+      el.status.textContent = msg;
+      el.status.style.color = type === 'ok' ? '#9dd79f' : '#ffb4b4';
+      clearTimeout(setStatus._t);
+      setStatus._t = setTimeout(()=> {
+        el.status.textContent = 'Готово';
+        el.status.style.color = '';
+      }, 2000);
+    }
   </script>
 </body>
 </html>
