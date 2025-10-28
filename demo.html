@@ -408,36 +408,39 @@
   <input type="file" id="upload" accept=".pdf" style="display:none;">
 
   <!-- Модальное окно для итогов -->
- 
-<div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+ <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
        background:rgba(0,0,0,0.6); z-index:2000; justify-content:center; align-items:center;">
-  <div style="background:#fff; max-width:95%; width:95%; max-height:85%; overflow-y:auto;
-              border-radius:12px; padding:0.8rem; box-shadow:0 4px 16px rgba(0,0,0,0.4); position:relative;">
+  <div style="background:#fff; max-width:95%; width:95%; max-height:85%; 
+              border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.4); 
+              position:relative; display:flex; flex-direction:column;">
 
-    <!-- Крестик -->
-    <button onclick="document.getElementById('modal').style.display='none'"
-            style="position:absolute; top:6px; right:6px; background:none; border:none; font-size:1.4rem;
-                   cursor:pointer; color:#666;">✖</button>
-
-    <h2 style="margin:0 0 0.5rem 0; font-size:1rem; color:var(--accent); text-align:center;">
-      Итог пересчёта
-    </h2>
-
-    <!-- Контейнер для таблицы -->
-    <div style="overflow-x:auto; max-width:100%;">
-      <div id="modal-content" 
-           style="font-size:0.75rem;">
-        <!-- сюда вставляется таблица -->
-      </div>
+    <!-- Хедер с заголовком и крестиком -->
+    <div style="position:sticky; top:0; background:#fff; 
+                display:flex; justify-content:center; align-items:center;
+                padding:0.5rem 2rem; border-bottom:1px solid #ddd; z-index:10;">
+      <h2 style="margin:0; font-size:1rem; color:var(--accent); flex:1; text-align:center;">
+        Итог пересчёта
+      </h2>
+      <button onclick="document.getElementById('modal').style.display='none'"
+              style="position:absolute; top:8px; right:8px; background:none; border:none; 
+                     font-size:1.4rem; cursor:pointer; color:#666;">✖</button>
     </div>
 
-    <!-- Кнопка закрытия снизу -->
-    <button onclick="document.getElementById('modal').style.display='none'" 
-            style="margin-top:0.8rem; background:var(--accent); color:#fff; border:none; padding:0.5rem 1rem;
-                   border-radius:6px; cursor:pointer; width:100%; font-size:0.9rem;">Закрыть</button>
+    <!-- Контент с таблицей -->
+    <div style="flex:1; overflow:auto; padding:0.5rem;">
+      <div id="modal-content" style="font-size:0.75rem;"></div>
+    </div>
+
+    <!-- Футер с кнопкой -->
+    <div style="padding:0.5rem; border-top:1px solid #ddd;">
+      <button onclick="document.getElementById('modal').style.display='none'" 
+              style="background:var(--accent); color:#fff; border:none; padding:0.5rem 1rem;
+                     border-radius:6px; cursor:pointer; width:100%; font-size:0.9rem;">
+        Закрыть
+      </button>
+    </div>
   </div>
 </div>
-
 
   <!-- Модальное окно для сессий -->
   <div id="session-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
