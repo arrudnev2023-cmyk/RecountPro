@@ -742,25 +742,39 @@ list.addEventListener("input", e => {
 
     const raw = value.replace(',', '.');
     let actual = 0;
-    try { actual = Function("return " + raw)(); } catch {}
+
+    try {
+      // если строка оканчивается на оператор (+ - * /), не вычисляем
+      if (/[\+\-\*\/]$/.test(raw.trim())) {
+        actual = NaN; // пока пользователь дописывает выражение
+      } else {
+        actual = Function("return " + raw)();
+      }
+    } catch {
+      actual = NaN;
+    }
+
     const item = allItems.find(i => i.code === code);
     const card = e.target.closest(".item");
     card.classList.remove("match", "missing", "excess");
 
     if (!value) {
       // нейтральный вид
-    } else if (actual === item.docQty) {
-      card.classList.add("match");
-    } else if (actual < item.docQty) {
-      card.classList.add("missing");
-    } else if (actual > item.docQty) {
-      card.classList.add("excess");
+    } else if (!isNaN(actual)) {
+      if (actual === item.docQty) {
+        card.classList.add("match");
+      } else if (actual < item.docQty) {
+        card.classList.add("missing");
+      } else if (actual > item.docQty) {
+        card.classList.add("excess");
+      }
     }
 
     updateSummary(allItems);
     autosave();
   }
 });
+
 
 
   // Экспорт PDF
