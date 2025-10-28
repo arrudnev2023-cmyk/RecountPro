@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>FlashSell — быстрые продажи с телефона</title>
+  <title>Sky Dash — мобильная игра</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0b0f18"/>
   <style>
@@ -13,21 +13,21 @@
       --accent:#6a11cb;
       --accent-2:#2575fc;
       --border:rgba(255,255,255,0.18);
-      --glass:rgba(255,255,255,0.06);
+      --glass:rgba(255,255,255,0.08);
       --shadow: 0 20px 40px rgba(0,0,0,0.35);
-      --success:#22c55e;
-      --danger:#ef4444;
-      --warning:#f59e0b;
+      --good:#22c55e;
+      --bad:#ef4444;
+      --warn:#f59e0b;
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; }
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Arial, "Noto Sans";
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Arial;
       color: var(--text);
       background:
-        radial-gradient(1200px 800px at 10% 10%, #0e1422 0%, #0b0f18 60%, #0a0e17 100%),
-        linear-gradient(135deg, rgba(38,83,240,0.15), rgba(106,17,203,0.15));
+        radial-gradient(1200px 800px at 8% 10%, #0e1422 0%, #0b0f18 60%, #0a0e17 100%),
+        linear-gradient(135deg, rgba(38,83,240,0.18), rgba(106,17,203,0.18));
     }
     .app {
       max-width: 520px;
@@ -35,12 +35,8 @@
       padding: env(safe-area-inset-top) 14px env(safe-area-inset-bottom);
     }
     .header {
-      position: sticky; top: 0; z-index: 10;
       display:flex; align-items:center; justify-content:space-between;
-      padding: 10px 12px; margin: -10px -14px 12px;
-      background: rgba(11,15,24,0.6);
-      backdrop-filter: blur(12px) saturate(130%);
-      border-bottom: 1px solid var(--border);
+      padding: 12px; margin-bottom: 10px;
     }
     .brand { display:flex; align-items:center; gap:10px; }
     .logo {
@@ -51,68 +47,20 @@
     .title { font-weight: 700; font-size: 16px; letter-spacing: .2px; }
     .subtitle { font-size: 12px; color: var(--muted); }
 
-    .card {
-      background: var(--glass);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 14px;
-      box-shadow: var(--shadow);
-      margin-bottom: 12px;
+    .hud {
+      display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+      margin-bottom: 10px;
     }
-    h1, h2, h3 { margin: 0 0 10px; }
-    h1 { font-size: 20px; }
-    h2 { font-size: 16px; color: #dbe3ea; }
-    p { margin: 0 0 8px; color: var(--muted); }
-
-    .hero {
-      display:grid; gap: 10px;
+    .chip {
+      padding: 10px; border-radius: 12px; border: 1px solid var(--border);
+      background: var(--glass); text-align:center; font-size: 14px;
     }
-    .product-img {
-      width: 100%; aspect-ratio: 16/9; border-radius: 12px;
-      background:
-        radial-gradient(120px 80px at 80% 20%, rgba(255,255,255,0.12), transparent),
-        linear-gradient(135deg, rgba(37,117,252,0.3), rgba(106,17,203,0.25));
-      border: 1px solid var(--border);
-      box-shadow: 0 12px 28px rgba(37,117,252,0.18);
-      position: relative; overflow: hidden;
-    }
-    .product-img::after {
-      content:""; position:absolute; inset:0;
-      background:
-        repeating-linear-gradient(135deg, rgba(255,255,255,0.08) 0 2px, transparent 2px 6px);
-      mix-blend-mode: overlay; opacity: .4;
-    }
-    .price-row { display:flex; align-items:center; justify-content:space-between; gap: 8px; }
-    .price { font-size: 22px; font-weight: 700; }
-    .old { text-decoration: line-through; color: #a9b5c3; font-size: 14px; }
-    .badge {
-      font-size: 11px; padding: 6px 10px; border: 1px solid var(--border);
-      border-radius: 999px; color: #cfe1ff; background: rgba(37,117,252,0.12);
-    }
-
-    .input, .select {
-      width: 100%; border: 1px solid var(--border); border-radius: 12px;
-      padding: 10px 12px; background: rgba(255,255,255,0.05); color: var(--text);
-      caret-color: var(--accent);
-    }
-    .input::placeholder { color: #a8b3c1; }
-    .input:focus, .select:focus {
-      outline: none; border-color: rgba(37,117,252,0.7);
-      box-shadow: 0 0 0 4px rgba(37,117,252,0.15);
-      background: rgba(255,255,255,0.08);
-    }
-    .row { display:grid; gap: 8px; grid-template-columns: 1fr 1fr; }
-    .row-3 { display:grid; gap: 8px; grid-template-columns: 1fr 1fr 1fr; }
-    @media (max-width: 380px){
-      .row, .row-3 { grid-template-columns: 1fr; }
-    }
-
     .btn {
       appearance: none; border: 1px solid var(--border);
       background: rgba(255,255,255,0.08); color: var(--text);
       padding: 10px 12px; border-radius: 12px; cursor: pointer;
-      transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
-      text-align: center; width: 100%;
+      transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+      text-align: center;
     }
     .btn:hover { transform: translateY(-1px); background: rgba(255,255,255,0.12); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
     .btn.primary {
@@ -120,24 +68,31 @@
       border: none; box-shadow: 0 12px 28px rgba(37,117,252,0.35);
       font-weight: 700;
     }
-    .btn.whatsapp { background: #25D366; border-color: #25D366; color: #0b0f18; font-weight: 700; }
-    .btn.telegram { background: #2AABEE; border-color: #2AABEE; color: #0b0f18; font-weight: 700; }
 
-    .timer {
-      display:flex; gap:8px; align-items:center;
-      padding: 8px 10px; border-radius: 12px; border: 1px solid var(--border);
-      background: rgba(255,255,255,0.06);
+    .card {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: var(--shadow);
+      margin-bottom: 12px;
     }
-    .timer .num { font-weight: 700; font-size: 18px; }
-    .timer .lbl { font-size: 12px; color: var(--muted); }
-    .hr { height: 1px; background: var(--border); margin: 10px 0; }
+    canvas {
+      width: 100%;
+      height: 68vh;
+      max-height: 520px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background:
+        radial-gradient(140px 100px at 80% 20%, rgba(255,255,255,0.08), transparent),
+        linear-gradient(180deg, rgba(37,117,252,0.25), rgba(11,15,24,0.65));
+    }
 
-    .check { display:flex; gap: 8px; align-items:center; }
-    .check input { accent-color: #2a9df4; width: 18px; height: 18px; }
-    .mini { font-size: 12px; color: var(--muted); }
-
+    .controls {
+      display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+    }
     .footer { font-size: 12px; color: var(--muted); text-align:center; padding: 14px 0; }
-    .status { text-align:center; font-size: 12px; color: var(--muted); min-height: 18px; }
+    .status { text-align:center; font-size: 12px; color: var(--muted); min-height: 18px; margin-top: 6px; }
   </style>
 </head>
 <body>
@@ -146,339 +101,434 @@
       <div class="brand">
         <div class="logo"></div>
         <div>
-          <div class="title">FlashSell</div>
-          <div class="subtitle">Быстрые продажи. Больше выручки.</div>
+          <div class="title">Sky Dash</div>
+          <div class="subtitle">Свайпай, уклоняйся, собирай бусты</div>
         </div>
       </div>
-      <div>
-        <button class="btn" id="btnExport" style="width:auto;">Эксп. лиды</button>
-      </div>
+      <button id="btnReset" class="btn">Сброс прогресса</button>
     </div>
 
-    <div class="card hero">
-      <h1>Онлайн‑курс «Перезапуск продаж за 7 дней»</h1>
-      <div class="product-img" aria-label="Изображение товара"></div>
-      <div class="price-row">
-        <div>
-          <div class="price"><span id="priceCurrent">4 990</span> ₽</div>
-          <div class="old" id="priceOld">8 990 ₽</div>
-        </div>
-        <div class="badge">−45% до конца таймера</div>
-      </div>
-      <p>Получите систему действий, чтобы нарастить выручку уже на следующей неделе. Гарантия: если не понравится — вернём деньги.</p>
-
-      <div class="timer">
-        <div class="num" id="tD">00</div><div class="lbl">д</div>
-        <div class="num" id="tH">00</div><div class="lbl">ч</div>
-        <div class="num" id="tM">00</div><div class="lbl">м</div>
-        <div class="num" id="tS">00</div><div class="lbl">с</div>
-      </div>
+    <div class="hud">
+      <div class="chip">Очки: <b id="score">0</b></div>
+      <div class="chip">Лучший: <b id="best">0</b></div>
+      <div class="chip">Уровень: <b id="level">1</b></div>
     </div>
 
     <div class="card">
-      <h2>Выберите комплект</h2>
-      <div class="row">
-        <select id="pack" class="select">
-          <option value="base" selected>Базовый — 4 990 ₽</option>
-          <option value="pro">PRO (с практикой) — 7 990 ₽</option>
-          <option value="vip">VIP (куратор) — 12 990 ₽</option>
-        </select>
-        <input id="promo" class="input" type="text" placeholder="Промокод (например, START10)" />
+      <canvas id="game" width="360" height="540"></canvas>
+      <div class="controls" style="margin-top:10px;">
+        <button id="btnStart" class="btn primary">Старт</button>
+        <button id="btnPause" class="btn">Пауза</button>
+        <button id="btnBoost" class="btn">Буст</button>
       </div>
-      <div class="hr"></div>
-
-      <h3>Апселл: чек‑листы и шаблоны +990 ₽</h3>
-      <label class="check">
-        <input type="checkbox" id="upsell" />
-        <span>Добавить пакет материалов (PDF, шаблоны писем, скрипты)</span>
-      </label>
-
-      <p class="mini">Скидка по промокоду применяется к итоговой сумме. Итог ниже обновляется автоматически.</p>
-      <div class="row-3">
-        <div>
-          <div class="mini">Итог</div>
-          <h2 id="total">4 990 ₽</h2>
-        </div>
-        <div>
-          <div class="mini">Скидка</div>
-          <h3 id="discount">0 ₽</h3>
-        </div>
-        <div>
-          <div class="mini">Вы экономите</div>
-          <h3 id="save">4 000 ₽</h3>
-        </div>
-      </div>
+      <div class="status" id="status">Готово. Тап/свайп по экрану: двигай корабль.</div>
     </div>
 
     <div class="card">
-      <h2>Оформление заказа</h2>
-      <div class="row">
-        <input id="name" class="input" type="text" placeholder="Ваше имя" />
-        <input id="phone" class="input" type="tel" placeholder="Телефон" inputmode="tel" />
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-weight:700; margin-bottom:6px;">Рейтинг</div>
+          <div style="font-size:12px; color:var(--muted);">Сохраняется локально</div>
+        </div>
+        <button id="btnExport" class="btn">Экспорт CSV</button>
       </div>
-      <input id="email" class="input" type="email" placeholder="Email (получите доступ)" />
-      <textarea id="note" class="input" rows="3" placeholder="Комментарий к заказу (необязательно)"></textarea>
-
-      <div class="row">
-        <button id="btnBuy" class="btn primary">Купить сейчас</button>
-        <button id="btnWhatsApp" class="btn whatsapp">Написать в WhatsApp</button>
-      </div>
-      <div class="row" style="margin-top:8px;">
-        <button id="btnTelegram" class="btn telegram">Написать в Telegram</button>
-        <button id="btnCopy" class="btn">Скопировать счет</button>
-      </div>
-
-      <div class="status" id="status">Готово</div>
+      <div id="board" style="margin-top:8px; display:grid; gap:6px;"></div>
     </div>
 
-    <div class="footer">© FlashSell. Лиды сохраняются локально на устройстве для вашей аналитики.</div>
+    <div class="footer">© Sky Dash. Полностью адаптировано под телефон. Управление тачем: свайпы/тапы.</div>
   </div>
 
   <script>
-    // Конфиг товара и промо
+    // ----- Конфиг -----
     const cfg = {
-      product: {
-        base: { name: 'Базовый', price: 4990 },
-        pro:  { name: 'PRO',     price: 7990 },
-        vip:  { name: 'VIP',     price: 12990 },
-        oldPrice: 8990
-      },
-      upsell: 990,
-      promos: {
-        'START10': 0.10,
-        'PRO20': 0.20,
-        'VIP30': 0.30
-      },
-      dealEndsAt: addDays(new Date(), 2) // таймер: 2 дня
+      player: { w: 36, h: 28, speed: 3.4, maxSpeed: 5.2, friction: 0.9 },
+      obstacle: { minW: 24, maxW: 80, h: 18, minGap: 70, maxGap: 140 },
+      star: { count: 80 },
+      boost: { durationMs: 3500, factor: 1.8, spawnRate: 0.06 },
+      levelUpEvery: 300, // очков
+      baseScroll: 1.8,
+      maxScroll: 5.5
     };
 
-    // Лиды
-    const leadsKey = 'flashsell.leads.v1';
-    let leads = loadLeads();
-
-    // DOM
+    // ----- Состояние -----
     const el = {
-      priceCurrent: document.getElementById('priceCurrent'),
-      priceOld: document.getElementById('priceOld'),
-      tD: document.getElementById('tD'),
-      tH: document.getElementById('tH'),
-      tM: document.getElementById('tM'),
-      tS: document.getElementById('tS'),
-      pack: document.getElementById('pack'),
-      promo: document.getElementById('promo'),
-      upsell: document.getElementById('upsell'),
-      total: document.getElementById('total'),
-      discount: document.getElementById('discount'),
-      save: document.getElementById('save'),
-      name: document.getElementById('name'),
-      phone: document.getElementById('phone'),
-      email: document.getElementById('email'),
-      note: document.getElementById('note'),
-      btnBuy: document.getElementById('btnBuy'),
-      btnWhatsApp: document.getElementById('btnWhatsApp'),
-      btnTelegram: document.getElementById('btnTelegram'),
-      btnCopy: document.getElementById('btnCopy'),
+      canvas: document.getElementById('game'),
+      score: document.getElementById('score'),
+      best: document.getElementById('best'),
+      level: document.getElementById('level'),
+      status: document.getElementById('status'),
+      btnStart: document.getElementById('btnStart'),
+      btnPause: document.getElementById('btnPause'),
+      btnBoost: document.getElementById('btnBoost'),
+      btnReset: document.getElementById('btnReset'),
       btnExport: document.getElementById('btnExport'),
-      status: document.getElementById('status')
+      board: document.getElementById('board')
     };
+    const ctx = el.canvas.getContext('2d');
+
+    let running = false, paused = false;
+    let score = 0, level = 1, best = loadBest();
+    let player, obstacles = [], stars = [], boosts = [];
+    let scroll = cfg.baseScroll, lastFrame = 0;
+    let touchX = null, boostUntil = 0;
+    let leaderboard = loadBoard();
 
     // Инициализация
-    el.priceCurrent.textContent = formatPrice(cfg.product.base.price);
-    el.priceOld.textContent = formatPrice(cfg.product.oldPrice) + ' ₽';
-    updateTotal();
-    startTimer(cfg.dealEndsAt);
+    el.best.textContent = best;
+    init();
+    renderBoard();
 
-    // События
-    el.pack.addEventListener('change', updateTotal);
-    el.promo.addEventListener('input', updateTotal);
-    el.upsell.addEventListener('change', updateTotal);
-    el.btnBuy.addEventListener('click', onBuy);
-    el.btnWhatsApp.addEventListener('click', () => sendLead('whatsapp'));
-    el.btnTelegram.addEventListener('click', () => sendLead('telegram'));
-    el.btnCopy.addEventListener('click', copyInvoice);
-    el.btnExport.addEventListener('click', exportLeads);
-
-    document.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        el.name.focus();
-      }
-    });
-
-    // Логика цены
-    function updateTotal(){
-      const pack = el.pack.value;
-      const basePrice = cfg.product[pack].price;
-      el.priceCurrent.textContent = formatPrice(basePrice);
-
-      const upsell = el.upsell.checked ? cfg.upsell : 0;
-      const promoCode = (el.promo.value || '').trim().toUpperCase();
-      const discountRate = cfg.promos[promoCode] || 0;
-
-      const subtotal = basePrice + upsell;
-      const discount = Math.round(subtotal * discountRate);
-      const total = Math.max(subtotal - discount, 0);
-
-      el.total.textContent = formatPrice(total) + ' ₽';
-      el.discount.textContent = formatPrice(discount) + ' ₽';
-      el.save.textContent = formatPrice(cfg.product.oldPrice - basePrice > 0 ? cfg.product.oldPrice - basePrice : 0) + ' ₽';
-    }
-
-    // Таймер
-    function startTimer(deadline){
-      const tick = () => {
-        const now = new Date();
-        let ms = deadline - now;
-        if (ms < 0) ms = 0;
-        const d = Math.floor(ms / (1000*60*60*24));
-        const h = Math.floor(ms / (1000*60*60)) % 24;
-        const m = Math.floor(ms / (1000*60)) % 60;
-        const s = Math.floor(ms / 1000) % 60;
-        el.tD.textContent = pad(d);
-        el.tH.textContent = pad(h);
-        el.tM.textContent = pad(m);
-        el.tS.textContent = pad(s);
-        if (ms === 0) ok('Акция завершена');
+    // ----- Игра -----
+    function init(){
+      player = {
+        x: el.canvas.width/2 - cfg.player.w/2,
+        y: el.canvas.height - 80,
+        vx: 0
       };
-      tick();
-      setInterval(tick, 1000);
+      obstacles = [];
+      boosts = [];
+      stars = spawnStars();
+      score = 0; level = 1; scroll = cfg.baseScroll; boostUntil = 0;
+      updateHUD();
+      draw(0);
     }
 
-    // Покупка / лид
-    function onBuy(){
-      const data = collectData();
-      if (!data.valid) return;
-
-      saveLead({ ...data.lead, source: 'buy' });
-      ok('Заявка создана');
-      // Здесь может быть реальная оплата (интеграция платёжной ссылки)
-      // Пока просто открываем WhatsApp как подтверждение
-      sendLead('whatsapp', data.lead);
+    function start(){
+      if (running) return;
+      running = true; paused = false;
+      lastFrame = performance.now();
+      requestAnimationFrame(loop);
+      setStatus('Игра началась');
     }
 
-    function sendLead(channel, leadOverride){
-      const data = leadOverride || collectData().lead;
-      const text = encodeURIComponent(renderLeadText(data));
-      let url = '';
-      if (channel === 'whatsapp') {
-        url = `https://wa.me/?text=${text}`;
-      } else if (channel === 'telegram') {
-        url = `https://t.me/share/url?url=${encodeURIComponent('https://example.com')}&text=${text}`;
+    function pause(){
+      paused = !paused;
+      setStatus(paused ? 'Пауза' : 'Продолжаем');
+      if (!paused) {
+        lastFrame = performance.now();
+        requestAnimationFrame(loop);
       }
-      if (url) window.open(url, '_blank');
     }
 
-    function copyInvoice(){
-      const data = collectData().lead;
-      const invoice = `Счет: ${data.packName}${data.upsell ? ' + Материалы' : ''}\nИтог: ${formatPrice(data.total)} ₽\nПромо: ${data.promo || '—'}\nКлиент: ${data.name}, ${data.phone}\nEmail: ${data.email}\nКомментарий: ${data.note || '—'}`;
-      navigator.clipboard.writeText(invoice).then(()=>ok('Счет скопирован'));
+    function loop(ts){
+      if (!running || paused) return;
+      const dt = Math.min((ts - lastFrame)/16.67, 2.5); // нормализуем ~60fps
+      lastFrame = ts;
+
+      update(dt);
+      draw(dt);
+      requestAnimationFrame(loop);
     }
 
-    // Данные формы
-    function collectData(){
-      const name = (el.name.value || '').trim();
-      const phone = (el.phone.value || '').trim();
-      const email = (el.email.value || '').trim();
-      const note = (el.note.value || '').trim();
+    function update(dt){
+      // Прокрутка мира
+      scroll = Math.min(cfg.baseScroll + level*0.3, cfg.maxScroll);
+      if (isBoostActive()) scroll *= cfg.boost.factor;
 
-      if (!name) { warn('Введите имя'); el.name.focus(); return { valid:false }; }
-      if (!phone) { warn('Введите телефон'); el.phone.focus(); return { valid:false }; }
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { warn('Неверный email'); el.email.focus(); return { valid:false }; }
+      // Игрок — тач управление
+      if (touchX !== null) {
+        const target = touchX - cfg.player.w/2;
+        const diff = target - player.x;
+        player.vx += Math.sign(diff) * Math.min(cfg.player.speed, Math.abs(diff) * 0.02);
+      }
+      player.vx *= cfg.player.friction;
+      player.vx = clamp(player.vx, -cfg.player.maxSpeed, cfg.player.maxSpeed);
+      player.x += player.vx;
+      player.x = clamp(player.x, 8, el.canvas.width - cfg.player.w - 8);
 
-      const pack = el.pack.value;
-      const packName = cfg.product[pack].name;
-      const basePrice = cfg.product[pack].price;
-      const upsell = el.upsell.checked;
-      const promo = (el.promo.value || '').trim().toUpperCase();
-      const discountRate = cfg.promos[promo] || 0;
-
-      const subtotal = basePrice + (upsell ? cfg.upsell : 0);
-      const discount = Math.round(subtotal * discountRate);
-      const total = Math.max(subtotal - discount, 0);
-
-      return {
-        valid:true,
-        lead: {
-          date: new Date().toISOString(),
-          name, phone, email, note,
-          pack, packName, basePrice,
-          upsell, promo, discount, total
+      // Звезды — параллакс
+      stars.forEach(s => {
+        s.y += scroll * s.speed;
+        if (s.y > el.canvas.height) {
+          s.y = -4; s.x = Math.random() * el.canvas.width;
+          s.speed = 0.5 + Math.random()*1.2;
         }
-      };
+      });
+
+      // Спавн препятствий
+      if (obstacles.length === 0 || obstacles[obstacles.length-1].y > cfg.obstacle.minGap) {
+        spawnObstacle();
+      }
+      obstacles.forEach(o => o.y += scroll);
+      obstacles = obstacles.filter(o => o.y < el.canvas.height + 40);
+
+      // Спавн бустов
+      if (Math.random() < cfg.boost.spawnRate) spawnBoost();
+      boosts.forEach(b => b.y += scroll);
+      boosts = boosts.filter(b => b.y < el.canvas.height + 40);
+
+      // Коллизии: игрок с препятствиями
+      for (const o of obstacles) {
+        if (hit(player.x, player.y, cfg.player.w, cfg.player.h, o.x, o.y, o.w, cfg.obstacle.h)) {
+          gameOver();
+          return;
+        }
+      }
+      // Коллизии: игрок с бустом
+      for (const b of boosts) {
+        if (!b.taken && hit(player.x, player.y, cfg.player.w, cfg.player.h, b.x, b.y, b.size, b.size)) {
+          b.taken = true; boostUntil = performance.now() + cfg.boost.durationMs;
+          setStatus('Буст! Скорость ×' + cfg.boost.factor);
+          score += 25;
+        }
+      }
+
+      // Очки и уровни
+      score += Math.floor(scroll);
+      const nextLevelAt = level * cfg.levelUpEvery;
+      if (score >= nextLevelAt) {
+        level++;
+        setStatus('Уровень ' + level);
+      }
+      updateHUD();
     }
 
-    function renderLeadText(l){
-      return [
-        `Заявка FlashSell`,
-        `Комплект: ${l.packName} (${formatPrice(l.basePrice)} ₽)`,
-        `Апселл: ${l.upsell ? 'Да' : 'Нет'}`,
-        `Промокод: ${l.promo || '—'}`,
-        `Скидка: ${formatPrice(l.discount)} ₽`,
-        `Итог: ${formatPrice(l.total)} ₽`,
-        `Клиент: ${l.name}`,
-        `Телефон: ${l.phone}`,
-        `Email: ${l.email}`,
-        `Комментарий: ${l.note || '—'}`
-      ].join('\n');
+    function draw(){
+      // Очистка
+      ctx.clearRect(0,0,el.canvas.width, el.canvas.height);
+
+      // Задний фон — мягкая сетка
+      ctx.save();
+      ctx.globalAlpha = 0.08;
+      for (let y=0; y<el.canvas.height; y+=30){
+        for (let x=0; x<el.canvas.width; x+=30){
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+      ctx.restore();
+
+      // Звезды
+      for (const s of stars){
+        ctx.fillStyle = 'rgba(255,255,255,' + (0.4 + s.speed*0.3) + ')';
+        ctx.fillRect(s.x, s.y, 2, 2);
+      }
+
+      // Препятствия
+      for (const o of obstacles){
+        const grd = ctx.createLinearGradient(o.x, o.y, o.x, o.y+cfg.obstacle.h);
+        grd.addColorStop(0, 'rgba(255,180,180,0.9)');
+        grd.addColorStop(1, 'rgba(255,120,120,0.9)');
+        ctx.fillStyle = grd;
+        roundRect(o.x, o.y, o.w, cfg.obstacle.h, 6);
+        ctx.fill();
+      }
+
+      // Бусты
+      for (const b of boosts){
+        if (b.taken) continue;
+        ctx.fillStyle = 'rgba(80,220,255,0.9)';
+        ctx.beginPath();
+        ctx.arc(b.x + b.size/2, b.y + b.size/2, b.size/2, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(120,240,255,0.6)';
+        ctx.stroke();
+      }
+
+      // Игрок — космический дельта‑корабль
+      const glow = isBoostActive() ? 0.9 : 0.6;
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      ctx.fillStyle = 'rgba(120,160,255,'+glow+')';
+      ctx.beginPath();
+      ctx.moveTo(cfg.player.w/2, 0);
+      ctx.lineTo(cfg.player.w, cfg.player.h);
+      ctx.lineTo(0, cfg.player.h);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Тень корабля
+      ctx.save();
+      ctx.globalAlpha = 0.08;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(player.x, player.y+cfg.player.h, cfg.player.w, 6);
+      ctx.restore();
+
+      // Индикация буста
+      if (isBoostActive()){
+        const left = Math.max(0, (boostUntil - performance.now())/1000);
+        ctx.fillStyle = 'rgba(80,220,255,0.8)';
+        ctx.fillRect(8, 8, Math.min(el.canvas.width-16, left * 40), 6);
+      }
     }
 
-    // Лиды: сохранение/экспорт
-    function saveLead(lead){
-      leads.push(lead);
-      localStorage.setItem(leadsKey, JSON.stringify(leads));
+    // ----- Спавн -----
+    function spawnStars(){
+      const arr = [];
+      for (let i=0; i<cfg.star.count; i++){
+        arr.push({
+          x: Math.random()*el.canvas.width,
+          y: Math.random()*el.canvas.height,
+          speed: 0.5 + Math.random()*1.4
+        });
+      }
+      return arr;
     }
-    function loadLeads(){
+
+    function spawnObstacle(){
+      const lanePadding = 8;
+      const w = cfg.obstacle.minW + Math.random()*(cfg.obstacle.maxW-cfg.obstacle.minW);
+      const x = lanePadding + Math.random() * (el.canvas.width - w - lanePadding*2);
+      const y = -cfg.obstacle.h;
+      obstacles.push({ x, y, w });
+    }
+
+    function spawnBoost(){
+      const size = 16 + Math.random()*10;
+      const x = 8 + Math.random()*(el.canvas.width - size - 16);
+      const y = -size - 8;
+      boosts.push({ x, y, size, taken:false });
+    }
+
+    // ----- Коллизии и математика -----
+    function hit(ax, ay, aw, ah, bx, by, bw, bh){
+      return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+    }
+    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+    function roundRect(x,y,w,h,r){
+      ctx.beginPath();
+      ctx.moveTo(x+r, y);
+      ctx.arcTo(x+w, y, x+w, y+h, r);
+      ctx.arcTo(x+w, y+h, x, y+h, r);
+      ctx.arcTo(x, y+h, x, y, r);
+      ctx.arcTo(x, y, x+w, y, r);
+      ctx.closePath();
+    }
+    function isBoostActive(){ return performance.now() < boostUntil; }
+
+    // ----- HUD, Статус, Борд -----
+    function updateHUD(){
+      el.score.textContent = score;
+      el.level.textContent = level;
+      if (score > best) { best = score; saveBest(best); el.best.textContent = best; }
+    }
+    function setStatus(msg){
+      el.status.textContent = msg;
+      clearTimeout(setStatus._t);
+      setStatus._t = setTimeout(()=> el.status.textContent = 'Тап/свайп по экрану: двигай корабль.', 2000);
+    }
+
+    // Лидерборд
+    function loadBoard(){
       try {
-        const v = localStorage.getItem(leadsKey);
+        const v = localStorage.getItem('skydash.board.v1');
         return v ? JSON.parse(v) : [];
       } catch { return []; }
     }
-    function exportLeads(){
-      if (!leads.length) { warn('Нет лидов для экспорта'); return; }
-      const csv = [
-        ['date','name','phone','email','note','pack','basePrice','upsell','promo','discount','total'].join(','),
-        ...leads.map(l => [
-          l.date,
-          esc(l.name),
-          esc(l.phone),
-          esc(l.email),
-          esc(l.note || ''),
-          l.pack,
-          l.basePrice,
-          l.upsell ? '1' : '0',
-          l.promo || '',
-          l.discount,
-          l.total
-        ].join(','))
-      ].join('\n');
+    function saveBoard(){
+      localStorage.setItem('skydash.board.v1', JSON.stringify(leaderboard.slice(0, 10)));
+    }
+    function renderBoard(){
+      el.board.innerHTML = '';
+      const list = leaderboard.slice(0,10);
+      if (!list.length){
+        const d = document.createElement('div');
+        d.style.fontSize = '12px'; d.style.color = 'var(--muted)';
+        d.textContent = 'Пока нет результатов.';
+        el.board.appendChild(d);
+        return;
+      }
+      list.forEach((row,i)=>{
+        const item = document.createElement('div');
+        item.style.display = 'grid';
+        item.style.gridTemplateColumns = '32px 1fr 80px';
+        item.style.gap = '8px';
+        item.style.alignItems = 'center';
+        item.style.padding = '8px';
+        item.style.border = '1px solid var(--border)';
+        item.style.borderRadius = '12px';
+        item.style.background = 'rgba(255,255,255,0.06)';
+        item.innerHTML = `
+          <div style="text-align:center; font-weight:700;">${i+1}</div>
+          <div style="font-size:12px; color:var(--muted);">${row.date}</div>
+          <div style="text-align:right; font-weight:700;">${row.score}</div>
+        `;
+        el.board.appendChild(item);
+      });
+    }
 
+    // Лучший счет
+    function loadBest(){
+      try {
+        const v = localStorage.getItem('skydash.best.v1');
+        return v ? parseInt(v,10) || 0 : 0;
+      } catch { return 0; }
+    }
+    function saveBest(v){
+      localStorage.setItem('skydash.best.v1', String(v));
+    }
+
+    // Экспорт CSV
+    el.btnExport.addEventListener('click', ()=>{
+      if (!leaderboard.length) { setStatus('Нет результатов'); return; }
+      const csv = [
+        ['date','score','level'].join(','),
+        ...leaderboard.map(r => [r.date, r.score, r.level].join(','))
+      ].join('\n');
       const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = 'flashsell_leads.csv'; a.click();
+      a.href = url; a.download = 'skydash_scores.csv'; a.click();
       URL.revokeObjectURL(url);
-      ok('Экспортировано');
+      setStatus('Экспортировано');
+    });
+
+    // ----- Игра окончена -----
+    function gameOver(){
+      running = false;
+      const row = { date: new Date().toLocaleString('ru-RU'), score, level };
+      leaderboard.push(row);
+      // сортировка по очкам
+      leaderboard.sort((a,b)=> b.score - a.score);
+      saveBoard(); renderBoard();
+      setStatus('Столкновение! Игра окончена. Счет: ' + score);
     }
 
-    // Утилиты
-    function formatPrice(n){
-      return (n).toLocaleString('ru-RU');
-    }
-    function pad(n){ return String(n).padStart(2,'0'); }
-    function addDays(d, days){ const x = new Date(d); x.setDate(x.getDate()+days); return x; }
-    function esc(s){ return `"${String(s).replace(/"/g,'""')}"`; }
+    // ----- Управление: тач и кнопки -----
+    // Тач по canvas — перемещение
+    el.canvas.addEventListener('touchstart', (e)=>{
+      const t = e.touches[0];
+      const rect = el.canvas.getBoundingClientRect();
+      touchX = (t.clientX - rect.left) * (el.canvas.width / rect.width);
+    }, {passive:true});
+    el.canvas.addEventListener('touchmove', (e)=>{
+      const t = e.touches[0];
+      const rect = el.canvas.getBoundingClientRect();
+      touchX = (t.clientX - rect.left) * (el.canvas.width / rect.width);
+    }, {passive:true});
+    el.canvas.addEventListener('touchend', ()=>{
+      touchX = null;
+    }, {passive:true});
 
-    function ok(msg){ setStatus(msg, 'ok'); }
-    function warn(msg){ setStatus(msg, 'warn'); }
-    function setStatus(msg, type){
-      el.status.textContent = msg;
-      el.status.style.color = type === 'ok' ? '#9dd79f' : '#ffb4b4';
-      clearTimeout(setStatus._t);
-      setStatus._t = setTimeout(()=> {
-        el.status.textContent = 'Готово';
-        el.status.style.color = '';
-      }, 2200);
-    }
+    // Тап по canvas — короткий рывок
+    el.canvas.addEventListener('click', (e)=>{
+      player.vx += (Math.random() < 0.5 ? -1 : 1) * 2.0;
+    });
+
+    // Кнопки
+    el.btnStart.addEventListener('click', start);
+    el.btnPause.addEventListener('click', pause);
+    el.btnBoost.addEventListener('click', ()=>{
+      boostUntil = performance.now() + cfg.boost.durationMs;
+      setStatus('Ручной буст активирован');
+    });
+    el.btnReset.addEventListener('click', ()=>{
+      if (!confirm('Сбросить лучший счет и рейтинг?')) return;
+      localStorage.removeItem('skydash.best.v1');
+      localStorage.removeItem('skydash.board.v1');
+      best = 0; el.best.textContent = '0';
+      leaderboard = []; renderBoard();
+      setStatus('Прогресс сброшен');
+    });
+
+    // Авто‑пауза при сворачивании
+    document.addEventListener('visibilitychange', ()=>{
+      if (document.hidden) { paused = true; setStatus('Пауза (приложение скрыто)'); }
+    });
+
+    // Первый кадр
+    draw(0);
   </script>
 </body>
 </html>
