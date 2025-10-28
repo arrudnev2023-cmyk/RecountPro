@@ -2,170 +2,543 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Cosmic Launch Timer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
+  <title>Premium Rocket Timer</title>
   <style>
-    html, body {
-      margin: 0;
-      height: 100%;
-      background: #000;
-      overflow: hidden;
-      font-family: 'Segoe UI', Inter, system-ui;
-      color: #e0e0e0;
+    :root{
+      --bg:#060814;
+      --glass:rgba(255,255,255,0.08);
+      --glass-strong:rgba(255,255,255,0.14);
+      --border:rgba(255,255,255,0.18);
+      --white:#f8fafc;
+      --muted:#b6c2d5;
+      --accent:#6ea8ff;
+      --accent-2:#89f1ff;
+      --accent-3:#bda0ff;
+      --danger:#ff6e8a;
+      --success:#7cffc1;
+      --shadow:0 20px 60px rgba(0,0,0,0.45);
     }
-    canvas { position: fixed; inset: 0; display: block; z-index: 0; }
-    .controls {
-      position: fixed;
-      left: 50%;
-      bottom: 20px;
-      transform: translateX(-50%);
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      align-items: center;
-      z-index: 10;
+    *{box-sizing:border-box}
+    html,body{height:100%;background:radial-gradient(1200px 500px at 50% -200px,#0b1130,#060814 70%) fixed;color:var(--white);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial,sans-serif}
+    body{margin:0;display:flex;align-items:center;justify-content:center}
+
+    /* Scene */
+    .scene{
+      position:relative;width:100%;max-width:540px;height:84vh;min-height:620px;padding:20px;border-radius:24px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.01));
+      backdrop-filter:blur(16px) saturate(140%); -webkit-backdrop-filter:blur(16px) saturate(140%);
+      border:1px solid var(--border); box-shadow:var(--shadow);
+      overflow:hidden;
     }
-    .controls input[type="time"] {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(0,224,255,0.25);
-      border-radius: 12px;
-      padding: 10px 14px;
-      color: #e0e0e0;
-      font-size: 16px;
-      text-align: center;
+
+    /* Canvas sky */
+    #sky{
+      position:absolute;inset:0;z-index:0;
+      filter:contrast(1.05) saturate(1.1);
     }
-    .buttons { display: flex; gap: 10px; }
-    .buttons button {
-      background: rgba(20,20,20,0.7);
-      border: 1px solid rgba(0,224,255,0.35);
-      border-radius: 12px;
-      padding: 10px 18px;
-      color: #e0e0e0;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
+
+    /* Subtle vignette and glow layers */
+    .glow{
+      position:absolute;inset:-30%;z-index:1;
+      background:radial-gradient(600px 280px at 50% 10%, rgba(140,200,255,0.20), transparent 60%),
+                  radial-gradient(900px 600px at 50% 110%, rgba(165,140,255,0.16), transparent 65%);
+      pointer-events:none;
+      mix-blend-mode:screen;
     }
-    .buttons button:hover {
-      background: #0f0f0f;
-      color: #00e0ff;
-      box-shadow: 0 0 12px rgba(0,224,255,0.45);
+    .vignette{
+      position:absolute;inset:0;z-index:2;
+      background:radial-gradient(120% 100% at 50% 50%, transparent 60%, rgba(0,0,0,0.35) 95%);
+      pointer-events:none;
+    }
+
+    /* HUD / Card content */
+    .card{
+      position:relative;z-index:3;display:flex;flex-direction:column;gap:16px;height:100%;
+    }
+
+    .header{
+      display:flex;align-items:center;justify-content:space-between;padding:6px 8px;
+    }
+    .logo{
+      display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:0.2px;
+    }
+    .logo-dot{
+      width:10px;height:10px;border-radius:50%;
+      background:conic-gradient(from 180deg, var(--accent), var(--accent-2), var(--accent-3), var(--accent));
+      box-shadow:0 0 12px 4px rgba(142,201,255,0.5);
+    }
+    .badge{
+      padding:6px 10px;border-radius:999px;background:var(--glass);
+      border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:500;
+    }
+
+    /* Time display */
+    .display{
+      display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 12px;
+      border-radius:16px;background:linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+      border:1px solid var(--border);
+    }
+    .time{
+      font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1;
+      font-size:52px; line-height:1; letter-spacing:2px; text-shadow:0 0 24px rgba(138,193,255,0.4);
+    }
+    .status{
+      font-size:13px;color:var(--muted);
+    }
+
+    /* Wheels (iPhone-like picker) */
+    .picker{
+      display:flex;gap:12px;align-items:center;justify-content:center;
+      padding:12px;border-radius:16px;background:var(--glass);
+      border:1px solid var(--border);
+    }
+    .wheel{
+      position:relative;width:44%;max-width:220px;height:140px;overflow-y:auto;scroll-snap-type:y mandatory;
+      scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch;
+      border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      border:1px solid var(--border);
+    }
+    .wheel::-webkit-scrollbar{display:none}
+    .wheel-item{
+      scroll-snap-align:center; display:flex; align-items:center; justify-content:center;
+      height:44px; font-size:22px; color:var(--muted);
+    }
+    .wheel .spacer{height:48px}
+    .wheel .selected{
+      color:var(--white); font-weight:600; text-shadow:0 0 12px rgba(142,201,255,0.5);
+    }
+    .wheel-highlight{
+      position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%);pointer-events:none;
+      border-top:1px solid rgba(255,255,255,0.18); border-bottom:1px solid rgba(255,255,255,0.18);
+      background:linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
+    }
+    .picker-label{
+      position:absolute;top:-10px;left:12px;font-size:12px;color:var(--muted);
+      background:rgba(6,8,20,0.6);padding:2px 8px;border-radius:999px;border:1px solid var(--border);
+    }
+    .wheel-wrap{position:relative;flex:1}
+
+    /* Controls */
+    .controls{
+      display:flex;gap:10px;justify-content:center;align-items:center;
+    }
+    .btn{
+      flex:1;min-width:0;padding:14px 16px;border:none;border-radius:14px;cursor:pointer;
+      color:var(--white);font-weight:600;letter-spacing:0.2px;background:linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06));
+      border:1px solid var(--border); box-shadow:0 8px 30px rgba(0,0,0,0.35);
+      transition:transform .18s ease, box-shadow .18s ease, filter .18s ease;
+      touch-action:manipulation;
+    }
+    .btn:active{transform:scale(0.98)}
+    .btn-primary{
+      background:linear-gradient(180deg, rgba(110,168,255,0.35), rgba(110,168,255,0.18));
+      border-color:rgba(110,168,255,0.45);
+      box-shadow:0 8px 24px rgba(110,168,255,0.35);
+    }
+    .btn-danger{
+      background:linear-gradient(180deg, rgba(255,110,138,0.35), rgba(255,110,138,0.18));
+      border-color:rgba(255,110,138,0.45);
+      box-shadow:0 8px 24px rgba(255,110,138,0.35);
+    }
+    .btn-secondary{
+      background:linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+    }
+
+    /* Rocket */
+    .rocket{
+      position:absolute;left:50%;bottom:18%;width:64px;height:auto;transform:translateX(-50%);
+      filter:drop-shadow(0 8px 24px rgba(140,200,255,0.35));
+      z-index:2;
+    }
+    .rocket.fly{
+      animation:lift 6s cubic-bezier(.22,.61,.36,1) forwards, sway 3.5s ease-in-out infinite;
+    }
+    @keyframes lift{
+      0%{transform:translateX(-50%) translateY(0) scale(1)}
+      20%{transform:translateX(-50%) translateY(-40px) scale(1.02)}
+      40%{transform:translateX(-50%) translateY(-120px) scale(1.04)}
+      60%{transform:translateX(-50%) translateY(-260px) scale(1.06)}
+      80%{transform:translateX(-50%) translateY(-420px) scale(1.08)}
+      100%{transform:translateX(-50%) translateY(-620px) scale(1.10); opacity:0}
+    }
+    @keyframes sway{
+      0%{transform:translateX(-50%) translateY(0)}
+      50%{transform:translateX(calc(-50% + 4px)) translateY(-2px)}
+      100%{transform:translateX(-50%) translateY(0)}
+    }
+    .flame{
+      transform-origin:50% 0%; animation:flame 0.08s infinite alternate ease-in-out;
+      filter:blur(0.6px) drop-shadow(0 6px 12px rgba(255,150,80,0.55));
+    }
+    @keyframes flame{
+      from{transform:scaleY(0.96)}
+      to{transform:scaleY(1.08)}
+    }
+
+    /* Footer tips */
+    .hint{
+      text-align:center;font-size:12px;color:var(--muted);
+    }
+
+    /* Responsive tweaks */
+    @media (max-width:380px){
+      .time{font-size:42px}
+      .wheel{height:128px}
     }
   </style>
 </head>
 <body>
-  <canvas id="c"></canvas>
-  <div class="controls">
-    <input type="time" id="timeInput" step="60" value="00:25">
-    <div class="buttons">
-      <button id="start">Start</button>
-      <button id="pause">Pause</button>
-      <button id="reset">Reset</button>
+  <div class="scene" id="scene">
+    <canvas id="sky"></canvas>
+    <div class="glow"></div>
+    <div class="vignette"></div>
+
+    <!-- Rocket SVG -->
+    <svg class="rocket" id="rocket" viewBox="0 0 64 128">
+      <!-- Body -->
+      <defs>
+        <linearGradient id="paintBody" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#cfe7ff"/>
+          <stop offset="50%" stop-color="#9dc2ff"/>
+          <stop offset="100%" stop-color="#7aa7ff"/>
+        </linearGradient>
+        <linearGradient id="paintFin" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#bda0ff"/>
+          <stop offset="100%" stop-color="#89f1ff"/>
+        </linearGradient>
+        <radialGradient id="windowGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#89f1ff"/>
+          <stop offset="100%" stop-color="#6ea8ff"/>
+        </radialGradient>
+        <linearGradient id="flameGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#fff1b0"/>
+          <stop offset="50%" stop-color="#ffb46e"/>
+          <stop offset="100%" stop-color="#ff6e3a"/>
+        </linearGradient>
+      </defs>
+      <g>
+        <path d="M32 6 C40 18 46 36 46 56 C46 86 40 116 32 122 C24 116 18 86 18 56 C18 36 24 18 32 6 Z" fill="url(#paintBody)" stroke="#e8f2ff" stroke-opacity="0.6" stroke-width="1"/>
+        <circle cx="32" cy="44" r="8" fill="url(#windowGlow)" stroke="#e8ffff" stroke-opacity="0.8"/>
+        <path d="M18 64 L6 88 L18 84 Z" fill="url(#paintFin)" opacity="0.8"/>
+        <path d="M46 64 L58 88 L46 84 Z" fill="url(#paintFin)" opacity="0.8"/>
+        <!-- Flame -->
+        <path class="flame" id="flame" d="M32 108 C25 112 22 118 32 126 C42 118 39 112 32 108 Z" fill="url(#flameGrad)"/>
+      </g>
+    </svg>
+
+    <div class="card">
+      <div class="header">
+        <div class="logo"><span class="logo-dot"></span>Rocket Timer</div>
+        <div class="badge">Premium • Glass UI</div>
+      </div>
+
+      <div class="display">
+        <div class="time" id="timeText">00:00</div>
+        <div class="status" id="statusText">Готов к старту</div>
+      </div>
+
+      <div class="picker" id="picker">
+        <div class="wheel-wrap">
+          <div class="picker-label">Минуты</div>
+          <div class="wheel" id="wheelMin"></div>
+          <div class="wheel-highlight"></div>
+        </div>
+        <div class="wheel-wrap">
+          <div class="picker-label">Секунды</div>
+          <div class="wheel" id="wheelSec"></div>
+          <div class="wheel-highlight"></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" id="btnStart">Старт</button>
+        <button class="btn btn-secondary" id="btnPause">Пауза</button>
+        <button class="btn btn-danger" id="btnStop">Стоп</button>
+      </div>
+
+      <div class="hint">Пролистайте колеса для выбора времени. После окончания — ракета красиво улетит сквозь звёздное небо.</div>
     </div>
   </div>
+
   <script>
-    const canvas = document.getElementById('c');
-    const ctx = canvas.getContext('2d');
-    let W,H;
-    function resize(){ W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
-    resize(); addEventListener('resize', resize);
-    const TAU = Math.PI*2;
-    const rnd = (a=1,b=0)=>Math.random()*(a-b)+b;
-    const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
-    const stars = Array.from({length:250},()=>({x:Math.random()*W,y:Math.random()*H,r:rnd(1.5,0.5),a:Math.random()}));
-    const meteors = [];
-    function spawnMeteor(){ meteors.push({x: Math.random()*W,y: -50,dx: rnd(-6,-3),dy: rnd(6,3),len: rnd(120,80),life: 200}); }
-    function drawMeteors(){
+    // Utilities
+    const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+    const pad2=(n)=>String(n).padStart(2,'0');
+
+    // DOM
+    const sky = document.getElementById('sky');
+    const scene = document.getElementById('scene');
+    const wheelMin = document.getElementById('wheelMin');
+    const wheelSec = document.getElementById('wheelSec');
+    const timeText = document.getElementById('timeText');
+    const statusText = document.getElementById('statusText');
+    const btnStart = document.getElementById('btnStart');
+    const btnPause = document.getElementById('btnPause');
+    const btnStop = document.getElementById('btnStop');
+    const rocket = document.getElementById('rocket');
+    const flame = document.getElementById('flame');
+
+    // Picker build
+    function buildWheel(el, max){
+      const frag = document.createDocumentFragment();
+      const spacerTop = document.createElement('div'); spacerTop.className='spacer'; frag.appendChild(spacerTop);
+      for(let i=0;i<=max;i++){
+        const item = document.createElement('div');
+        item.className='wheel-item';
+        item.textContent=pad2(i);
+        frag.appendChild(item);
+      }
+      const spacerBottom = document.createElement('div'); spacerBottom.className='spacer'; frag.appendChild(spacerBottom);
+      el.appendChild(frag);
+      // default select 00
+      setTimeout(()=>el.scrollTo({top:44,behavior:'instant'}),10);
+    }
+    buildWheel(wheelMin, 59);
+    buildWheel(wheelSec, 59);
+
+    function getWheelValue(el){
+      const rect = el.getBoundingClientRect();
+      const centerY = rect.top + rect.height/2;
+      const items = Array.from(el.querySelectorAll('.wheel-item'));
+      let closest = {item:null,dist:Infinity,index:0};
+      items.forEach((it,idx)=>{
+        const r = it.getBoundingClientRect();
+        const d = Math.abs((r.top+r.height/2)-centerY);
+        if(d<closest.dist){closest={item:it,dist:d,index:idx}};
+      });
+      items.forEach(it=>it.classList.remove('selected'));
+      closest.item && closest.item.classList.add('selected');
+      const value = clamp(closest.index,0,59); // because we built 0..59
+      return value;
+    }
+
+    function snapWheel(el){
+      const rect = el.getBoundingClientRect();
+      const centerLine = rect.top + rect.height/2;
+      const items = Array.from(el.querySelectorAll('.wheel-item'));
+      let closest = {item:null,dist:Infinity};
+      items.forEach(it=>{
+        const r = it.getBoundingClientRect();
+        const d = Math.abs((r.top+r.height/2)-centerLine);
+        if(d<closest.dist){closest={item:it,dist:d}};
+      });
+      if(closest.item){
+        const currentScroll = el.scrollTop;
+        const itemTop = closest.item.offsetTop;
+        const target = itemTop - (el.clientHeight/2 - closest.item.clientHeight/2);
+        el.scrollTo({top:target, behavior:'smooth'});
+      }
+    }
+
+    ['scroll','touchend','wheel'].forEach(evt=>{
+      wheelMin.addEventListener(evt,()=>{ getWheelValue(wheelMin); clearTimeout(wheelMin._snap); wheelMin._snap=setTimeout(()=>snapWheel(wheelMin),140); updateDisplayPreview(); }, {passive:true});
+      wheelSec.addEventListener(evt,()=>{ getWheelValue(wheelSec); clearTimeout(wheelSec._snap); wheelSec._snap=setTimeout(()=>snapWheel(wheelSec),140); updateDisplayPreview(); }, {passive:true});
+    });
+
+    function updateDisplayPreview(){
+      const m = getWheelValue(wheelMin);
+      const s = getWheelValue(wheelSec);
+      timeText.textContent = pad2(m)+':'+pad2(s);
+    }
+    updateDisplayPreview();
+
+    // Timer logic
+    let total = 0;      // ms
+    let left = 0;       // ms
+    let running = false;
+    let paused = false;
+    let rafId = null;
+    let lastTs = 0;
+
+    function startTimer(){
+      const m = getWheelValue(wheelMin);
+      const s = getWheelValue(wheelSec);
+      total = (m*60 + s) * 1000;
+      if(total<=0){ statusText.textContent='Выберите время'; pulse(statusText); return; }
+      left = total;
+      running = true; paused = false;
+      statusText.textContent='Запущен';
+      rocket.classList.remove('fly'); rocket.style.opacity='1';
+      flame.style.opacity='1';
+      lastTs = performance.now();
+      tick(lastTs);
+    }
+
+    function tick(ts){
+      if(!running || paused){ return; }
+      const dt = ts - lastTs;
+      lastTs = ts;
+      left = Math.max(0, left - dt);
+      const mm = Math.floor(left/1000/60);
+      const ss = Math.floor((left/1000)%60);
+      timeText.textContent = pad2(mm)+':'+pad2(ss);
+
+      // Subtle flame modulation based on remaining
+      flame.style.transform = `scaleY(${0.95 + 0.12*Math.sin(left/180)})`;
+
+      if(left<=0){
+        complete();
+        return;
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function pauseTimer(){
+      if(!running) return;
+      paused = !paused;
+      statusText.textContent = paused ? 'Пауза' : 'Запущен';
+      if(!paused){
+        lastTs = performance.now();
+        tick(lastTs);
+      }
+    }
+
+    function stopTimer(){
+      running = false; paused = false; left = 0; cancelAnimationFrame(rafId);
+      statusText.textContent='Сброшен';
+      updateDisplayPreview();
+      rocket.classList.remove('fly');
+      rocket.style.opacity='1';
+      flame.style.opacity='1';
+    }
+
+    function complete(){
+      running=false; paused=false; cancelAnimationFrame(rafId);
+      statusText.textContent='Время! 🚀';
+      // Rocket liftoff
+      rocket.classList.add('fly');
+      flame.style.opacity='0.85';
+      // Trigger meteor shower burst
+      showerBurst();
+    }
+
+    btnStart.addEventListener('click', startTimer);
+    btnPause.addEventListener('click', pauseTimer);
+    btnStop.addEventListener('click', stopTimer);
+
+    function pulse(el){
+      el.animate([{filter:'brightness(1)'},{filter:'brightness(1.4)'},{filter:'brightness(1)'}],{duration:600});
+    }
+
+    // Dynamic starry sky with meteors
+    const ctx = sky.getContext('2d');
+    let W = 0, H = 0, stars=[], meteors=[];
+    const STAR_COUNT = 240;
+    const METEOR_LIMIT = 14;
+
+    function resize(){
+      W = sky.width = scene.clientWidth;
+      H = sky.height = scene.clientHeight;
+      // regenerate stars for crispness
+      stars = Array.from({length:STAR_COUNT},()=>({
+        x: Math.random()*W,
+        y: Math.random()*H,
+        r: Math.random()*1.3 + 0.2,
+        tw: Math.random()*Math.PI*2,
+        hue: 210 + Math.random()*40
+      }));
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function spawnMeteor(intense=false){
+      if(meteors.length > METEOR_LIMIT && !intense) return;
+      const startX = Math.random()<0.5 ? Math.random()*W*0.4 : W*(0.6 + Math.random()*0.4);
+      const startY = -40 - Math.random()*60;
+      const speed = intense ? (3.5 + Math.random()*2) : (2 + Math.random()*1.5);
+      const len = intense ? (140 + Math.random()*120) : (90 + Math.random()*90);
+      meteors.push({
+        x:startX, y:startY, vx: speed, vy: speed*0.55, len, life: 1, fade: 0.006 + Math.random()*0.008,
+        hue: 200 + Math.random()*60
+      });
+    }
+
+    function showerBurst(){
+      // Rapid burst of meteors on complete
+      for(let i=0;i<10;i++){
+        setTimeout(()=>spawnMeteor(true), i*120);
+      }
+    }
+
+    // Ambient random meteors
+    setInterval(()=>spawnMeteor(false), 1800 + Math.random()*2200);
+
+    function draw(){
+      // Clear
+      ctx.clearRect(0,0,W,H);
+
+      // Gradient space glow
+      const g = ctx.createRadialGradient(W*0.5, H*0.1, 0, W*0.5, H*0.1, W*0.8);
+      g.addColorStop(0, 'rgba(142,201,255,0.10)');
+      g.addColorStop(1, 'rgba(6,8,20,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,W,H);
+
+      // Stars
+      for(const s of stars){
+        s.tw += 0.02;
+        const alpha = 0.6 + Math.sin(s.tw)*0.4;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+        ctx.fillStyle = `hsla(${s.hue}, 80%, ${65 + Math.sin(s.tw*2)*8}%, ${alpha})`;
+        ctx.fill();
+
+        // subtle parallax drift
+        s.x += Math.sin(s.tw*0.05)*0.05;
+        s.y += Math.cos(s.tw*0.05)*0.03;
+
+        // twinkle spike
+        if(Math.random()<0.002){
+          ctx.strokeStyle = `hsla(${s.hue},90%,80%,${alpha*0.8})`;
+          ctx.beginPath();
+          ctx.moveTo(s.x - s.r*2, s.y);
+          ctx.lineTo(s.x + s.r*2, s.y);
+          ctx.stroke();
+        }
+      }
+
+      // Meteors
       for(let i=meteors.length-1;i>=0;i--){
         const m = meteors[i];
-        m.x += m.dx; m.y += m.dy; m.life--;
-        const grad = ctx.createLinearGradient(m.x,m.y,m.x-m.dx*m.len,m.y-m.dy*m.len);
-        grad.addColorStop(0,'rgba(255,255,255,0.9)');
-        grad.addColorStop(1,'rgba(255,255,255,0)');
-        ctx.beginPath(); ctx.moveTo(m.x,m.y); ctx.lineTo(m.x-m.dx*m.len,m.y-m.dy*m.len);
-        ctx.strokeStyle=grad; ctx.lineWidth=2; ctx.stroke();
-        if(m.life<=0) meteors.splice(i,1);
+        m.x += m.vx;
+        m.y += m.vy;
+        m.life -= m.fade;
+
+        // trail
+        const grad = ctx.createLinearGradient(m.x, m.y, m.x - m.len, m.y - m.len*0.55);
+        grad.addColorStop(0, `hsla(${m.hue}, 100%, 75%, ${Math.max(0,m.life)})`);
+        grad.addColorStop(1, `hsla(${m.hue}, 100%, 75%, 0)`);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(m.x, m.y);
+        ctx.lineTo(m.x - m.len, m.y - m.len*0.55);
+        ctx.stroke();
+
+        // head glow
+        ctx.fillStyle = `hsla(${m.hue}, 100%, 80%, ${Math.max(0,m.life)})`;
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, 2.4, 0, Math.PI*2);
+        ctx.fill();
+
+        if(m.life<=0 || m.x<-80 || m.y>H+80){ meteors.splice(i,1); }
       }
+
+      requestAnimationFrame(draw);
     }
-    setInterval(()=>{ if(Math.random()<0.3){ for(let i=0;i<30;i++) spawnMeteor(); } }, 25000);
-    const rocket = {x:W*0.5,y:H*0.8,w:60,h:180,lift:false,vy:0};
-    let total=0,remaining=0,running=false,lastTick=performance.now();
-    function drawStars(){
-      for(const s of stars){
-        ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,TAU);
-        ctx.fillStyle=`rgba(255,255,255,${s.a})`; ctx.fill();
-        s.a += (Math.random()-0.5)*0.02; s.a=clamp(s.a,0.1,1);
-      }
-    }
-    function drawRocket(){
-      ctx.save(); ctx.translate(rocket.x,rocket.y);
-      const grad = ctx.createLinearGradient(0,-rocket.h/2,0,rocket.h/2);
-      grad.addColorStop(0,'#ddd'); grad.addColorStop(1,'#555');
-      ctx.fillStyle=grad; ctx.fillRect(-rocket.w/2,-rocket.h/2,rocket.w,rocket.h);
-      ctx.beginPath(); ctx.moveTo(-rocket.w/2,-rocket.h/2); ctx.lineTo(0,-rocket.h/2-40); ctx.lineTo(rocket.w/2,-rocket.h/2); ctx.closePath();
-      ctx.fillStyle='#ccc'; ctx.fill();
-      ctx.fillStyle='#666';
-      ctx.beginPath(); ctx.moveTo(-rocket.w/2,rocket.h/4); ctx.lineTo(-rocket.w/2-25,rocket.h/2); ctx.lineTo(-rocket.w/2,rocket.h/2); ctx.closePath(); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(rocket.w/2,rocket.h/4); ctx.lineTo(rocket.w/2+25,rocket.h/2); ctx.lineTo(rocket.w/2,rocket.h/2); ctx.closePath(); ctx.fill();
-      ctx.fillStyle='#444'; ctx.fillRect(-15,rocket.h/2,30,20);
-      if(running || rocket.lift){
-        const flame=30+Math.sin(performance.now()*0.02)*8;
-        ctx.beginPath(); ctx.moveTo(0,rocket.h/2+20);
-        ctx.quadraticCurveTo(15,rocket.h/2+flame,0,rocket.h/2+70);
-        ctx.quadraticCurveTo(-15,rocket.h/2+flame,0,rocket.h/2+20);
-        const flameGrad=ctx.createLinearGradient(0,rocket.h/2+20,0,rocket.h/2+70);
-        flameGrad.addColorStop(0,'rgba(255,220,120,0.95)'); flameGrad.addColorStop(1,'rgba(255,80,0,0.85)');
-        ctx.fillStyle=flameGrad; ctx.fill();
-      }
-      ctx.restore();
-    }
-    function drawTimer(){
-      const cx=W*0.8, cy=H*0.25; const R=80;
-      const progress=total>0?(1-remaining/total):0;
-      ctx.beginPath(); ctx.arc(cx,cy,R,0,TAU);
-      ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=8; ctx.stroke();
-      const end=-Math.PI/2+progress*TAU;
-      ctx.beginPath(); ctx.arc(cx,cy,R,-Math.PI/2,end);
-      ctx.strokeStyle='#0ff'; ctx.lineWidth=10; ctx.stroke();
-      const m=Math.floor(remaining/60),s=Math.floor(remaining%60);
-      ctx.font='bold 28px Segoe UI'; ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`,cx,cy);
-    }
-    function loop(now){
-      if(running && !rocket.lift){
-        const dt=(now-lastTick)/1000; lastTick=now;
-        remaining=clamp(remaining-dt,0,total);
-        if(remaining===0){
-          rocket.lift=true; rocket.vy=-200;
-          if(navigator.vibrate){ navigator.vibrate([200,100,200]); }
-        }
-      } else lastTick=now;
-      if(rocket.lift){ rocket.y+=rocket.vy/60; rocket.vy-=5; }
-      ctx.clearRect(0,0,W,H);
-      drawStars(); drawMeteors(); drawRocket(); drawTimer();
-      requestAnimationFrame(loop);
-    }
-    requestAnimationFrame(loop);
-    const timeInput=document.getElementById('timeInput');
-    document.getElementById('start').onclick=()=>{
-      if(running) return;
-      if(remaining<=0){
-        const [h,m]=timeInput.value.split(':').map(Number);
-        total=h*3600+m*60; remaining=total;
-      }
-      running=true; rocket.lift=false; rocket.y=H*0.8; rocket.vy=0;
-    };
-        document.getElementById('pause').onclick=()=>{ 
-      running=false; 
-    };
-    document.getElementById('reset').onclick=()=>{
-      running=false; 
-      rocket.lift=false; 
-      rocket.y=H*0.8; 
-      rocket.vy=0;
-      remaining=0; 
-      total=0;
-    };
+    draw();
+
+    // Improve tap-feedback for mobile
+    ['btnStart','btnPause','btnStop'].forEach(id=>{
+      const el=document.getElementById(id);
+      el.addEventListener('touchstart',()=>el.style.filter='brightness(1.2)');
+      el.addEventListener('touchend',()=>el.style.filter='brightness(1)');
+      el.addEventListener('touchcancel',()=>el.style.filter='brightness(1)');
+    });
+
+    // Initial state
+    updateDisplayPreview();
   </script>
 </body>
 </html>
-
