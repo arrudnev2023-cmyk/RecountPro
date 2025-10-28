@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dark Neon Timer</title>
+  <title>Cosmic Neon Timer</title>
   <style>
     html, body {
       margin: 0;
@@ -11,7 +11,7 @@
       font-family: 'Segoe UI', sans-serif;
       height: 100vh;
       overflow: hidden;
-      background: #0a0a0a;
+      background: #000;
       color: #e0e0e0;
     }
 
@@ -27,13 +27,13 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(20, 20, 20, 0.7);
+      background: rgba(20, 20, 30, 0.6);
       backdrop-filter: blur(12px);
       border-radius: 20px;
       padding: 30px;
       width: 90%;
       max-width: 400px;
-      box-shadow: 0 0 25px rgba(0, 255, 200, 0.15);
+      box-shadow: 0 0 25px rgba(0, 200, 255, 0.2);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -44,7 +44,7 @@
       font-weight: 600;
       font-size: 24px;
       margin-bottom: 10px;
-      background: linear-gradient(to right, #00e0ff, #7a00ff);
+      background: linear-gradient(to right, #00e0ff, #ff00ff);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -82,7 +82,7 @@
       clip-path: circle(50%);
       background: conic-gradient(#00e0ff var(--angle, 0deg), transparent 0deg);
       transition: background 0.2s ease;
-      filter: drop-shadow(0 0 6px #00e0ff);
+      filter: drop-shadow(0 0 8px #00e0ff);
     }
 
     .time {
@@ -90,7 +90,7 @@
       font-weight: bold;
       z-index: 1;
       color: #e0e0e0;
-      text-shadow: 0 0 6px rgba(0, 224, 255, 0.4);
+      text-shadow: 0 0 8px rgba(0, 224, 255, 0.5);
     }
 
     .buttons {
@@ -122,8 +122,7 @@
   <canvas id="bg"></canvas>
 
   <div class="container">
-    <h1>⏱️ Dark Neon Timer</h1>
-    <!-- iOS-style time picker -->
+    <h1>🌌 Cosmic Neon Timer</h1>
     <input type="time" id="timeInput" step="60" value="00:25">
     <div class="circle">
       <div class="progress" id="progress"></div>
@@ -137,38 +136,86 @@
   </div>
 
   <script>
-    // === Живой фон: мягкие неоновые частицы ===
+    // === Космический фон ===
     const canvas = document.getElementById('bg');
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    let particles = [];
-    for (let i = 0; i < 40; i++) {
-      particles.push({
+    const stars = [];
+    const comets = [];
+    const planets = [
+      { x: 200, y: 300, r: 40, color: '#4444ff' },
+      { x: canvas.width - 150, y: 150, r: 60, color: '#ff4499' }
+    ];
+
+    for (let i = 0; i < 150; i++) {
+      stars.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        r: Math.random() * 3 + 1,
-        dx: (Math.random() - 0.5) * 0.3,
-        dy: (Math.random() - 0.5) * 0.3,
-        color: Math.random() > 0.5 ? '#00e0ff' : '#7a00ff'
+        r: Math.random() * 2,
+        alpha: Math.random()
       });
+    }
+
+    function drawStars() {
+      stars.forEach(s => {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+        ctx.fill();
+        s.alpha += (Math.random() - 0.5) * 0.02;
+        if (s.alpha < 0.1) s.alpha = 0.1;
+        if (s.alpha > 1) s.alpha = 1;
+      });
+    }
+
+    function drawPlanets() {
+      planets.forEach(p => {
+        const grad = ctx.createRadialGradient(p.x, p.y, p.r * 0.2, p.x, p.y, p.r);
+        grad.addColorStop(0, p.color);
+        grad.addColorStop(1, 'black');
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = p.color;
+        ctx.fill();
+      });
+    }
+
+    function drawComets() {
+      if (Math.random() < 0.005) {
+        comets.push({
+          x: Math.random() * canvas.width,
+          y: 0,
+          dx: -2 - Math.random() * 2,
+          dy: 2 + Math.random() * 2,
+          len: 80
+        });
+      }
+      for (let i = comets.length - 1; i >= 0; i--) {
+        const c = comets[i];
+        ctx.beginPath();
+        const grad = ctx.createLinearGradient(c.x, c.y, c.x - c.dx * c.len, c.y - c.dy * c.len);
+        grad.addColorStop(0, 'rgba(255,255,255,0.8)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2;
+        ctx.moveTo(c.x, c.y);
+        ctx.lineTo(c.x - c.dx * c.len, c.y - c.dy * c.len);
+        ctx.stroke();
+        c.x += c.dx;
+        c.y += c.dy;
+        if (c.x < -100 || c.y > canvas.height + 100) comets.splice(i, 1);
+      }
     }
 
     function animateBG() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particles.forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = p.color;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = p.color;
-        ctx.fill();
-        p.x += p.dx;
-        p.y += p.dy;
-        if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
-        if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
-      });
+      drawStars();
+      drawPlanets();
+      drawComets();
       requestAnimationFrame(animateBG);
     }
     animateBG();
@@ -185,7 +232,7 @@
     let remaining = 0;
     let timer = null;
 
-    function updateDisplay() {
+       function updateDisplay() {
       const min = Math.floor(remaining / 60);
       const sec = remaining % 60;
       timeDisplay.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
