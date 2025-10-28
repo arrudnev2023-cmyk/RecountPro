@@ -14,7 +14,6 @@
       color: #e0e0e0;
     }
     canvas { position: fixed; inset: 0; display: block; z-index: 0; }
-
     .controls {
       position: fixed;
       left: 50%;
@@ -55,7 +54,6 @@
 </head>
 <body>
   <canvas id="c"></canvas>
-
   <div class="controls">
     <input type="time" id="timeInput" step="60" value="00:25">
     <div class="buttons">
@@ -64,146 +62,89 @@
       <button id="reset">Reset</button>
     </div>
   </div>
-
   <script>
     const canvas = document.getElementById('c');
     const ctx = canvas.getContext('2d');
     let W,H;
-    function resize(){
-      W = canvas.width = innerWidth;
-      H = canvas.height = innerHeight;
-    }
+    function resize(){ W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
     resize(); addEventListener('resize', resize);
-
     const TAU = Math.PI*2;
     const rnd = (a=1,b=0)=>Math.random()*(a-b)+b;
     const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
-
-    // Звёзды
-    const stars = Array.from({length:200},()=>({
-      x:Math.random()*W,y:Math.random()*H,r:rnd(1.5,0.5),a:Math.random()
-    }));
-
-    // Ракета
-    const rocket = {x:W*0.5,y:H*0.8,w:60,h:180,lift:false,vy:0,flame:0.6};
-
-    // Таймер
+    const stars = Array.from({length:250},()=>({x:Math.random()*W,y:Math.random()*H,r:rnd(1.5,0.5),a:Math.random()}));
+    const meteors = [];
+    function spawnMeteor(){ meteors.push({x: Math.random()*W,y: -50,dx: rnd(-6,-3),dy: rnd(6,3),len: rnd(120,80),life: 200}); }
+    function drawMeteors(){
+      for(let i=meteors.length-1;i>=0;i--){
+        const m = meteors[i];
+        m.x += m.dx; m.y += m.dy; m.life--;
+        const grad = ctx.createLinearGradient(m.x,m.y,m.x-m.dx*m.len,m.y-m.dy*m.len);
+        grad.addColorStop(0,'rgba(255,255,255,0.9)');
+        grad.addColorStop(1,'rgba(255,255,255,0)');
+        ctx.beginPath(); ctx.moveTo(m.x,m.y); ctx.lineTo(m.x-m.dx*m.len,m.y-m.dy*m.len);
+        ctx.strokeStyle=grad; ctx.lineWidth=2; ctx.stroke();
+        if(m.life<=0) meteors.splice(i,1);
+      }
+    }
+    setInterval(()=>{ if(Math.random()<0.3){ for(let i=0;i<30;i++) spawnMeteor(); } }, 25000);
+    const rocket = {x:W*0.5,y:H*0.8,w:60,h:180,lift:false,vy:0};
     let total=0,remaining=0,running=false,lastTick=performance.now();
-
     function drawStars(){
       for(const s of stars){
-        ctx.beginPath();
-        ctx.arc(s.x,s.y,s.r,0,TAU);
-        ctx.fillStyle=`rgba(255,255,255,${s.a})`;
-        ctx.fill();
-        s.a += (Math.random()-0.5)*0.02;
-        s.a=clamp(s.a,0.1,1);
+        ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,TAU);
+        ctx.fillStyle=`rgba(255,255,255,${s.a})`; ctx.fill();
+        s.a += (Math.random()-0.5)*0.02; s.a=clamp(s.a,0.1,1);
       }
     }
-
     function drawRocket(){
-      ctx.save();
-      ctx.translate(rocket.x,rocket.y);
-
-      // корпус
+      ctx.save(); ctx.translate(rocket.x,rocket.y);
       const grad = ctx.createLinearGradient(0,-rocket.h/2,0,rocket.h/2);
-      grad.addColorStop(0,'#ddd');
-      grad.addColorStop(1,'#555');
-      ctx.fillStyle=grad;
-      ctx.fillRect(-rocket.w/2,-rocket.h/2,rocket.w,rocket.h);
-
-      // носовой обтекатель
-      ctx.beginPath();
-      ctx.moveTo(-rocket.w/2,-rocket.h/2);
-      ctx.lineTo(0,-rocket.h/2-40);
-      ctx.lineTo(rocket.w/2,-rocket.h/2);
-      ctx.closePath();
-      ctx.fillStyle='#ccc';
-      ctx.fill();
-
-      // стабилизаторы
+      grad.addColorStop(0,'#ddd'); grad.addColorStop(1,'#555');
+      ctx.fillStyle=grad; ctx.fillRect(-rocket.w/2,-rocket.h/2,rocket.w,rocket.h);
+      ctx.beginPath(); ctx.moveTo(-rocket.w/2,-rocket.h/2); ctx.lineTo(0,-rocket.h/2-40); ctx.lineTo(rocket.w/2,-rocket.h/2); ctx.closePath();
+      ctx.fillStyle='#ccc'; ctx.fill();
       ctx.fillStyle='#666';
-      ctx.beginPath();
-      ctx.moveTo(-rocket.w/2,rocket.h/4);
-      ctx.lineTo(-rocket.w/2-25,rocket.h/2);
-      ctx.lineTo(-rocket.w/2,rocket.h/2);
-      ctx.closePath();
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(rocket.w/2,rocket.h/4);
-      ctx.lineTo(rocket.w/2+25,rocket.h/2);
-      ctx.lineTo(rocket.w/2,rocket.h/2);
-      ctx.closePath();
-      ctx.fill();
-
-      // сопло
-      ctx.fillStyle='#444';
-      ctx.fillRect(-15,rocket.h/2,30,20);
-
-      // пламя
-      const flame=30+Math.sin(performance.now()*0.02)*8;
-      ctx.beginPath();
-      ctx.moveTo(0,rocket.h/2+20);
-      ctx.quadraticCurveTo(15,rocket.h/2+flame,0,rocket.h/2+70);
-      ctx.quadraticCurveTo(-15,rocket.h/2+flame,0,rocket.h/2+20);
-      const flameGrad=ctx.createLinearGradient(0,rocket.h/2+20,0,rocket.h/2+70);
-      flameGrad.addColorStop(0,'rgba(255,220,120,0.95)');
-      flameGrad.addColorStop(1,'rgba(255,80,0,0.85)');
-      ctx.fillStyle=flameGrad;
-      ctx.fill();
-
+      ctx.beginPath(); ctx.moveTo(-rocket.w/2,rocket.h/4); ctx.lineTo(-rocket.w/2-25,rocket.h/2); ctx.lineTo(-rocket.w/2,rocket.h/2); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(rocket.w/2,rocket.h/4); ctx.lineTo(rocket.w/2+25,rocket.h/2); ctx.lineTo(rocket.w/2,rocket.h/2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#444'; ctx.fillRect(-15,rocket.h/2,30,20);
+      if(running || rocket.lift){
+        const flame=30+Math.sin(performance.now()*0.02)*8;
+        ctx.beginPath(); ctx.moveTo(0,rocket.h/2+20);
+        ctx.quadraticCurveTo(15,rocket.h/2+flame,0,rocket.h/2+70);
+        ctx.quadraticCurveTo(-15,rocket.h/2+flame,0,rocket.h/2+20);
+        const flameGrad=ctx.createLinearGradient(0,rocket.h/2+20,0,rocket.h/2+70);
+        flameGrad.addColorStop(0,'rgba(255,220,120,0.95)'); flameGrad.addColorStop(1,'rgba(255,80,0,0.85)');
+        ctx.fillStyle=flameGrad; ctx.fill();
+      }
       ctx.restore();
     }
-
     function drawTimer(){
-      const cx=W*0.8, cy=H*0.25;
-      const R=80;
+      const cx=W*0.8, cy=H*0.25; const R=80;
       const progress=total>0?(1-remaining/total):0;
-
-      ctx.beginPath();
-      ctx.arc(cx,cy,R,0,TAU);
-      ctx.strokeStyle='rgba(255,255,255,0.1)';
-      ctx.lineWidth=8;
-      ctx.stroke();
-
+      ctx.beginPath(); ctx.arc(cx,cy,R,0,TAU);
+      ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=8; ctx.stroke();
       const end=-Math.PI/2+progress*TAU;
-      ctx.beginPath();
-      ctx.arc(cx,cy,R,-Math.PI/2,end);
-      ctx.strokeStyle='#0ff';
-      ctx.lineWidth=10;
-      ctx.stroke();
-
+      ctx.beginPath(); ctx.arc(cx,cy,R,-Math.PI/2,end);
+      ctx.strokeStyle='#0ff'; ctx.lineWidth=10; ctx.stroke();
       const m=Math.floor(remaining/60),s=Math.floor(remaining%60);
-      ctx.font='bold 28px Segoe UI';
-      ctx.fillStyle='#fff';
-      ctx.textAlign='center';
-      ctx.textBaseline='middle';
+      ctx.font='bold 28px Segoe UI'; ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`,cx,cy);
     }
-
     function loop(now){
       if(running && !rocket.lift){
-        const dt=(now-lastTick)/1000;
-        lastTick=now;
+        const dt=(now-lastTick)/1000; lastTick=now;
         remaining=clamp(remaining-dt,0,total);
-        if(remaining===0){ rocket.lift=true; rocket.vy=-200; }
+        if(remaining===0){
+          rocket.lift=true; rocket.vy=-200;
+          if(navigator.vibrate){ navigator.vibrate([200,100,200]); }
+        }
       } else lastTick=now;
-
-      if(rocket.lift){
-        rocket.y+=rocket.vy/60;
-        rocket.vy-=5;
-      }
-
+      if(rocket.lift){ rocket.y+=rocket.vy/60; rocket.vy-=5; }
       ctx.clearRect(0,0,W,H);
-      drawStars();
-      drawRocket();
-      drawTimer();
-
+      drawStars(); drawMeteors(); drawRocket(); drawTimer();
       requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
-
-    // Управление
     const timeInput=document.getElementById('timeInput');
     document.getElementById('start').onclick=()=>{
       if(running) return;
@@ -213,11 +154,18 @@
       }
       running=true; rocket.lift=false; rocket.y=H*0.8; rocket.vy=0;
     };
-    document.getElementById('pause').onclick=()=>{ running=false; };
+        document.getElementById('pause').onclick=()=>{ 
+      running=false; 
+    };
     document.getElementById('reset').onclick=()=>{
-      running=false; rocket.lift=false; rocket.y=H*0.8; rocket.vy=0;
-      remaining=0; total=0;
+      running=false; 
+      rocket.lift=false; 
+      rocket.y=H*0.8; 
+      rocket.vy=0;
+      remaining=0; 
+      total=0;
     };
   </script>
 </body>
 </html>
+
