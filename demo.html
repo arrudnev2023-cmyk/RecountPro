@@ -821,7 +821,7 @@ function exportPDF() {
   const startStr = formatTime(startTime);
   const endStr = formatTime(endTime);
 
-  // постоянная фраза сверху
+  // заголовок
   const title = document.createElement("div");
   title.style.textAlign = "center";
   title.style.fontSize = "10px";
@@ -836,7 +836,7 @@ function exportPDF() {
   dateLine.innerText = formattedDate;
   exportArea.appendChild(dateLine);
 
-  // верхняя строка: слева "Итог", справа "Считал"
+  // верхняя строка
   const topRow = document.createElement("div");
   topRow.style.display = "flex";
   topRow.style.justifyContent = "space-between";
@@ -866,10 +866,10 @@ function exportPDF() {
   table.style.borderCollapse = "collapse";
   table.style.width = "100%";
   table.style.fontSize = "10px";
-  table.style.pageBreakInside = "avoid"; // 🔑 не рвать таблицу
+  table.style.pageBreakInside = "avoid";
 
   const thead = document.createElement("thead");
-  thead.style.pageBreakInside = "avoid"; // 🔑 не рвать шапку
+  thead.style.pageBreakInside = "avoid";
   thead.innerHTML = `
     <tr>
       <th colspan="8" style="border:1px solid #444; padding:4px; text-align:center; font-size:12px; font-weight:bold;">
@@ -890,12 +890,13 @@ function exportPDF() {
   table.appendChild(thead);
 
   const tbody = document.createElement("tbody");
-  tbody.style.pageBreakInside = "avoid"; // 🔑 не рвать тело таблицы
+  tbody.style.pageBreakInside = "avoid";
   let index = 1;
+
   sortedItems.forEach(item => {
     const input = document.querySelector(`input[data-code="${item.code}"]`);
     const raw = input ? input.value.trim() : "";
-    let actual = NaN;
+    let actual = 0;
 
     try {
       let safe = raw.replace(',', '.').replace(/[^0-9+\-*/().]/g, '').trim();
@@ -903,18 +904,18 @@ function exportPDF() {
         safe = safe.slice(0, -1);
       }
       if (safe) {
-        actual = Function(`"use strict"; return (${safe})`)();
+        actual = Function(`"use strict"; return (${safe})`)() || 0;
       }
     } catch {
-      actual = NaN;
+      actual = 0;
     }
 
-    const delta = !isNaN(actual) ? actual - item.docQty : 0;
+    const delta = actual - item.docQty;
     if (delta > 0) totalPlus += delta * item.price;
     else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
 
     const row = document.createElement("tr");
-    row.style.pageBreakInside = "avoid"; // 🔑 не рвать строки
+    row.style.pageBreakInside = "avoid";
     row.innerHTML = `
       <td style="border:1px solid #444; padding:2px; text-align:center;">${index}</td>
       <td style="border:1px solid #444; padding:2px;">${item.code}</td>
@@ -922,23 +923,24 @@ function exportPDF() {
       <td style="border:1px solid #444; padding:2px;">${item.unit}</td>
       <td style="border:1px solid #444; padding:2px; text-align:right;">${item.price.toFixed(2)}</td>
       <td style="border:1px solid #444; padding:2px; text-align:right;">${item.docQty}</td>
-      <td style="border:1px solid #444; padding:2px; text-align:right; overflow-wrap:break-word; word-break:break-word;">${raw}</td>
+      <td style="border:1px solid #444; padding:2px; text-align:right;">${raw}</td>
       <td style="border:1px solid #444; padding:2px; text-align:right;">${delta}</td>
     `;
     tbody.appendChild(row);
     index++;
   });
+
   table.appendChild(tbody);
   exportArea.appendChild(table);
 
-  // обновляем итоговые суммы после цикла
+  // итоги
   leftBlock.innerHTML = `
     Итог:<br>
     –${totalMinus.toFixed(2)} ₽<br>
     +${totalPlus.toFixed(2)} ₽
   `;
 
-  // подпись снизу справа
+  // подпись снизу
   const footer = document.createElement("div");
   footer.style.textAlign = "right";
   footer.style.fontSize = "8px";
@@ -953,13 +955,14 @@ function exportPDF() {
     image: { type: 'jpeg', quality: 0.95 },
     html2canvas: { scale: 2, useCORS: true },
     jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['avoid-all'] } // 🔑 не рвать блоки
+    pagebreak: { mode: ['avoid-all'] }
   };
 
   html2pdf().set(opt).from(exportArea).save().then(() => {
     exportArea.style.display = "none";
   });
 }
+
 
   // Итоговое окно (все позиции + цветовая индикация)
 function showSummaryModal() {
