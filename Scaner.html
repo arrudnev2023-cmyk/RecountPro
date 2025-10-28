@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8"/>
-  <title>Mini FPS — Raycasting v3</title>
+  <title>Premium FPS — Raycasting</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <style>
     body{margin:0;background:#000;overflow:hidden;color:#fff;font-family:sans-serif}
@@ -31,11 +31,10 @@
     <div class="bottom">
       <div style="display:flex;gap:20px">
         <div class="joy" id="joyL"><div class="knob" id="knobL"></div></div>
-        <div class="joy" id="joyR"><div class="knob" id="knobR"></div></div>
       </div>
-      <div style="display:flex;gap:12px">
+      <div style="display:flex;gap:12px;align-items:center">
+        <div class="joy" id="joyR"><div class="knob" id="knobR"></div></div>
         <button id="btnShoot" class="btn primary">Shoot</button>
-        <button id="btnReset" class="btn">Reset</button>
       </div>
     </div>
   </div>
@@ -87,31 +86,26 @@ function setupJoy(zone,knob,state){
 }
 function normJoy(cx,cy){const cx0=60,cy0=60,rad=52;const dx=cx-cx0,dy=cy-cy0,len=Math.hypot(dx,dy);const k=len>rad?rad/len:1,nx=dx*k,ny=dy*k;return{x:nx/rad,y:ny/rad,kx:60+nx-22,ky:60+ny-22}}
 
-// враги
-let enemies=[];
+// враги и пули
+let enemies=[],bullets=[];
 function spawnEnemy(){for(let tries=0;tries<20;tries++){let ex=1+Math.random()*(mapW-2),ey=1+Math.random()*(mapH-2);if(map[Math.floor(ey)][Math.floor(ex)]===0&&Math.hypot(ex-player.x,ey-player.y)>4){enemies.push({x:ex,y:ey});break}}}
-setInterval(spawnEnemy,2500);
+setInterval(spawnEnemy,3000);
 
-// raycast
-function castRay(angle){let sin=Math.sin(angle),cos=Math.cos(angle);for(let d=0;d<20;d+=0.02){let x=player.x+cos*d,y=player.y+sin*d;if(map[Math.floor(y)]?.[Math.floor(x)]===1)return d}return 20}
 // стрельба
 document.getElementById('btnShoot').addEventListener('click',()=>{
-  let hit=null,minDist=20;
-  enemies.forEach((e,i)=>{
-    const dx=e.x-player.x,dy=e.y-player.y;
-    const ang=Math.atan2(dy,dx);
-    const diff=Math.abs(normalizeAngle(ang-player.dir));
-    const dist=Math.hypot(dx,dy);
-    if(diff<0.2 && dist<minDist){ hit=i; minDist=dist; }
+  // создаём пулю в направлении взгляда
+  bullets.push({
+    x: player.x,
+    y: player.y,
+    dir: player.dir,
+    life: 1.5 // время жизни в секундах
   });
-  if(hit!==null){ enemies.splice(hit,1); score++; }
-  el.score.textContent=score;
 });
 
 // сброс
-document.getElementById('btnReset').addEventListener('click',()=>{
+document.getElementById('btnReset')?.addEventListener('click',()=>{
   player={x:2.5,y:2.5,dir:0,fov:Math.PI/3};
-  hp=100; score=0; enemies.length=0;
+  hp=100; score=0; enemies.length=0; bullets.length=0;
   el.hp.textContent=hp; el.score.textContent=score; el.hpBar.style.width='100%';
 });
 
@@ -137,7 +131,7 @@ function update(){
     player.dir=normalizeAngle(player.dir);
   }
 
-  // враги
+  // враги двигаются к игроку
   enemies.forEach(e=>{
     const dx=player.x-e.x, dy=player.y-e.y;
     const len=Math.hypot(dx,dy)||1;
@@ -151,17 +145,35 @@ function update(){
       if(hp<=0){
         alert("Game Over! Score: "+score);
         player={x:2.5,y:2.5,dir:0,fov:Math.PI/3};
-        hp=100; score=0; enemies.length=0;
+        hp=100; score=0; enemies.length=0; bullets.length=0;
         el.hp.textContent=hp; el.score.textContent=score; el.hpBar.style.width='100%';
       }
     }
   });
+
+  // пули летят
+  bullets.forEach(b=>{
+    b.x+=Math.cos(b.dir)*0.2;
+    b.y+=Math.sin(b.dir)*0.2;
+    b.life-=0.05;
+    // проверка попадания во врагов
+    enemies.forEach((e,i)=>{
+      if(Math.hypot(b.x-e.x,b.y-e.y)<0.5){
+        enemies.splice(i,1);
+        score++;
+        el.score.textContent=score;
+        b.life=0;
+      }
+    });
+  });
+  bullets=bullets.filter(b=>b.life>0);
 }
 
 function draw(){
   const w=canvas.width,h=canvas.height;
-  ctx.fillStyle='#0b0f18'; ctx.fillRect(0,0,w,h/2);
-  ctx.fillStyle='#0a0a0a'; ctx.fillRect(0,h/2,w,h/2);
+  // небо и пол
+  ctx.fillStyle='#d9cbb3'; ctx.fillRect(0,h/2,w,h/2); // бежевый пол
+  ctx.fillStyle='#1a1f2e'; ctx.fillRect(0,0,w,h/2);   // тёмное небо
 
   // стены
   for(let i=0;i<w;i++){
@@ -169,11 +181,11 @@ function draw(){
     const dist=castRay(angle);
     const wallH=h/(dist*Math.cos(angle-player.dir));
     const shade=Math.max(0.2,1.0-dist/12);
-    ctx.fillStyle=`rgba(${Math.floor(210*shade)},${Math.floor(210*shade)},${Math.floor(210*shade)},1)`;
+    ctx.fillStyle=`rgba(${Math.floor(180*shade)},${Math.floor(200*shade)},${Math.floor(220*shade)},1)`;
     ctx.fillRect(i,(h-wallH)/2,1,wallH);
   }
 
-  // враги
+  // враги — силуэт человека
   enemies.forEach(e=>{
     const dx=e.x-player.x, dy=e.y-player.y;
     const dist=Math.hypot(dx,dy);
@@ -182,11 +194,39 @@ function draw(){
     if(Math.abs(rel)<player.fov/2){
       const height=h/(dist*Math.cos(rel));
       const x=(w/2)+(rel/(player.fov/2))*(w/2);
-      const ew=Math.max(6,height*0.2);
+      const ew=Math.max(6,height*0.25);
       ctx.fillStyle='rgba(255,70,70,0.95)';
-      ctx.fillRect(x-ew/2,(h-height)/2,ew,height);
+      // тело
+      ctx.fillRect(x-ew/2,(h-height)/2+height*0.3,ew,height*0.7);
+      // голова
+      ctx.beginPath();
+      ctx.arc(x,(h-height)/2+height*0.2,ew/2.5,0,Math.PI*2);
+      ctx.fill();
     }
   });
+
+  // пули
+  ctx.strokeStyle='#fff';
+  bullets.forEach(b=>{
+    const dx=b.x-player.x, dy=b.y-player.y;
+    const dist=Math.hypot(dx,dy);
+    const angle=Math.atan2(dy,dx)-player.dir;
+    const rel=normalizeAngle(angle);
+    if(Math.abs(rel)<player.fov/2){
+      const bx=(w/2)+(rel/(player.fov/2))*(w/2);
+      const by=h/2;
+      ctx.beginPath();
+      ctx.moveTo(bx,by);
+      ctx.lineTo(bx,by-10);
+      ctx.stroke();
+    }
+  });
+
+  // прицел
+  ctx.fillStyle='#fff';
+  ctx.beginPath();
+  ctx.arc(w/2,h/2,3,0,Math.PI*2);
+  ctx.fill();
 }
 
 // ===== Utils =====
