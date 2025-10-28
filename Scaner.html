@@ -1,243 +1,205 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8"/>
-  <title>Premium FPS — Raycasting</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FPS Shooter</title>
   <style>
-    body{margin:0;background:#000;overflow:hidden;color:#fff;font-family:sans-serif}
-    canvas{width:100%;height:100vh;display:block;background:#000}
-    .ui{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between}
-    .hud{pointer-events:none;display:flex;justify-content:space-between;padding:12px;font-size:14px;text-shadow:0 1px 2px #000}
-    .hud .box{background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:8px 10px}
-    .bottom{pointer-events:none;display:flex;justify-content:space-between;align-items:flex-end;padding:20px}
-    .joy{pointer-events:auto;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);position:relative;touch-action:none}
-    .knob{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.28);border:1px solid rgba(255,255,255,0.22);position:absolute;left:38px;top:38px;transition:left .08s,top .08s}
-    .btn{pointer-events:auto;appearance:none;border:none;border-radius:14px;padding:10px 16px;font-weight:700;font-size:15px;cursor:pointer;background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.18)}
-    .btn.primary{width:80px;height:80px;border-radius:50%;background:#2a9df4;border:none;color:#fff;font-size:16px;box-shadow:0 12px 28px rgba(37,117,252,0.35)}
-    .bar{height:8px;border:1px solid rgba(255,255,255,0.2);border-radius:999px;overflow:hidden;background:rgba(255,255,255,0.08);margin-top:6px;width:160px}
-    .bar>div{height:100%}
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: linear-gradient(to bottom, #111, #333);
+      font-family: sans-serif;
+    }
+    canvas {
+      display: block;
+    }
+    #hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-size: 18px;
+      z-index: 10;
+    }
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 6px;
+      height: 6px;
+      background: white;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+    }
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 10;
+    }
+    .joystick {
+      width: 100px;
+      height: 100px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      touch-action: none;
+    }
+    button {
+      background: #fff;
+      border: none;
+      padding: 10px 20px;
+      font-weight: bold;
+      border-radius: 10px;
+      margin-left: 10px;
+    }
   </style>
 </head>
 <body>
-  <canvas id="game"></canvas>
-  <div class="ui">
-    <div class="hud">
-      <div class="box">
-        HP: <span id="hp">100</span> | Score: <span id="score">0</span>
-        <div class="bar"><div id="hpBar" style="width:100%;background:linear-gradient(90deg,#22c55e,#a3e635)"></div></div>
-      </div>
-    </div>
-    <div class="bottom">
-      <div style="display:flex;gap:20px">
-        <div class="joy" id="joyL"><div class="knob" id="knobL"></div></div>
-      </div>
-      <div style="display:flex;gap:12px;align-items:center">
-        <div class="joy" id="joyR"><div class="knob" id="knobR"></div></div>
-        <button id="btnShoot" class="btn primary">Shoot</button>
-      </div>
+  <canvas id="gameCanvas"></canvas>
+  <div id="hud">
+    <div id="hp">HP: 100</div>
+    <div id="score">Score: 0</div>
+  </div>
+  <div id="crosshair"></div>
+  <div id="controls">
+    <div id="joystick-left" class="joystick"></div>
+    <div>
+      <div id="joystick-right" class="joystick"></div>
+      <button id="shoot">Shoot</button>
+      <button id="reset">Reset</button>
     </div>
   </div>
-<script>
-const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
-function resize(){canvas.width=innerWidth;canvas.height=innerHeight}resize();addEventListener('resize',resize);
 
-// карта
-const map=[
- [1,1,1,1,1,1,1,1,1,1,1,1],
- [1,0,0,0,0,0,0,0,0,0,0,1],
- [1,0,0,0,0,0,0,0,0,0,0,1],
- [1,0,0,0,1,1,0,0,0,0,0,1],
- [1,0,0,0,0,0,0,0,0,1,0,1],
- [1,0,0,0,0,0,0,0,0,1,0,1],
- [1,0,0,0,0,0,1,0,0,0,0,1],
- [1,0,0,0,0,0,1,0,0,0,0,1],
- [1,0,0,0,0,0,0,0,0,0,0,1],
- [1,0,0,0,0,0,0,0,1,0,0,1],
- [1,0,0,0,0,0,0,0,0,0,0,1],
- [1,1,1,1,1,1,1,1,1,1,1,1],
-];
-const mapW=map[0].length,mapH=map.length;
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-// игрок
-let player={x:2.5,y:2.5,dir:0,fov:Math.PI/3};
-let hp=100,score=0;
-const el={hp:document.getElementById('hp'),score:document.getElementById('score'),hpBar:document.getElementById('hpBar')};
+    let hp = 100;
+    let score = 0;
+    let player = { x: 100, y: 100, angle: 0 };
+    let enemies = [];
+    let bullets = [];
 
-// джойстики
-let joyL={x:0,y:0,active:false},joyR={x:0,y:0,active:false};
-setupJoy(document.getElementById('joyL'),document.getElementById('knobL'),joyL);
-setupJoy(document.getElementById('joyR'),document.getElementById('knobR'),joyR);
-function setupJoy(zone,knob,state){
-  const home={x:38,y:38};
-  function setKnob(x,y){knob.style.left=x+'px';knob.style.top=y+'px'}
-  zone.addEventListener('touchstart',e=>{
-    const t=e.touches[0],r=zone.getBoundingClientRect();
-    const v=normJoy(t.clientX-r.left,t.clientY-r.top);
-    state.x=v.x;state.y=v.y;state.active=true;setKnob(v.kx,v.ky);
-  },{passive:true});
-  zone.addEventListener('touchmove',e=>{
-    if(!state.active)return;
-    const t=e.touches[0],r=zone.getBoundingClientRect();
-    const v=normJoy(t.clientX-r.left,t.clientY-r.top);
-    state.x=v.x;state.y=v.y;setKnob(v.kx,v.ky);
-  },{passive:true});
-  zone.addEventListener('touchend',()=>{state.x=0;state.y=0;state.active=false;setKnob(home.x,home.y)},{passive:true});
-}
-function normJoy(cx,cy){const cx0=60,cy0=60,rad=52;const dx=cx-cx0,dy=cy-cy0,len=Math.hypot(dx,dy);const k=len>rad?rad/len:1,nx=dx*k,ny=dy*k;return{x:nx/rad,y:ny/rad,kx:60+nx-22,ky:60+ny-22}}
+    function updateHUD() {
+      document.getElementById('hp').textContent = `HP: ${hp}`;
+      document.getElementById('score').textContent = `Score: ${score}`;
+    }
 
-// враги и пули
-let enemies=[],bullets=[];
-function spawnEnemy(){for(let tries=0;tries<20;tries++){let ex=1+Math.random()*(mapW-2),ey=1+Math.random()*(mapH-2);if(map[Math.floor(ey)][Math.floor(ex)]===0&&Math.hypot(ex-player.x,ey-player.y)>4){enemies.push({x:ex,y:ey});break}}}
-setInterval(spawnEnemy,3000);
-
-// стрельба
-document.getElementById('btnShoot').addEventListener('click',()=>{
-  // создаём пулю в направлении взгляда
-  bullets.push({
-    x: player.x,
-    y: player.y,
-    dir: player.dir,
-    life: 1.5 // время жизни в секундах
-  });
-});
-
-// сброс
-document.getElementById('btnReset')?.addEventListener('click',()=>{
-  player={x:2.5,y:2.5,dir:0,fov:Math.PI/3};
-  hp=100; score=0; enemies.length=0; bullets.length=0;
-  el.hp.textContent=hp; el.score.textContent=score; el.hpBar.style.width='100%';
-});
-
-// ===== Game loop =====
-function loop(){
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
-
-function update(){
-  // движение
-  if(joyL.active){
-    const speed=0.08;
-    const dx=joyL.x,dy=joyL.y;
-    const moveX=Math.cos(player.dir)*dy + Math.cos(player.dir+Math.PI/2)*dx;
-    const moveY=Math.sin(player.dir)*dy + Math.sin(player.dir+Math.PI/2)*dx;
-    const nx=player.x+moveX*speed, ny=player.y+moveY*speed;
-    if(map[Math.floor(ny)]?.[Math.floor(nx)]!==1){ player.x=nx; player.y=ny; }
-  }
-  if(joyR.active){
-    player.dir+=joyR.x*0.06;
-    player.dir=normalizeAngle(player.dir);
-  }
-
-  // враги двигаются к игроку
-  enemies.forEach(e=>{
-    const dx=player.x-e.x, dy=player.y-e.y;
-    const len=Math.hypot(dx,dy)||1;
-    const step=0.012;
-    const nx=e.x+(dx/len)*step, ny=e.y+(dy/len)*step;
-    if(map[Math.floor(ny)]?.[Math.floor(nx)]!==1){ e.x=nx; e.y=ny; }
-    if(Math.hypot(player.x-e.x,player.y-e.y)<0.45){
-      hp=Math.max(0,hp-0.35);
-      el.hp.textContent=Math.floor(hp);
-      el.hpBar.style.width=hp+'%';
-      if(hp<=0){
-        alert("Game Over! Score: "+score);
-        player={x:2.5,y:2.5,dir:0,fov:Math.PI/3};
-        hp=100; score=0; enemies.length=0; bullets.length=0;
-        el.hp.textContent=hp; el.score.textContent=score; el.hpBar.style.width='100%';
+    function drawWorld() {
+      // Пол
+      ctx.fillStyle = '#f5e6c8';
+      ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
+      // Небо
+      const grad = ctx.createLinearGradient(0, 0, 0, canvas.height / 2);
+      grad.addColorStop(0, '#111');
+      grad.addColorStop(1, '#333');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
+      // Стены (простая raycasting-заглушка)
+      ctx.fillStyle = '#e0e0e0';
+      for (let i = 0; i < canvas.width; i += 20) {
+        const height = Math.random() * canvas.height / 2;
+        ctx.fillRect(i, canvas.height / 2 - height, 18, height);
       }
     }
-  });
 
-  // пули летят
-  bullets.forEach(b=>{
-    b.x+=Math.cos(b.dir)*0.2;
-    b.y+=Math.sin(b.dir)*0.2;
-    b.life-=0.05;
-    // проверка попадания во врагов
-    enemies.forEach((e,i)=>{
-      if(Math.hypot(b.x-e.x,b.y-e.y)<0.5){
-        enemies.splice(i,1);
-        score++;
-        el.score.textContent=score;
-        b.life=0;
-      }
+    function drawEnemies() {
+      ctx.fillStyle = 'black';
+      enemies.forEach(e => {
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, 10, 0, Math.PI * 2); // голова
+        ctx.fill();
+        ctx.fillRect(e.x - 5, e.y + 10, 10, 20); // тело
+      });
+    }
+
+    function drawBullets() {
+      ctx.strokeStyle = 'white';
+      bullets.forEach(b => {
+        const dx = Math.cos(b.angle) * 10;
+        const dy = Math.sin(b.angle) * 10;
+        b.x += dx;
+        b.y += dy;
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(b.x - dx, b.y - dy);
+        ctx.stroke();
+      });
+    }
+
+    function checkCollisions() {
+      bullets.forEach((b, bi) => {
+        enemies.forEach((e, ei) => {
+          const dist = Math.hypot(b.x - e.x, b.y - e.y);
+          if (dist < 15) {
+            enemies.splice(ei, 1);
+            bullets.splice(bi, 1);
+            score += 10;
+          }
+        });
+      });
+
+      enemies.forEach((e, ei) => {
+        const dx = player.x - e.x;
+        const dy = player.y - e.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 20) {
+          hp -= 1;
+          if (hp <= 0) alert('Game Over');
+        } else {
+          e.x += dx * 0.01;
+          e.y += dy * 0.01;
+        }
+      });
+    }
+
+    function spawnEnemy() {
+      enemies.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height });
+    }
+
+    function shootBullet() {
+      bullets.push({ x: player.x, y: player.y, angle: player.angle });
+    }
+
+    function resetGame() {
+      hp = 100;
+      score = 0;
+      enemies = [];
+      bullets = [];
+      updateHUD();
+    }
+
+    document.getElementById('shoot').addEventListener('click', shootBullet);
+    document.getElementById('reset').addEventListener('click', resetGame);
+
+    // Простейшее управление (заглушка)
+    document.getElementById('joystick-left').addEventListener('touchmove', e => {
+      player.x += 2;
     });
-  });
-  bullets=bullets.filter(b=>b.life>0);
-}
+    document.getElementById('joystick-right').addEventListener('touchmove', e => {
+      player.angle += 0.1;
+    });
 
-function draw(){
-  const w=canvas.width,h=canvas.height;
-  // небо и пол
-  ctx.fillStyle='#d9cbb3'; ctx.fillRect(0,h/2,w,h/2); // бежевый пол
-  ctx.fillStyle='#1a1f2e'; ctx.fillRect(0,0,w,h/2);   // тёмное небо
-
-  // стены
-  for(let i=0;i<w;i++){
-    const angle=player.dir-player.fov/2+player.fov*i/w;
-    const dist=castRay(angle);
-    const wallH=h/(dist*Math.cos(angle-player.dir));
-    const shade=Math.max(0.2,1.0-dist/12);
-    ctx.fillStyle=`rgba(${Math.floor(180*shade)},${Math.floor(200*shade)},${Math.floor(220*shade)},1)`;
-    ctx.fillRect(i,(h-wallH)/2,1,wallH);
-  }
-
-  // враги — силуэт человека
-  enemies.forEach(e=>{
-    const dx=e.x-player.x, dy=e.y-player.y;
-    const dist=Math.hypot(dx,dy);
-    const angle=Math.atan2(dy,dx)-player.dir;
-    const rel=normalizeAngle(angle);
-    if(Math.abs(rel)<player.fov/2){
-      const height=h/(dist*Math.cos(rel));
-      const x=(w/2)+(rel/(player.fov/2))*(w/2);
-      const ew=Math.max(6,height*0.25);
-      ctx.fillStyle='rgba(255,70,70,0.95)';
-      // тело
-      ctx.fillRect(x-ew/2,(h-height)/2+height*0.3,ew,height*0.7);
-      // голова
-      ctx.beginPath();
-      ctx.arc(x,(h-height)/2+height*0.2,ew/2.5,0,Math.PI*2);
-      ctx.fill();
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawWorld();
+      drawEnemies();
+      drawBullets();
+      checkCollisions();
+      updateHUD();
+      requestAnimationFrame(gameLoop);
     }
-  });
 
-  // пули
-  ctx.strokeStyle='#fff';
-  bullets.forEach(b=>{
-    const dx=b.x-player.x, dy=b.y-player.y;
-    const dist=Math.hypot(dx,dy);
-    const angle=Math.atan2(dy,dx)-player.dir;
-    const rel=normalizeAngle(angle);
-    if(Math.abs(rel)<player.fov/2){
-      const bx=(w/2)+(rel/(player.fov/2))*(w/2);
-      const by=h/2;
-      ctx.beginPath();
-      ctx.moveTo(bx,by);
-      ctx.lineTo(bx,by-10);
-      ctx.stroke();
-    }
-  });
-
-  // прицел
-  ctx.fillStyle='#fff';
-  ctx.beginPath();
-  ctx.arc(w/2,h/2,3,0,Math.PI*2);
-  ctx.fill();
-}
-
-// ===== Utils =====
-function normalizeAngle(a){
-  while(a<-Math.PI) a+=Math.PI*2;
-  while(a> Math.PI) a-=Math.PI*2;
-  return a;
-}
-
-// старт
-loop();
-</script>
+    gameLoop();
+    setInterval(spawnEnemy, 3000);
+  </script>
 </body>
 </html>
