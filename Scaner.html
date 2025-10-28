@@ -3,287 +3,201 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FPS Shooter</title>
+  <title>Focus Timer</title>
+  <link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;Focus Timer&quot;,&quot;short_name&quot;:&quot;Timer&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;#1f1f1f&quot;,&quot;theme_color&quot;:&quot;#00ffff&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;https://via.placeholder.com/192&quot;,&quot;sizes&quot;:&quot;192x192&quot;,&quot;type&quot;:&quot;image/png&quot;}]}">
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      overflow: hidden;
-      background: #000;
-      font-family: sans-serif;
-    }
-    canvas {
-      display: block;
-    }
-    #hud {
-      position: absolute;
-      top: 10px;
-      left: 10px;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1f1f1f, #2c2c2c);
       color: white;
-      font-size: 18px;
-      z-index: 10;
+      height: 100vh;
+      overflow: hidden;
     }
-    #crosshair {
+
+    .container {
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 6px;
-      height: 6px;
-      background: white;
-      border-radius: 50%;
       transform: translate(-50%, -50%);
-      z-index: 10;
-    }
-    #controls {
-      position: absolute;
-      bottom: 20px;
-      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 30px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
       display: flex;
-      justify-content: space-between;
-      padding: 0 20px;
-      z-index: 10;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      animation: fadeIn 0.6s ease-out;
+      transition: all 0.4s ease;
     }
-    .joystick {
+
+    .container.mini {
+      top: auto;
+      left: auto;
+      bottom: 20px;
+      right: 20px;
+      transform: none;
+      width: 120px;
+      height: 120px;
+      padding: 10px;
+      border-radius: 60px;
+      justify-content: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-weight: 600;
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    .circle {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      border: 8px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      animation: pulse 2s infinite;
+    }
+
+    .container.mini .circle {
       width: 100px;
       height: 100px;
-      background: rgba(255, 255, 255, 0.2);
-      border: 2px solid #fff;
-      border-radius: 50%;
-      touch-action: none;
-      backdrop-filter: blur(4px);
+      border-width: 4px;
     }
+
+    .progress {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      clip-path: circle(50%);
+      background: conic-gradient(#00ffff var(--angle, 0deg), transparent 0deg);
+      transition: background 0.2s ease;
+    }
+
+    .time {
+      font-size: 32px;
+      font-weight: bold;
+      z-index: 1;
+    }
+
+    .container.mini .time {
+      font-size: 18px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 10px;
+    }
+
     button {
       background: #fff;
       border: none;
       padding: 10px 20px;
       font-weight: bold;
       border-radius: 10px;
-      margin-top: 10px;
+      color: #000;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #00ffff;
+      color: #000;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
     }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
-  <div id="hud">
-    <div id="hp">HP: 100</div>
-    <div id="score">Score: 0</div>
-  </div>
-  <div id="crosshair"></div>
-  <div id="controls">
-    <div id="joystick-left" class="joystick"></div>
-    <div>
-      <div id="joystick-right" class="joystick"></div>
-      <button id="shoot">Shoot</button>
+  <div class="container" id="container">
+    <h1>⏱️ Фокус‑таймер</h1>
+    <div class="circle">
+      <div class="progress" id="progress"></div>
+      <div class="time" id="time">25:00</div>
+    </div>
+    <div class="buttons">
+      <button id="start">Start</button>
       <button id="reset">Reset</button>
+      <button id="toggle">Mini</button>
     </div>
   </div>
 
   <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const timeDisplay = document.getElementById('time');
+    const progress = document.getElementById('progress');
+    const startBtn = document.getElementById('start');
+    const resetBtn = document.getElementById('reset');
+    const toggleBtn = document.getElementById('toggle');
+    const container = document.getElementById('container');
 
-    const map = [
-      [1,1,1,1,1,1,1,1],
-      [1,0,0,0,0,0,0,1],
-      [1,0,1,0,1,0,0,1],
-      [1,0,1,0,1,0,0,1],
-      [1,0,0,0,0,0,0,1],
-      [1,1,1,1,1,1,1,1],
-    ];
-    const tileSize = 64;
+    let totalSeconds = 25 * 60;
+    let remaining = totalSeconds;
+    let timer = null;
 
-    let hp = 100;
-    let score = 0;
-    let player = { x: 150, y: 150, angle: 0 };
-    let enemies = [];
-    let bullets = [];
-
-    function updateHUD() {
-      document.getElementById('hp').textContent = `HP: ${hp}`;
-      document.getElementById('score').textContent = `Score: ${score}`;
+    function updateDisplay() {
+      const min = Math.floor(remaining / 60);
+      const sec = remaining % 60;
+      timeDisplay.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+      const angle = ((totalSeconds - remaining) / totalSeconds) * 360;
+      progress.style.setProperty('--angle', `${angle}deg`);
     }
 
-    function isWall(x, y) {
-      const tx = Math.floor(x / tileSize);
-      const ty = Math.floor(y / tileSize);
-      return map[ty]?.[tx] === 1;
-    }
-
-    function castRays() {
-      const fov = Math.PI / 3;
-      const numRays = canvas.width;
-      const step = fov / numRays;
-
-      for (let i = 0; i < numRays; i++) {
-        const rayAngle = player.angle - fov / 2 + step * i;
-        let dist = 0;
-        let hit = false;
-
-        while (!hit && dist < 500) {
-          dist += 1;
-          const testX = Math.floor((player.x + Math.cos(rayAngle) * dist) / tileSize);
-          const testY = Math.floor((player.y + Math.sin(rayAngle) * dist) / tileSize);
-          if (map[testY] && map[testY][testX] === 1) hit = true;
+    function startTimer() {
+      if (timer) return;
+      container.querySelector('.circle').style.animation = 'pulse 1.5s infinite';
+      timer = setInterval(() => {
+        if (remaining > 0) {
+          remaining--;
+          updateDisplay();
+        } else {
+          clearInterval(timer);
+          timer = null;
+          container.querySelector('.circle').style.animation = 'none';
         }
-
-        const wallHeight = canvas.height / (dist * 0.02);
-        const shade = 255 - dist * 0.5;
-        ctx.fillStyle = `rgb(${shade},${shade},${shade})`;
-        ctx.fillRect(i, canvas.height / 2 - wallHeight / 2, 1, wallHeight);
-      }
+      }, 1000);
     }
 
-    function drawFloorSky() {
-      ctx.fillStyle = '#f5e6c8';
-      ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
-      const grad = ctx.createLinearGradient(0, 0, 0, canvas.height / 2);
-      grad.addColorStop(0, '#111');
-      grad.addColorStop(1, '#333');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
+    function resetTimer() {
+      clearInterval(timer);
+      timer = null;
+      remaining = totalSeconds;
+      updateDisplay();
+      container.querySelector('.circle').style.animation = 'none';
     }
 
-    function drawEnemies() {
-      ctx.fillStyle = 'black';
-      enemies.forEach(e => {
-        const dx = e.x - player.x;
-        const dy = e.y - player.y;
-        const dist = Math.hypot(dx, dy);
-        const angleToEnemy = Math.atan2(dy, dx) - player.angle;
-        const screenX = canvas.width / 2 + Math.sin(angleToEnemy) * 300;
-        const size = 40 / dist * 100;
-        ctx.beginPath();
-        ctx.arc(screenX, canvas.height / 2, size / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillRect(screenX - size / 4, canvas.height / 2, size / 2, size);
-      });
+    function toggleMini() {
+      container.classList.toggle('mini');
     }
 
-    function drawBullets() {
-      ctx.strokeStyle = 'white';
-      bullets.forEach(b => {
-        const dx = Math.cos(b.angle) * 10;
-        const dy = Math.sin(b.angle) * 10;
-        b.x += dx;
-        b.y += dy;
-        ctx.beginPath();
-        ctx.moveTo(b.x, b.y);
-        ctx.lineTo(b.x - dx, b.y - dy);
-        ctx.stroke();
-      });
+    startBtn.addEventListener('click', startTimer);
+    resetBtn.addEventListener('click', resetTimer);
+    toggleBtn.addEventListener('click', toggleMini);
+
+    updateDisplay();
+
+    // PWA install prompt (optional)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('data:text/javascript;base64,').catch(() => {});
     }
-
-    function checkCollisions() {
-      bullets.forEach((b, bi) => {
-        enemies.forEach((e, ei) => {
-          const dist = Math.hypot(b.x - e.x, b.y - e.y);
-          if (dist < 20) {
-            enemies.splice(ei, 1);
-            bullets.splice(bi, 1);
-            score += 10;
-          }
-        });
-      });
-
-      enemies.forEach((e, ei) => {
-        const dx = player.x - e.x;
-        const dy = player.y - e.y;
-        const dist = Math.hypot(dx, dy);
-        const nextX = e.x + dx * 0.01;
-        const nextY = e.y + dy * 0.01;
-        if (dist < 30) {
-          hp -= 1;
-          if (hp <= 0) {
-            alert('Game Over');
-            resetGame();
-          }
-        } else if (!isWall(nextX, nextY)) {
-          e.x = nextX;
-          e.y = nextY;
-        }
-      });
-    }
-
-    function spawnEnemy() {
-      const angle = Math.random() * Math.PI * 2;
-      const radius = 300;
-      const x = player.x + Math.cos(angle) * radius;
-      const y = player.y + Math.sin(angle) * radius;
-      if (!isWall(x, y)) {
-        enemies.push({ x, y });
-      }
-    }
-
-    function shootBullet() {
-      bullets.push({
-        x: player.x,
-        y: player.y,
-        angle: player.angle
-      });
-    }
-
-    function resetGame() {
-      hp = 100;
-      score = 0;
-      enemies = [];
-      bullets = [];
-      updateHUD();
-    }
-
-    document.getElementById('shoot').addEventListener('click', shootBullet);
-    document.getElementById('reset').addEventListener('click', resetGame);
-
-    let leftTouch = null;
-    let rightTouch = null;
-
-    document.getElementById('joystick-left').addEventListener('touchstart', e => {
-      leftTouch = e.targetTouches[0];
-    });
-    document.getElementById('joystick-left').addEventListener('touchmove', e => {
-      const touch = e.targetTouches[0];
-      const dx = touch.clientX - leftTouch.clientX;
-      const dy = touch.clientY - leftTouch.clientY;
-            const forward = -dy * 0.1;
-      const strafe = dx * 0.1;
-
-      const nextX = player.x + Math.cos(player.angle) * forward + Math.cos(player.angle + Math.PI / 2) * strafe;
-      const nextY = player.y + Math.sin(player.angle) * forward + Math.sin(player.angle + Math.PI / 2) * strafe;
-
-      if (!isWall(nextX, nextY)) {
-        player.x = nextX;
-        player.y = nextY;
-      }
-
-      leftTouch = touch;
-    });
-
-    document.getElementById('joystick-right').addEventListener('touchstart', e => {
-      rightTouch = e.targetTouches[0];
-    });
-
-    document.getElementById('joystick-right').addEventListener('touchmove', e => {
-      const touch = e.targetTouches[0];
-      const dx = touch.clientX - rightTouch.clientX;
-      player.angle += dx * 0.005;
-      rightTouch = touch;
-    });
-
-    function gameLoop() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawFloorSky();
-      castRays();
-      drawEnemies();
-      drawBullets();
-      checkCollisions();
-      updateHUD();
-      requestAnimationFrame(gameLoop);
-    }
-
-    gameLoop();
-    setInterval(spawnEnemy, 3000);
   </script>
 </body>
 </html>
-
