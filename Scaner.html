@@ -3,28 +3,36 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Focus Timer</title>
+  <title>Neon Focus Timer</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: radial-gradient(circle at top left, #1f1f1f, #2c2c2c);
-      color: white;
       height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      overflow: hidden;
+      color: white;
+    }
+
+    canvas#bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
     }
 
     .container {
+      position: relative;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       background: rgba(255, 255, 255, 0.05);
       backdrop-filter: blur(14px);
       border-radius: 24px;
       padding: 30px;
       width: 90%;
       max-width: 400px;
-      box-shadow: 0 0 40px rgba(255, 255, 255, 0.1);
+      box-shadow: 0 0 40px rgba(0, 255, 255, 0.3);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -33,15 +41,15 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; transform: translate(-50%, -40%); }
+      to { opacity: 1; transform: translate(-50%, -50%); }
     }
 
     h1 {
       font-weight: 600;
       font-size: 26px;
       margin-bottom: 10px;
-      background: linear-gradient(to right, #00ffff, #ffffff);
+      background: linear-gradient(to right, #00ffff, #ff00ff);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -63,8 +71,8 @@
     }
 
     .circle {
-      width: 200px;
-      height: 200px;
+      width: 220px;
+      height: 220px;
       border-radius: 50%;
       border: 8px solid rgba(255, 255, 255, 0.2);
       position: relative;
@@ -78,18 +86,20 @@
       position: absolute;
       top: 0;
       left: 0;
-      width: 200px;
-      height: 200px;
+      width: 220px;
+      height: 220px;
       border-radius: 50%;
       clip-path: circle(50%);
       background: conic-gradient(#00ffff var(--angle, 0deg), transparent 0deg);
       transition: background 0.2s ease;
+      filter: drop-shadow(0 0 10px #00ffff);
     }
 
     .time {
-      font-size: 32px;
+      font-size: 34px;
       font-weight: bold;
       z-index: 1;
+      text-shadow: 0 0 10px #00ffff;
     }
 
     .buttons {
@@ -100,18 +110,20 @@
     }
 
     button {
-      background: linear-gradient(to right, #00ffff, #ffffff);
+      background: linear-gradient(135deg, #00ffff, #ff00ff);
       border: none;
-      padding: 10px 20px;
+      padding: 12px 24px;
       font-weight: bold;
       border-radius: 14px;
       color: #000;
       cursor: pointer;
-      transition: transform 0.2s ease;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 0 15px rgba(0,255,255,0.5);
     }
 
     button:hover {
       transform: scale(1.05);
+      box-shadow: 0 0 25px rgba(255,0,255,0.7);
     }
 
     @keyframes pulse {
@@ -122,8 +134,10 @@
   </style>
 </head>
 <body>
+  <canvas id="bg"></canvas>
+
   <div class="container">
-    <h1>⏱️ Фокус‑таймер</h1>
+    <h1>⏱️ Neon Focus Timer</h1>
     <input type="number" id="minutesInput" placeholder="Введите время (мин)" />
     <div class="circle">
       <div class="progress" id="progress"></div>
@@ -137,6 +151,43 @@
   </div>
 
   <script>
+    // === Живой фон ===
+    const canvas = document.getElementById('bg');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let particles = [];
+    for (let i = 0; i < 60; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 4 + 2,
+        dx: (Math.random() - 0.5) * 0.5,
+        dy: (Math.random() - 0.5) * 0.5,
+        color: Math.random() > 0.5 ? '#00ffff' : '#ff00ff'
+      });
+    }
+
+    function animateBG() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = p.color;
+        ctx.fill();
+        p.x += p.dx;
+        p.y += p.dy;
+        if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+      });
+      requestAnimationFrame(animateBG);
+    }
+    animateBG();
+
+    // === Таймер ===
     const timeDisplay = document.getElementById('time');
     const progress = document.getElementById('progress');
     const startBtn = document.getElementById('start');
@@ -171,6 +222,7 @@
         } else {
           clearInterval(timer);
           timer = null;
+          alert("⏰ Время вышло!");
         }
       }, 1000);
     }
