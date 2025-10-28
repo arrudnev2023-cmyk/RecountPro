@@ -2,281 +2,455 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
   <title>Cosmic Neon Timer</title>
   <style>
     html, body {
       margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', sans-serif;
-      height: 100vh;
-      overflow: hidden;
+      height: 100%;
       background: #000;
-      color: #e0e0e0;
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
     }
-
-    canvas#bg {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      z-index: -1;
-    }
-
-    .container {
-      position: relative;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(20, 20, 30, 0.6);
-      backdrop-filter: blur(12px);
-      border-radius: 20px;
-      padding: 30px;
-      width: 90%;
-      max-width: 400px;
-      box-shadow: 0 0 25px rgba(0, 200, 255, 0.2);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-    }
-
-    h1 {
-      font-weight: 600;
-      font-size: 24px;
-      margin-bottom: 10px;
-      background: linear-gradient(to right, #00e0ff, #ff00ff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    input[type="time"] {
-      width: 100%;
-      padding: 12px;
-      border-radius: 12px;
-      border: none;
-      background: rgba(255, 255, 255, 0.05);
-      color: #e0e0e0;
-      font-size: 16px;
-      outline: none;
-      text-align: center;
-    }
-
-    .circle {
-      width: 200px;
-      height: 200px;
-      border-radius: 50%;
-      border: 6px solid rgba(255, 255, 255, 0.08);
-      position: relative;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .progress {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 200px;
-      height: 200px;
-      border-radius: 50%;
-      clip-path: circle(50%);
-      background: conic-gradient(#00e0ff var(--angle, 0deg), transparent 0deg);
-      transition: background 0.2s ease;
-      filter: drop-shadow(0 0 8px #00e0ff);
-    }
-
-    .time {
-      font-size: 30px;
-      font-weight: bold;
-      z-index: 1;
-      color: #e0e0e0;
-      text-shadow: 0 0 8px rgba(0, 224, 255, 0.5);
-    }
-
-    .buttons {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    button {
-      background: linear-gradient(135deg, #111, #1a1a1a);
-      border: 1px solid rgba(0, 224, 255, 0.4);
-      padding: 10px 20px;
-      font-weight: bold;
-      border-radius: 12px;
-      color: #e0e0e0;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    button:hover {
-      background: #0f0f0f;
-      color: #00e0ff;
-      box-shadow: 0 0 12px rgba(0, 224, 255, 0.4);
-    }
+    canvas { display: block; }
   </style>
 </head>
 <body>
-  <canvas id="bg"></canvas>
+<canvas id="c"></canvas>
 
-  <div class="container">
-    <h1>🌌 Cosmic Neon Timer</h1>
-    <input type="time" id="timeInput" step="60" value="00:25">
-    <div class="circle">
-      <div class="progress" id="progress"></div>
-      <div class="time" id="time">00:00</div>
-    </div>
-    <div class="buttons">
-      <button id="start">Старт</button>
-      <button id="pause">Пауза</button>
-      <button id="reset">Сброс</button>
-    </div>
-  </div>
+<script>
+/* ===== Canvas setup ===== */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W = window.innerWidth, H = window.innerHeight;
+function resize() {
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W; canvas.height = H;
+}
+resize();
+window.addEventListener('resize', resize);
 
-  <script>
-    // === Космический фон ===
-    const canvas = document.getElementById('bg');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+/* ===== Utils ===== */
+const TAU = Math.PI * 2;
+const rnd = (a=1,b=0)=>Math.random()*(a-b)+b;
+const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
 
-    const stars = [];
-    const comets = [];
-    const planets = [
-      { x: 200, y: 300, r: 40, color: '#4444ff' },
-      { x: canvas.width - 150, y: 150, r: 60, color: '#ff4499' }
-    ];
+/* ===== Scene elements ===== */
+const stars = [];
+const nebulas = [];
+const planets = [];
+const rockets = [];
+const comets = [];
 
-    for (let i = 0; i < 150; i++) {
-      stars.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        r: Math.random() * 2,
-        alpha: Math.random()
-      });
+const STAR_COUNT = Math.floor((W*H)/9000);
+const ROCKET_COUNT = 2;
+const NEBULA_COUNT = 3;
+
+/* Glow helper */
+function setGlow(color, blur) {
+  ctx.shadowColor = color;
+  ctx.shadowBlur = blur;
+}
+
+/* Create stars */
+function initStars() {
+  stars.length = 0;
+  for (let i=0;i<STAR_COUNT;i++){
+    stars.push({
+      x: rnd(W), y: rnd(H),
+      r: rnd(0.6,0.1),
+      tw: rnd(0.02,0.005),
+      a: rnd(1,0.2)
+    });
+  }
+}
+
+/* Create nebulas (soft gradients) */
+function initNebulas() {
+  nebulas.length = 0;
+  for (let i=0;i<NEBULA_COUNT;i++){
+    const cx = rnd(W), cy = rnd(H);
+    const r = rnd(Math.min(W,H)*0.6, Math.min(W,H)*0.35);
+    const hue = rnd(300,180); // blue-purple range
+    nebulas.push({cx, cy, r, hue, t: rnd(1000)});
+  }
+}
+
+/* Planets */
+function initPlanets() {
+  planets.length = 0;
+  const P = Math.max(1, Math.floor(W/800));
+  for (let i=0;i<P;i++){
+    const r = rnd(60,35);
+    const x = rnd(W*0.8, W*0.2);
+    const y = rnd(H*0.8, H*0.2);
+    const hue = rnd(260,200);
+    planets.push({x,y,r,hue,rot:rnd(TAU), rotSp:rnd(0.003,0.001)});
+  }
+}
+
+/* Rockets */
+function initRockets() {
+  rockets.length = 0;
+  for (let i=0;i<ROCKET_COUNT;i++){
+    rockets.push({
+      x: rnd(W), y: rnd(H),
+      vx: rnd(0.6,0.25) * (Math.random()<0.5?1:-1),
+      vy: rnd(0.4,0.2) * (Math.random()<0.5?1:-1),
+      a: rnd(TAU),
+      flame: 0
+    });
+  }
+}
+
+/* Comets (rare streaks) */
+function spawnComet() {
+  const side = Math.random()<0.5?'left':'top';
+  let x = side==='left' ? -50 : rnd(W);
+  let y = side==='top' ? -50 : rnd(H*0.6);
+  const dx = rnd(3,2);
+  const dy = rnd(2,1);
+  comets.push({
+    x, y, dx, dy,
+    life: rnd(300,200),
+    len: rnd(140,90)
+  });
+}
+
+/* ===== Timer state ===== */
+let totalSeconds = 25*60;
+let remaining = totalSeconds;
+let running = false;
+let lastTick = performance.now();
+let progress = 0; // 0..1
+
+/* ===== Gestures ===== */
+let tapCount = 0;
+let tapTimer = null;
+let pressTimer = null;
+let startY = null;
+
+function centerHit(x, y) {
+  const cx = W/2, cy = H/2;
+  const d = Math.hypot(x-cx, y-cy);
+  return d < Math.min(W,H)*0.25; // interact zone around timer
+}
+
+function onPointerDown(e){
+  const x = e.clientX ?? e.touches?.[0]?.clientX;
+  const y = e.clientY ?? e.touches?.[0]?.clientY;
+  if (!centerHit(x,y)) return;
+  startY = y;
+
+  // Long press to reset
+  pressTimer = setTimeout(()=> {
+    resetTimer();
+  }, 700);
+
+  // Double tap to +5 minutes
+  tapCount++;
+  if (tapTimer) clearTimeout(tapTimer);
+  tapTimer = setTimeout(()=>{
+    if (tapCount>=2) {
+      totalSeconds = clamp(totalSeconds + 5*60, 5, 24*3600);
+      if (!running) remaining = totalSeconds;
+    } else {
+      // Single tap: start/pause
+      toggleRun();
     }
+    tapCount = 0;
+  }, 250);
+}
+function onPointerMove(e){
+  if (startY==null) return;
+  const y = e.clientY ?? e.touches?.[0]?.clientY;
+  const dy = y - startY;
+  if (Math.abs(dy) > 20) {
+    clearTimeout(pressTimer);
+    const deltaMin = Math.sign(-dy); // swipe up -> +1 min, down -> -1
+    totalSeconds = clamp(totalSeconds + deltaMin*60, 5, 24*3600);
+    if (!running) remaining = totalSeconds;
+    startY = y;
+  }
+}
+function onPointerUp(){
+  clearTimeout(pressTimer);
+  startY = null;
+}
+canvas.addEventListener('mousedown', onPointerDown);
+canvas.addEventListener('mousemove', onPointerMove);
+canvas.addEventListener('mouseup', onPointerUp);
+canvas.addEventListener('touchstart', onPointerDown, {passive:true});
+canvas.addEventListener('touchmove', onPointerMove, {passive:true});
+canvas.addEventListener('touchend', onPointerUp);
 
-    function drawStars() {
-      stars.forEach(s => {
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
-        ctx.fill();
-        s.alpha += (Math.random() - 0.5) * 0.02;
-        if (s.alpha < 0.1) s.alpha = 0.1;
-        if (s.alpha > 1) s.alpha = 1;
-      });
+/* ===== Timer controls ===== */
+function toggleRun(){
+  running = !running;
+  if (running) lastTick = performance.now();
+}
+function resetTimer(){
+  running = false;
+  remaining = totalSeconds;
+}
+
+/* ===== Render: background ===== */
+function renderNebulas(t) {
+  nebulas.forEach(n=>{
+    n.t += 0.003;
+    const wobble = Math.sin(n.t)*0.05 + 1;
+    const r = n.r * wobble;
+    const grad = ctx.createRadialGradient(n.cx, n.cy, r*0.15, n.cx, n.cy, r);
+    grad.addColorStop(0, `hsla(${n.hue}, 70%, 60%, 0.12)`);
+    grad.addColorStop(1, `hsla(${n.hue}, 70%, 40%, 0.0)`);
+    setGlow(`hsla(${n.hue}, 80%, 60%, 0.4)`, 35);
+    ctx.beginPath();
+    ctx.arc(n.cx, n.cy, r, 0, TAU);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    setGlow('transparent', 0);
+  });
+}
+
+function renderStars(t) {
+  for (const s of stars){
+    s.a += (Math.random()-0.5)*0.02;
+    s.a = clamp(s.a, 0.05, 1);
+    setGlow('rgba(255,255,255,0.8)', 8);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, TAU);
+    ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+    ctx.fill();
+    setGlow('transparent', 0);
+  }
+}
+
+function renderPlanets() {
+  for (const p of planets){
+    p.rot += p.rotSp;
+    const grad = ctx.createRadialGradient(p.x, p.y, p.r*0.2, p.x, p.y, p.r);
+    grad.addColorStop(0, `hsla(${p.hue},70%,60%,0.9)`);
+    grad.addColorStop(1, `hsla(${p.hue},70%,10%,0.1)`);
+    setGlow(`hsla(${p.hue},70%,60%,0.5)`, 25);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, TAU);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // subtle terminator line
+    setGlow('transparent',0);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    ctx.beginPath();
+    ctx.arc(0,0,p.r, Math.PI*0.15, Math.PI*0.85);
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function renderRockets() {
+  for (const r of rockets){
+    r.x += r.vx;
+    r.y += r.vy;
+    if (r.x<-50) r.x=W+50;
+    if (r.x>W+50) r.x=-50;
+    if (r.y<-50) r.y=H+50;
+    if (r.y>H+50) r.y=-50;
+    r.a = Math.atan2(r.vy, r.vx);
+
+    // body
+    ctx.save();
+    ctx.translate(r.x, r.y);
+    ctx.rotate(r.a);
+    setGlow('rgba(0,224,255,0.6)', 12);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath();
+    ctx.moveTo(18,0);
+    ctx.quadraticCurveTo(-10,10,-18,0);
+    ctx.quadraticCurveTo(-10,-10,18,0);
+    ctx.fill();
+
+    // window
+    setGlow('rgba(0,224,255,0.5)', 8);
+    ctx.beginPath();
+    ctx.arc(0,0,4,0,TAU);
+    ctx.fillStyle = 'rgba(0,224,255,0.8)';
+    ctx.fill();
+
+    // flame
+    r.flame = 8 + Math.sin(performance.now()*0.02 + r.x*0.01)*3;
+    setGlow('rgba(255,120,0,0.7)', 12);
+    ctx.beginPath();
+    ctx.moveTo(-18,0);
+    ctx.quadraticCurveTo(-26, r.flame, -34, 0);
+    ctx.quadraticCurveTo(-26, -r.flame, -18, 0);
+    ctx.fillStyle = 'rgba(255,120,0,0.9)';
+    ctx.fill();
+    ctx.restore();
+    setGlow('transparent',0);
+  }
+}
+
+function renderComets() {
+  if (Math.random()<0.01) spawnComet();
+  for (let i=comets.length-1;i>=0;i--){
+    const c = comets[i];
+    c.life--;
+    c.x += c.dx;
+    c.y += c.dy;
+    const grad = ctx.createLinearGradient(c.x, c.y, c.x - c.dx*c.len, c.y - c.dy*c.len);
+    grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    setGlow('rgba(255,255,255,0.8)', 12);
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(c.x - c.dx*c.len, c.y - c.dy*c.len);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    setGlow('transparent',0);
+    if (c.life<=0 || c.x>W+200 || c.y>H+200) comets.splice(i,1);
+  }
+}
+
+/* ===== Render: timer ===== */
+function drawTimer(now) {
+  // Update time
+  if (running) {
+    const dt = (now - lastTick)/1000;
+    lastTick = now;
+    remaining = clamp(remaining - dt, 0, totalSeconds);
+    progress = totalSeconds>0 ? (1 - remaining/totalSeconds) : 0;
+  } else {
+    lastTick = now;
+    progress = totalSeconds>0 ? (1 - remaining/totalSeconds) : 0;
+  }
+
+  const cx = W/2, cy = H/2;
+  const R = Math.min(W,H)*0.22;
+  const glowColor = 'rgba(0,224,255,0.8)';
+
+  // background ring
+  setGlow('rgba(0,0,0,0)',0);
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, TAU);
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = Math.max(8, R*0.06);
+  ctx.stroke();
+
+  // progress arc with neon glow
+  const end = -Math.PI/2 + progress*TAU;
+  setGlow(glowColor, 25);
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, -Math.PI/2, end, false);
+  const grad = ctx.createLinearGradient(cx-R, cy-R, cx+R, cy+R);
+  grad.addColorStop(0, 'rgba(0,224,255,0.9)');
+  grad.addColorStop(1, 'rgba(122,0,255,0.9)');
+  ctx.strokeStyle = grad;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = Math.max(10, R*0.08);
+  ctx.stroke();
+  setGlow('transparent',0);
+
+  // tick marks subtle
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-Math.PI/2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 2;
+  for (let i=0;i<12;i++){
+    const a = i*(TAU/12);
+    ctx.beginPath();
+    ctx.moveTo(R*0.86, 0);
+    ctx.lineTo(R*0.92, 0);
+    ctx.stroke();
+    ctx.rotate(TAU/12);
+  }
+  ctx.restore();
+
+  // numeric time
+  const min = Math.floor(remaining/60);
+  const sec = Math.floor(remaining%60);
+  const text = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+
+  setGlow(glowColor, 15);
+  ctx.font = `bold ${Math.max(28, Math.floor(R*0.38))}px Segoe UI, Inter, system-ui`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#e0e0e0';
+  ctx.fillText(text, cx, cy);
+  setGlow('transparent',0);
+
+  // status hint
+  ctx.font = `500 ${Math.max(12, Math.floor(R*0.13))}px Segoe UI, Inter, system-ui`;
+  ctx.fillStyle = running ? 'rgba(0,224,255,0.7)' : 'rgba(200,200,200,0.45)';
+  ctx.fillText(running ? 'идёт фокус' : 'тап — старт / пауза', cx, cy + R*0.7);
+
+  // burst effect on finish
+  if (remaining===0 && running){
+    running = false;
+    // radial burst
+    for (let i=0;i<20;i++){
+      const angle = rnd(TAU);
+      const dist = rnd(R*1.6, R*0.8);
+      setGlow('rgba(255,255,255,0.8)', 18);
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(angle)*dist, cy + Math.sin(angle)*dist, rnd(3,1), 0, TAU);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fill();
+      setGlow('transparent',0);
     }
+  }
+}
 
-    function drawPlanets() {
-      planets.forEach(p => {
-        const grad = ctx.createRadialGradient(p.x, p.y, p.r * 0.2, p.x, p.y, p.r);
-        grad.addColorStop(0, p.color);
-        grad.addColorStop(1, 'black');
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = grad;
-        ctx.shadowBlur = 30;
-        ctx.shadowColor = p.color;
-        ctx.fill();
-      });
-    }
+/* ===== Animation loop ===== */
+function loop(now){
+  // subtle parallax based on time
+  ctx.clearRect(0,0,W,H);
 
-    function drawComets() {
-      if (Math.random() < 0.005) {
-        comets.push({
-          x: Math.random() * canvas.width,
-          y: 0,
-          dx: -2 - Math.random() * 2,
-          dy: 2 + Math.random() * 2,
-          len: 80
-        });
-      }
-      for (let i = comets.length - 1; i >= 0; i--) {
-        const c = comets[i];
-        ctx.beginPath();
-        const grad = ctx.createLinearGradient(c.x, c.y, c.x - c.dx * c.len, c.y - c.dy * c.len);
-        grad.addColorStop(0, 'rgba(255,255,255,0.8)');
-        grad.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 2;
-        ctx.moveTo(c.x, c.y);
-        ctx.lineTo(c.x - c.dx * c.len, c.y - c.dy * c.len);
-        ctx.stroke();
-        c.x += c.dx;
-        c.y += c.dy;
-        if (c.x < -100 || c.y > canvas.height + 100) comets.splice(i, 1);
-      }
-    }
+  // deep vignette
+  const vg = ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.1, W/2,H/2, Math.max(W,H)*0.7);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,'rgba(0,0,0,0.35)');
 
-    function animateBG() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawStars();
-      drawPlanets();
-      drawComets();
-      requestAnimationFrame(animateBG);
-    }
-    animateBG();
+  renderNebulas(now);
+  renderStars(now);
+  renderPlanets();
+  renderComets();
+  renderRockets();
 
-    // === Таймер ===
-    const timeDisplay = document.getElementById('time');
-    const progress = document.getElementById('progress');
-    const startBtn = document.getElementById('start');
-    const pauseBtn = document.getElementById('pause');
-    const resetBtn = document.getElementById('reset');
-    const timeInput = document.getElementById('timeInput');
+  // overlay vignette
+  ctx.fillStyle = vg;
+  ctx.fillRect(0,0,W,H);
 
-    let totalSeconds = 0;
-    let remaining = 0;
-    let timer = null;
+  drawTimer(now);
+  requestAnimationFrame(loop);
+}
 
-       function updateDisplay() {
-      const min = Math.floor(remaining / 60);
-      const sec = remaining % 60;
-      timeDisplay.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
-      const angle = totalSeconds > 0 ? ((totalSeconds - remaining) / totalSeconds) * 360 : 0;
-      progress.style.setProperty('--angle', `${angle}deg`);
-    }
+/* ===== Init ===== */
+initStars();
+initNebulas();
+initPlanets();
+initRockets();
+requestAnimationFrame(loop);
 
-    function startTimer() {
-      if (timer) return;
-      if (remaining <= 0) {
-        const [h, m] = timeInput.value.split(':').map(Number);
-        totalSeconds = h * 3600 + m * 60;
-        remaining = totalSeconds;
-      }
-      if (remaining <= 0) return;
-      timer = setInterval(() => {
-        if (remaining > 0) {
-          remaining--;
-          updateDisplay();
-        } else {
-          clearInterval(timer);
-          timer = null;
-          alert("⏰ Время вышло!");
-        }
-      }, 1000);
-    }
-
-    function pauseTimer() {
-      clearInterval(timer);
-      timer = null;
-    }
-
-    function resetTimer() {
-      clearInterval(timer);
-      timer = null;
-      remaining = 0;
-      totalSeconds = 0;
-      timeDisplay.textContent = '00:00';
-      progress.style.setProperty('--angle', `0deg`);
-    }
-
-    startBtn.addEventListener('click', startTimer);
-    pauseBtn.addEventListener('click', pauseTimer);
-    resetBtn.addEventListener('click', resetTimer);
-  </script>
+/* ===== Keyboard (optional desktop) =====
+   Space: start/pause
+   R: reset
+   Up/Down: ±1 min
+   Shift+Up: +5 min
+*/
+window.addEventListener('keydown', (e)=>{
+  if (e.code==='Space') { e.preventDefault(); toggleRun(); }
+  else if (e.key==='r' || e.key==='R') resetTimer();
+  else if (e.key==='ArrowUp') { totalSeconds = clamp(totalSeconds + (e.shiftKey?300:60),5,24*3600); if(!running) remaining = totalSeconds; }
+  else if (e.key==='ArrowDown') { totalSeconds = clamp(totalSeconds - (e.shiftKey?300:60),5,24*3600); if(!running) remaining = totalSeconds; }
+});
+</script>
 </body>
 </html>
