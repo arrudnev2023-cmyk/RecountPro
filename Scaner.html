@@ -2,172 +2,142 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>LuxTasks — премиальный список дел</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FlashSell — быстрые продажи с телефона</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0f18"/>
   <style>
     :root{
       --bg:#0b0f18;
-      --panel:rgba(255,255,255,0.08);
-      --panel-strong:rgba(255,255,255,0.12);
-      --glass:rgba(255,255,255,0.06);
-      --blur: 16px;
       --text:#e6eaf2;
       --muted:#9aa6b2;
       --accent:#6a11cb;
       --accent-2:#2575fc;
+      --border:rgba(255,255,255,0.18);
+      --glass:rgba(255,255,255,0.06);
+      --shadow: 0 20px 40px rgba(0,0,0,0.35);
       --success:#22c55e;
       --danger:#ef4444;
       --warning:#f59e0b;
-      --border:rgba(255,255,255,0.18);
-      --shadow: 0 20px 40px rgba(0,0,0,0.35);
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; }
     body {
       margin: 0;
-      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "SF Pro Text", Arial;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Arial, "Noto Sans";
       color: var(--text);
       background:
         radial-gradient(1200px 800px at 10% 10%, #0e1422 0%, #0b0f18 60%, #0a0e17 100%),
-        linear-gradient(135deg, rgba(38,83,240,0.2), rgba(106,17,203,0.2));
+        linear-gradient(135deg, rgba(38,83,240,0.15), rgba(106,17,203,0.15));
     }
     .app {
-      max-width: 920px;
+      max-width: 520px;
       margin: 0 auto;
-      padding: 18px;
+      padding: env(safe-area-inset-top) 14px env(safe-area-inset-bottom);
     }
     .header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 16px;
-      background: var(--glass);
-      backdrop-filter: blur(var(--blur)) saturate(130%);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      box-shadow: var(--shadow);
+      position: sticky; top: 0; z-index: 10;
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 10px 12px; margin: -10px -14px 12px;
+      background: rgba(11,15,24,0.6);
+      backdrop-filter: blur(12px) saturate(130%);
+      border-bottom: 1px solid var(--border);
     }
-    .brand {
-      display:flex; align-items:center; gap:12px;
-    }
+    .brand { display:flex; align-items:center; gap:10px; }
     .logo {
-      width: 36px; height: 36px; border-radius: 12px;
+      width: 28px; height: 28px; border-radius: 8px;
       background: linear-gradient(135deg, var(--accent), var(--accent-2));
       box-shadow: 0 8px 20px rgba(99,102,241,0.45);
     }
-    .title {
-      font-weight: 700; letter-spacing: 0.2px;
-    }
-    .subtitle {
-      font-size: 12px; color: var(--muted);
-    }
-    .actions { display:flex; gap:10px; }
-    .btn {
-      appearance: none; border: 1px solid var(--border);
-      background: var(--panel);
-      color: var(--text);
-      padding: 8px 12px; border-radius: 12px;
-      cursor: pointer;
-      transition: transform .15s ease, box-shadow .15s ease, background .15s;
-    }
-    .btn:hover { transform: translateY(-1px); background: var(--panel-strong); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
-    .btn:active { transform: translateY(0); }
-    .btn.primary {
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      border: none;
-      box-shadow: 0 12px 28px rgba(37,117,252,0.35);
-    }
-    .grid {
-      margin-top: 16px;
-      display: grid; gap: 16px;
-      grid-template-columns: 1fr;
-    }
-    @media (min-width: 860px) {
-      .grid { grid-template-columns: 2fr 1fr; }
-    }
+    .title { font-weight: 700; font-size: 16px; letter-spacing: .2px; }
+    .subtitle { font-size: 12px; color: var(--muted); }
+
     .card {
-      background: var(--glass); backdrop-filter: blur(var(--blur)) saturate(130%);
+      background: var(--glass);
       border: 1px solid var(--border);
-      border-radius: 16px; padding: 16px;
+      border-radius: 16px;
+      padding: 14px;
       box-shadow: var(--shadow);
+      margin-bottom: 12px;
     }
-    .card h2 {
-      margin: 0 0 12px; font-size: 16px; letter-spacing: .2px;
+    h1, h2, h3 { margin: 0 0 10px; }
+    h1 { font-size: 20px; }
+    h2 { font-size: 16px; color: #dbe3ea; }
+    p { margin: 0 0 8px; color: var(--muted); }
+
+    .hero {
+      display:grid; gap: 10px;
     }
-    .inputs { display:grid; gap:10px; grid-template-columns: 1fr 120px 140px auto; }
-    @media (max-width: 640px) {
-      .inputs { grid-template-columns: 1fr 110px 130px; }
-      .inputs .btn { grid-column: 1 / -1; }
+    .product-img {
+      width: 100%; aspect-ratio: 16/9; border-radius: 12px;
+      background:
+        radial-gradient(120px 80px at 80% 20%, rgba(255,255,255,0.12), transparent),
+        linear-gradient(135deg, rgba(37,117,252,0.3), rgba(106,17,203,0.25));
+      border: 1px solid var(--border);
+      box-shadow: 0 12px 28px rgba(37,117,252,0.18);
+      position: relative; overflow: hidden;
     }
-    .input {
+    .product-img::after {
+      content:""; position:absolute; inset:0;
+      background:
+        repeating-linear-gradient(135deg, rgba(255,255,255,0.08) 0 2px, transparent 2px 6px);
+      mix-blend-mode: overlay; opacity: .4;
+    }
+    .price-row { display:flex; align-items:center; justify-content:space-between; gap: 8px; }
+    .price { font-size: 22px; font-weight: 700; }
+    .old { text-decoration: line-through; color: #a9b5c3; font-size: 14px; }
+    .badge {
+      font-size: 11px; padding: 6px 10px; border: 1px solid var(--border);
+      border-radius: 999px; color: #cfe1ff; background: rgba(37,117,252,0.12);
+    }
+
+    .input, .select {
       width: 100%; border: 1px solid var(--border); border-radius: 12px;
       padding: 10px 12px; background: rgba(255,255,255,0.05); color: var(--text);
       caret-color: var(--accent);
-      transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
     }
     .input::placeholder { color: #a8b3c1; }
-    .input:focus {
+    .input:focus, .select:focus {
       outline: none; border-color: rgba(37,117,252,0.7);
       box-shadow: 0 0 0 4px rgba(37,117,252,0.15);
       background: rgba(255,255,255,0.08);
     }
-    .toolbar { display:flex; gap:10px; margin-top: 12px; }
-    .filter { flex:1; }
-    .select {
-      width: 100%; border: 1px solid var(--border); border-radius: 12px;
-      padding: 10px 12px; background: rgba(255,255,255,0.05); color: var(--text);
+    .row { display:grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+    .row-3 { display:grid; gap: 8px; grid-template-columns: 1fr 1fr 1fr; }
+    @media (max-width: 380px){
+      .row, .row-3 { grid-template-columns: 1fr; }
     }
-    .list { display:flex; flex-direction: column; gap: 8px; margin-top: 12px; }
-    .item {
-      position: relative;
-      display:grid; grid-template-columns: 1fr auto auto;
-      gap: 12px; align-items: center;
-      padding: 12px; border-radius: 12px;
-      border: 1px solid var(--border);
+
+    .btn {
+      appearance: none; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.08); color: var(--text);
+      padding: 10px 12px; border-radius: 12px; cursor: pointer;
+      transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+      text-align: center; width: 100%;
+    }
+    .btn:hover { transform: translateY(-1px); background: rgba(255,255,255,0.12); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
+    .btn.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border: none; box-shadow: 0 12px 28px rgba(37,117,252,0.35);
+      font-weight: 700;
+    }
+    .btn.whatsapp { background: #25D366; border-color: #25D366; color: #0b0f18; font-weight: 700; }
+    .btn.telegram { background: #2AABEE; border-color: #2AABEE; color: #0b0f18; font-weight: 700; }
+
+    .timer {
+      display:flex; gap:8px; align-items:center;
+      padding: 8px 10px; border-radius: 12px; border: 1px solid var(--border);
       background: rgba(255,255,255,0.06);
-      transition: transform .12s ease, background .15s ease, border-color .15s ease;
     }
-    .item:hover { transform: translateY(-1px); background: rgba(255,255,255,0.09); }
-    .item.done { opacity: .78; }
-    .item-title { font-weight: 600; }
-    .item-meta { font-size: 12px; color: var(--muted); }
-    .priority {
-      padding: 6px 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border);
-      background: rgba(255,255,255,0.07);
-    }
-    .priority.low    { color:#8bd4a7; }
-    .priority.medium { color:#ffd27a; }
-    .priority.high   { color:#ff9aa2; }
-    .item-actions { display:flex; gap:8px; }
-    .chip {
-      font-size: 11px; color: var(--muted);
-      border: 1px dashed var(--border); border-radius: 999px;
-      padding: 6px 10px;
-    }
-    .stat {
-      display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
-      margin-top: 10px;
-    }
-    .stat .box {
-      padding: 12px; border-radius: 12px; border: 1px solid var(--border);
-      background: rgba(255,255,255,0.06);
-      text-align: center;
-    }
-    .box .num { font-size: 18px; font-weight: 700; }
-    .box .lbl { font-size: 12px; color: var(--muted); }
-    .footer {
-      margin-top: 16px; font-size: 12px; color: var(--muted);
-      display:flex; justify-content: space-between; align-items:center;
-    }
-    .kbd {
-      border:1px solid var(--border); border-bottom-width: 3px;
-      padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.06);
-      font-size: 11px;
-    }
-    .hidden { display:none !important; }
-    .inline-edit {
-      border: none; background: transparent; color: var(--text);
-      width: 100%;
-    }
-    .inline-edit:focus { outline: none; }
+    .timer .num { font-weight: 700; font-size: 18px; }
+    .timer .lbl { font-size: 12px; color: var(--muted); }
+    .hr { height: 1px; background: var(--border); margin: 10px 0; }
+
+    .check { display:flex; gap: 8px; align-items:center; }
+    .check input { accent-color: #2a9df4; width: 18px; height: 18px; }
+    .mini { font-size: 12px; color: var(--muted); }
+
+    .footer { font-size: 12px; color: var(--muted); text-align:center; padding: 14px 0; }
+    .status { text-align:center; font-size: 12px; color: var(--muted); min-height: 18px; }
   </style>
 </head>
 <body>
@@ -176,330 +146,327 @@
       <div class="brand">
         <div class="logo"></div>
         <div>
-          <div class="title">LuxTasks</div>
-          <div class="subtitle">Минималистичный премиальный список дел</div>
+          <div class="title">FlashSell</div>
+          <div class="subtitle">Быстрые продажи. Больше выручки.</div>
         </div>
       </div>
-      <div class="actions">
-        <button class="btn" id="btnExport">Экспорт JSON</button>
-        <button class="btn" id="btnImport">Импорт JSON</button>
-        <button class="btn primary" id="btnClear">Очистить</button>
+      <div>
+        <button class="btn" id="btnExport" style="width:auto;">Эксп. лиды</button>
       </div>
     </div>
 
-    <div class="grid">
-      <div class="card">
-        <h2>Добавить задачу</h2>
-        <div class="inputs">
-          <input id="taskTitle" class="input" type="text" placeholder="Заголовок задачи" />
-          <select id="taskPriority" class="select" title="Приоритет">
-            <option value="low">Низкий</option>
-            <option value="medium" selected>Средний</option>
-            <option value="high">Высокий</option>
-          </select>
-          <input id="taskTags" class="input" type="text" placeholder="Теги через запятую" />
-          <button id="btnAdd" class="btn">Добавить</button>
+    <div class="card hero">
+      <h1>Онлайн‑курс «Перезапуск продаж за 7 дней»</h1>
+      <div class="product-img" aria-label="Изображение товара"></div>
+      <div class="price-row">
+        <div>
+          <div class="price"><span id="priceCurrent">4 990</span> ₽</div>
+          <div class="old" id="priceOld">8 990 ₽</div>
         </div>
-
-        <div class="toolbar">
-          <input id="search" class="input filter" type="text" placeholder="Поиск по заголовку или тегам…" />
-          <select id="filterPriority" class="select" title="Фильтр по приоритету">
-            <option value="all" selected>Все приоритеты</option>
-            <option value="low">Низкий</option>
-            <option value="medium">Средний</option>
-            <option value="high">Высокий</option>
-          </select>
-        </div>
-
-        <div class="list" id="taskList"></div>
-
-        <div class="stat">
-          <div class="box">
-            <div class="num" id="statTotal">0</div>
-            <div class="lbl">Всего задач</div>
-          </div>
-          <div class="box">
-            <div class="num" id="statDone">0</div>
-            <div class="lbl">Выполнено</div>
-          </div>
-          <div class="box">
-            <div class="num" id="statHigh">0</div>
-            <div class="lbl">Высокий приоритет</div>
-          </div>
-        </div>
+        <div class="badge">−45% до конца таймера</div>
       </div>
+      <p>Получите систему действий, чтобы нарастить выручку уже на следующей неделе. Гарантия: если не понравится — вернём деньги.</p>
 
-      <div class="card">
-        <h2>Быстрые заметки</h2>
-        <div style="display:grid; gap:10px;">
-          <textarea id="notes" class="input" rows="8" placeholder="Любые мысли, идеи, чек‑лист..."></textarea>
-          <div style="display:flex; gap:10px;">
-            <button class="btn" id="btnCopyNotes">Копировать</button>
-            <button class="btn" id="btnClearNotes">Очистить</button>
-          </div>
+      <div class="timer">
+        <div class="num" id="tD">00</div><div class="lbl">д</div>
+        <div class="num" id="tH">00</div><div class="lbl">ч</div>
+        <div class="num" id="tM">00</div><div class="lbl">м</div>
+        <div class="num" id="tS">00</div><div class="lbl">с</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Выберите комплект</h2>
+      <div class="row">
+        <select id="pack" class="select">
+          <option value="base" selected>Базовый — 4 990 ₽</option>
+          <option value="pro">PRO (с практикой) — 7 990 ₽</option>
+          <option value="vip">VIP (куратор) — 12 990 ₽</option>
+        </select>
+        <input id="promo" class="input" type="text" placeholder="Промокод (например, START10)" />
+      </div>
+      <div class="hr"></div>
+
+      <h3>Апселл: чек‑листы и шаблоны +990 ₽</h3>
+      <label class="check">
+        <input type="checkbox" id="upsell" />
+        <span>Добавить пакет материалов (PDF, шаблоны писем, скрипты)</span>
+      </label>
+
+      <p class="mini">Скидка по промокоду применяется к итоговой сумме. Итог ниже обновляется автоматически.</p>
+      <div class="row-3">
+        <div>
+          <div class="mini">Итог</div>
+          <h2 id="total">4 990 ₽</h2>
         </div>
-
-        <div class="footer">
-          <div>
-            Сохранение локально. Горячие клавиши:
-            <span class="kbd">Enter</span> — добавить,
-            <span class="kbd">⌘/Ctrl + K</span> — поиск.
-          </div>
-          <div id="status" aria-live="polite">Готово</div>
+        <div>
+          <div class="mini">Скидка</div>
+          <h3 id="discount">0 ₽</h3>
+        </div>
+        <div>
+          <div class="mini">Вы экономите</div>
+          <h3 id="save">4 000 ₽</h3>
         </div>
       </div>
     </div>
+
+    <div class="card">
+      <h2>Оформление заказа</h2>
+      <div class="row">
+        <input id="name" class="input" type="text" placeholder="Ваше имя" />
+        <input id="phone" class="input" type="tel" placeholder="Телефон" inputmode="tel" />
+      </div>
+      <input id="email" class="input" type="email" placeholder="Email (получите доступ)" />
+      <textarea id="note" class="input" rows="3" placeholder="Комментарий к заказу (необязательно)"></textarea>
+
+      <div class="row">
+        <button id="btnBuy" class="btn primary">Купить сейчас</button>
+        <button id="btnWhatsApp" class="btn whatsapp">Написать в WhatsApp</button>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <button id="btnTelegram" class="btn telegram">Написать в Telegram</button>
+        <button id="btnCopy" class="btn">Скопировать счет</button>
+      </div>
+
+      <div class="status" id="status">Готово</div>
+    </div>
+
+    <div class="footer">© FlashSell. Лиды сохраняются локально на устройстве для вашей аналитики.</div>
   </div>
 
   <script>
-    // Модель
-    const storeKey = 'luxtasks.v1';
-    let tasks = loadTasks();
-    let notes = localStorage.getItem('luxtasks.notes') || '';
+    // Конфиг товара и промо
+    const cfg = {
+      product: {
+        base: { name: 'Базовый', price: 4990 },
+        pro:  { name: 'PRO',     price: 7990 },
+        vip:  { name: 'VIP',     price: 12990 },
+        oldPrice: 8990
+      },
+      upsell: 990,
+      promos: {
+        'START10': 0.10,
+        'PRO20': 0.20,
+        'VIP30': 0.30
+      },
+      dealEndsAt: addDays(new Date(), 2) // таймер: 2 дня
+    };
+
+    // Лиды
+    const leadsKey = 'flashsell.leads.v1';
+    let leads = loadLeads();
 
     // DOM
     const el = {
-      list: document.getElementById('taskList'),
-      title: document.getElementById('taskTitle'),
-      priority: document.getElementById('taskPriority'),
-      tags: document.getElementById('taskTags'),
-      add: document.getElementById('btnAdd'),
-      search: document.getElementById('search'),
-      filterPriority: document.getElementById('filterPriority'),
-      statTotal: document.getElementById('statTotal'),
-      statDone: document.getElementById('statDone'),
-      statHigh: document.getElementById('statHigh'),
+      priceCurrent: document.getElementById('priceCurrent'),
+      priceOld: document.getElementById('priceOld'),
+      tD: document.getElementById('tD'),
+      tH: document.getElementById('tH'),
+      tM: document.getElementById('tM'),
+      tS: document.getElementById('tS'),
+      pack: document.getElementById('pack'),
+      promo: document.getElementById('promo'),
+      upsell: document.getElementById('upsell'),
+      total: document.getElementById('total'),
+      discount: document.getElementById('discount'),
+      save: document.getElementById('save'),
+      name: document.getElementById('name'),
+      phone: document.getElementById('phone'),
+      email: document.getElementById('email'),
+      note: document.getElementById('note'),
+      btnBuy: document.getElementById('btnBuy'),
+      btnWhatsApp: document.getElementById('btnWhatsApp'),
+      btnTelegram: document.getElementById('btnTelegram'),
+      btnCopy: document.getElementById('btnCopy'),
       btnExport: document.getElementById('btnExport'),
-      btnImport: document.getElementById('btnImport'),
-      btnClear: document.getElementById('btnClear'),
-      notes: document.getElementById('notes'),
-      btnCopyNotes: document.getElementById('btnCopyNotes'),
-      btnClearNotes: document.getElementById('btnClearNotes'),
       status: document.getElementById('status')
     };
 
     // Инициализация
-    el.notes.value = notes;
-    render();
+    el.priceCurrent.textContent = formatPrice(cfg.product.base.price);
+    el.priceOld.textContent = formatPrice(cfg.product.oldPrice) + ' ₽';
+    updateTotal();
+    startTimer(cfg.dealEndsAt);
 
     // События
-    el.add.addEventListener('click', onAdd);
-    el.title.addEventListener('keydown', e => { if (e.key === 'Enter') onAdd(); });
-    el.search.addEventListener('input', render);
-    el.filterPriority.addEventListener('change', render);
-    el.btnExport.addEventListener('click', onExport);
-    el.btnImport.addEventListener('click', onImport);
-    el.btnClear.addEventListener('click', onClear);
-    el.notes.addEventListener('input', () => {
-      localStorage.setItem('luxtasks.notes', el.notes.value || '');
-      ok('Заметки сохранены');
-    });
-    el.btnCopyNotes.addEventListener('click', () => {
-      navigator.clipboard.writeText(el.notes.value || '').then(()=>ok('Скопировано'));
-    });
-    el.btnClearNotes.addEventListener('click', () => {
-      el.notes.value = ''; localStorage.setItem('luxtasks.notes',''); ok('Заметки очищены');
-    });
+    el.pack.addEventListener('change', updateTotal);
+    el.promo.addEventListener('input', updateTotal);
+    el.upsell.addEventListener('change', updateTotal);
+    el.btnBuy.addEventListener('click', onBuy);
+    el.btnWhatsApp.addEventListener('click', () => sendLead('whatsapp'));
+    el.btnTelegram.addEventListener('click', () => sendLead('telegram'));
+    el.btnCopy.addEventListener('click', copyInvoice);
+    el.btnExport.addEventListener('click', exportLeads);
+
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault(); el.search.focus();
+        e.preventDefault();
+        el.name.focus();
       }
     });
 
-    // Логика
-    function onAdd(){
-      const title = (el.title.value || '').trim();
-      if (!title) { warn('Введите заголовок'); return; }
-      const priority = el.priority.value;
-      const tags = (el.tags.value || '').split(',').map(t => t.trim()).filter(Boolean);
+    // Логика цены
+    function updateTotal(){
+      const pack = el.pack.value;
+      const basePrice = cfg.product[pack].price;
+      el.priceCurrent.textContent = formatPrice(basePrice);
 
-      tasks.push({
-        id: cryptoRandom(),
-        title, priority, tags,
-        createdAt: new Date().toISOString(),
-        done: false
-      });
-      el.title.value = ''; el.tags.value = '';
-      saveTasks(); render(); ok('Добавлено');
+      const upsell = el.upsell.checked ? cfg.upsell : 0;
+      const promoCode = (el.promo.value || '').trim().toUpperCase();
+      const discountRate = cfg.promos[promoCode] || 0;
+
+      const subtotal = basePrice + upsell;
+      const discount = Math.round(subtotal * discountRate);
+      const total = Math.max(subtotal - discount, 0);
+
+      el.total.textContent = formatPrice(total) + ' ₽';
+      el.discount.textContent = formatPrice(discount) + ' ₽';
+      el.save.textContent = formatPrice(cfg.product.oldPrice - basePrice > 0 ? cfg.product.oldPrice - basePrice : 0) + ' ₽';
     }
 
-    function render(){
-      const term = (el.search.value || '').trim().toLowerCase();
-      const pr = el.filterPriority.value;
+    // Таймер
+    function startTimer(deadline){
+      const tick = () => {
+        const now = new Date();
+        let ms = deadline - now;
+        if (ms < 0) ms = 0;
+        const d = Math.floor(ms / (1000*60*60*24));
+        const h = Math.floor(ms / (1000*60*60)) % 24;
+        const m = Math.floor(ms / (1000*60)) % 60;
+        const s = Math.floor(ms / 1000) % 60;
+        el.tD.textContent = pad(d);
+        el.tH.textContent = pad(h);
+        el.tM.textContent = pad(m);
+        el.tS.textContent = pad(s);
+        if (ms === 0) ok('Акция завершена');
+      };
+      tick();
+      setInterval(tick, 1000);
+    }
 
-      const filtered = tasks.filter(t => {
-        const text = (t.title + ' ' + t.tags.join(' ')).toLowerCase();
-        const match = !term || text.includes(term);
-        const prMatch = pr === 'all' || t.priority === pr;
-        return match && prMatch;
-      });
+    // Покупка / лид
+    function onBuy(){
+      const data = collectData();
+      if (!data.valid) return;
 
-      // Статистика
-      el.statTotal.textContent = tasks.length;
-      el.statDone.textContent = tasks.filter(t => t.done).length;
-      el.statHigh.textContent = tasks.filter(t => t.priority === 'high' && !t.done).length;
+      saveLead({ ...data.lead, source: 'buy' });
+      ok('Заявка создана');
+      // Здесь может быть реальная оплата (интеграция платёжной ссылки)
+      // Пока просто открываем WhatsApp как подтверждение
+      sendLead('whatsapp', data.lead);
+    }
 
-      // Рендер списка
-      el.list.innerHTML = '';
-      if (!filtered.length) {
-        const empty = document.createElement('div');
-        empty.className = 'chip';
-        empty.textContent = 'Нет задач по текущему фильтру';
-        el.list.appendChild(empty);
-        return;
+    function sendLead(channel, leadOverride){
+      const data = leadOverride || collectData().lead;
+      const text = encodeURIComponent(renderLeadText(data));
+      let url = '';
+      if (channel === 'whatsapp') {
+        url = `https://wa.me/?text=${text}`;
+      } else if (channel === 'telegram') {
+        url = `https://t.me/share/url?url=${encodeURIComponent('https://example.com')}&text=${text}`;
       }
-
-      filtered
-        .sort((a,b)=>{
-          // Сортировка: невыполненные выше, затем приоритет high/medium/low, потом дата
-          const doneDiff = (a.done === b.done) ? 0 : (a.done ? 1 : -1);
-          if (doneDiff !== 0) return doneDiff;
-          const pOrder = { high:0, medium:1, low:2 };
-          const prDiff = pOrder[a.priority] - pOrder[b.priority];
-          if (prDiff !== 0) return prDiff;
-          return new Date(a.createdAt) - new Date(b.createdAt);
-        })
-        .forEach(task => {
-          const row = document.createElement('div');
-          row.className = 'item' + (task.done ? ' done' : '');
-          row.dataset.id = task.id;
-
-          // Левая зона: заголовок + теги + inline edit
-          const left = document.createElement('div');
-          const title = document.createElement('input');
-          title.className = 'inline-edit item-title';
-          title.value = task.title;
-          title.title = 'Кликните, чтобы отредактировать заголовок';
-          title.addEventListener('change', () => {
-            const v = title.value.trim(); if (!v) return;
-            task.title = v; saveTasks(); ok('Обновлено');
-          });
-
-          const meta = document.createElement('div');
-          meta.className = 'item-meta';
-          meta.textContent = task.tags.length ? '#' + task.tags.join(' #') : '—';
-
-          left.appendChild(title);
-          left.appendChild(meta);
-
-          // Средняя зона: приоритет
-          const pri = document.createElement('div');
-          pri.className = 'priority ' + task.priority;
-          pri.textContent = task.priority === 'high' ? 'Высокий' :
-                            task.priority === 'medium' ? 'Средний' : 'Низкий';
-          pri.title = 'Кликните, чтобы сменить приоритет';
-          pri.style.cursor = 'pointer';
-          pri.addEventListener('click', () => {
-            task.priority = nextPriority(task.priority);
-            saveTasks(); render();
-          });
-
-          // Правая зона: кнопки
-          const actions = document.createElement('div');
-          actions.className = 'item-actions';
-
-          const btnDone = document.createElement('button');
-          btnDone.className = 'btn';
-          btnDone.textContent = task.done ? 'Вернуть' : 'Готово';
-          btnDone.addEventListener('click', () => {
-            task.done = !task.done; saveTasks(); render();
-          });
-
-          const btnEditTags = document.createElement('button');
-          btnEditTags.className = 'btn';
-          btnEditTags.textContent = 'Теги';
-          btnEditTags.addEventListener('click', () => {
-            const v = prompt('Теги через запятую', task.tags.join(', '));
-            if (v !== null) {
-              task.tags = v.split(',').map(s=>s.trim()).filter(Boolean);
-              saveTasks(); render(); ok('Теги обновлены');
-            }
-          });
-
-          const btnDel = document.createElement('button');
-          btnDel.className = 'btn';
-          btnDel.textContent = 'Удалить';
-          btnDel.addEventListener('click', () => {
-            if (confirm('Удалить задачу?')) {
-              tasks = tasks.filter(x => x.id !== task.id);
-              saveTasks(); render(); warn('Удалено');
-            }
-          });
-
-          actions.appendChild(btnDone);
-          actions.appendChild(btnEditTags);
-          actions.appendChild(btnDel);
-
-          row.appendChild(left);
-          row.appendChild(pri);
-          row.appendChild(actions);
-
-          el.list.appendChild(row);
-        });
+      if (url) window.open(url, '_blank');
     }
 
-    function onExport(){
-      const payload = JSON.stringify({ tasks, notes: el.notes.value }, null, 2);
-      const blob = new Blob([payload], { type:'application/json' });
+    function copyInvoice(){
+      const data = collectData().lead;
+      const invoice = `Счет: ${data.packName}${data.upsell ? ' + Материалы' : ''}\nИтог: ${formatPrice(data.total)} ₽\nПромо: ${data.promo || '—'}\nКлиент: ${data.name}, ${data.phone}\nEmail: ${data.email}\nКомментарий: ${data.note || '—'}`;
+      navigator.clipboard.writeText(invoice).then(()=>ok('Счет скопирован'));
+    }
+
+    // Данные формы
+    function collectData(){
+      const name = (el.name.value || '').trim();
+      const phone = (el.phone.value || '').trim();
+      const email = (el.email.value || '').trim();
+      const note = (el.note.value || '').trim();
+
+      if (!name) { warn('Введите имя'); el.name.focus(); return { valid:false }; }
+      if (!phone) { warn('Введите телефон'); el.phone.focus(); return { valid:false }; }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { warn('Неверный email'); el.email.focus(); return { valid:false }; }
+
+      const pack = el.pack.value;
+      const packName = cfg.product[pack].name;
+      const basePrice = cfg.product[pack].price;
+      const upsell = el.upsell.checked;
+      const promo = (el.promo.value || '').trim().toUpperCase();
+      const discountRate = cfg.promos[promo] || 0;
+
+      const subtotal = basePrice + (upsell ? cfg.upsell : 0);
+      const discount = Math.round(subtotal * discountRate);
+      const total = Math.max(subtotal - discount, 0);
+
+      return {
+        valid:true,
+        lead: {
+          date: new Date().toISOString(),
+          name, phone, email, note,
+          pack, packName, basePrice,
+          upsell, promo, discount, total
+        }
+      };
+    }
+
+    function renderLeadText(l){
+      return [
+        `Заявка FlashSell`,
+        `Комплект: ${l.packName} (${formatPrice(l.basePrice)} ₽)`,
+        `Апселл: ${l.upsell ? 'Да' : 'Нет'}`,
+        `Промокод: ${l.promo || '—'}`,
+        `Скидка: ${formatPrice(l.discount)} ₽`,
+        `Итог: ${formatPrice(l.total)} ₽`,
+        `Клиент: ${l.name}`,
+        `Телефон: ${l.phone}`,
+        `Email: ${l.email}`,
+        `Комментарий: ${l.note || '—'}`
+      ].join('\n');
+    }
+
+    // Лиды: сохранение/экспорт
+    function saveLead(lead){
+      leads.push(lead);
+      localStorage.setItem(leadsKey, JSON.stringify(leads));
+    }
+    function loadLeads(){
+      try {
+        const v = localStorage.getItem(leadsKey);
+        return v ? JSON.parse(v) : [];
+      } catch { return []; }
+    }
+    function exportLeads(){
+      if (!leads.length) { warn('Нет лидов для экспорта'); return; }
+      const csv = [
+        ['date','name','phone','email','note','pack','basePrice','upsell','promo','discount','total'].join(','),
+        ...leads.map(l => [
+          l.date,
+          esc(l.name),
+          esc(l.phone),
+          esc(l.email),
+          esc(l.note || ''),
+          l.pack,
+          l.basePrice,
+          l.upsell ? '1' : '0',
+          l.promo || '',
+          l.discount,
+          l.total
+        ].join(','))
+      ].join('\n');
+
+      const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = 'LuxTasks.json';
-      a.click();
+      a.href = url; a.download = 'flashsell_leads.csv'; a.click();
       URL.revokeObjectURL(url);
-      ok('Экспортировано в JSON');
+      ok('Экспортировано');
     }
 
-    function onImport(){
-      const input = document.createElement('input');
-      input.type = 'file'; input.accept = 'application/json';
-      input.onchange = () => {
-        const file = input.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          try {
-            const data = JSON.parse(reader.result);
-            tasks = Array.isArray(data.tasks) ? data.tasks : [];
-            el.notes.value = data.notes || '';
-            localStorage.setItem('luxtasks.notes', el.notes.value);
-            saveTasks(); render(); ok('Импорт завершён');
-          } catch(e){
-            warn('Ошибка импорта: неверный формат');
-          }
-        };
-        reader.readAsText(file);
-      };
-      input.click();
+    // Утилиты
+    function formatPrice(n){
+      return (n).toLocaleString('ru-RU');
     }
-
-    function onClear(){
-      if (!confirm('Очистить всё?')) return;
-      tasks = []; saveTasks(); render();
-      el.notes.value = ''; localStorage.setItem('luxtasks.notes','');
-      warn('Данные очищены');
-    }
-
-    function saveTasks(){
-      localStorage.setItem(storeKey, JSON.stringify(tasks));
-    }
-
-    function loadTasks(){
-      try {
-        const v = localStorage.getItem(storeKey);
-        return v ? JSON.parse(v) : [];
-      } catch {
-        return [];
-      }
-    }
-
-    function nextPriority(p){
-      return p === 'low' ? 'medium' : p === 'medium' ? 'high' : 'low';
-    }
-
-    function cryptoRandom(){
-      const arr = new Uint32Array(4);
-      (window.crypto || window.msCrypto).getRandomValues(arr);
-      return [...arr].map(x => x.toString(16)).join('');
-    }
+    function pad(n){ return String(n).padStart(2,'0'); }
+    function addDays(d, days){ const x = new Date(d); x.setDate(x.getDate()+days); return x; }
+    function esc(s){ return `"${String(s).replace(/"/g,'""')}"`; }
 
     function ok(msg){ setStatus(msg, 'ok'); }
     function warn(msg){ setStatus(msg, 'warn'); }
@@ -510,7 +477,7 @@
       setStatus._t = setTimeout(()=> {
         el.status.textContent = 'Готово';
         el.status.style.color = '';
-      }, 2000);
+      }, 2200);
     }
   </script>
 </body>
