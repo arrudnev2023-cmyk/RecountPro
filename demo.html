@@ -977,6 +977,33 @@ function exportPDF() {
   footer.innerText = `Время пересчёта: с ${startStr} по ${endStr}`;
   exportArea.appendChild(footer);
 
+  // блок подписей (3 строки)
+  const signBlock = document.createElement("table");
+  signBlock.style.width = "100%";
+  signBlock.style.borderCollapse = "collapse";
+  signBlock.style.fontSize = "10px";
+  signBlock.style.marginTop = "15px";
+
+  signBlock.innerHTML = `
+    <tr>
+      <th style="text-align:left; padding:4px;">Должность</th>
+      <th style="text-align:left; padding:4px;">Подпись</th>
+      <th style="text-align:left; padding:4px;">Расшифровка подписи</th>
+    </tr>
+    <tr>
+      <td style="border-bottom:1px solid #000; height:28px;"></td>
+      <td style="border-bottom:1px solid #000;"></td>
+      <td style="border-bottom:1px solid #000;"></td>
+    </tr>
+        <tr>
+      <td style="border-bottom:1px solid #000; height:28px;"></td>
+      <td style="border-bottom:1px solid #000;"></td>
+      <td style="border-bottom:1px solid #000;"></td>
+    </tr>
+  `;
+
+  exportArea.appendChild(signBlock);
+
   // экспорт
   const opt = {
     margin: 0.2,
@@ -991,8 +1018,6 @@ function exportPDF() {
     exportArea.style.display = "none";
   });
 }
-
-
   // Итоговое окно (все позиции + цветовая индикация)
 function showSummaryModal() {
   const rows = allItems.map(item => {
