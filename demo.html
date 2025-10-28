@@ -993,11 +993,13 @@ function exportPDF() {
 function showSummaryModal() {
   const rows = allItems.map(item => {
     const input = document.querySelector(`input[data-code="${item.code}"]`);
-    const raw = input ? input.value.trim() : (sessionValues[item.code] || "");
-    let actual = NaN;
+    const raw = (input ? input.value.trim() : (sessionValues[item.code] || "")).trim();
+
+    // actual должен быть 0 при пустом/невалидном факте — чтобы разница считалась (0 - docQty)
+    let actual = 0;
 
     try {
-      let safeRaw = raw.replace(',', '.').trim();
+      let safeRaw = raw.replace(',', '.').replace(/[^0-9+\-*/().]/g, '').trim();
 
       // если строка оканчивается на оператор (+ - * /), убираем его
       if (/[\+\-\*\/]$/.test(safeRaw)) {
@@ -1005,34 +1007,36 @@ function showSummaryModal() {
       }
 
       if (safeRaw) {
-        actual = Function("return " + safeRaw)();
+        actual = Function(`"use strict"; return (${safeRaw})`)() || 0;
       }
     } catch {
-      actual = NaN;
+      actual = 0;
     }
 
-    const delta = !isNaN(actual) ? actual - item.docQty : 0;
+    // разницу считаем всегда: даже если факт пустой → 0 - docQty
+    const delta = actual - item.docQty;
 
-    let color = "gray";
-    if (delta > 0) color = "green";
-    else if (delta < 0) color = "red";
+    // цвет и знак для разницы
+    const color = delta > 0 ? "green" : (delta < 0 ? "red" : "gray");
+    const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
+
+    // в колонке «Факт» показываем пусто, если поле факта пустое; иначе — посчитанное значение
+    const factCell = raw !== "" ? actual : "";
 
     return `
       <tr>
         <td style="border:1px solid #ccc; padding:4px;">${item.code}</td>
         <td style="border:1px solid #ccc; padding:4px;">${item.name}</td>
         <td style="border:1px solid #ccc; padding:4px;">${item.docQty}</td>
-        <td style="border:1px solid #ccc; padding:4px;">${!isNaN(actual) ? actual : ""}</td>
-        <td style="border:1px solid #ccc; padding:4px; color:${color};">
-          ${delta > 0 ? '+' : ''}${delta}
-        </td>
+        <td style="border:1px solid #ccc; padding:4px;">${factCell}</td>
+        <td style="border:1px solid #ccc; padding:4px; color:${color};">${deltaStr}</td>
       </tr>
     `;
   });
 
   const html = `
     <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
-      <thead>
+      <thead style="position:sticky; top:0; background:#fff; z-index:1;">
         <tr style="background:#f3f4f6;">
           <th style="border:1px solid #ccc; padding:4px;">Артикул</th>
           <th style="border:1px solid #ccc; padding:4px;">Название</th>
@@ -1048,6 +1052,7 @@ function showSummaryModal() {
   document.getElementById("modal-content").innerHTML = html;
   document.getElementById("modal").style.display = "flex";
 }
+
 
   // Меню
   document.getElementById("menu-toggle").addEventListener("click", () => {
