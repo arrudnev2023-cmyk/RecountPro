@@ -1,506 +1,132 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <title>Survival City — мобильная игра</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b0f18"/>
+  <meta charset="utf-8"/>
+  <title>Mini FPS — Raycasting</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <style>
-    :root{
-      --bg:#0b0f18; --text:#e6eaf2; --muted:#9aa6b2;
-      --border:rgba(255,255,255,0.16); --glass:rgba(255,255,255,0.08);
-      --accent:#2a9df4; --accent2:#6a11cb; --good:#22c55e; --bad:#ef4444; --warn:#f59e0b;
+    body {
+      margin:0; background:#000; overflow:hidden;
+      font-family:sans-serif; color:#fff;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Arial;
-      color:var(--text); background: linear-gradient(180deg,#0d1220,#0b0f18);
-      overflow-x:hidden; /* запрет горизонтальной прокрутки */
+    canvas { width:100%; height:100vh; display:block; background:#000; }
+    .joysticks {
+      position:fixed; bottom:20px; left:0; right:0;
+      display:flex; justify-content:space-between; padding:0 20px;
+      pointer-events:none;
     }
-    .app{
-      max-width: 560px; margin: 0 auto;
-      padding: env(safe-area-inset-top) 14px env(safe-area-inset-bottom);
+    .joy {
+      width:120px; height:120px; border-radius:50%;
+      background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2);
+      position:relative; pointer-events:auto;
     }
-    .header{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:10px 12px; margin: -10px -14px 10px;
-      background: rgba(11,15,24,0.6);
-      backdrop-filter: blur(12px) saturate(130%);
-      border-bottom: 1px solid var(--border);
+    .knob {
+      width:44px; height:44px; border-radius:50%;
+      background:rgba(255,255,255,0.3);
+      position:absolute; left:38px; top:38px;
     }
-    .brand{ display:flex; align-items:center; gap:10px; }
-    .logo{ width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg,var(--accent),var(--accent2)); }
-    .title{ font-weight:700; font-size:16px; }
-    .subtitle{ font-size:12px; color:var(--muted); }
-
-    .hud{
-      display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; margin:10px 0;
-    }
-    .chip{
-      padding:10px; border-radius:12px; border:1px solid var(--border);
-      background: var(--glass); text-align:center; font-size:12px;
-    }
-    .bar{ height:8px; border:1px solid var(--border); border-radius:999px; overflow:hidden; background: rgba(255,255,255,0.06); }
-    .bar>div{ height:100%; }
-
-    .panel{
-      border:1px solid var(--border); border-radius:12px; background: var(--glass);
-      padding:10px; margin-bottom:10px;
-    }
-
-    canvas{
-      width: 100%; height: 62vh; max-height: 520px;
-      border:1px solid var(--border); border-radius:12px; background:#0a0e17;
-      touch-action:none;
-    }
-
-    .controls{
-      display:grid; grid-template-columns: 1fr 1fr; gap:8px;
-    }
-    .btn{
-      appearance:none; border:1px solid var(--border);
-      background: rgba(255,255,255,0.08); color: var(--text);
-      padding:10px; border-radius:12px; cursor:pointer; font-weight:600;
-      text-align:center;
-    }
-    .btn.primary{ background:linear-gradient(135deg,var(--accent),var(--accent2)); border:none; }
-
-    .joysticks{ position:relative; height:140px; margin-top:8px; }
-    .joy{
-      position:absolute; width:120px; height:120px; border-radius:999px;
-      border:1px solid var(--border); background: rgba(255,255,255,0.05);
-    }
-    .joy.left{ left:0; }
-    .joy.right{ right:0; }
-    .knob{
-      position:absolute; width:44px; height:44px; border-radius:999px;
-      background: rgba(255,255,255,0.18); border:1px solid var(--border);
-      left:38px; top:38px;
-    }
-
-    .status{ min-height:18px; font-size:12px; color:var(--muted); text-align:center; margin-top:6px; }
-    .footer{ font-size:12px; color:var(--muted); text-align:center; padding: 12px 0; }
   </style>
 </head>
 <body>
-  <div class="app">
-    <div class="header">
-      <div class="brand">
-        <div class="logo"></div>
-        <div>
-          <div class="title">Survival City</div>
-          <div class="subtitle">Выживай в городе. Собирай ресурсы. Избегай угроз.</div>
-        </div>
-      </div>
-      <div class="controls" style="grid-template-columns:auto auto;">
-        <button id="btnExport" class="btn">Экспорт</button>
-        <button id="btnImport" class="btn">Импорт</button>
-      </div>
-    </div>
-
-    <div class="hud">
-      <div class="chip">Очки: <b id="score">0</b></div>
-      <div class="chip">Минуты: <b id="min">0</b></div>
-      <div class="chip">Ресурсы: <b id="res">0</b></div>
-    </div>
-
-    <div class="panel">
-      Здоровье
-      <div class="bar"><div id="hpBar" style="width:100%; background:linear-gradient(90deg,#22c55e,#a3e635);"></div></div>
-      Выносливость
-      <div class="bar"><div id="stBar" style="width:100%; background:linear-gradient(90deg,#60a5fa,#2a9df4);"></div></div>
-    </div>
-
-    <canvas id="game" width="360" height="520"></canvas>
-
-    <div class="panel">
-      Управление: левый джойстик — движение, правый — направление. Тап по карте — поднять ресурс.
-      <div class="controls" style="margin-top:8px;">
-        <button id="btnStart" class="btn primary">Старт</button>
-        <button id="btnPause" class="btn">Пауза</button>
-      </div>
-      <div class="joysticks">
-        <div class="joy left" id="joyL"><div class="knob" id="knobL"></div></div>
-        <div class="joy right" id="joyR"><div class="knob" id="knobR"></div></div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="controls" style="grid-template-columns:1fr 1fr;">
-        <button id="btnSave" class="btn">Сохранить прогресс</button>
-        <button id="btnReset" class="btn">Сброс</button>
-      </div>
-    </div>
-
-    <div class="status" id="status">Готово</div>
-    <div class="footer">© Survival City. Полностью адаптировано под телефон. Без горизонтальной прокрутки.</div>
+  <canvas id="game"></canvas>
+  <div class="joysticks">
+    <div class="joy" id="joyL"><div class="knob" id="knobL"></div></div>
+    <div class="joy" id="joyR"><div class="knob" id="knobR"></div></div>
   </div>
 
-  <script>
-    // ===== Конфиг =====
-    const cfg = {
-      world: { w: 120, h: 120, tile: 10 }, // размер мира (в тайлах) и размер тайла в px при 1:1
-      player: { speed: 2.2, runSpeed: 3.4, maxHP: 100, maxST: 100 },
-      cam: { lerp: 0.15 },
-      resSpawnEveryMs: 1800,
-    };
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+canvas.width=window.innerWidth; canvas.height=window.innerHeight;
 
-    // ===== DOM =====
-    const el = {
-      canvas: document.getElementById('game'),
-      status: document.getElementById('status'),
-      score: document.getElementById('score'),
-      min: document.getElementById('min'),
-      res: document.getElementById('res'),
-      hpBar: document.getElementById('hpBar'),
-      stBar: document.getElementById('stBar'),
-      btnStart: document.getElementById('btnStart'),
-      btnPause: document.getElementById('btnPause'),
-      btnReset: document.getElementById('btnReset'),
-      btnSave: document.getElementById('btnSave'),
-      btnExport: document.getElementById('btnExport'),
-      btnImport: document.getElementById('btnImport'),
-      joyL: document.getElementById('joyL'),
-      knobL: document.getElementById('knobL'),
-      joyR: document.getElementById('joyR'),
-      knobR: document.getElementById('knobR'),
-    };
-    const ctx = el.canvas.getContext('2d');
+// Карта (1 = стена, 0 = пусто)
+const map=[
+ [1,1,1,1,1,1,1,1,1,1],
+ [1,0,0,0,0,0,0,0,0,1],
+ [1,0,0,0,0,0,0,0,0,1],
+ [1,0,0,0,1,1,0,0,0,1],
+ [1,0,0,0,0,0,0,0,0,1],
+ [1,0,0,0,0,0,0,0,0,1],
+ [1,0,0,0,0,0,0,0,0,1],
+ [1,0,0,0,0,0,0,0,0,1],
+ [1,0,0,0,0,0,0,0,0,1],
+ [1,1,1,1,1,1,1,1,1,1],
+];
+const mapW=map[0].length, mapH=map.length;
 
-    // ===== Состояние =====
-    let running=false, paused=false, lastTs=0, startTime=0, lastResSpawn=0;
-    let player, camera, tiles=[], resources=[];
-    let joyL = {active:false, x:0, y:0};
-    let joyR = {active:false, x:0, y:0};
-    let score=0, minutes=0, resCount=0;
+let player={x:2.5,y:2.5,dir:0,fov:Math.PI/3};
 
-    // ===== Инициализация =====
-    initWorld(); initPlayer(); fitCanvas(); draw(0);
+// Джойстики
+let joyL={x:0,y:0,active:false}, joyR={x:0,y:0,active:false};
+setupJoy(document.getElementById('joyL'),document.getElementById('knobL'),joyL);
+setupJoy(document.getElementById('joyR'),document.getElementById('knobR'),joyR);
 
-    // События
-    window.addEventListener('resize', fitCanvas);
-    el.btnStart.addEventListener('click', start);
-    el.btnPause.addEventListener('click', togglePause);
-    el.btnReset.addEventListener('click', ()=>{ if(confirm('Сбросить прогресс?')) resetAll(); });
-    el.btnSave.addEventListener('click', saveAll);
-    el.btnExport.addEventListener('click', exportSave);
-    el.btnImport.addEventListener('click', importSave);
+function setupJoy(zone,knob,state){
+  const home={x:38,y:38};
+  function setKnob(x,y){knob.style.left=x+'px';knob.style.top=y+'px';}
+  zone.addEventListener('touchstart',e=>{
+    const t=e.touches[0],r=zone.getBoundingClientRect();
+    const v=normJoy(t.clientX-r.left,t.clientY-r.top);
+    state.x=v.x;state.y=v.y;state.active=true;setKnob(v.kx,v.ky);
+  },{passive:true});
+  zone.addEventListener('touchmove',e=>{
+    if(!state.active)return;
+    const t=e.touches[0],r=zone.getBoundingClientRect();
+    const v=normJoy(t.clientX-r.left,t.clientY-r.top);
+    state.x=v.x;state.y=v.y;setKnob(v.kx,v.ky);
+  },{passive:true});
+  zone.addEventListener('touchend',()=>{state.x=0;state.y=0;state.active=false;setKnob(home.x,home.y);},{passive:true});
+}
+function normJoy(cx,cy){
+  const cx0=60,cy0=60,rad=52;
+  const dx=cx-cx0,dy=cy-cy0,len=Math.hypot(dx,dy);
+  const k=len>rad?rad/len:1,nx=dx*k,ny=dy*k;
+  return {x:nx/rad,y:ny/rad,kx:60+nx-22,ky:60+ny-22};
+}
 
-    // Тап по карте — попытка поднять ресурс
-    el.canvas.addEventListener('click', (e)=>{
-      const {gx, gy} = clientToGrid(e);
-      pickResourceAt(gx, gy);
-    }, {passive:true});
+// Raycasting
+function castRay(angle){
+  let sin=Math.sin(angle),cos=Math.cos(angle);
+  for(let d=0;d<20;d+=0.02){
+    let x=player.x+cos*d,y=player.y+sin*d;
+    if(map[Math.floor(y)]?.[Math.floor(x)]===1) return d;
+  }
+  return 20;
+}
 
-    // Джойстики
-    setupJoy(el.joyL, el.knobL, joyL);
-    setupJoy(el.joyR, el.knobR, joyR);
-
-    // ===== Игровой цикл =====
-    function start(){
-      if(running) return;
-      running = true; paused = false;
-      startTime = performance.now(); lastTs = performance.now();
-      setStatus('Старт');
-      requestAnimationFrame(loop);
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+function update(){
+  // движение
+  if(joyL.active){
+    const speed=0.05;
+    const dx=joyL.x,dy=joyL.y;
+    const moveX=Math.cos(player.dir)*dy - Math.sin(player.dir)*dx;
+    const moveY=Math.sin(player.dir)*dy + Math.cos(player.dir)*dx;
+    player.x+=moveX*speed; player.y+=moveY*speed;
+    if(map[Math.floor(player.y)]?.[Math.floor(player.x)]===1){
+      player.x-=moveX*speed; player.y-=moveY*speed;
     }
-
-    function togglePause(){
-      paused = !paused;
-      setStatus(paused ? 'Пауза' : 'Продолжаем');
-      if(!paused){ lastTs = performance.now(); requestAnimationFrame(loop); }
-    }
-
-    function loop(ts){
-      if(!running || paused) return;
-      const dt = Math.min((ts - lastTs)/16.67, 2.5); lastTs = ts;
-
-      update(dt, ts);
-      draw(dt);
-
-      requestAnimationFrame(loop);
-    }
-
-    // ===== Логика =====
-    function initWorld(){
-      // Генерация простого города: дороги, кварталы, парки, вода
-      const {w,h} = cfg.world;
-      tiles = Array.from({length:h}, (_,y)=> Array.from({length:w}, (_,x)=>({
-        type: 'grass', color:'#0f172a' // базовый
-      })));
-
-      // дороги по сетке
-      for(let y=0; y<h; y+=8){
-        for(let x=0; x<w; x++) tiles[y][x].type='road', tiles[y][x].color='#1e293b';
-      }
-      for(let x=0; x<w; x+=8){
-        for(let y=0; y<h; y++) tiles[y][x].type='road', tiles[y][x].color='#1e293b';
-      }
-
-      // здания блоками
-      for(let by=2; by<h; by+=12){
-        for(let bx=2; bx<w; bx+=12){
-          const bw = 6 + (Math.random()*4)|0;
-          const bh = 6 + (Math.random()*4)|0;
-          for(let y=by; y<Math.min(h, by+bh); y++){
-            for(let x=bx; x<Math.min(w, bx+bw); x++){
-              if(tiles[y][x].type==='grass'){
-                tiles[y][x].type='building'; tiles[y][x].color='#0a0f1a';
-              }
-            }
-          }
-        }
-      }
-
-      // парки
-      for(let i=0;i<30;i++){
-        const x=(Math.random()*w)|0, y=(Math.random()*h)|0;
-        tiles[y][x].type='park'; tiles[y][x].color='#154f34';
-      }
-
-      // вода пятнами
-      for(let i=0;i<20;i++){
-        const cx=(Math.random()*w)|0, cy=(Math.random()*h)|0;
-        for(let dy=-2; dy<=2; dy++){
-          for(let dx=-2; dx<=2; dx++){
-            const x=cx+dx, y=cy+dy;
-            if(x>=0&&y>=0&&x<w&&y<h){ tiles[y][x].type='water'; tiles[y][x].color='#0e7490'; }
-          }
-        }
-      }
-    }
-
-    function initPlayer(){
-      player = {
-        x: (cfg.world.w/2)|0, y: (cfg.world.h/2)|0,
-        hp: cfg.player.maxHP, st: cfg.player.maxST,
-      };
-      camera = { x: player.x, y: player.y };
-      updateHUD();
-    }
-
-    function update(dt, ts){
-      // Спавн ресурсов
-      if(ts - lastResSpawn > cfg.resSpawnEveryMs){
-        lastResSpawn = ts; spawnResource();
-      }
-
-      // Движение игрока (левый джой)
-      const isRunning = joyR.active && (Math.abs(joyR.x) + Math.abs(joyR.y)) > 0.6;
-      const speed = isRunning ? cfg.player.runSpeed : cfg.player.speed;
-
-      player.x = clamp(player.x + joyL.x * speed * dt, 0, cfg.world.w-1);
-      player.y = clamp(player.y + joyL.y * speed * dt, 0, cfg.world.h-1);
-
-      // Выносливость
-      if(isRunning){ player.st = Math.max(0, player.st - 0.4*dt); }
-      else { player.st = Math.min(cfg.player.maxST, player.st + 0.25*dt); }
-
-      // Камера следует за игроком (лерп)
-      camera.x += (player.x - camera.x) * cfg.cam.lerp;
-      camera.y += (player.y - camera.y) * cfg.cam.lerp;
-
-      // Очки и минуты (время выживания)
-      score += Math.floor(0.6 * dt);
-      minutes = Math.floor((ts - startTime) / 60000);
-
-      updateHUD();
-    }
-
-    // ===== Ресурсы =====
-    function spawnResource(){
-      const x = (Math.random()*cfg.world.w)|0;
-      const y = (Math.random()*cfg.world.h)|0;
-      const t = tiles[y][x].type;
-      // Не спавним на воде/в зданиях/дорогах чаще, предпочитаем парки/газон
-      if(t==='water' || t==='building') return;
-      resources.push({ x, y, kind: Math.random()<0.5?'crate':'coin' });
-    }
-
-    function pickResourceAt(gx, gy){
-      // ищем ресурс в радиусе 1 тайла от точки тапа
-      const idx = resources.findIndex(r => Math.hypot(r.x-gx, r.y-gy) < 1.2);
-      if(idx !== -1){
-        const r = resources[idx];
-        resCount += (r.kind==='coin' ? 1 : 2);
-        resources.splice(idx,1);
-        setStatus('Ресурс собран: '+(r.kind==='coin'?'монета':'ящик'));
-      } else {
-        // если ресурса нет — бездействие
-      }
-      updateHUD();
-    }
-
-    // ===== Рендер =====
-    function fitCanvas(){
-      // Масштабируем канвас: строго в контейнер, без горизонтального скролла
-      const rect = el.canvas.getBoundingClientRect();
-      const scaleX = rect.width / (cfg.world.w * 1); // базово 1px/тайл (виртуально)
-      const scaleY = rect.height / (cfg.world.h * 1);
-      // Мы рисуем не 1px/тайл, а через transform за счёт камеры
-      // Канвас фиксированный, отрисовка по тайлам*tileSize
-    }
-
-    function draw(){
-      const T = cfg.world.tile; // размер тайла в пикселях
-      // Устанавливаем камеру: вычислим смещение так, чтобы игрок был по центру
-      const viewW = el.canvas.width / T;  // сколько тайлов видно по ширине
-      const viewH = el.canvas.height / T; // сколько по высоте
-      const offX = clamp(Math.floor(camera.x - viewW/2), 0, cfg.world.w - Math.floor(viewW));
-      const offY = clamp(Math.floor(camera.y - viewH/2), 0, cfg.world.h - Math.floor(viewH));
-
-      ctx.clearRect(0,0,el.canvas.width, el.canvas.height);
-
-      // Фон — лёгкая сетка
-      ctx.save();
-      ctx.globalAlpha = 0.07;
-      for(let y=0; y<el.canvas.height; y+=30){
-        for(let x=0; x<el.canvas.width; x+=30){
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(x, y, 1, 1);
-        }
-      }
-      ctx.restore();
-
-      // Рисуем видимую область тайлов
-      for(let vy=0; vy<Math.ceil(viewH); vy++){
-        for(let vx=0; vx<Math.ceil(viewW); vx++){
-          const gx = offX + vx;
-          const gy = offY + vy;
-          const t = tiles[gy]?.[gx];
-          if(!t) continue;
-          ctx.fillStyle = t.color;
-          ctx.fillRect(vx*T, vy*T, T, T);
-          // декор дорог
-          if(t.type==='road'){
-            ctx.fillStyle = 'rgba(255,255,255,0.05)';
-            ctx.fillRect(vx*T+T/2-1, vy*T, 2, T);
-          }
-        }
-      }
-
-      // Ресурсы (в видимой области)
-      resources.forEach(r=>{
-        if(r.x>=offX && r.x<=offX+viewW && r.y>=offY && r.y<=offY+viewH){
-          const vx = (r.x - offX)*T, vy = (r.y - offY)*T;
-          if(r.kind==='coin'){
-            ctx.fillStyle = '#f6c945';
-            ctx.beginPath(); ctx.arc(vx+T/2, vy+T/2, T/3, 0, Math.PI*2); ctx.fill();
-          } else {
-            ctx.fillStyle = '#9aa6b2';
-            ctx.fillRect(vx+3, vy+3, T-6, T-6);
-          }
-        }
-      });
-
-      // Игрок (в центре экрана)
-      const px = Math.floor(viewW/2)*T, py = Math.floor(viewH/2)*T;
-      ctx.fillStyle = '#87b3ff';
-      ctx.beginPath();
-      ctx.arc(px+T/2, py+T/2, T/2.4, 0, Math.PI*2);
-      ctx.fill();
-
-      // Компас — направление правого джоя
-      if(Math.abs(joyR.x)+Math.abs(joyR.y) > 0.05){
-        ctx.strokeStyle = 'rgba(135,179,255,0.8)'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(px+T/2, py+T/2);
-        ctx.lineTo(px+T/2 + joyR.x*20, py+T/2 + joyR.y*20);
-        ctx.stroke();
-      }
-    }
-
-    // ===== Джойстики =====
-    function setupJoy(zone, knob, state){
-      const knobHome = { x:38, y:38 };
-      function setKnob(x,y){ knob.style.left = x+'px'; knob.style.top = y+'px'; }
-      zone.addEventListener('touchstart', (e)=>{
-        const t = e.touches[0], r = zone.getBoundingClientRect();
-        const v = normJoy(t.clientX - r.left, t.clientY - r.top);
-        state.x=v.x; state.y=v.y; state.active=true; setKnob(v.kx, v.ky);
-      }, {passive:true});
-      zone.addEventListener('touchmove', (e)=>{
-        if(!state.active) return;
-        const t = e.touches[0], r = zone.getBoundingClientRect();
-        const v = normJoy(t.clientX - r.left, t.clientY - r.top);
-        state.x=v.x; state.y=v.y; setKnob(v.kx, v.ky);
-      }, {passive:true});
-      zone.addEventListener('touchend', ()=>{
-        state.x=0; state.y=0; state.active=false; setKnob(knobHome.x, knobHome.y);
-      }, {passive:true});
-    }
-    function normJoy(cx, cy){
-      const cx0=60, cy0=60, rad=52;
-      const dx = cx - cx0, dy = cy - cy0;
-      const len = Math.hypot(dx,dy); const k = len > rad ? rad/len : 1;
-      const nx = dx * k, ny = dy * k;
-      return { x: nx/rad, y: ny/rad, kx: cx0 + nx - 22, ky: cy0 + ny - 22 };
-    }
-
-    // ===== Сохранение =====
-    function saveAll(){
-      const data = { player, score, minutes, resCount, resources };
-      localStorage.setItem('sc.save.v1', JSON.stringify(data));
-      setStatus('Прогресс сохранён');
-    }
-    function loadAll(){
-      try{
-        const v = localStorage.getItem('sc.save.v1'); if(!v) return false;
-        const d = JSON.parse(v);
-        player = d.player || player;
-        score = d.score || 0; minutes = d.minutes || 0; resCount = d.resCount || 0;
-        resources = Array.isArray(d.resources) ? d.resources : [];
-        updateHUD(); return true;
-      }catch{ return false; }
-    }
-    function exportSave(){
-      const v = localStorage.getItem('sc.save.v1') || JSON.stringify({ player, score, minutes, resCount, resources });
-      const blob = new Blob([v], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = 'survival_city_save.json'; a.click();
-      URL.revokeObjectURL(url);
-      setStatus('Экспорт завершён');
-    }
-    function importSave(){
-      const input = document.createElement('input'); input.type='file'; input.accept='application/json';
-      input.onchange = () => {
-        const file = input.files[0]; if(!file) return;
-        const reader = new FileReader();
-        reader.onload = () => { localStorage.setItem('sc.save.v1', reader.result); if(loadAll()){ setStatus('Импорт выполнен'); draw(0); } };
-        reader.readAsText(file);
-      };
-      input.click();
-    }
-
-    // ===== Утилиты =====
-    function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
-    function setStatus(msg){
-      el.status.textContent = msg;
-      clearTimeout(setStatus._t);
-      setStatus._t = setTimeout(()=> el.status.textContent = 'Готово', 2000);
-    }
-    function updateHUD(){
-      el.score.textContent = score;
-      el.min.textContent = minutes;
-      el.res.textContent = resCount;
-      el.hpBar.style.width = (player.hp / cfg.player.maxHP * 100) + '%';
-      el.stBar.style.width = (player.st / cfg.player.maxST * 100) + '%';
-    }
-    function clientToGrid(e){
-      const rect = el.canvas.getBoundingClientRect();
-      const viewW = el.canvas.width / cfg.world.tile;
-      const viewH = el.canvas.height / cfg.world.tile;
-      const offX = clamp(Math.floor(camera.x - viewW/2), 0, cfg.world.w - Math.floor(viewW));
-      const offY = clamp(Math.floor(camera.y - viewH/2), 0, cfg.world.h - Math.floor(viewH));
-      const cx = (e.clientX - rect.left);
-      const cy = (e.clientY - rect.top);
-      const gx = offX + Math.floor(cx / cfg.world.tile);
-      const gy = offY + Math.floor(cy / cfg.world.tile);
-      return {gx, gy};
-    }
-
-    // Автозагрузка сохранения
-    loadAll();
-  </script>
+  }
+  // поворот
+  if(joyR.active){
+    player.dir+=joyR.x*0.05;
+  }
+}
+function draw(){
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  const w=canvas.width,h=canvas.height;
+  for(let i=0;i<w;i++){
+    const angle=player.dir-player.fov/2+player.fov*i/w;
+    const dist=castRay(angle);
+    const wallH=h/(dist*Math.cos(angle-player.dir));
+    ctx.fillStyle='rgba(200,200,200,1)';
+    ctx.fillRect(i,(h-wallH)/2,1,wallH);
+  }
+}
+loop();
+</script>
 </body>
 </html>
