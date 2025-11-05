@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
-<title>Monkey Quest — улучшенные бананы</title>
+<title>Monkey Quest — симпатичная обезьяна</title>
 <style>
   :root{--bg1:#f7fbff;--bg2:#eaf3fb;--panel:#ffffff;--accent:#ffd77a;--dark:#07323a}
   html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg1),var(--bg2));font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;-webkit-text-size-adjust:100%}
@@ -23,6 +23,8 @@
   #restartSmall{position:fixed;left:12px;top:12px;pointer-events:auto;width:44px;height:44px;border-radius:8px;background:linear-gradient(180deg,var(--panel),#f7fafc);display:flex;align-items:center;justify-content:center;border:1px solid rgba(7,34,51,0.06);box-shadow:0 4px 10px rgba(13,40,58,0.04);z-index:35}
   #hint{position:fixed;left:12px;top:64px;background:rgba(255,255,255,0.95);padding:8px;border-radius:8px;font-size:13px;border:1px solid rgba(7,34,51,0.04);z-index:35;pointer-events:auto}
   footer{padding:8px 12px;font-size:12px;color:#3b5566;background:linear-gradient(180deg,transparent,#f1f5f9);z-index:20}
+  #errorBox{position:absolute;left:12px;right:12px;top:50%;transform:translateY(-50%);background:#fff0f0;color:#6b0b0b;padding:12px;border-radius:8px;border:1px solid #ebb;z-index:50;display:none}
+  @media(min-width:760px){ .joy{width:140px;height:140px}.thumb{width:64px;height:64px}.jump-circle{width:140px;height:140px} }
 </style>
 </head>
 <body>
@@ -53,32 +55,28 @@
         </svg>
       </div>
 
-      <div id="hint">Бананы: улучшенная модель, покачивание и партиклы при сборе</div>
+      <div id="hint">Джойстик слева — ходьба, правая часть — вращение (yaw + pitch). Можно одновременно ходить и смотреть вверх/вниз.</div>
 
       <div class="jump-circle" id="jumpBtn" aria-label="Прыжок" title="Прыжок">
         <div class="jump-arrow" aria-hidden="true"></div>
       </div>
     </div>
+
+    <div id="errorBox" role="alert"></div>
   </main>
 
-  <footer>Открой на телефоне в Safari/Chrome. Левая рука — джойстик, правая — поворот.</footer>
+  <footer>Открой в мобильном Safari/Chrome. Левая рука — джойстик, правая — поворот.</footer>
 </div>
-
+<!-- Вставляй следующий блок (скрипт) сразу после этого комментария -->
+<!-- Блок 2 — Скрипт (вставь сразу после блока 1, перед закрывающим </body>) -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <script>
-/* Улучшённые бананы для мобильной игры
-   - LatheGeometry для формы
-   - CanvasTexture для легкой текстуры/шероховатости
-   - покачивание, вращение
-   - партиклы при сборе
-*/
-
 (function(){
-  // быстрые проверки
+  // --- утилиты и DOM ---
+  function showError(msg){ const box = document.getElementById('errorBox'); box.textContent = msg; box.style.display = 'block'; }
   function webglAvailable(){ try { const c=document.createElement('canvas'); return !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl'))); } catch(e){ return false; } }
-  if(!webglAvailable()){ document.body.innerHTML = '<p style="padding:20px;font-family:Arial">WebGL не поддерживается в этом браузере.</p>'; return; }
+  if(!webglAvailable()){ showError('WebGL не поддерживается. Откройте в мобильном Safari/Chrome.'); return; }
 
-  // DOM
   const canvas = document.getElementById('c');
   const scoreEl = document.getElementById('score');
   const timeEl = document.getElementById('time');
@@ -88,221 +86,164 @@
   const jumpBtn = document.getElementById('jumpBtn');
   const restartSmall = document.getElementById('restartSmall');
 
-  // three
+  // --- three.js init ---
   const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
   renderer.setClearColor(0xeaf3fb);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(60,1,0.1,200);
-  camera.position.set(0,8,12);
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
+  camera.position.set(0, 8, 12);
 
   // lights
-  const key = new THREE.DirectionalLight(0xffffff,0.9); key.position.set(5,12,6); key.castShadow=true; scene.add(key);
-  const fill = new THREE.HemisphereLight(0xddeeff,0x404060,0.55); scene.add(fill);
+  const key = new THREE.DirectionalLight(0xffffff, 0.9);
+  key.position.set(5, 12, 6); key.castShadow = true; key.shadow.mapSize.set(1024,1024); scene.add(key);
+  const fill = new THREE.HemisphereLight(0xddeeff, 0x404060, 0.55); scene.add(fill);
+  const rim = new THREE.DirectionalLight(0xfff6e6, 0.18); rim.position.set(-6,6,-4); scene.add(rim);
 
-  // ground
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(80,80), new THREE.MeshStandardMaterial({color:0xe6eef4, roughness:0.95}));
-  ground.rotation.x = -Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+  // ground + grid
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(40,40), new THREE.MeshStandardMaterial({color:0xe6eef4, metalness:0, roughness:0.95}));
+  ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+  const grid = new THREE.GridHelper(40,20,0xcfdde6,0xddeaf0); grid.material.opacity = 0.45; grid.material.transparent = true; scene.add(grid);
 
-  // simple monkey placeholder (keeps scene consistent)
-  // --- Полноценная симпатичная обезьяна (заменяет placeholder) ---
-const monkey = new THREE.Group();
+  // soft shadow texture under monkey
+  function makeShadowTexture(){
+    const size = 256;
+    const ctxCanvas = document.createElement('canvas'); ctxCanvas.width = ctxCanvas.height = size;
+    const ctx = ctxCanvas.getContext('2d');
+    const g = ctx.createRadialGradient(size/2, size/2, size*0.05, size/2, size/2, size/2);
+    g.addColorStop(0,'rgba(0,0,0,0.45)'); g.addColorStop(0.5,'rgba(0,0,0,0.18)'); g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0,0,size,size);
+    const tex = new THREE.CanvasTexture(ctxCanvas); tex.needsUpdate = true; return tex;
+  }
+  const shadowTex = makeShadowTexture();
+  const shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.6,2.6), new THREE.MeshBasicMaterial({map:shadowTex, transparent:true, opacity:1}));
+  shadowMesh.rotation.x = -Math.PI/2; shadowMesh.position.y = 0.021; scene.add(shadowMesh);
 
-// body
-const bodyMat = new THREE.MeshStandardMaterial({color:0x9c6b3a, metalness:0.06, roughness:0.48, clearcoat:0.12});
-const body = new THREE.Mesh(new THREE.SphereGeometry(0.78,28,20), bodyMat);
-body.castShadow = true;
-body.position.set(0,0.75,0);
-monkey.add(body);
+  // --- симпатичная обезьяна ---
+  const monkey = new THREE.Group();
 
-// head
-const headMat = new THREE.MeshStandardMaterial({color:0xab7a4a, metalness:0.02, roughness:0.5, clearcoat:0.08});
-const head = new THREE.Mesh(new THREE.SphereGeometry(0.58,32,24), headMat);
-head.position.set(0,1.47,0.06);
-head.castShadow = true;
-monkey.add(head);
+  // body
+  const bodyMat = new THREE.MeshStandardMaterial({color:0x9c6b3a, metalness:0.06, roughness:0.48, clearcoat:0.12});
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.78,28,20), bodyMat); body.castShadow=true; body.position.set(0,0.75,0); monkey.add(body);
 
-// face patch
-const faceMat = new THREE.MeshStandardMaterial({color:0xfff1e6, metalness:0, roughness:0.6});
-const face = new THREE.Mesh(new THREE.SphereGeometry(0.34,24,16), faceMat);
-face.position.set(0,1.36,0.34);
-face.scale.set(1,0.9,1);
-monkey.add(face);
+  // head
+  const headMat = new THREE.MeshStandardMaterial({color:0xab7a4a, metalness:0.02, roughness:0.5, clearcoat:0.08});
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.58,32,24), headMat); head.position.set(0,1.47,0.06); head.castShadow=true; monkey.add(head);
 
-// ears
-const earOuterMat = new THREE.MeshStandardMaterial({color:0xab7a4a});
-const earInnerMat = new THREE.MeshStandardMaterial({color:0xffd6c2, emissive:0xffc6b0, emissiveIntensity:0.1});
-const earGeo = new THREE.CylinderGeometry(0.12,0.12,0.06,16);
-const earL = new THREE.Mesh(earGeo, earOuterMat);
-earL.rotation.z = Math.PI/2;
-earL.position.set(-0.46,1.44,0);
-const earR = earL.clone();
-earR.position.x = 0.46;
-const innerL = new THREE.Mesh(new THREE.SphereGeometry(0.07,12,8), earInnerMat);
-innerL.position.set(-0.46,1.44,0.02);
-const innerR = innerL.clone();
-innerR.position.x = 0.46;
-monkey.add(earL, earR, innerL, innerR);
+  // face patch
+  const faceMat = new THREE.MeshStandardMaterial({color:0xfff1e6, metalness:0, roughness:0.6});
+  const face = new THREE.Mesh(new THREE.SphereGeometry(0.34,24,16), faceMat); face.position.set(0,1.36,0.34); face.scale.set(1,0.9,1); monkey.add(face);
 
-// cheeks
-const cheekMat = new THREE.MeshStandardMaterial({color:0xffc8b8, emissive:0xffb8a8, emissiveIntensity:0.08});
-const cheekL = new THREE.Mesh(new THREE.SphereGeometry(0.07,12,10), cheekMat);
-cheekL.position.set(-0.17,1.28,0.46);
-const cheekR = cheekL.clone();
-cheekR.position.x = 0.17;
-monkey.add(cheekL, cheekR);
+  // ears
+  const earOuterMat = new THREE.MeshStandardMaterial({color:0xab7a4a});
+  const earInnerMat = new THREE.MeshStandardMaterial({color:0xffd6c2, emissive:0xffc6b0, emissiveIntensity:0.1});
+  const earGeo = new THREE.CylinderGeometry(0.12,0.12,0.06,16);
+  const earL = new THREE.Mesh(earGeo, earOuterMat); earL.rotation.z = Math.PI/2; earL.position.set(-0.46,1.44,0);
+  const earR = earL.clone(); earR.position.x = 0.46;
+  const innerL = new THREE.Mesh(new THREE.SphereGeometry(0.07,12,8), earInnerMat); innerL.position.set(-0.46,1.44,0.02);
+  const innerR = innerL.clone(); innerR.position.x = 0.46;
+  monkey.add(earL, earR, innerL, innerR);
 
-// nose and mouth
-const nose = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.06,0.06), new THREE.MeshStandardMaterial({color:0x7f4c2a}));
-nose.position.set(0,1.32,0.52);
-nose.rotation.x = 0.06;
-monkey.add(nose);
-const mouthMat = new THREE.MeshStandardMaterial({color:0x5f3b2a, roughness:0.8});
-const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.24,0.06,0.02), mouthMat);
-mouth.position.set(0,1.22,0.52);
-monkey.add(mouth);
+  // cheeks
+  const cheekMat = new THREE.MeshStandardMaterial({color:0xffc8b8, emissive:0xffb8a8, emissiveIntensity:0.08});
+  const cheekL = new THREE.Mesh(new THREE.SphereGeometry(0.07,12,10), cheekMat); cheekL.position.set(-0.17,1.28,0.46);
+  const cheekR = cheekL.clone(); cheekR.position.x = 0.17;
+  monkey.add(cheekL, cheekR);
 
-// eyes and pupils
-const eyeWhiteMat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.4});
-const pupilMat = new THREE.MeshStandardMaterial({color:0x071018, metalness:0.2, roughness:0.3});
-const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.14,20,16), eyeWhiteMat);
-eyeL.position.set(-0.15,1.42,0.42);
-const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.14,20,16), eyeWhiteMat);
-eyeR.position.set(0.15,1.42,0.42);
-eyeL.castShadow = eyeR.castShadow = true;
-const pupilL = new THREE.Mesh(new THREE.SphereGeometry(0.06,16,12), pupilMat);
-pupilL.position.set(-0.15,1.42,0.52);
-const pupilR = pupilL.clone();
-pupilR.position.x = 0.15;
-monkey.add(eyeL, eyeR, pupilL, pupilR);
+  // nose & mouth
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.06,0.06), new THREE.MeshStandardMaterial({color:0x7f4c2a}));
+  nose.position.set(0,1.32,0.52); nose.rotation.x = 0.06; monkey.add(nose);
+  const mouthMat = new THREE.MeshStandardMaterial({color:0x5f3b2a, roughness:0.8});
+  const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.24,0.06,0.02), mouthMat); mouth.position.set(0,1.22,0.52); monkey.add(mouth);
 
-// limbs
-const limbMat = new THREE.MeshStandardMaterial({color:0x9c6b3a});
-const armL = new THREE.Mesh(new THREE.CapsuleGeometry(0.12,0.7,4,8), limbMat);
-armL.position.set(-0.95,0.9,0);
-armL.rotation.z = 0.25;
-armL.castShadow = true;
-const armR = armL.clone(); armR.position.x = 0.95; armR.rotation.z = -0.25;
-const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.12,0.6,4,8), limbMat);
-legL.position.set(-0.35,0.12,0);
-legL.rotation.z = 0.06;
-legL.castShadow = true;
-const legR = legL.clone(); legR.position.x = 0.35;
-monkey.add(armL, armR, legL, legR);
+  // eyes + pupils
+  const eyeWhiteMat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.4});
+  const pupilMat = new THREE.MeshStandardMaterial({color:0x071018, metalness:0.2, roughness:0.3});
+  const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.14,20,16), eyeWhiteMat); eyeL.position.set(-0.15,1.42,0.42);
+  const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.14,20,16), eyeWhiteMat); eyeR.position.set(0.15,1.42,0.42);
+  eyeL.castShadow = eyeR.castShadow = true;
+  const pupilL = new THREE.Mesh(new THREE.SphereGeometry(0.06,16,12), pupilMat); pupilL.position.set(-0.15,1.42,0.52);
+  const pupilR = pupilL.clone(); pupilR.position.x = 0.15;
+  monkey.add(eyeL, eyeR, pupilL, pupilR);
 
-// tail
-const tailMat = new THREE.MeshStandardMaterial({color:0x9c6b3a});
-const tail = new THREE.Mesh(new THREE.TorusGeometry(0.5,0.07,10,24,Math.PI*1.15), tailMat);
-tail.rotation.x = Math.PI/2;
-tail.position.set(0,0.5,-0.72);
-tail.castShadow = true;
-monkey.add(tail);
+  // limbs (capsules)
+  const limbMat = new THREE.MeshStandardMaterial({color:0x9c6b3a});
+  const armL = new THREE.Mesh(new THREE.CapsuleGeometry(0.12,0.7,4,8), limbMat); armL.position.set(-0.95,0.9,0); armL.rotation.z = 0.25; armL.castShadow=true;
+  const armR = armL.clone(); armR.position.x = 0.95; armR.rotation.z = -0.25;
+  const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.12,0.6,4,8), limbMat); legL.position.set(-0.36,0.05,0); legL.rotation.z = 0.05; legL.castShadow=true;
+  const legR = legL.clone(); legR.position.x = 0.36;
+  monkey.add(armL, armR, legL, legR);
 
-// final position and add to scene
-monkey.position.set(0,0.02,0);
-scene.add(monkey);
+  // tail
+  const tailMat = new THREE.MeshStandardMaterial({color:0x9c6b3a});
+  const tail = new THREE.Mesh(new THREE.TorusGeometry(0.5,0.07,10,24,Math.PI*1.1), tailMat); tail.rotation.x = Math.PI/2; tail.position.set(0,0.5,-0.7); tail.castShadow=true;
+  monkey.add(tail);
 
+  monkey.position.set(0,0.02,0);
+  scene.add(monkey);
 
-  // banana factory: Lathe geometry along slice curve
-  function makeBananaGeometry(length = 0.9, segments = 18, thickness = 0.18){
-    // profile of half banana cross-section (simple curve)
+  // --- boxes and improved bananas (Lathe) ---
+  const boxes = [];
+  for(let i=0;i<5;i++){
+    const box = new THREE.Mesh(new THREE.BoxGeometry(2.4,1.4,2.4), new THREE.MeshStandardMaterial({color:0xc6d7df}));
+    box.castShadow=true; box.receiveShadow=true; box.position.set((Math.random()-0.5)*28, 0.7, (Math.random()-0.5)*28);
+    scene.add(box); boxes.push(box);
+  }
+
+  function makeBananaGeometry(length = 0.9, thickness = 0.18, seg = 14){
     const pts = [];
-    const half = thickness;
-    // build a curved profile (from inner curve to outer)
-    for(let i=0;i<=segments;i++){
-      const t = i/segments;
-      // radius tapers towards tips
-      const radius = half * (1 - 0.5*Math.abs(2*t-1)) * (0.8 + 0.4*Math.sin(t*Math.PI));
-      const x = (t - 0.5) * length; // along axis
+    for(let i=0;i<=seg;i++){
+      const t = i/seg;
+      const radius = thickness * (0.9 - 0.5*Math.abs(2*t-1));
+      const x = (t - 0.5) * length;
       const y = radius;
       pts.push(new THREE.Vector2(y, x));
     }
-    // Lathe expects points in XY plane (here we use Vector2(r, z))
-    const lathe = new THREE.LatheGeometry(pts, Math.max(8, Math.round(32 * (thickness/0.18))), 0, Math.PI*2);
-    // Slightly stretch ends to get banana tapering
-    // (we'll not modify vertices for simplicity — acceptable polycount)
+    const lathe = new THREE.LatheGeometry(pts, Math.max(8, Math.round(28 * (thickness/0.18))));
+    lathe.rotateZ(Math.PI/2);
     return lathe;
   }
-
-  // banana material: CanvasTexture for subtle gradient and spots
   function makeBananaMaterial(){
     const size = 128;
     const c = document.createElement('canvas'); c.width = c.height = size;
     const ctx = c.getContext('2d');
-    // background gradient
-    const g = ctx.createLinearGradient(0,0,size, size);
-    g.addColorStop(0, '#fff3c6');
-    g.addColorStop(0.5, '#ffd85a');
-    g.addColorStop(1, '#ffdf7a');
+    const g = ctx.createLinearGradient(0,0,size,size);
+    g.addColorStop(0, '#fff3c6'); g.addColorStop(0.5, '#ffd85a'); g.addColorStop(1, '#ffdf7a');
     ctx.fillStyle = g; ctx.fillRect(0,0,size,size);
-    // small brown speckles
-    ctx.fillStyle = 'rgba(85,42,12,0.18)';
-    for(let i=0;i<40;i++){
-      const x = Math.random()*size, y = Math.random()*size;
-      ctx.beginPath(); ctx.arc(x,y, Math.random()*2.5, 0, Math.PI*2); ctx.fill();
-    }
-    // dark tip gradient (draw near edge)
-    const tg = ctx.createLinearGradient(size*0.8, 0, size, size);
-    tg.addColorStop(0, 'rgba(0,0,0,0.0)'); tg.addColorStop(1, 'rgba(90,40,8,0.28)');
+    ctx.fillStyle = 'rgba(85,42,12,0.14)';
+    for(let i=0;i<40;i++){ ctx.beginPath(); ctx.arc(Math.random()*size, Math.random()*size, Math.random()*2.2, 0, Math.PI*2); ctx.fill(); }
+    const tg = ctx.createLinearGradient(size*0.6,0,size, size);
+    tg.addColorStop(0, 'rgba(0,0,0,0)'); tg.addColorStop(1, 'rgba(90,40,8,0.28)');
     ctx.fillStyle = tg; ctx.fillRect(size*0.6,0,size*0.4,size);
-
-    const tex = new THREE.CanvasTexture(c);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(1,1);
-
-    const mat = new THREE.MeshStandardMaterial({
-      map: tex,
-      color: 0xffffff,
-      metalness: 0.05,
-      roughness: 0.45,
-      emissive: 0x0b0b00,
-      emissiveIntensity: 0.02
-    });
-    return mat;
+    const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    return new THREE.MeshStandardMaterial({map:tex, color:0xffffff, metalness:0.05, roughness:0.45, emissive:0x0b0b00, emissiveIntensity:0.02});
   }
-
-  // create a banana mesh (with pivot aligned to bottom for nicer animation)
   function createBanana(){
-    const geo = makeBananaGeometry(0.9, 16, 0.18);
-    // rotate so long axis aligns with X (we used (r,x) ordering)
-    geo.rotateZ(Math.PI/2);
-    // create two materials: main + dark tip overlay
+    const geo = makeBananaGeometry(0.9, 0.18, 14);
     const mat = makeBananaMaterial();
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true; mesh.receiveShadow = true;
-
-    // add small dark cap at one end (tip)
-    const capGeo = new THREE.SphereGeometry(0.06, 8, 8);
-    const capMat = new THREE.MeshStandardMaterial({color:0x5b3a19});
-    const cap = new THREE.Mesh(capGeo, capMat);
-    cap.position.set(-0.47, 0, 0.02); // place near one tip (tweak if needed)
-    mesh.add(cap);
-
-    // create inner pivot object so we can animate rotation/pitch easily
-    const pivot = new THREE.Object3D();
-    pivot.add(mesh);
-    // center mesh to pivot (slight offset)
-    mesh.position.set(0, 0, 0);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.06,8,8), new THREE.MeshStandardMaterial({color:0x5b3a19}));
+    cap.position.set(-0.47, 0, 0.02); mesh.add(cap);
+    const pivot = new THREE.Object3D(); pivot.add(mesh);
+    mesh.position.set(0,0,0);
     return {pivot, mesh, cap};
   }
 
-  // banana instances container
-  const bananas = [];
-
-  // spawn N bananas scattered around (avoids monkey area)
+  let bananas = [];
   function spawnBananas(n=10){
-    // remove existing
-    bananas.forEach(b=>scene.remove(b.pivot));
-    bananas.length = 0;
+    bananas.forEach(b=>scene.remove(b.pivot)); bananas = [];
     for(let i=0;i<n;i++){
       const b = createBanana();
-      // random position
-      const x = (Math.random()-0.5)*22;
-      const z = (Math.random()-0.5)*22;
-      b.pivot.position.set(x, 0.12 + Math.random()*0.18, z);
-      // random orientation and gentle tilt
+      let x,z,ok;
+      do{
+        x = (Math.random()-0.5)*30; z = (Math.random()-0.5)*30;
+        ok = Math.hypot(x - monkey.position.x, z - monkey.position.z) > 3;
+        boxes.forEach(bx=>{ if(ok){ const dx = x - bx.position.x, dz = z - bx.position.z; if(Math.abs(dx) < 2.7 && Math.abs(dz) < 2.7) ok = false; }});
+      } while(!ok);
+      b.pivot.position.set(x, 0.12 + Math.random()*0.28, z);
       b.pivot.rotation.y = Math.random()*Math.PI*2;
       b.mesh.rotation.x = (Math.random()-0.5)*0.35;
       scene.add(b.pivot);
@@ -311,8 +252,9 @@ scene.add(monkey);
       bananas.push(b);
     }
   }
+  spawnBananas(10);
 
-  // particle effects container (simple sprite circles)
+  // particle pool
   const particles = [];
   function spawnCollectParticles(posWorld, color='#ffd75a', count=12){
     for(let i=0;i<count;i++){
@@ -325,88 +267,222 @@ scene.add(monkey);
       const sp = new THREE.Sprite(mat);
       sp.scale.set(size, size, size);
       sp.position.copy(posWorld);
-      // give initial velocity
-      sp.userData = {
-        vel: new THREE.Vector3((Math.random()-0.5)*1.4, 0.6 + Math.random()*1.2, (Math.random()-0.5)*1.4),
-        life: 0.6 + Math.random()*0.6
-      };
+      sp.userData = { vel: new THREE.Vector3((Math.random()-0.5)*1.6, 0.6 + Math.random()*1.4, (Math.random()-0.5)*1.6), life: 0.6 + Math.random()*0.6 };
       scene.add(sp); particles.push(sp);
     }
   }
 
-  // game state + simple physics for particles & banana animation
-  function animateBananas(dt){
+  // UI state
+  const state = { vel: new THREE.Vector3(0,0,0), onGround:true, move: new THREE.Vector2(0,0), jumpImpulse:5.6, gravity:-18, maxSpeed:5 };
+  let score = 0, totalTime = 60, timeLeft = totalTime, level = 1;
+  scoreEl.textContent = score; timeEl.textContent = timeLeft; levelEl.textContent = level;
+
+  // joystick & multitouch
+  let joyTouchId = null, joyActive = false, joyCenter = {x:0,y:0}, joyRadius = 42;
+  const invert = true;
+  function updateJoy(cx, cy){
+    const dx = cx - joyCenter.x, dy = cy - joyCenter.y;
+    const dist = Math.hypot(dx, dy);
+    const nx = dx / (dist || 1), ny = dy / (dist || 1);
+    const mag = Math.min(dist / joyRadius, 1);
+    const forwardY = invert ? ny : -ny;
+    state.move.x = (Math.abs(nx) < 0.12) ? 0 : nx * mag;
+    state.move.y = (Math.abs(forwardY) < 0.12) ? 0 : forwardY * mag;
+    thumb.style.transform = `translate(${state.move.x * (joyRadius-18)}px, ${-state.move.y * (joyRadius-18)}px)`;
+  }
+  function endJoy(){ joyActive = false; joyTouchId = null; state.move.set(0,0); thumb.style.transform = 'translate(0,0)'; }
+
+  let rotTouchId = null, rotateActive = false, lastRotX = 0, lastRotY = 0;
+  const PITCH_MIN = -0.8, PITCH_MAX = 0.6, SENS_X = 0.006, SENS_Y = 0.004;
+  function findTouchById(touches, id){ for(let i=0;i<touches.length;i++) if(touches[i].identifier === id) return touches[i]; return null; }
+
+  window.addEventListener('touchstart', (e)=>{
+    for(let i=0;i<e.changedTouches.length;i++){
+      const t = e.changedTouches[i];
+      const x = t.clientX, y = t.clientY, W = window.innerWidth;
+      const leftZone = x < W * 0.45, rightZone = x > W * 0.55;
+      const rect = joy.getBoundingClientRect();
+      const inJoyVisual = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+      if((leftZone || inJoyVisual) && joyTouchId === null){
+        joyTouchId = t.identifier; joyActive = true;
+        joyCenter = {x: rect.left + rect.width/2, y: rect.top + rect.height/2};
+        joyRadius = Math.min(rect.width, rect.height)/2 - 6;
+        updateJoy(t.clientX, t.clientY); e.preventDefault();
+      } else if(rightZone && rotTouchId === null){
+        rotTouchId = t.identifier; rotateActive = true; lastRotX = t.clientX; lastRotY = t.clientY; e.preventDefault();
+      }
+    }
+  }, {passive:false});
+
+  window.addEventListener('touchmove', (e)=>{
+    if(joyTouchId !== null){
+      const jt = findTouchById(e.touches, joyTouchId);
+      if(jt) updateJoy(jt.clientX, jt.clientY);
+    }
+    if(rotTouchId !== null && rotateActive){
+      const rt = findTouchById(e.touches, rotTouchId);
+      if(rt){
+        const dx = rt.clientX - lastRotX, dy = rt.clientY - lastRotY;
+        lastRotX = rt.clientX; lastRotY = rt.clientY;
+        monkey.rotation.y -= dx * SENS_X;
+        let proposedPitch = monkey.rotation.x - dy * SENS_Y;
+        proposedPitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, proposedPitch));
+        monkey.rotation.x = proposedPitch;
+      }
+    }
+    e.preventDefault();
+  }, {passive:false});
+
+  function handleTouchEndOrCancel(e){
+    for(let i=0;i<e.changedTouches.length;i++){
+      const t = e.changedTouches[i];
+      if(t.identifier === joyTouchId) endJoy();
+      if(t.identifier === rotTouchId){ rotTouchId = null; rotateActive = false; }
+    }
+  }
+  window.addEventListener('touchend', handleTouchEndOrCancel, {passive:true});
+  window.addEventListener('touchcancel', handleTouchEndOrCancel, {passive:true});
+
+  // jump & restart
+  function tryJump(){ if(state.onGround){ state.vel.y = state.jumpImpulse; state.onGround = false; } }
+  jumpBtn.addEventListener('touchstart', (e)=>{ e.stopPropagation(); e.preventDefault(); tryJump(); }, {passive:false});
+  restartSmall.addEventListener('touchstart', (e)=>{ e.stopPropagation(); e.preventDefault(); resetGame(); }, {passive:false});
+
+  // pupil look target
+  let lookTarget = new THREE.Vector3();
+  function updateLookTargetFromTouch(x, y){
+    const rect = renderer.domElement.getBoundingClientRect();
+    const nx = (x - rect.left) / rect.width * 2 - 1;
+    const ny = -((y - rect.top) / rect.height) * 2 + 1;
+    const v = new THREE.Vector3(nx, ny, 0.5).unproject(camera);
+    lookTarget.copy(v);
+  }
+  function updateLookTargetDefault(){
+    const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
+    lookTarget.copy(camera.position).add(dir.multiplyScalar(8));
+  }
+  let lastPointerTime = 0;
+  window.addEventListener('mousemove', (e)=>{ updateLookTargetFromTouch(e.clientX, e.clientY); lastPointerTime = performance.now(); }, {passive:true});
+  window.addEventListener('touchstart', (e)=>{ const t = e.touches[0]; if(t){ updateLookTargetFromTouch(t.clientX, t.clientY); lastPointerTime = performance.now(); } }, {passive:true});
+  window.addEventListener('touchmove', (e)=>{ const t = e.touches[0]; if(t){ updateLookTargetFromTouch(t.clientX, t.clientY); lastPointerTime = performance.now(); } }, {passive:true});
+
+  // pupil update
+  function updatePupils(dt){
+    const pLworld = new THREE.Vector3().setFromMatrixPosition(pupilL.matrixWorld);
+    const pRworld = new THREE.Vector3().setFromMatrixPosition(pupilR.matrixWorld);
+    const dirL = lookTarget.clone().sub(pLworld).normalize();
+    const dirR = lookTarget.clone().sub(pRworld).normalize();
+    const pupilOffsetMax = 0.045;
+    const desiredL = new THREE.Vector3(-0.15 + dirL.x * pupilOffsetMax, 1.42 + dirL.y * pupilOffsetMax, 0.52 + 0.03);
+    const desiredR = new THREE.Vector3(0.15 + dirR.x * pupilOffsetMax, 1.42 + dirR.y * pupilOffsetMax, 0.52 + 0.03);
+    pupilL.position.lerp(desiredL, Math.min(1, dt*8));
+    pupilR.position.lerp(desiredR, Math.min(1, dt*8));
+  }
+
+  // physics & animation
+  let walkPhase = 0;
+  function physicsStep(dt){
+    const camYaw = Math.atan2(camera.position.x - monkey.position.x, camera.position.z - monkey.position.z);
+    const cos = Math.cos(camYaw), sin = Math.sin(camYaw);
+    const input = new THREE.Vector3(state.move.x, 0, state.move.y);
+    const worldDir = new THREE.Vector3(input.x * cos - input.z * sin, 0, input.x * sin + input.z * cos);
+    const targetVel = worldDir.clone().multiplyScalar(state.maxSpeed * (1 + 0.08*level));
+    const acc = 24;
+    state.vel.x = THREE.MathUtils.damp(state.vel.x, targetVel.x, acc, dt);
+    state.vel.z = THREE.MathUtils.damp(state.vel.z, targetVel.z, acc, dt);
+    state.vel.y += state.gravity * dt;
+
+    monkey.position.x += state.vel.x * dt;
+    monkey.position.y += state.vel.y * dt;
+    monkey.position.z += state.vel.z * dt;
+
+    if(monkey.position.y <= 0.02){ monkey.position.y = 0.02; state.vel.y = 0; state.onGround = true; } else state.onGround = false;
+
+    // collisions
+    boxes.forEach(b=>{
+      const minX = b.position.x - 1.2, maxX = b.position.x + 1.2;
+      const minZ = b.position.z - 1.2, maxZ = b.position.z + 1.2;
+      if(monkey.position.x > minX - 0.9 && monkey.position.x < maxX + 0.9 &&
+         monkey.position.z > minZ - 0.9 && monkey.position.z < maxZ + 0.9){
+        const dx = monkey.position.x - b.position.x, dz = monkey.position.z - b.position.z;
+        const d = Math.hypot(dx, dz) || 0.001;
+        const push = (1.2 + 0.9) - d;
+        if(push > 0){ monkey.position.x += (dx/d) * push; monkey.position.z += (dz/d) * push; state.vel.x *= 0.4; state.vel.z *= 0.4; }
+      }
+    });
+
+    // bananas animate & collect
     const time = performance.now()*0.001;
     for(let i=bananas.length-1;i>=0;i--){
       const b = bananas[i];
       if(b._collected) continue;
-      // gentle bobbing and subtle rotation
-      const bob = Math.sin(time*1.2 + b._floatOffset)*0.06;
-      b.pivot.position.y = 0.12 + bob;
+      b.pivot.position.y = 0.12 + Math.sin(time*1.2 + b._floatOffset)*0.06;
       b.pivot.rotation.z = Math.sin(time*0.6 + b._floatOffset)*0.06;
-      // spin slowly
-      b.pivot.rotation.y += 0.001 * (1 + (i%3));
+      b.pivot.rotation.y += 0.0015 * (1 + (i%3));
 
-      // simple check: if near monkey (we'll use monkey at origin in demo), collect
-      const dx = b.pivot.position.x - monkey.position.x;
-      const dz = b.pivot.position.z - monkey.position.z;
-      const dist = Math.hypot(dx, dz);
-      if(dist < 1.0){
-        // collect banana
+      const d = Math.hypot(monkey.position.x - b.pivot.position.x, monkey.position.z - b.pivot.position.z);
+      if(d < 0.9 && Math.abs(monkey.position.y - b.pivot.position.y) < 1.6){
         b._collected = true;
-        // animate scale up + pop
-        const popDuration = 220;
-        const start = performance.now();
         const startPos = b.pivot.position.clone();
-        // spawn particles
         spawnCollectParticles(startPos, '#ffd85a', 10);
-        // add score
         score += 10; scoreEl.textContent = score;
-        // remove after animation
+        const popDuration = 260; const start = performance.now();
         (function localRemove(){
-          const now = performance.now();
-          const t = (now - start)/popDuration;
+          const now = performance.now(); const t = (now - start)/popDuration;
           if(t < 1){
             const s = 1 + Math.sin(t*Math.PI)*0.6;
             b.pivot.scale.setScalar(s);
             b.pivot.position.y = startPos.y + t*0.6;
             requestAnimationFrame(localRemove);
           } else {
-            scene.remove(b.pivot);
-            bananas.splice(i,1);
+            scene.remove(b.pivot); bananas.splice(i,1); if(bananas.length === 0) levelUp();
           }
         })();
       }
     }
 
-    // animate particles
+    // particles
     for(let i=particles.length-1;i>=0;i--){
-      const p = particles[i];
-      const ud = p.userData;
+      const p = particles[i]; const ud = p.userData;
       ud.life -= dt;
-      if(ud.life <= 0){
-        scene.remove(p); particles.splice(i,1);
-        continue;
-      }
-      // simple physics
-      ud.vel.y -= 2.2 * dt; // gravity
+      if(ud.life <= 0){ scene.remove(p); particles.splice(i,1); continue; }
+      ud.vel.y -= 2.2 * dt;
       p.position.addScaledVector(ud.vel, dt);
-      // fade
       p.material.opacity = Math.max(0, ud.life / 1.0);
-      // shrink slightly
       const scale = Math.max(0.01, p.scale.x * (0.98 - dt*0.1));
       p.scale.setScalar(scale);
     }
+
+    // arms waving (idle + walk)
+    const speed = Math.hypot(state.vel.x, state.vel.z);
+    walkPhase += (speed + 0.2) * dt * 6;
+    const idleWave = Math.sin(performance.now()*0.004) * 0.12;
+    const waveAmp = 0.18 + Math.min(0.42, speed * 0.28);
+    armL.rotation.x = THREE.MathUtils.lerp(armL.rotation.x, 0.2 + Math.sin(walkPhase) * waveAmp + idleWave * 0.15, 0.12);
+    armR.rotation.x = THREE.MathUtils.lerp(armR.rotation.x, -0.2 + Math.sin(walkPhase + Math.PI) * waveAmp - idleWave * 0.15, 0.12);
+    const lean = Math.sin(walkPhase) * Math.min(0.16, speed*0.06);
+    body.rotation.z = THREE.MathUtils.lerp(body.rotation.z, lean, 0.12);
+    head.rotation.y = THREE.MathUtils.lerp(head.rotation.y, -state.vel.x*0.06, 0.12);
+
+    // pupils
+    if(!lastPointerTime || (performance.now() - lastPointerTime) > 1500) updateLookTargetDefault();
+    updatePupils(dt);
   }
 
-  // spawn initial batch
-  spawnBananas(12);
+  function levelUp(){ level++; levelEl.textContent = level; timeLeft = Math.min(totalTime, timeLeft + 18); spawnBananas(8 + Math.min(6, level)); boxes.forEach(b=>{ b.position.x = (Math.random()-0.5)*28; b.position.z = (Math.random()-0.5)*28; }); }
+  function resetGame(){ score = 0; scoreEl.textContent = score; level = 1; levelEl.textContent = level; timeLeft = totalTime; timeEl.textContent = Math.round(timeLeft); monkey.position.set(0,0.02,0); state.vel.set(0,0,0); spawnBananas(10); }
 
-  // simple monkey placeholder position (for demo movement use joystick code later)
-  monkey.position.set(0,0.02,0);
+  // camera follow
+  function updateCamera(){
+    const desired = new THREE.Vector3(monkey.position.x, monkey.position.y + 4.2, monkey.position.z + 9.2);
+    camera.position.lerp(desired, 0.12);
+    const camTarget = new THREE.Vector3(monkey.position.x, monkey.position.y + 1.2, monkey.position.z);
+    camera.lookAt(camTarget);
+    shadowMesh.position.set(monkey.position.x, 0.021, monkey.position.z);
+  }
 
-  // resize handler
-  function resize(){
+  // resize
+  function resizeRenderer(){
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     renderer.setPixelRatio(dpr);
     const w = window.innerWidth;
@@ -414,74 +490,24 @@ scene.add(monkey);
     renderer.setSize(w, h, false);
     camera.aspect = w / h; camera.updateProjectionMatrix();
   }
-  window.addEventListener('resize', resize);
-  resize();
+  window.addEventListener('resize', resizeRenderer); resizeRenderer();
 
-  // minimal joystick & controls to move monkey for demo
-  let joyTouchId = null, joyCenter = {x:0,y:0}, joyRadius = 42;
-  let move = {x:0,y:0};
-  function updateJoy(cx,cy){
-    const dx = cx - joyCenter.x, dy = cy - joyCenter.y;
-    const dist = Math.hypot(dx,dy);
-    const nx = dx/(dist||1), ny = dy/(dist||1);
-    const mag = Math.min(dist/joyRadius,1);
-    move.x = nx * mag;
-    move.y = -ny * mag; // forward is up on joystick
-    thumb.style.transform = `translate(${move.x*(joyRadius-18)}px, ${-move.y*(joyRadius-18)}px)`;
-  }
-  function endJoy(){ joyTouchId = null; move.x=move.y=0; thumb.style.transform='translate(0,0)'; }
-  // simple multitouch binding for demo: left area joystick
-  window.addEventListener('touchstart', (e)=>{
-    for(const t of e.changedTouches){
-      const W = window.innerWidth;
-      if(t.clientX < W*0.45 && joyTouchId === null){
-        joyTouchId = t.identifier;
-        const rect = joy.getBoundingClientRect();
-        joyCenter = {x: rect.left+rect.width/2, y: rect.top+rect.height/2};
-        joyRadius = Math.min(rect.width, rect.height)/2 - 6;
-        updateJoy(t.clientX, t.clientY);
-        e.preventDefault();
-      }
-    }
-  }, {passive:false});
-  window.addEventListener('touchmove', (e)=>{
-    if(joyTouchId !== null){
-      for(const t of e.touches){
-        if(t.identifier === joyTouchId){ updateJoy(t.clientX, t.clientY); break; }
-      }
-    }
-  }, {passive:false});
-  window.addEventListener('touchend', (e)=>{ for(const t of e.changedTouches) if(t.identifier === joyTouchId) endJoy(); }, {passive:true});
-  window.addEventListener('touchcancel', (e)=>{ for(const t of e.changedTouches) if(t.identifier === joyTouchId) endJoy(); }, {passive:true});
-
-  // jump button minimalist
-  jumpBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); /* small hop */ monkey.position.y += 0.18; setTimeout(()=>monkey.position.y = 0.02, 220); }, {passive:false});
-
-  // restart
-  restartSmall.addEventListener('touchstart', (e)=>{ e.preventDefault(); spawnBananas(12); score = 0; scoreEl.textContent = score; }, {passive:false});
-
-  // animation loop (movement + bananas + particles)
-  let last = performance.now();
-  function loop(now){
+  // animate loop
+  let last = performance.now(), accum = 0;
+  function animate(now){
     const dt = Math.min((now - last)/1000, 0.05); last = now;
-    // simple movement: move in XZ plane relative to camera forward
-    if(Math.abs(move.x) > 0.01 || Math.abs(move.y) > 0.01){
-      const speed = 3.5;
-      // camera-forward substitute: move along world axes for demo
-      monkey.position.x += move.x * speed * dt;
-      monkey.position.z += move.y * speed * dt;
-    }
-    animateBananas(dt);
-    // camera follow monkey
-    camera.position.lerp(new THREE.Vector3(monkey.position.x, monkey.position.y + 4.0, monkey.position.z + 9.0), 0.12);
-    camera.lookAt(monkey.position.x, monkey.position.y + 1.2, monkey.position.z);
+    physicsStep(dt);
+    updateCamera();
     renderer.render(scene, camera);
-    requestAnimationFrame(loop);
+    accum += dt;
+    if(accum >= 1){ accum = 0; timeLeft = Math.max(0, timeLeft - 1); timeEl.textContent = Math.round(timeLeft); if(timeLeft <= 0){ setTimeout(()=>{ alert('Время вышло! Очков: '+score); resetGame(); }, 60); } }
+    requestAnimationFrame(animate);
   }
-  requestAnimationFrame(loop);
+  requestAnimationFrame(animate);
 
-  // expose spawn for debug in console
-  window._spawnBananas = spawnBananas;
+  // expose helpers
+  window._spawn = spawnBananas; window._reset = resetGame; window._monkey = monkey;
+
 })();
 </script>
 </body>
