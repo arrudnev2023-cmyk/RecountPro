@@ -1,232 +1,452 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>CodeStep — генератор кода (фикс)</title>
-
-  <!-- JSZip и FileSaver (CDN) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-
-  <style>
-    :root{
-      --bg:#0b0e13; --muted:#a9afbf; --card:#0f1318;
-      --accent1:#85a9ff; --accent2:#6f8df1; --text:#eef1f6;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0; padding:20px; min-height:100vh;
-      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background:linear-gradient(180deg,#071026,#0b0e13); color:var(--text);
-    }
-    h1{margin:0 0 12px 0;font-size:20px}
-    .row{display:flex;gap:12px;align-items:center}
-    label{display:block;color:var(--muted);font-size:13px;margin-top:12px}
-    input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:var(--card);color:var(--text)}
-    button{padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
-    .primary{background:linear-gradient(180deg,var(--accent1),var(--accent2));color:#081021}
-    .code{margin-top:16px;padding:14px;border-radius:10px;background:#0b1116;white-space:pre;overflow:auto;min-height:220px;border:1px solid rgba(255,255,255,0.04)}
-    footer{margin-top:18px;color:var(--muted);font-size:13px}
-    .hidden{display:none}
-  </style>
-</head>
-<body>
-  <h1>CodeStep — генератор кода (фикс)</h1>
-
-  <label for="goal">Цель программы</label>
-  <input id="goal" placeholder="Например: API заметок" />
-
-  <label for="lang">Язык</label>
-  <select id="lang" aria-label="Язык">
-    <option value="frontend">Frontend (HTML+JS)</option>
-    <option value="node">Node.js (Fastify)</option>
-    <option value="python">Python (FastAPI)</option>
-  </select>
-
-  <div class="row" style="margin-top:12px">
-    <button id="generate" class="primary">Сгенерировать код</button>
-    <button id="download" class="hidden">Скачать проект.zip</button>
-    <button id="copy" style="display:none">Скопировать код</button>
-  </div>
-
-  <div id="codeBox" class="code">// Здесь появится код после генерации</div>
-
-  <footer>
-    Открой DevTools → Console (F12) если кнопки не работают — там будут ошибки и подсказки.
-  </footer>
-
-  <script>
-    // Элементы
-    const goal = document.getElementById("goal");
-    const lang = document.getElementById("lang");
-    const genBtn = document.getElementById("generate");
-    const dlBtn = document.getElementById("download");
-    const copyBtn = document.getElementById("copy");
-    const codeBox = document.getElementById("codeBox");
-
-    // Хранилище файлов (массив объектов {name, content})
-    let files = [];
-
-    // Утилиты
-    function escapeHtml(s){
-      return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    }
-
-    function slugify(s){
-      return String(s || "project").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
-    }
-
-    // Собираем проект в files
-    function buildProject(){
-      const titleRaw = (goal.value || "Demo проект").trim();
-      const title = titleRaw.length ? titleRaw : "Demo проект";
-      files = []; // сброс
-
-      if(lang.value === "frontend"){
-        const html = `<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>${escapeHtml(title)}</title>
-  <style>body{font-family:system-ui;margin:20px}</style>
-</head>
-<body>
-  <h1>${escapeHtml(title)}</h1>
-  <p>Простейший фронтенд. Открой в браузере.</p>
-  <script>
-    console.log("Hello from ${escapeHtml(title)}");
-  </script>
-</body>
-</html>`;
-        files.push({name:"index.html", content: html});
-      } else if(lang.value === "node"){
-        const pkg = `{
-  "name": "${slugify(title)}",
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "fastify": "^4.26.2"
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>Mini 3D Game — CodeStep Prototype</title>
+<style>
+  html,body{height:100%;margin:0;background:#071026;color:#eaf2ff;font-family:Inter,system-ui, -apple-system, "Segoe UI", Roboto, Arial;}
+  #wrap{display:flex;flex-direction:column;height:100%}
+  header{padding:10px 12px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#071026,#08122a);box-shadow:0 6px 18px rgba(0,0,0,0.6)}
+  h1{font-size:16px;margin:0}
+  #hud{display:flex;gap:12px;align-items:center}
+  .pill{background:rgba(255,255,255,0.04);padding:6px 10px;border-radius:12px;font-weight:700}
+  main{flex:1;position:relative}
+  canvas{display:block;width:100%;height:100%}
+  #overlay{position:absolute;left:12px;bottom:12px;display:flex;gap:12px;align-items:end;pointer-events:none}
+  /* joystick */
+  .joy{width:120px;height:120px;border-radius:999px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;pointer-events:auto;touch-action:none}
+  .thumb{width:50px;height:50px;border-radius:999px;background:linear-gradient(180deg,#85a9ff,#6f8df1);transform:translate(0,0)}
+  /* jump button */
+  #jump{width:84px;height:84px;border-radius:20px;background:linear-gradient(180deg,#34d399,#16a34a);display:flex;align-items:center;justify-content:center;font-weight:800;pointer-events:auto}
+  /* top-right controls */
+  #topRight{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+  button.small{pointer-events:auto;padding:8px 10px;border-radius:10px;border:0;background:rgba(255,255,255,0.06);color:inherit;font-weight:800}
+  #codebox{position:absolute;left:12px;top:64px;background:rgba(0,0,0,0.35);padding:8px;border-radius:8px;font-size:13px}
+  footer{padding:8px 12px;font-size:12px;color:#9fb0d5;background:linear-gradient(180deg,transparent,#041123)}
+  @media(min-width:760px){
+    .joy{width:150px;height:150px}.thumb{width:64px;height:64px}.pill{font-size:14px}
   }
-}`;
-        const server = `// server.js
-import Fastify from "fastify";
-const app = Fastify({ logger: true });
+</style>
+</head>
+<body>
+<div id="wrap">
+  <header>
+    <h1>3D Quest — собрать монеты</h1>
+    <div id="hud">
+      <div class="pill">Очки: <span id="score">0</span></div>
+      <div class="pill">Время: <span id="time">60</span>s</div>
+      <div class="pill">Уровень: <span id="level">1</span></div>
+    </div>
+  </header>
 
-app.get("/", async () => ({ hello: "world", project: "${escapeHtml(title)}" }));
+  <main id="game">
+    <canvas id="c"></canvas>
 
-app.listen({ port: 3000, host: "0.0.0.0" }).then(() => {
-  console.log("Server running on http://localhost:3000");
-}).catch((err) => {
-  console.error(err);
-  process.exit(1);
-});`;
-        files.push({name:"package.json", content: pkg});
-        files.push({name:"server.js", content: server});
-      } else if(lang.value === "python"){
-        const req = `fastapi
-uvicorn[standard]`;
-        const main = `# main.py
-from fastapi import FastAPI
-app = FastAPI(title="${escapeHtml(title)}")
+    <div id="overlay">
+      <div class="joy" id="joy" aria-hidden="true">
+        <div class="thumb" id="thumb"></div>
+      </div>
+    </div>
 
-@app.get("/")
-def root():
-    return {"hello":"world", "project": "${escapeHtml(title)}"}
+    <div id="topRight">
+      <div id="codebox" style="display:none">Debug</div>
+      <button id="jump" class="small">Прыжок</button>
+      <button id="restart" class="small">Рестарт</button>
+    </div>
+  </main>
 
-# Запуск: uvicorn main:app --reload --host 0.0.0.0 --port 8000`;
-        files.push({name:"requirements.txt", content: req});
-        files.push({name:"main.py", content: main});
+  <footer>Управление: джойстик слева, кнопка прыжка справа. На десктопе — WASD / стрелки + пробел.</footer>
+</div>
+
+<!-- Three.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+
+<script>
+/*
+  Простой мобильный 3D прототип:
+  - шар (игрок), плоскость, монеты (сферы)
+  - управление: виртуальный джойстик + кнопка прыжка
+  - простая физика: гравитация, скорость, коллизии AABB/радиус
+  - таймер и счет
+*/
+
+// --- сцена и рендер ---
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
+renderer.setClearColor(0x071026);
+renderer.shadowMap.enabled = true;
+let DPR = Math.min(window.devicePixelRatio || 1, 2);
+renderer.setPixelRatio(DPR);
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 200);
+camera.position.set(0, 8, 12);
+
+// light
+const hemi = new THREE.HemisphereLight(0xffffff, 0x111122, 0.6);
+scene.add(hemi);
+const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+dir.position.set(5, 10, 5);
+dir.castShadow = true;
+dir.shadow.mapSize.set(1024,1024);
+scene.add(dir);
+
+// ground
+const groundGeo = new THREE.PlaneGeometry(40, 40);
+const groundMat = new THREE.MeshStandardMaterial({color:0x0d2335, metalness:0.1, roughness:0.8});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI/2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// grid lines for orientation
+const grid = new THREE.GridHelper(40, 20, 0x223344, 0x112233);
+grid.material.opacity = 0.25; grid.material.transparent = true;
+scene.add(grid);
+
+// player (sphere)
+const playerRadius = 0.6;
+const playerGeo = new THREE.SphereGeometry(playerRadius, 32, 24);
+const playerMat = new THREE.MeshStandardMaterial({color:0x85a9ff, metalness:0.2, roughness:0.3});
+const player = new THREE.Mesh(playerGeo, playerMat);
+player.castShadow = true;
+player.position.set(0, playerRadius + 0.02, 0);
+scene.add(player);
+
+// simple obstacles (low boxes)
+const boxes = [];
+for(let i=0;i<6;i++){
+  const bGeo = new THREE.BoxGeometry(2.2, 1.2, 2.2);
+  const bMat = new THREE.MeshStandardMaterial({color:0x2a4760});
+  const box = new THREE.Mesh(bGeo, bMat);
+  box.castShadow = true; box.receiveShadow=true;
+  const x = (Math.random()-0.5)*28;
+  const z = (Math.random()-0.5)*28;
+  box.position.set(x, 0.6, z);
+  scene.add(box);
+  boxes.push(box);
+}
+
+// coins (collectibles)
+let coins = [];
+function spawnCoins(n = 8){
+  coins.forEach(c => scene.remove(c.mesh));
+  coins = [];
+  for(let i=0;i<n;i++){
+    const r = 0.25 + Math.random()*0.12;
+    const geo = new THREE.SphereGeometry(r, 16, 12);
+    const mat = new THREE.MeshStandardMaterial({color:0xffd166, emissive:0xffa700, metalness:0.2, roughness:0.2});
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    let x, z, ok;
+    do{
+      x = (Math.random()-0.5)*30;
+      z = (Math.random()-0.5)*30;
+      ok = Math.hypot(x - player.position.x, z - player.position.z) > 3;
+      // avoid boxes
+      boxes.forEach(b => { if(ok){
+        const dx = x - b.position.x; const dz = z - b.position.z;
+        if(Math.abs(dx) < 2.5 && Math.abs(dz) < 2.5) ok = false;
+      }});
+    } while(!ok);
+    mesh.position.set(x, r + 0.02, z);
+    scene.add(mesh);
+    coins.push({mesh, r});
+  }
+}
+spawnCoins(10);
+
+// camera follow target helpers
+const camTarget = new THREE.Vector3();
+function updateCamera(){
+  // chase camera behind player
+  const desired = new THREE.Vector3(player.position.x, player.position.y + 4, player.position.z + 8);
+  camera.position.lerp(desired, 0.12);
+  camTarget.set(player.position.x, player.position.y + 1.2, player.position.z);
+  camera.lookAt(camTarget);
+}
+
+// --- simple physics state ---
+const state = {
+  vel: new THREE.Vector3(0,0,0),
+  onGround: false,
+  move: new THREE.Vector2(0,0),
+  jumpImpulse: 6.2,
+  gravity: -18,
+  maxSpeed: 6
+};
+
+// input: virtual joystick
+const joy = document.getElementById('joy');
+const thumb = document.getElementById('thumb');
+let joyActive = false;
+let joyCenter = {x:0,y:0};
+let joyRadius = 42;
+
+function getTouchPos(t){ return {x: t.clientX, y: t.clientY}; }
+
+function startJoy(e){
+  joyActive = true;
+  const rect = joy.getBoundingClientRect();
+  joyCenter = {x: rect.left + rect.width/2, y: rect.top + rect.height/2};
+  joyRadius = Math.min(rect.width, rect.height)/2 - 6;
+  const p = (e.touches ? e.touches[0] : e);
+  updateJoy(p.clientX, p.clientY);
+  e.preventDefault();
+}
+function updateJoy(cx, cy){
+  const dx = cx - joyCenter.x;
+  const dy = cy - joyCenter.y;
+  const dist = Math.hypot(dx, dy);
+  const nx = dx / (dist || 1);
+  const ny = dy / (dist || 1);
+  const mag = Math.min(dist / joyRadius, 1);
+  // Map to move vector (x -> left/right, y -> forward/back)
+  state.move.x = (Math.abs(nx) < 0.13) ? 0 : nx * mag;
+  state.move.y = (Math.abs(ny) < 0.13) ? 0 : -ny * mag; // invert y so up = forward
+  thumb.style.transform = `translate(${state.move.x * (joyRadius-18)}px, ${state.move.y * (joyRadius-18)}px)`;
+}
+function endJoy(){
+  joyActive = false;
+  state.move.set(0,0);
+  thumb.style.transform = 'translate(0,0)';
+}
+
+joy.addEventListener('touchstart', startJoy, {passive:false});
+joy.addEventListener('touchmove', (e)=>{ if(joyActive) { updateJoy(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); } }, {passive:false});
+joy.addEventListener('touchend', endJoy);
+joy.addEventListener('mousedown', (e)=>{ startJoy(e); window.addEventListener('mousemove', onMouseMove); });
+function onMouseMove(e){ if(joyActive) updateJoy(e.clientX,e.clientY); }
+window.addEventListener('mouseup', ()=>{ endJoy(); window.removeEventListener('mousemove', onMouseMove); });
+
+// keyboard fallback
+const keys = {};
+window.addEventListener('keydown', (e)=>{ keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keyup', (e)=>{ keys[e.key.toLowerCase()] = false; });
+
+// jump button
+const jumpBtn = document.getElementById('jump');
+jumpBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); tryJump(); }, {passive:false});
+jumpBtn.addEventListener('mousedown', ()=> tryJump());
+function tryJump(){
+  if(state.onGround){
+    state.vel.y = state.jumpImpulse;
+    state.onGround = false;
+  }
+}
+
+// restart
+document.getElementById('restart').addEventListener('click', resetGame);
+
+// game variables
+let score = 0;
+let totalTime = 60; // seconds
+let timeLeft = totalTime;
+let level = 1;
+const scoreEl = document.getElementById('score');
+const timeEl = document.getElementById('time');
+const levelEl = document.getElementById('level');
+
+// helpers
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+// simple collision sphere-plane + sphere-sphere for coins + AABB for boxes
+function physicsStep(dt){
+  // keyboard apply to move if no joystick
+  if(!joyActive){
+    let mx=0,my=0;
+    if(keys['arrowleft']||keys['a']) mx=-1;
+    if(keys['arrowright']||keys['d']) mx=1;
+    if(keys['arrowup']||keys['w']) my=1;
+    if(keys['arrowdown']||keys['s']) my=-1;
+    state.move.x = mx; state.move.y = my;
+    if(keys[' ']) tryJump();
+  }
+
+  // horizontal movement
+  const forward = new THREE.Vector3(0,0,-1);
+  const right = new THREE.Vector3(1,0,0);
+  // world directions relative to camera yaw
+  const camYaw = Math.atan2(camera.position.x - player.position.x, camera.position.z - player.position.z);
+  const cos = Math.cos(camYaw), sin = Math.sin(camYaw);
+  // Map input to world vector rotated by camera yaw
+  const input = new THREE.Vector3(state.move.x, 0, state.move.y);
+  const worldDir = new THREE.Vector3(
+    input.x * cos - input.z * sin,
+    0,
+    input.x * sin + input.z * cos
+  );
+  // accelerate towards desired vel
+  const targetVel = worldDir.clone().multiplyScalar(state.maxSpeed * (1 + 0.1*level));
+  // smooth velocity
+  const acc = 24;
+  state.vel.x = THREE.MathUtils.damp(state.vel.x, targetVel.x, acc, dt);
+  state.vel.z = THREE.MathUtils.damp(state.vel.z, targetVel.z, acc, dt);
+
+  // gravity
+  state.vel.y += state.gravity * dt;
+
+  // integrate position
+  player.position.x += state.vel.x * dt;
+  player.position.y += state.vel.y * dt;
+  player.position.z += state.vel.z * dt;
+
+  // ground collision
+  if(player.position.y <= playerRadius + 0.02){
+    player.position.y = playerRadius + 0.02;
+    state.vel.y = 0;
+    state.onGround = true;
+  } else {
+    state.onGround = false;
+  }
+
+  // simple box collisions: push out if overlapping
+  boxes.forEach(b => {
+    const minX = b.position.x - 1.1, maxX = b.position.x + 1.1;
+    const minZ = b.position.z - 1.1, maxZ = b.position.z + 1.1;
+    if(player.position.x > minX - playerRadius && player.position.x < maxX + playerRadius &&
+       player.position.z > minZ - playerRadius && player.position.z < maxZ + playerRadius){
+      // compute push vector away from box center in XZ
+      const dx = player.position.x - b.position.x;
+      const dz = player.position.z - b.position.z;
+      const d = Math.hypot(dx, dz) || 0.001;
+      const push = (1.5 + playerRadius) - d;
+      if(push > 0){
+        player.position.x += (dx/d) * push;
+        player.position.z += (dz/d) * push;
+        // reduce horizontal velocity
+        state.vel.x *= 0.4; state.vel.z *= 0.4;
       }
-
-      // README берём из поля
-      files.unshift({
-        name: "README.md",
-        content: `# ${title}
-
-Сгенерировано CodeStep
-
-## Запуск и инструкции
-- Содержимое архива — готовая минимальная структура проекта.
-- Для node: сохраните файлы, выполните npm install и npm start.
-- Для python: pip install -r requirements.txt и uvicorn main:app --reload
-- Для frontend: откройте index.html в браузере.
-`
-      });
     }
+  });
 
-    // Отрисовка блока кода
-    function renderCode(){
-      if(!files || !files.length){
-        codeBox.textContent = "// Сначала нажми «Сгенерировать код»";
-        return;
+  // coin pickup
+  for(let i = coins.length-1; i>=0; i--){
+    const c = coins[i];
+    const d = Math.hypot(player.position.x - c.mesh.position.x, player.position.z - c.mesh.position.z);
+    if(d < playerRadius + c.r + 0.15 && Math.abs(player.position.y - c.mesh.position.y) < 1.6){
+      // collect
+      scene.remove(c.mesh);
+      coins.splice(i,1);
+      score += 10;
+      scoreEl.textContent = score;
+      // small visual pop
+      // spawn particle (simple scale)
+      // when all collected -> next level
+      if(coins.length === 0){
+        levelUp();
       }
-      const combined = files.map(f => `/* ==== ${f.name} ==== */\n${f.content}`).join("\n\n");
-      codeBox.textContent = combined;
+    } else {
+      // small coin bob animation
+      c.mesh.position.y = c.r + 0.02 + Math.sin(performance.now() * 0.004 + i) * 0.08;
+      c.mesh.rotation.y += 0.02;
     }
+  }
+}
 
-    // Скачивание ZIP
-    function downloadZip(){
-      if(!files.length){
-        alert("Сначала сгенерируй проект");
-        return;
-      }
-      if(typeof JSZip === "undefined" || typeof saveAs === "undefined"){
-        alert("Библиотеки JSZip или FileSaver не загружены. Проверь подключение CDN.");
-        console.error("JSZip:", typeof JSZip, "saveAs:", typeof saveAs);
-        return;
-      }
-      const zip = new JSZip();
-      // можно добавить структуру папок: например src/, tests/ — сейчас кладём в корень
-      files.forEach(f => zip.file(f.name, f.content));
-      // имя архива на основе цели
-      const name = slugify(goal.value || "project") + ".zip";
-      zip.generateAsync({type:"blob"}).then(blob => {
-        saveAs(blob, name);
-      }).catch(err => {
-        console.error("Ошибка генерации zip:", err);
-        alert("Ошибка при формировании архива. Смотри консоль.");
-      });
+// level up
+function levelUp(){
+  level++;
+  levelEl.textContent = level;
+  // give time bonus and respawn coins + new boxes sometimes
+  timeLeft = Math.min(totalTime, timeLeft + 18);
+  spawnCoins(8 + Math.min(6, level));
+  // randomize boxes positions a bit
+  boxes.forEach(b => {
+    b.position.x = (Math.random()-0.5)*28;
+    b.position.z = (Math.random()-0.5)*28;
+  });
+}
+
+// reset
+function resetGame(){
+  score = 0; scoreEl.textContent = score;
+  level = 1; levelEl.textContent = level;
+  timeLeft = totalTime; timeEl.textContent = Math.round(timeLeft);
+  player.position.set(0, playerRadius + 0.02, 0);
+  state.vel.set(0,0,0);
+  spawnCoins(10);
+}
+
+// game loop
+let last = performance.now();
+let accum = 0;
+function animate(now){
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  // run physics at 60Hz style but integrating with dt
+  physicsStep(dt);
+
+  // update camera
+  updateCamera();
+
+  // subtle player tilt based on velocity
+  player.rotation.x = THREE.MathUtils.lerp(player.rotation.x, -state.vel.z * 0.03, 0.12);
+  player.rotation.z = THREE.MathUtils.lerp(player.rotation.z, state.vel.x * 0.03, 0.12);
+
+  // render
+  renderer.render(scene, camera);
+
+  // timer
+  accum += dt;
+  if(accum >= 1){
+    accum = 0;
+    timeLeft = Math.max(0, timeLeft - 1);
+    timeEl.textContent = Math.round(timeLeft);
+    if(timeLeft <= 0){
+      // game over: simple alert and restart
+      setTimeout(()=>{ alert('Время вышло! Набрано очков: ' + score); resetGame(); }, 50);
     }
+  }
 
-    // Обработчики
-    genBtn.addEventListener("click", () => {
-      try {
-        buildProject();
-        renderCode();
-        dlBtn.classList.remove("hidden");
-        copyBtn.style.display = "inline-block";
-      } catch (err) {
-        console.error("Ошибка при генерации:", err);
-        alert("Ошибка при генерации. Смотри консоль.");
-      }
-    });
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
 
-    dlBtn.addEventListener("click", () => {
-      downloadZip();
-    });
+// resize handling
+window.addEventListener('resize', onResize);
+function onResize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  renderer.setPixelRatio(DPR);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+}
+onResize();
 
-    copyBtn.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(codeBox.textContent);
-        copyBtn.textContent = "Скопировано";
-        setTimeout(()=>{ copyBtn.textContent = "Скопировать код"; }, 1300);
-      } catch (err) {
-        console.error("Не удалось скопировать:", err);
-        alert("Не удалось скопировать текст. Смотри консоль.");
-      }
-    });
+// simple debug toggle: long press header to show debug box
+let headerPressTimer = null;
+document.querySelector('header').addEventListener('touchstart', ()=> {
+  headerPressTimer = setTimeout(()=> document.getElementById('codebox').style.display = 'block', 700);
+}, {passive:true});
+document.querySelector('header').addEventListener('touchend', ()=> {
+  clearTimeout(headerPressTimer); headerPressTimer = null;
+}, {passive:true});
+document.getElementById('codebox').addEventListener('click', ()=> {
+  const el = document.getElementById('codebox');
+  el.style.display = 'none';
+});
 
-    // Прямой автотест при загрузке: если CDN не подгрузился — предупреждение
-    window.addEventListener("load", () => {
-      if(typeof JSZip === "undefined" || typeof saveAs === "undefined"){
-        console.warn("JSZip или FileSaver не доступны. Скачивание zip не будет работать.");
-      }
-    });
-  </script>
+// --- utilities and polish ---
+function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+// initial call
+resetGame();
+
+// Expose a simple FPS saver for weak devices
+let slowMode = false;
+(function detectPerformance(){
+  // if devicePixelRatio high and mobile not powerful -> lower DPR
+  const ua = navigator.userAgent || '';
+  if(/iPhone|Android/.test(ua) && (window.devicePixelRatio > 2.0)){
+    // low-end heuristic: reduce DPR to 1.25 for performance
+    renderer.setPixelRatio(1.25);
+    slowMode = true;
+  }
+})();
+
+</script>
 </body>
 </html>
