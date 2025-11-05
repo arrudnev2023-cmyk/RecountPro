@@ -1,94 +1,232 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>CodeStep — генератор кода</title>
-  <!-- Подключаем библиотеки для zip и сохранения -->
+  <title>CodeStep — генератор кода (фикс)</title>
+
+  <!-- JSZip и FileSaver (CDN) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
   <style>
-    body{font-family:system-ui,sans-serif;background:#0b0e13;color:#f0f2f7;margin:0;padding:20px}
-    h1{margin-bottom:10px}
-    label{display:block;margin-top:10px;font-size:14px;color:#a9afbf}
-    input,select,textarea{width:100%;padding:8px;margin-top:4px;border-radius:8px;border:1px solid #444;background:#1a1d24;color:#fff}
-    button{margin-top:12px;padding:10px 14px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
-    .primary{background:linear-gradient(180deg,#85a9ff,#6f8df1);color:#081021}
-    .code{margin-top:20px;padding:12px;background:#1a1d24;border-radius:8px;white-space:pre;overflow:auto}
+    :root{
+      --bg:#0b0e13; --muted:#a9afbf; --card:#0f1318;
+      --accent1:#85a9ff; --accent2:#6f8df1; --text:#eef1f6;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; padding:20px; min-height:100vh;
+      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background:linear-gradient(180deg,#071026,#0b0e13); color:var(--text);
+    }
+    h1{margin:0 0 12px 0;font-size:20px}
+    .row{display:flex;gap:12px;align-items:center}
+    label{display:block;color:var(--muted);font-size:13px;margin-top:12px}
+    input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:var(--card);color:var(--text)}
+    button{padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
+    .primary{background:linear-gradient(180deg,var(--accent1),var(--accent2));color:#081021}
+    .code{margin-top:16px;padding:14px;border-radius:10px;background:#0b1116;white-space:pre;overflow:auto;min-height:220px;border:1px solid rgba(255,255,255,0.04)}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+    .hidden{display:none}
   </style>
 </head>
 <body>
-  <h1>CodeStep — генератор кода</h1>
+  <h1>CodeStep — генератор кода (фикс)</h1>
 
-  <label>Цель программы</label>
+  <label for="goal">Цель программы</label>
   <input id="goal" placeholder="Например: API заметок" />
 
-  <label>Язык</label>
-  <select id="lang">
+  <label for="lang">Язык</label>
+  <select id="lang" aria-label="Язык">
+    <option value="frontend">Frontend (HTML+JS)</option>
     <option value="node">Node.js (Fastify)</option>
     <option value="python">Python (FastAPI)</option>
-    <option value="frontend">Frontend (HTML+JS)</option>
   </select>
 
-  <button class="primary" id="generate">Сгенерировать код</button>
-  <button id="download" style="display:none">Скачать проект.zip</button>
+  <div class="row" style="margin-top:12px">
+    <button id="generate" class="primary">Сгенерировать код</button>
+    <button id="download" class="hidden">Скачать проект.zip</button>
+    <button id="copy" style="display:none">Скопировать код</button>
+  </div>
 
-  <div class="code" id="codeBox">// Здесь появится код</div>
+  <div id="codeBox" class="code">// Здесь появится код после генерации</div>
+
+  <footer>
+    Открой DevTools → Console (F12) если кнопки не работают — там будут ошибки и подсказки.
+  </footer>
 
   <script>
-    const goal=document.getElementById("goal");
-    const lang=document.getElementById("lang");
-    const codeBox=document.getElementById("codeBox");
-    const genBtn=document.getElementById("generate");
-    const dlBtn=document.getElementById("download");
+    // Элементы
+    const goal = document.getElementById("goal");
+    const lang = document.getElementById("lang");
+    const genBtn = document.getElementById("generate");
+    const dlBtn = document.getElementById("download");
+    const copyBtn = document.getElementById("copy");
+    const codeBox = document.getElementById("codeBox");
 
-    let files=[];
+    // Хранилище файлов (массив объектов {name, content})
+    let files = [];
 
-    function buildProject(){
-      const title=goal.value||"Demo проект";
-      if(lang.value==="node"){
-        files=[
-          {name:"package.json",content:`{
-  "name":"demo",
-  "version":"1.0.0",
-  "scripts":{"start":"node server.js"},
-  "dependencies":{"fastify":"^4.26.2"}
-}`},
-          {name:"server.js",content:`import Fastify from "fastify";
-const app=Fastify();
-app.get("/",async()=>({hello:"world"}));
-app.listen({port:3000});`}
-        ];
-      } else if(lang.value==="python"){
-        files=[
-          {name:"requirements.txt",content:`fastapi\nuvicorn`},
-          {name:"main.py",content:`from fastapi import FastAPI
-app=FastAPI()
-@app.get("/")
-def root(): return {"hello":"world"}`}
-        ];
-      } else {
-        files=[
-          {name:"index.html",content:`<!DOCTYPE html><html><body><h1>${title}</h1><script>document.body.append(" Hello World")</script></body></html>`}
-        ];
-      }
-      // README теперь берёт название из поля
-      files.unshift({name:"README.md",content:`# ${title}\n\nСгенерировано CodeStep`});
+    // Утилиты
+    function escapeHtml(s){
+      return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     }
 
-    genBtn.onclick=()=>{
-      buildProject();
-      codeBox.textContent=files.map(f=>`/* ==== ${f.name} ==== */\n${f.content}`).join("\n\n");
-      dlBtn.style.display="inline-block";
-    };
+    function slugify(s){
+      return String(s || "project").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
+    }
 
-    dlBtn.onclick=()=>{
-      const zip=new JSZip();
-      files.forEach(f=>zip.file(f.name,f.content));
-      zip.generateAsync({type:"blob"}).then(content=>{
-        saveAs(content,"project.zip");
+    // Собираем проект в files
+    function buildProject(){
+      const titleRaw = (goal.value || "Demo проект").trim();
+      const title = titleRaw.length ? titleRaw : "Demo проект";
+      files = []; // сброс
+
+      if(lang.value === "frontend"){
+        const html = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>${escapeHtml(title)}</title>
+  <style>body{font-family:system-ui;margin:20px}</style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  <p>Простейший фронтенд. Открой в браузере.</p>
+  <script>
+    console.log("Hello from ${escapeHtml(title)}");
+  </script>
+</body>
+</html>`;
+        files.push({name:"index.html", content: html});
+      } else if(lang.value === "node"){
+        const pkg = `{
+  "name": "${slugify(title)}",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "fastify": "^4.26.2"
+  }
+}`;
+        const server = `// server.js
+import Fastify from "fastify";
+const app = Fastify({ logger: true });
+
+app.get("/", async () => ({ hello: "world", project: "${escapeHtml(title)}" }));
+
+app.listen({ port: 3000, host: "0.0.0.0" }).then(() => {
+  console.log("Server running on http://localhost:3000");
+}).catch((err) => {
+  console.error(err);
+  process.exit(1);
+});`;
+        files.push({name:"package.json", content: pkg});
+        files.push({name:"server.js", content: server});
+      } else if(lang.value === "python"){
+        const req = `fastapi
+uvicorn[standard]`;
+        const main = `# main.py
+from fastapi import FastAPI
+app = FastAPI(title="${escapeHtml(title)}")
+
+@app.get("/")
+def root():
+    return {"hello":"world", "project": "${escapeHtml(title)}"}
+
+# Запуск: uvicorn main:app --reload --host 0.0.0.0 --port 8000`;
+        files.push({name:"requirements.txt", content: req});
+        files.push({name:"main.py", content: main});
+      }
+
+      // README берём из поля
+      files.unshift({
+        name: "README.md",
+        content: `# ${title}
+
+Сгенерировано CodeStep
+
+## Запуск и инструкции
+- Содержимое архива — готовая минимальная структура проекта.
+- Для node: сохраните файлы, выполните npm install и npm start.
+- Для python: pip install -r requirements.txt и uvicorn main:app --reload
+- Для frontend: откройте index.html в браузере.
+`
       });
-    };
+    }
+
+    // Отрисовка блока кода
+    function renderCode(){
+      if(!files || !files.length){
+        codeBox.textContent = "// Сначала нажми «Сгенерировать код»";
+        return;
+      }
+      const combined = files.map(f => `/* ==== ${f.name} ==== */\n${f.content}`).join("\n\n");
+      codeBox.textContent = combined;
+    }
+
+    // Скачивание ZIP
+    function downloadZip(){
+      if(!files.length){
+        alert("Сначала сгенерируй проект");
+        return;
+      }
+      if(typeof JSZip === "undefined" || typeof saveAs === "undefined"){
+        alert("Библиотеки JSZip или FileSaver не загружены. Проверь подключение CDN.");
+        console.error("JSZip:", typeof JSZip, "saveAs:", typeof saveAs);
+        return;
+      }
+      const zip = new JSZip();
+      // можно добавить структуру папок: например src/, tests/ — сейчас кладём в корень
+      files.forEach(f => zip.file(f.name, f.content));
+      // имя архива на основе цели
+      const name = slugify(goal.value || "project") + ".zip";
+      zip.generateAsync({type:"blob"}).then(blob => {
+        saveAs(blob, name);
+      }).catch(err => {
+        console.error("Ошибка генерации zip:", err);
+        alert("Ошибка при формировании архива. Смотри консоль.");
+      });
+    }
+
+    // Обработчики
+    genBtn.addEventListener("click", () => {
+      try {
+        buildProject();
+        renderCode();
+        dlBtn.classList.remove("hidden");
+        copyBtn.style.display = "inline-block";
+      } catch (err) {
+        console.error("Ошибка при генерации:", err);
+        alert("Ошибка при генерации. Смотри консоль.");
+      }
+    });
+
+    dlBtn.addEventListener("click", () => {
+      downloadZip();
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(codeBox.textContent);
+        copyBtn.textContent = "Скопировано";
+        setTimeout(()=>{ copyBtn.textContent = "Скопировать код"; }, 1300);
+      } catch (err) {
+        console.error("Не удалось скопировать:", err);
+        alert("Не удалось скопировать текст. Смотри консоль.");
+      }
+    });
+
+    // Прямой автотест при загрузке: если CDN не подгрузился — предупреждение
+    window.addEventListener("load", () => {
+      if(typeof JSZip === "undefined" || typeof saveAs === "undefined"){
+        console.warn("JSZip или FileSaver не доступны. Скачивание zip не будет работать.");
+      }
+    });
   </script>
 </body>
 </html>
