@@ -2,8 +2,8 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-<title>Monkey Quest — с вертикальным поворотом</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
+<title>Monkey Quest — мобильный (multitouch)</title>
 <style>
   :root{--bg1:#f3f6fa;--bg2:#e9eef6;--panel:#ffffff;--accent:#ffd77a;--dark:#07323a}
   html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg1),var(--bg2));font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;-webkit-text-size-adjust:100%}
@@ -22,8 +22,8 @@
   .jump-arrow{width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:22px solid var(--dark);transform:translateY(-3px)}
   #restartSmall{position:fixed;left:12px;top:12px;pointer-events:auto;width:44px;height:44px;border-radius:8px;background:linear-gradient(180deg,var(--panel),#f7fafc);display:flex;align-items:center;justify-content:center;border:1px solid rgba(7,34,51,0.06);box-shadow:0 4px 10px rgba(13,40,58,0.04);z-index:35}
   #hint{position:fixed;left:12px;top:64px;background:rgba(255,255,255,0.95);padding:8px;border-radius:8px;font-size:13px;border:1px solid rgba(7,34,51,0.04);z-index:35;pointer-events:auto}
-  footer{padding:8px 12px;font-size:12px;color:#3b5566;background:linear-gradient(180deg,transparent,#f1f5f9);z-index:20}
   #errorBox{position:absolute;left:12px;right:12px;top:50%;transform:translateY(-50%);background:#fff0f0;color:#6b0b0b;padding:12px;border-radius:8px;border:1px solid #ebb;z-index:50;display:none}
+  footer{padding:8px 12px;font-size:12px;color:#3b5566;background:linear-gradient(180deg,transparent,#f1f5f9);z-index:20}
   @media(min-width:760px){ .joy{width:140px;height:140px}.thumb{width:64px;height:64px}.jump-circle{width:140px;height:140px} }
 </style>
 </head>
@@ -55,7 +55,7 @@
         </svg>
       </div>
 
-      <div id="hint">Правая часть экрана — вращение по горизонтали и вертикали, левая — джойстик (реверс по умолчанию)</div>
+      <div id="hint">Джойстик слева — ходьба, правая часть — вращение (yaw + pitch). Можно одновременно ходить и смотреть вверх/вниз.</div>
 
       <div class="jump-circle" id="jumpBtn" aria-label="Прыжок" title="Прыжок">
         <div class="jump-arrow" aria-hidden="true"></div>
@@ -65,17 +65,24 @@
     <div id="errorBox" role="alert"></div>
   </main>
 
-  <footer>Открой на телефоне в Safari/Chrome. Джойстик слева, поворот справа, рестарт — вверху слева.</footer>
+  <footer>Открой в мобильном Safari/Chrome. Левая рука — джойстик, правая — поворот.</footer>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <script>
-(async function(){
+/* Полный мобильный файл с multitouch:
+   - отдельные тачи для джойстика и поворота (joyTouchId, rotTouchId)
+   - возможность одновременного движения и вертикального/горизонтального поворота
+   - правый регион сужен, чтобы не конфликтовал с кнопкой прыжка
+   - безопасная инициализация WebGL/renderer и resize
+*/
+
+(function(){
+  // --- базовые проверки и DOM ---
   function showError(msg){ const box = document.getElementById('errorBox'); box.textContent = msg; box.style.display = 'block'; }
   function webglAvailable(){ try { const c=document.createElement('canvas'); return !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl'))); } catch(e){ return false; } }
-  if(!webglAvailable()){ showError('WebGL не поддерживается. Откройте в мобильном Safari/Chrome.'); return; }
+  if(!webglAvailable()){ showError('WebGL не поддерживается. Откройте в мобильном Safari или Chrome.'); return; }
 
-  // DOM
   const canvas = document.getElementById('c');
   const scoreEl = document.getElementById('score');
   const timeEl = document.getElementById('time');
@@ -85,23 +92,11 @@
   const jumpBtn = document.getElementById('jumpBtn');
   const restartSmall = document.getElementById('restartSmall');
 
-  // three renderer
+  // --- three.js init ---
   const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
   renderer.setClearColor(0xe9eef6);
   renderer.shadowMap.enabled = true;
 
-  // resize helper
-  const headerH = () => document.querySelector('header').offsetHeight;
-  function resizeRenderer(){
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    renderer.setPixelRatio(dpr);
-    const w = window.innerWidth;
-    const h = window.innerHeight - headerH();
-    renderer.setSize(w, h, false);
-    if(camera){ camera.aspect = w / h; camera.updateProjectionMatrix(); }
-  }
-
-  // scene + camera
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
   camera.position.set(0, 8, 12);
@@ -114,37 +109,30 @@
   // ground + grid
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(40,40), new THREE.MeshStandardMaterial({color:0xe6eef4, metalness:0, roughness:0.9}));
   ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
-  const grid = new THREE.GridHelper(40,20,0xcfdde6,0xddeaf0); grid.material.opacity=0.45; grid.material.transparent=true; scene.add(grid);
+  const grid = new THREE.GridHelper(40,20,0xcfdde6,0xddeaf0); grid.material.opacity = 0.45; grid.material.transparent = true; scene.add(grid);
 
-  // monkey primitives
+  // monkey primitive
   const monkey = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.7,24,16), new THREE.MeshStandardMaterial({color:0x9c6b3a, metalness:0.05, roughness:0.6}));
-  body.castShadow = true; body.position.set(0,0.7,0); monkey.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.45,20,16), new THREE.MeshStandardMaterial({color:0xab7a4a}));
-  head.castShadow = true; head.position.set(0,1.45,0.08); monkey.add(head);
-  const face = new THREE.Mesh(new THREE.SphereGeometry(0.28,12,10), new THREE.MeshStandardMaterial({color:0xfff1e6}));
-  face.position.set(0,1.35,0.3); monkey.add(face);
-  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.9,12), new THREE.MeshStandardMaterial({color:0x9c6b3a}));
-  armL.position.set(-0.95,0.8,0); armL.rotation.z = 0.2; armL.castShadow=true;
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.7,24,16), new THREE.MeshStandardMaterial({color:0x9c6b3a, metalness:0.05, roughness:0.6})); body.castShadow=true; body.position.set(0,0.7,0); monkey.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.45,20,16), new THREE.MeshStandardMaterial({color:0xab7a4a})); head.castShadow=true; head.position.set(0,1.45,0.08); monkey.add(head);
+  const face = new THREE.Mesh(new THREE.SphereGeometry(0.28,12,10), new THREE.MeshStandardMaterial({color:0xfff1e6})); face.position.set(0,1.35,0.3); monkey.add(face);
+  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.9,12), new THREE.MeshStandardMaterial({color:0x9c6b3a})); armL.position.set(-0.95,0.8,0); armL.rotation.z=0.2; armL.castShadow=true;
   const armR = armL.clone(); armR.position.x = 0.95; armR.rotation.z = -0.2;
-  const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.9,12), new THREE.MeshStandardMaterial({color:0x9c6b3a}));
-  legL.position.set(-0.36,0.05,0); legL.rotation.z = 0.05; legL.castShadow=true;
+  const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.9,12), new THREE.MeshStandardMaterial({color:0x9c6b3a})); legL.position.set(-0.36,0.05,0); legL.rotation.z=0.05; legL.castShadow=true;
   const legR = legL.clone(); legR.position.x = 0.36;
-  const tail = new THREE.Mesh(new THREE.TorusGeometry(0.5,0.08,8,16,Math.PI*1.1), new THREE.MeshStandardMaterial({color:0x9c6b3a}));
-  tail.rotation.x = Math.PI/2; tail.position.set(0,0.5,-0.7); tail.castShadow=true;
+  const tail = new THREE.Mesh(new THREE.TorusGeometry(0.5,0.08,8,16,Math.PI*1.1), new THREE.MeshStandardMaterial({color:0x9c6b3a})); tail.rotation.x = Math.PI/2; tail.position.set(0,0.5,-0.7); tail.castShadow=true;
   monkey.add(armL, armR, legL, legR, tail);
   monkey.position.set(0,0.02,0);
   scene.add(monkey);
 
-  // obstacles
+  // boxes + bananas
   const boxes = [];
   for(let i=0;i<5;i++){
     const box = new THREE.Mesh(new THREE.BoxGeometry(2.4,1.4,2.4), new THREE.MeshStandardMaterial({color:0xc6d7df}));
-    box.castShadow=true; box.receiveShadow=true; box.position.set((Math.random()-0.5)*28, 0.7, (Math.random()-0.5)*28);
+    box.castShadow=true; box.receiveShadow=true; box.position.set((Math.random()-0.5)*28,0.7,(Math.random()-0.5)*28);
     scene.add(box); boxes.push(box);
   }
 
-  // bananas
   let bananas = [];
   function makeBananaMesh(){
     const g = new THREE.Group();
@@ -169,76 +157,144 @@
   }
   spawnBananas(10);
 
-  // camera
+  // camera target helper
   const camTarget = new THREE.Vector3();
-  function updateCamera(){ const desired = new THREE.Vector3(monkey.position.x, monkey.position.y + 4.2, monkey.position.z + 9.2); camera.position.lerp(desired, 0.12); camTarget.set(monkey.position.x, monkey.position.y + 1.2, monkey.position.z); camera.lookAt(camTarget); }
+  function updateCamera(){
+    const desired = new THREE.Vector3(monkey.position.x, monkey.position.y + 4.2, monkey.position.z + 9.2);
+    camera.position.lerp(desired, 0.12);
+    camTarget.set(monkey.position.x, monkey.position.y + 1.2, monkey.position.z);
+    camera.lookAt(camTarget);
+  }
 
-  // state
+  // state/physics
   const state = { vel: new THREE.Vector3(0,0,0), onGround:true, move: new THREE.Vector2(0,0), jumpImpulse:5.6, gravity:-18, maxSpeed:5 };
   let score = 0, totalTime = 60, timeLeft = totalTime, level = 1;
   scoreEl.textContent = score; timeEl.textContent = timeLeft; levelEl.textContent = level;
 
-  // joystick (left) - inverted by default
-  let joyActive = false, joyCenter = {x:0,y:0}, joyRadius = 42;
-  const invert = true;
-  function startJoy(e){ joyActive = true; const rect = joy.getBoundingClientRect(); joyCenter = {x: rect.left + rect.width/2, y: rect.top + rect.height/2}; joyRadius = Math.min(rect.width, rect.height)/2 - 6; const p = e.touches ? e.touches[0] : e; updateJoy(p.clientX, p.clientY); e.preventDefault(); }
-  function updateJoy(cx, cy){ const dx = cx - joyCenter.x, dy = cy - joyCenter.y; const dist = Math.hypot(dx, dy); const nx = dx / (dist || 1), ny = dy / (dist || 1); const mag = Math.min(dist / joyRadius, 1); const forwardY = invert ? ny : -ny; state.move.x = (Math.abs(nx) < 0.12) ? 0 : nx * mag; state.move.y = (Math.abs(forwardY) < 0.12) ? 0 : forwardY * mag; thumb.style.transform = `translate(${state.move.x * (joyRadius-18)}px, ${-state.move.y * (joyRadius-18)}px)`; }
-  function endJoy(){ joyActive = false; state.move.set(0,0); thumb.style.transform = 'translate(0,0)'; }
-  joy.addEventListener('touchstart', startJoy, {passive:false});
-  joy.addEventListener('touchmove', (e)=>{ if(joyActive){ updateJoy(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); } }, {passive:false});
-  joy.addEventListener('touchend', endJoy);
+  // resize
+  function resizeRenderer(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    renderer.setPixelRatio(dpr);
+    const w = window.innerWidth;
+    const h = window.innerHeight - document.querySelector('header').offsetHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resizeRenderer);
+  resizeRenderer();
 
-  // jump
-  const tryJump = ()=>{ if(state.onGround){ state.vel.y = state.jumpImpulse; state.onGround = false; } };
-  jumpBtn.addEventListener('touchstart', (e)=>{ e.stopPropagation(); e.preventDefault(); tryJump(); }, {passive:false});
+  // ---- JOYSTICK (left) ----
+  let joyTouchId = null;
+  let joyActive = false;
+  let joyCenter = {x:0,y:0}, joyRadius = 42;
+  const invert = true; // reverse vertical by default
 
-  // restart
-  restartSmall.addEventListener('touchstart', (e)=>{ e.stopPropagation(); e.preventDefault(); resetGame(); }, {passive:false});
+  function updateJoy(cx, cy){
+    const dx = cx - joyCenter.x, dy = cy - joyCenter.y;
+    const dist = Math.hypot(dx, dy);
+    const nx = dx / (dist || 1), ny = dy / (dist || 1);
+    const mag = Math.min(dist / joyRadius, 1);
+    const forwardY = invert ? ny : -ny;
+    state.move.x = (Math.abs(nx) < 0.12) ? 0 : nx * mag;
+    state.move.y = (Math.abs(forwardY) < 0.12) ? 0 : forwardY * mag;
+    thumb.style.transform = `translate(${state.move.x * (joyRadius-18)}px, ${-state.move.y * (joyRadius-18)}px)`;
+  }
+  function endJoy(){ joyActive = false; joyTouchId = null; state.move.set(0,0); thumb.style.transform = 'translate(0,0)'; }
 
-  // rotation: right-side swipe controls yaw and pitch
+  // ---- ROTATION (right) ----
+  let rotTouchId = null;
   let rotateActive = false;
-  let lastTouchX = 0, lastTouchY = 0;
-  // pitch limits (radians)
-  const PITCH_MIN = -0.8;
-  const PITCH_MAX = 0.6;
-  // sensitivity
-  const SENS_X = 0.006; // yaw sensitivity
-  const SENS_Y = 0.004; // pitch sensitivity
+  let lastRotX = 0, lastRotY = 0;
+  const PITCH_MIN = -0.8, PITCH_MAX = 0.6;
+  const SENS_X = 0.006, SENS_Y = 0.004;
 
-  function startRotate(e){
-    rotateActive = true;
-    const t = e.touches ? e.touches[0] : e;
-    lastTouchX = t.clientX;
-    lastTouchY = t.clientY;
-    e.preventDefault();
+  // helper to find touch by id
+  function findTouchById(touches, id){
+    for(let i=0;i<touches.length;i++) if(touches[i].identifier === id) return touches[i];
+    return null;
   }
-  function moveRotate(e){
-    if(!rotateActive) return;
-    const t = e.touches ? e.touches[0] : e;
-    const dx = t.clientX - lastTouchX;
-    const dy = t.clientY - lastTouchY;
-    lastTouchX = t.clientX;
-    lastTouchY = t.clientY;
-    // yaw (around Y)
-    monkey.rotation.y -= dx * SENS_X;
-    // pitch (around X) — clamp
-    let proposedPitch = monkey.rotation.x - dy * SENS_Y;
-    proposedPitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, proposedPitch));
-    monkey.rotation.x = proposedPitch;
-  }
-  function endRotate(){ rotateActive = false; }
 
-  // start rotate only when touch begins in rightmost area (avoid buttons), allow multi-touch but prioritize first
+  // --- multitouch handlers ---
   window.addEventListener('touchstart', (e)=>{
-    const t = e.touches[0];
-    if(t.clientX > window.innerWidth * 0.78){
-      startRotate(e);
+    for(let i=0;i<e.changedTouches.length;i++){
+      const t = e.changedTouches[i];
+      const x = t.clientX, y = t.clientY;
+      const W = window.innerWidth;
+
+      const leftZone = x < W * 0.45;
+      const rightZone = x > W * 0.55;
+
+      // prioritize touches inside visual joystick element
+      const rect = joy.getBoundingClientRect();
+      const inJoyVisual = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+
+      if((leftZone || inJoyVisual) && joyTouchId === null){
+        joyTouchId = t.identifier;
+        joyActive = true;
+        joyCenter = {x: rect.left + rect.width/2, y: rect.top + rect.height/2};
+        joyRadius = Math.min(rect.width, rect.height)/2 - 6;
+        updateJoy(t.clientX, t.clientY);
+        e.preventDefault();
+      } else if(rightZone && rotTouchId === null){
+        // bind rotation touch
+        rotTouchId = t.identifier;
+        rotateActive = true;
+        lastRotX = t.clientX;
+        lastRotY = t.clientY;
+        e.preventDefault();
+      }
+      // otherwise ignore additional touches
     }
   }, {passive:false});
-  window.addEventListener('touchmove', (e)=>{ if(rotateActive) moveRotate(e); }, {passive:false});
-  window.addEventListener('touchend', endRotate, {passive:true});
 
-  // physics & animation
+  window.addEventListener('touchmove', (e)=>{
+    // joystick move
+    if(joyTouchId !== null){
+      const jt = findTouchById(e.touches, joyTouchId);
+      if(jt){
+        updateJoy(jt.clientX, jt.clientY);
+      }
+    }
+
+    // rotation move
+    if(rotTouchId !== null && rotateActive){
+      const rt = findTouchById(e.touches, rotTouchId);
+      if(rt){
+        const dx = rt.clientX - lastRotX;
+        const dy = rt.clientY - lastRotY;
+        lastRotX = rt.clientX; lastRotY = rt.clientY;
+        monkey.rotation.y -= dx * SENS_X;
+        let proposedPitch = monkey.rotation.x - dy * SENS_Y;
+        proposedPitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, proposedPitch));
+        monkey.rotation.x = proposedPitch;
+      }
+    }
+
+    // block scrolling when interacting
+    e.preventDefault();
+  }, {passive:false});
+
+  window.addEventListener('touchend', (e)=>{
+    for(let i=0;i<e.changedTouches.length;i++){
+      const t = e.changedTouches[i];
+      if(t.identifier === joyTouchId) endJoy();
+      if(t.identifier === rotTouchId){ rotTouchId = null; rotateActive = false; }
+    }
+  }, {passive:true});
+  window.addEventListener('touchcancel', (e)=>{
+    for(let i=0;i<e.changedTouches.length;i++){
+      const t = e.changedTouches[i];
+      if(t.identifier === joyTouchId) endJoy();
+      if(t.identifier === rotTouchId){ rotTouchId = null; rotateActive = false; }
+    }
+  }, {passive:true});
+
+  // jump + restart handlers
+  function tryJump(){ if(state.onGround){ state.vel.y = state.jumpImpulse; state.onGround = false; } }
+  jumpBtn.addEventListener('touchstart', (e)=>{ e.stopPropagation(); e.preventDefault(); tryJump(); }, {passive:false});
+  restartSmall.addEventListener('touchstart', (e)=>{ e.stopPropagation(); e.preventDefault(); resetGame(); }, {passive:false});
+
+  // physics & game logic
   let walkPhase = 0;
   function physicsStep(dt){
     const camYaw = Math.atan2(camera.position.x - monkey.position.x, camera.position.z - monkey.position.z);
@@ -304,7 +360,7 @@
     }
   }
 
-  // animate
+  // animate loop
   let last = performance.now(), accum = 0;
   function animate(now){
     const dt = Math.min((now - last)/1000, 0.05); last = now;
@@ -316,10 +372,10 @@
     requestAnimationFrame(animate);
   }
 
-  // start
+  // final init
   resizeRenderer();
-  window.addEventListener('resize', resizeRenderer);
   requestAnimationFrame(animate);
+
 })();
 </script>
 </body>
