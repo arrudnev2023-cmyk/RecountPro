@@ -21,7 +21,6 @@
     }
     *{box-sizing:border-box}
     html,body{background:radial-gradient(1100px 700px at 70% 10%,#13223f 0%,#0b0e13 55%,#06070a 100%); color:var(--text); margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif}
-    /* Layout */
     .grid{display:grid; grid-template-columns:1fr minmax(320px,1100px) 1fr}
     .wrap{grid-column:2}
     header{grid-column:1/-1; padding:22px 16px; position:sticky; top:0; backdrop-filter:saturate(140%) blur(12px); background:linear-gradient(180deg,rgba(11,14,19,0.70),rgba(11,14,19,0)); z-index:10; border-bottom:1px solid rgba(255,255,255,0.06)}
@@ -29,14 +28,12 @@
     .logo{width:40px; height:40px; border-radius:12px; background:conic-gradient(from 180deg at 50% 50%, #7aa9ff, #8b5cf6, #22d3ee, #7aa9ff); box-shadow:0 10px 30px rgba(122,169,255,0.25)}
     .title{font-weight:700; letter-spacing:0.2px}
     .subtitle{color:var(--muted); font-size:13px}
-    .hero{margin:16px 0 12px; display:flex; flex-wrap:wrap; align-items:center; gap:8px}
+    .hero{margin:12px 0 10px; display:flex; flex-wrap:wrap; align-items:center; gap:8px}
     .pill{display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; background:linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02)); border:1px solid rgba(255,255,255,0.12)}
     .pill .dot{width:8px; height:8px; border-radius:999px; background:var(--good); box-shadow:0 0 12px var(--good)}
-    /* Tabs */
-    .tabs{display:flex; gap:8px; margin:10px 0 16px}
+    .tabs{display:flex; gap:8px; margin:10px 0 12px}
     .tab{padding:10px 14px; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text); cursor:pointer; font-weight:600}
     .tab.active{background:linear-gradient(180deg,#85a9ff,#6f8df1); color:#081021; border:0}
-    /* Tools */
     .tools{display:grid; grid-template-columns:1fr; gap:12px; margin:8px 0 18px}
     @media(min-width:900px){ .tools{grid-template-columns:1fr 1fr} }
     .card{background:var(--glass); border:1px solid rgba(255,255,255,0.12); border-radius:var(--card-radius); box-shadow:var(--shadow); backdrop-filter:blur(var(--blur)) saturate(140%); position:relative}
@@ -45,10 +42,7 @@
     .row{display:flex; gap:10px; align-items:center}
     .col{display:flex; flex-direction:column; gap:8px}
     .tool input,.tool select,.tool textarea{width:100%; padding:12px 14px; border-radius:14px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:var(--text); font-size:15px}
-    .tool textarea{min-height:64px; resize:vertical}
     .tool button{padding:12px 14px; border-radius:14px; border:0; background:linear-gradient(180deg,#85a9ff,#6f8df1); color:#081021; font-weight:700; cursor:pointer}
-    .tool button:hover{filter:brightness(1.05)}
-    /* List */
     .list{display:grid; grid-template-columns:1fr; gap:12px}
     @media(min-width:720px){ .list{grid-template-columns:repeat(2,1fr)} }
     @media(min-width:1040px){ .list{grid-template-columns:repeat(3,1fr)} }
@@ -57,6 +51,7 @@
     @keyframes fadeUp{from{opacity:0; transform:translateY(16px)}to{opacity:1; transform:translateY(0)}}
     .top{display:flex; justify-content:space-between; align-items:flex-start}
     .badge{padding:6px 10px; border-radius:999px; font-size:12px; color:#081021; background:linear-gradient(180deg,#a7f3d0,#34d399); font-weight:700}
+    .role{padding:6px 10px; border-radius:999px; font-size:12px; color:#081021; background:linear-gradient(180deg,#c7d2fe,#818cf8); font-weight:700}
     .risk{padding:6px 10px; border-radius:999px; font-size:12px; color:#081021; background:linear-gradient(180deg,#fde68a,#fbbf24); font-weight:700}
     .apr{font-size:26px; font-weight:800; letter-spacing:0.2px}
     .muted{color:var(--muted); font-size:13px}
@@ -69,31 +64,6 @@
     .fav{cursor:pointer; width:32px; height:32px; display:grid; place-items:center; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); font-weight:900}
     .fav.active{background:linear-gradient(180deg,#fb7185,#ef4444); color:#081021}
     footer{grid-column:2; margin:20px 0 34px; color:var(--muted); font-size:12px}
-    /* Modal */
-    .modal-backdrop{position:fixed; inset:0; background:rgba(6,7,10,0.6); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; z-index:50}
-    .modal{width:min(680px,92vw); padding:18px; border-radius:20px; background:var(--glass-strong); border:1px solid rgba(255,255,255,0.16); box-shadow:0 20px 60px rgba(0,0,0,0.55)}
-    .modal h3{margin:0 0 10px}
-    .split{display:grid; grid-template-columns:1fr; gap:14px}
-    @media(min-width:800px){ .split{grid-template-columns:1.2fr 1fr} }
-    .kv{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0}
-    .kv div{background:rgba(255,255,255,0.06); padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12)}
-    .close{float:right; cursor:pointer; opacity:0.7}
-    .close:hover{opacity:1}
-    .disclaimer{font-size:12px; color:var(--muted); border-top:1px dashed rgba(255,255,255,0.14); padding-top:8px; margin-top:8px}
-    /* Chat */
-    .chat{background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:10px; display:flex; flex-direction:column; gap:8px}
-    .msg{display:flex; gap:8px; align-items:flex-start}
-    .bubble{padding:10px 12px; border-radius:12px; background:rgba(255,255,255,0.08)}
-    .me .bubble{background:linear-gradient(180deg,#85a9ff,#6f8df1); color:#081021; font-weight:600}
-    .input-row{display:flex; gap:8px}
-    .input-row input{flex:1; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:var(--text)}
-    /* Event feed */
-    .feed{margin-top:16px; padding:12px; border-radius:16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12)}
-    .feed h4{margin:0 0 8px}
-    .feed-item{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed rgba(255,255,255,0.12)}
-    .feed-item:last-child{border-bottom:0}
-    .feed .tag{padding:6px 10px; border-radius:999px; font-size:12px; color:#081021; background:linear-gradient(180deg,#c7d2fe,#818cf8); font-weight:700}
-    /* Mobile tweaks */
     @media(max-width:480px){
       .apr{font-size:24px}
       .money{font-size:17px}
@@ -117,13 +87,10 @@
         <div class="pill"><span class="dot"></span><span>Beta-концепт • локальные данные • без банков</span></div>
         <div class="pill"><span>Надёжность ≈ рейтинг + история возвратов</span></div>
       </div>
-
       <div class="tabs">
         <button class="tab active" data-tab="all">Все предложения</button>
         <button class="tab" data-tab="favs">Избранные</button>
-        <button class="tab" data-tab="feed">Лента событий</button>
       </div>
-
       <div class="tools">
         <div class="card tool">
           <h4>Фильтры</h4>
@@ -165,11 +132,10 @@
               <input id="cTerm" type="number" inputmode="numeric" placeholder="Срок, дней" />
               <input id="cApr" type="number" inputmode="numeric" placeholder="APR, %" />
             </div>
-            <textarea id="cNote" placeholder="Комментарий (условия или цель займа)"></textarea>
             <div class="row">
               <button id="create" class="glow">Опубликовать</button>
             </div>
-            <div class="muted">APR — годовая ставка, итог рассчитывается пропорционально сроку. Роли влияют на бейджи и ленту.</div>
+            <div class="muted">APR — годовая ставка, итог рассчитывается пропорционально сроку. Роли влияют на бейджи.</div>
           </div>
         </div>
       </div>
@@ -179,63 +145,11 @@
   <main class="grid">
     <div class="wrap">
       <section class="list" id="list"></section>
-      <section class="feed card" id="feed" style="display:none">
-        <h4>Лента событий</h4>
-        <div id="feedItems"></div>
-      </section>
     </div>
   </main>
 
-  <!-- Modal -->
-  <div class="modal-backdrop" id="backdrop" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="modal">
-      <span class="close" id="close">✕</span>
-      <h3 id="mTitle">Предложение займа</h3>
-      <div class="split">
-        <div>
-          <div class="kv">
-            <div><b>Роль:</b> <span id="mRole"></span></div>
-            <div><b>Рейтинг:</b> <span id="mRating"></span>/5</div>
-            <div><b>Сумма:</b> <span id="mAmount"></span> ₽</div>
-            <div><b>Срок:</b> <span id="mTerm"></span> дней</div>
-            <div><b>APR:</b> <span id="mApr"></span>%</div>
-            <div><b>Итого к возврату:</b> <span id="mTotal"></span> ₽</div>
-          </div>
-          <div class="kv">
-            <div><b>На каждый день:</b> <span id="mPerDay"></span> ₽</div>
-            <div><b>Уровень доверия:</b> <span id="mTrust"></span></div>
-          </div>
-          <div class="muted" id="mNote"></div>
-          <div class="disclaimer">
-            Концепт: здесь нет реальных договоров, KYC, страховки и арбитража. Это демо UX. Не используйте для реальных займов.
-          </div>
-        </div>
-        <div>
-          <div class="row" style="margin-bottom:8px">
-            <button class="btn primary glow" id="request">Запросить</button>
-            <button class="btn" id="favorite">В избранное</button>
-          </div>
-          <div class="muted" id="mStatus" style="margin-bottom:10px">Статус: свободно • ожидает запросов</div>
-
-          <!-- Chat imitation -->
-          <div class="chat" id="chat" style="display:none">
-            <div class="msg">
-              <div class="bubble">Здравствуйте! Уточните, для чего вам средства и удобно ли вернуть в срок?</div>
-            </div>
-            <div id="chatMessages"></div>
-            <div class="input-row">
-              <input id="chatInput" type="text" placeholder="Напишите сообщение…" />
-              <button class="btn primary" id="chatSend">Отправить</button>
-            </div>
-            <div class="muted">Чат — демо. Сообщения хранятся локально.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <footer class="wrap">
-    Сделано как концепт для шоукейса UX/финтех. Данные — в браузере. Анимации и стекло — для эффекта «premium boutique».
+    Концепт для шоукейса UX/финтех. Данные — в браузере. Анимации и стекло — для эффекта «premium boutique».
   </footer>
 
   <script>
@@ -243,10 +157,8 @@
     const $$ = sel => document.querySelectorAll(sel);
     const now = () => Date.now();
 
-    const storeKey = "lendx_offers_v2";
-    const favKey = "lendx_favs_v2";
-    const feedKey = "lendx_feed_v2";
-    const chatKey = "lendx_chat_v2";
+    const storeKey = "lendx_offers_nomodal_v1";
+    const favKey = "lendx_favs_nomodal_v1";
 
     const mock = [
       {id:1, role:"lender", amount:5000, term:30, apr:240, rating:4.7, note:"Вернёте 6 000 за месяц. Без досрочного штрафа.", created:now()-86400000*2},
@@ -264,9 +176,6 @@
 
     let offers = load(storeKey, mock.slice());
     let favs = load(favKey, []);
-    let feed = load(feedKey, [{type:"system", text:"Добро пожаловать в LendX — демо-концепт.", time:now()}]);
-
-    let current = null;
     let activeTab = "all";
 
     function aprToTotal(amount, termDays, apr){
@@ -275,37 +184,27 @@
       const interest = amount * perYear * fractionOfYear;
       return Math.round(amount + interest);
     }
-
     function trustLabel(rating){
       return rating >= 4.8 ? "Надёжный" : (rating >= 4.3 ? "Хороший" : "Новый игрок");
-    }
-    function trustBar(rating){
-      const max = 5;
-      const pct = Math.round((rating/max)*100);
-      return `${pct}% к уровню`;
     }
 
     function renderList(){
       const list = $("#list");
       list.innerHTML = "";
 
-      // Filters
       const fAmount = Number($("#fAmount").value) || 0;
       const fTerm = Number($("#fTerm").value) || Infinity;
       const fApr = $("#fApr").value ? Number($("#fApr").value) : Infinity;
       const sortBy = $("#sort").value;
+
       let rows = offers.filter(o =>
         o.amount >= fAmount &&
         o.term <= (isFinite(fTerm) ? fTerm : o.term) &&
         o.apr <= (isFinite(fApr) ? fApr : o.apr)
       );
 
-      // Tabs
-      if(activeTab === "favs"){
-        rows = rows.filter(o => favs.includes(o.id));
-      }
+      if(activeTab === "favs"){ rows = rows.filter(o => favs.includes(o.id)); }
 
-      // Sort
       rows.sort((a,b) => {
         if(sortBy === "best"){
           const gainA = (aprToTotal(a.amount,a.term,a.apr)-a.amount)/a.amount;
@@ -318,7 +217,6 @@
         return 0;
       });
 
-      // Render
       rows.forEach(o => {
         const card = document.createElement("div");
         card.className = "card offer";
@@ -332,7 +230,7 @@
               <div class="row" style="gap:8px; align-items:center">
                 <div class="${riskClass}">${o.apr}% APR</div>
                 <div class="badge">${tLabel}</div>
-                <div class="badge" style="background:linear-gradient(180deg,#c7d2fe,#818cf8)">${o.role==="lender"?"Кредитор":"Заёмщик"}</div>
+                <div class="role">${o.role==="lender"?"Кредитор":"Заёмщик"}</div>
               </div>
               <div class="apr">${o.amount.toLocaleString("ru-RU")} ₽</div>
               <div class="muted">Срок: ${o.term} дн · Рейтинг: ${o.rating.toFixed(1)} / 5</div>
@@ -345,21 +243,20 @@
           </div>
           <div class="muted" style="margin-top:8px">${o.note || ""}</div>
           <div class="actions">
-            <button class="btn primary" data-id="${o.id}" data-action="open">Детали</button>
-            <button class="btn" data-id="${o.id}" data-action="request">Запросить</button>
+            <button class="btn primary" data-id="${o.id}" data-action="peek">Посмотреть</button>
+            <button class="btn" data-id="${o.id}" data-action="share">Поделиться</button>
           </div>
         `;
         list.appendChild(card);
-        // Subtle parallax reaction on pointer
+
+        // Subtle parallax on pointer
         card.addEventListener("pointermove", (e) => {
           const rect = card.getBoundingClientRect();
           const x = e.clientX - rect.left - rect.width/2;
           const y = e.clientY - rect.top - rect.height/2;
           card.style.transform = `perspective(800px) rotateX(${y/rect.height*6}deg) rotateY(${x/rect.width*-6}deg) scale(1.01)`;
         });
-        card.addEventListener("pointerleave", () => {
-          card.style.transform = "";
-        });
+        card.addEventListener("pointerleave", () => { card.style.transform = ""; });
       });
 
       if(rows.length === 0){
@@ -370,80 +267,17 @@
       }
     }
 
-    function openModal(offer){
-      current = offer;
-      $("#mTitle").textContent = `Предложение #${offer.id}`;
-      $("#mRole").textContent = offer.role==="lender"?"Кредитор":"Заёмщик";
-      $("#mAmount").textContent = offer.amount.toLocaleString("ru-RU");
-      $("#mTerm").textContent = offer.term;
-      $("#mApr").textContent = offer.apr;
-      $("#mRating").textContent = offer.rating.toFixed(1);
-      const total = aprToTotal(offer.amount, offer.term, offer.apr);
-      $("#mTotal").textContent = total.toLocaleString("ru-RU");
-      $("#mPerDay").textContent = Math.round(total/offer.term).toLocaleString("ru-RU");
-      $("#mNote").textContent = offer.note || "—";
-      $("#mTrust").textContent = trustBar(offer.rating);
-      $("#mStatus").textContent = "Статус: свободно • ожидает запросов";
-      $("#chat").style.display = "none";
-      $("#chatMessages").innerHTML = "";
-      $("#backdrop").style.display = "flex";
-      $("#backdrop").setAttribute("aria-hidden", "false");
-
-      // Load chat history
-      const chats = load(chatKey, {});
-      const thread = chats[offer.id] || [];
-      thread.forEach(msg => addChatMessage(msg.text, msg.me));
+    function addOffer(role, amount, term, apr){
+      const newId = (offers.length ? Math.max(...offers.map(o=>o.id)) : 0) + 1;
+      const newOffer = { id:newId, role, amount, term, apr, rating: 4.5, note:"", created: now() };
+      offers.unshift(newOffer);
+      save(storeKey, offers);
+      renderList();
+      const el = document.querySelector(".offer");
+      el && el.animate([{transform:"scale(0.98)"},{transform:"scale(1)"}],{duration:300, easing:"ease-out"});
     }
 
-    function closeModal(){
-      $("#backdrop").style.display = "none";
-      $("#backdrop").setAttribute("aria-hidden", "true");
-      current = null;
-    }
-
-    function addFeedItem(item){
-      feed.unshift(item);
-      save(feedKey, feed);
-      renderFeed();
-    }
-
-    function renderFeed(){
-      const container = $("#feedItems");
-      container.innerHTML = "";
-      feed.slice(0,50).forEach(it => {
-        const row = document.createElement("div");
-        row.className = "feed-item";
-        const time = new Date(it.time).toLocaleString("ru-RU");
-        row.innerHTML = `
-          <div class="muted">${time}</div>
-          <div>${it.text}</div>
-          <div class="tag">${it.type}</div>
-        `;
-        container.appendChild(row);
-      });
-    }
-
-    function addChatMessage(text, me=false){
-      const wrap = document.createElement("div");
-      wrap.className = "msg" + (me ? " me" : "");
-      const bubble = document.createElement("div");
-      bubble.className = "bubble";
-      bubble.textContent = text;
-      wrap.appendChild(bubble);
-      $("#chatMessages").appendChild(wrap);
-      // auto scroll
-      $("#chatMessages").parentElement.scrollTop = $("#chatMessages").parentElement.scrollHeight;
-    }
-
-    function saveChatMessage(offerId, text, me=false){
-      const chats = load(chatKey, {});
-      const thread = chats[offerId] || [];
-      thread.push({text, me, time: now()});
-      chats[offerId] = thread;
-      save(chatKey, chats);
-    }
-
-    // Events
+    // Filters
     $("#apply").addEventListener("click", renderList);
     $("#reset").addEventListener("click", () => {
       $("#fAmount").value = "";
@@ -459,25 +293,16 @@
         $$(".tab").forEach(x => x.classList.remove("active"));
         t.classList.add("active");
         activeTab = t.dataset.tab;
-        if(activeTab === "feed"){
-          $("#list").style.display = "none";
-          $("#feed").style.display = "block";
-          renderFeed();
-        } else {
-          $("#feed").style.display = "none";
-          $("#list").style.display = "grid";
-          renderList();
-        }
+        renderList();
       });
     });
 
-    // Create offer (role-aware)
+    // Create
     $("#create").addEventListener("click", () => {
       const role = $("#role").value;
       const amount = Number($("#cAmount").value);
       const term = Number($("#cTerm").value);
       const apr = Number($("#cApr").value);
-      const note = $("#cNote").value.trim();
 
       const errs = [];
       if(!amount || amount < 500) errs.push("Сумма от 500 ₽");
@@ -485,111 +310,62 @@
       if(!apr || apr < 10 || apr > 400) errs.push("APR 10–400%");
       if(errs.length){ alert("Проверь поля:\n• " + errs.join("\n• ")); return; }
 
-      const newId = (offers.length ? Math.max(...offers.map(o=>o.id)) : 0) + 1;
-      const newOffer = { id:newId, role, amount, term, apr, rating: 4.5, note, created: now() };
-      offers.unshift(newOffer);
-      save(storeKey, offers);
-
-      addFeedItem({
-        type: role==="lender" ? "кредитор" : "заёмщик",
-        text: `${role==="lender"?"Кредитор":"Заёмщик"} опубликовал #${newId} на ${amount.toLocaleString("ru-RU")} ₽ · ${term} дн · ${apr}% APR`,
-        time: now()
-      });
+      addOffer(role, amount, term, apr);
 
       $("#cAmount").value = "";
       $("#cTerm").value = "";
       $("#cApr").value = "";
-      $("#cNote").value = "";
-      renderList();
-
-      const el = document.querySelector(".offer");
-      el && el.animate([{transform:"scale(0.98)"},{transform:"scale(1)"}],{duration:300, easing:"ease-out"});
     });
 
+    // Delegated actions (fav, peek/share)
     document.body.addEventListener("click", (e) => {
       const t = e.target;
-      if(t.id === "close") closeModal();
-      if(t.id === "backdrop" && e.target === $("#backdrop")) closeModal();
-
       if(t.classList.contains("fav")){
         const id = Number(t.dataset.id);
         const idx = favs.indexOf(id);
         if(idx >= 0) favs.splice(idx,1); else favs.push(id);
         save(favKey, favs);
         t.classList.toggle("active");
+        return;
       }
-
-      if(t.dataset && t.dataset.action === "open"){
+      if(t.dataset && t.dataset.action === "peek"){
         const id = Number(t.dataset.id);
         const offer = offers.find(o=>o.id===id);
-        openModal(offer);
+        if(!offer) return;
+        const total = aprToTotal(offer.amount, offer.term, offer.apr);
+        alert(
+          `#${offer.id} • ${offer.role==="lender"?"Кредитор":"Заёмщик"}\n` +
+          `Сумма: ${offer.amount.toLocaleString("ru-RU")} ₽\n` +
+          `Срок: ${offer.term} дней\n` +
+          `APR: ${offer.apr}%\n` +
+          `Итого: ${total.toLocaleString("ru-RU")} ₽ (${Math.round(total/offer.term).toLocaleString("ru-RU")} ₽/день)\n` +
+          `Рейтинг: ${offer.rating.toFixed(1)} / 5\n` +
+          (offer.note ? `Заметка: ${offer.note}` : ``)
+        );
+        return;
       }
-
-      if(t.dataset && t.dataset.action === "request"){
+      if(t.dataset && t.dataset.action === "share"){
         const id = Number(t.dataset.id);
         const offer = offers.find(o=>o.id===id);
-        openModal(offer);
-        $("#mStatus").textContent = "Заявка отправлена (демо). Сторона получит уведомление.";
-        $("#chat").style.display = "flex";
-        addChatMessage("Привет! Готов обсудить условия.", true);
-        saveChatMessage(offer.id, "Привет! Готов обсудить условия.", true);
-
-        addFeedItem({
-          type: "заявка",
-          text: `Отправлен запрос по #${offer.id} на ${offer.amount.toLocaleString("ru-RU")} ₽`,
-          time: now()
-        });
-      }
-
-      if(t.id === "request"){
-        if(!current) return;
-        $("#mStatus").textContent = "Запрос подтверждён (демо). Ожидайте ответ.";
-        $("#chat").style.display = "flex";
-        addChatMessage("Подтверждаю запрос. Расскажите о графике возврата.", false);
-        saveChatMessage(current.id, "Подтверждаю запрос. Расскажите о графике возврата.", false);
-
-        addFeedItem({
-          type: "подтверждение",
-          text: `Запрос подтверждён по #${current.id}`,
-          time: now()
-        });
-      }
-
-      if(t.id === "favorite" && current){
-        const id = current.id;
-        const idx = favs.indexOf(id);
-        if(idx >= 0) favs.splice(idx,1); else favs.push(id);
-        save(favKey, favs);
-        $("#mStatus").textContent = favs.includes(id) ? "Добавлено в избранное." : "Удалено из избранного.";
-      }
-    });
-
-    // Chat input
-    $("#chatSend").addEventListener("click", () => {
-      const v = $("#chatInput").value.trim();
-      if(!v || !current) return;
-      addChatMessage(v, true);
-      saveChatMessage(current.id, v, true);
-      $("#chatInput").value = "";
-      // Simulate reply
-      setTimeout(() => {
-        const reply = "Принято. Предлагаю оформить договор (демо).";
-        addChatMessage(reply, false);
-        saveChatMessage(current.id, reply, false);
-      }, 800);
-    });
-
-    // Enter key in chat
-    $("#chatInput").addEventListener("keydown", (e) => {
-      if(e.key === "Enter"){
-        e.preventDefault();
-        $("#chatSend").click();
+        if(!offer) return;
+        const data = {
+          title: "LendX — предложение",
+          text: `Предложение #${offer.id}: ${offer.amount.toLocaleString("ru-RU")} ₽, ${offer.term} дн, ${offer.apr}% APR`,
+          url: location.href
+        };
+        if(navigator.share){
+          navigator.share(data).catch(()=>{ /* noop */ });
+        } else {
+          navigator.clipboard.writeText(`${data.title}\n${data.text}\n${data.url}`).then(()=>{
+            alert("Скопировано в буфер обмена.");
+          });
+        }
+        return;
       }
     });
 
     // Initial render
     renderList();
-    renderFeed();
   </script>
 </body>
 </html>
