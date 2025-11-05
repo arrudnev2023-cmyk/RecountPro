@@ -3,32 +3,32 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-<title>3D Monkey Quest — бананы</title>
+<title>Monkey Quest — светлый зал и вращение</title>
 <style>
-  html,body{height:100%;margin:0;background:#071026;color:#eaf2ff;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#f3f6fa,#e9eef6);color:#0b2233;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
   #wrap{display:flex;flex-direction:column;height:100%}
-  header{padding:10px 12px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#071026,#08122a)}
-  h1{font-size:16px;margin:0}
-  #hud{display:flex;gap:12px;align-items:center}
-  .pill{background:rgba(255,255,255,0.04);padding:6px 10px;border-radius:12px;font-weight:700}
+  header{padding:10px 12px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#ffffff,#f1f5f9);box-shadow:0 6px 18px rgba(13,40,58,0.06)}
+  h1{font-size:16px;margin:0;color:#072033}
+  #hud{display:flex;gap:10px;align-items:center}
+  .pill{background:linear-gradient(180deg,#ffffff,#f7fafc);padding:6px 10px;border-radius:12px;font-weight:700;border:1px solid rgba(7,34,51,0.06);color:#072033}
   main{flex:1;position:relative}
   canvas{display:block;width:100%;height:100%}
   #overlay{position:absolute;left:12px;bottom:12px;display:flex;gap:12px;align-items:end;pointer-events:none}
-  .joy{width:120px;height:120px;border-radius:999px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;pointer-events:auto;touch-action:none}
-  .thumb{width:50px;height:50px;border-radius:999px;background:linear-gradient(180deg,#85a9ff,#6f8df1);transform:translate(0,0)}
-  #jump{width:84px;height:84px;border-radius:20px;background:linear-gradient(180deg,#34d399,#16a34a);display:flex;align-items:center;justify-content:center;font-weight:800;pointer-events:auto}
-  #topRight{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:10px;pointer-events:none}
-  button.small{pointer-events:auto;padding:8px 10px;border-radius:10px;border:0;background:rgba(255,255,255,0.06);color:inherit;font-weight:800}
-  #settings{background:rgba(0,0,0,0.35);padding:8px;border-radius:8px;font-size:13px;pointer-events:auto}
-  .hidden{display:none}
-  footer{padding:8px 12px;font-size:12px;color:#9fb0d5;background:linear-gradient(180deg,transparent,#041123)}
-  @media(min-width:760px){ .joy{width:150px;height:150px}.thumb{width:64px;height:64px}.pill{font-size:14px} }
+  .joy{width:110px;height:110px;border-radius:999px;background:rgba(7,34,51,0.05);display:flex;align-items:center;justify-content:center;pointer-events:auto;touch-action:none;border:1px solid rgba(7,34,51,0.06)}
+  .thumb{width:48px;height:48px;border-radius:999px;background:linear-gradient(180deg,#ffd77a,#ffc857);transform:translate(0,0)}
+  #jump{width:78px;height:78px;border-radius:18px;background:linear-gradient(180deg,#8be28b,#34d399);display:flex;align-items:center;justify-content:center;font-weight:800;pointer-events:auto;border:0;color:#052022}
+  #topRight{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:10px;pointer-events:auto}
+  button.small{padding:8px 10px;border-radius:10px;border:0;background:linear-gradient(180deg,#ffffff,#f7fafc);color:#072033;font-weight:800;box-shadow:0 4px 10px rgba(13,40,58,0.04)}
+  #settings{background:rgba(255,255,255,0.9);padding:8px;border-radius:8px;font-size:13px;border:1px solid rgba(7,34,51,0.04)}
+  #hint{position:absolute;left:12px;top:64px;background:rgba(255,255,255,0.9);padding:8px;border-radius:8px;font-size:13px;border:1px solid rgba(7,34,51,0.04)}
+  footer{padding:8px 12px;font-size:12px;color:#3b5566;background:linear-gradient(180deg,transparent,#f1f5f9)}
+  @media(min-width:760px){ .joy{width:140px;height:140px}.thumb{width:64px;height:64px}.pill{font-size:14px} }
 </style>
 </head>
 <body>
 <div id="wrap">
   <header>
-    <h1>Monkey Quest — собирай бананы</h1>
+    <h1>Monkey Quest — светлый зал</h1>
     <div id="hud">
       <div class="pill">Очки: <span id="score">0</span></div>
       <div class="pill">Время: <span id="time">60</span>s</div>
@@ -48,28 +48,31 @@
     <div id="topRight">
       <div id="settings">
         <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="invert"> Инвертировать джойстик</label>
+        <div style="margin-top:6px;font-size:13px;color:#2f4a57">Поверни правую часть экрана, чтобы вращать обезьяну</div>
       </div>
       <button id="jump" class="small">Прыжок</button>
       <button id="restart" class="small">Рестарт</button>
     </div>
+
+    <div id="hint">Касайся правой части экрана и двигай пальцем — обезьяна поворачивается</div>
   </main>
 
-  <footer>Управление: джойстик слева, кнопка прыжка справа. На десктопе — WASD / стрелки + пробел.</footer>
+  <footer>Управление: джойстик слева, поворот — правая часть экрана, кнопка прыжка справа. На десктопе — WASD / стрелки + мышь для поворота.</footer>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 
 <script>
-/* Monkey Quest: обновлённый прототип
-   - заменил шар на "обезьяну" из примитивов
-   - бананы вместо монет
-   - исправлен джойстик (вперёд = вверх) + настройка инверсии
+/* Light-room Monkey Quest
+   - светлая палитра и мягкое освещение
+   - джойстик (исправлено направление) + опция invert
+   - поворот обезьяны по горизонтали (свайп / мышь правой части экрана)
 */
 
 // --- three.js init ---
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
-renderer.setClearColor(0x071026);
+renderer.setClearColor(0xe9eef6);
 renderer.shadowMap.enabled = true;
 let DPR = Math.min(window.devicePixelRatio || 1, 2);
 renderer.setPixelRatio(DPR);
@@ -79,97 +82,94 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 200);
 camera.position.set(0, 8, 12);
 
-const hemi = new THREE.HemisphereLight(0xffffff, 0x111122, 0.6); scene.add(hemi);
-const dir = new THREE.DirectionalLight(0xffffff, 0.9); dir.position.set(5,10,5); dir.castShadow=true; dir.shadow.mapSize.set(1024,1024); scene.add(dir);
+// lighting: softer for light room
+const amb = new THREE.AmbientLight(0xffffff, 0.7);
+scene.add(amb);
+const soft = new THREE.DirectionalLight(0xffffff, 0.6);
+soft.position.set(4, 10, 6); soft.castShadow = true;
+soft.shadow.mapSize.set(1024,1024);
+scene.add(soft);
 
+// gentle rim light
+const rim = new THREE.DirectionalLight(0xfff6e6, 0.18);
+rim.position.set(-6, 6, -4); scene.add(rim);
+
+// ground: lighter
 const groundGeo = new THREE.PlaneGeometry(40,40);
-const groundMat = new THREE.MeshStandardMaterial({color:0x0d2335, metalness:0.1, roughness:0.8});
+const groundMat = new THREE.MeshStandardMaterial({color:0xe6eef4, metalness:0, roughness:0.9});
 const ground = new THREE.Mesh(groundGeo, groundMat); ground.rotation.x = -Math.PI/2; ground.receiveShadow=true; scene.add(ground);
-const grid = new THREE.GridHelper(40,20,0x223344,0x112233); grid.material.opacity=0.25; grid.material.transparent=true; scene.add(grid);
 
-// --- monkey (composition of primitives) ---
+// subtle grid lines (light)
+const grid = new THREE.GridHelper(40, 20, 0xcfdde6, 0xddeaf0);
+grid.material.opacity = 0.45; grid.material.transparent = true;
+scene.add(grid);
+
+// --- monkey model (primitives) ---
 const monkey = new THREE.Group();
 
 // body
 const bodyGeo = new THREE.SphereGeometry(0.7, 24, 16);
-const bodyMat = new THREE.MeshStandardMaterial({color:0x8b5a2b, metalness:0.1, roughness:0.6});
-const body = new THREE.Mesh(bodyGeo, bodyMat);
-body.castShadow = true; body.position.set(0, 0.7, 0);
-monkey.add(body);
+const bodyMat = new THREE.MeshStandardMaterial({color:0x9c6b3a, metalness:0.05, roughness:0.6});
+const body = new THREE.Mesh(bodyGeo, bodyMat); body.castShadow = true; body.position.set(0,0.7,0); monkey.add(body);
 
-// head
+// head & face
 const headGeo = new THREE.SphereGeometry(0.45, 20, 16);
-const headMat = new THREE.MeshStandardMaterial({color:0x9b6b3b});
-const head = new THREE.Mesh(headGeo, headMat);
-head.position.set(0, 1.45, 0.08);
-head.castShadow = true;
-monkey.add(head);
-
-// face patch
+const headMat = new THREE.MeshStandardMaterial({color:0xab7a4a});
+const head = new THREE.Mesh(headGeo, headMat); head.position.set(0,1.45,0.08); head.castShadow = true; monkey.add(head);
 const faceGeo = new THREE.SphereGeometry(0.28, 12, 10);
-const faceMat = new THREE.MeshStandardMaterial({color:0xecc9a0});
-const face = new THREE.Mesh(faceGeo, faceMat);
-face.position.set(0, 1.35, 0.3);
-monkey.add(face);
+const faceMat = new THREE.MeshStandardMaterial({color:0xfff1e6});
+const face = new THREE.Mesh(faceGeo, faceMat); face.position.set(0,1.35,0.3); monkey.add(face);
 
 // ears
 const earGeo = new THREE.CylinderGeometry(0.12,0.12,0.06,12);
-const earMat = new THREE.MeshStandardMaterial({color:0x9b6b3b});
+const earMat = new THREE.MeshStandardMaterial({color:0xab7a4a});
 const earL = new THREE.Mesh(earGeo, earMat); earL.rotation.z = Math.PI/2; earL.position.set(-0.45, 1.4, 0);
-const earR = earL.clone(); earR.position.x = 0.45;
-monkey.add(earL); monkey.add(earR);
+const earR = earL.clone(); earR.position.x = 0.45; monkey.add(earL); monkey.add(earR);
 
-// arms
+// arms and legs
 const limbGeo = new THREE.CylinderGeometry(0.12,0.12,0.9,12);
-const limbMat = new THREE.MeshStandardMaterial({color:0x8b5a2b});
-const armL = new THREE.Mesh(limbGeo, limbMat); armL.position.set(-0.95, 0.8, 0); armL.rotation.z = 0.2; armL.castShadow=true;
+const limbMat = new THREE.MeshStandardMaterial({color:0x9c6b3a});
+const armL = new THREE.Mesh(limbGeo, limbMat); armL.position.set(-0.95,0.8,0); armL.rotation.z = 0.2; armL.castShadow=true;
 const armR = armL.clone(); armR.position.x = 0.95; armR.rotation.z = -0.2;
-monkey.add(armL); monkey.add(armR);
+const legL = new THREE.Mesh(limbGeo, limbMat); legL.position.set(-0.36,0.05,0); legL.rotation.z = 0.05; legL.castShadow=true;
+const legR = legL.clone(); legR.position.x = 0.36;
+monkey.add(armL, armR, legL, legR);
 
-// legs
-const legL = new THREE.Mesh(limbGeo, limbMat); legL.position.set(-0.36, 0.05, 0); legL.rotation.z = 0.05; legL.castShadow=true;
-const legR = legL.clone(); legR.position.x = 0.36; monkey.add(legL); monkey.add(legR);
-
-// tail (simple torus)
+// tail
 const tailGeo = new THREE.TorusGeometry(0.5, 0.08, 8, 16, Math.PI*1.1);
-const tailMat = new THREE.MeshStandardMaterial({color:0x8b5a2b});
+const tailMat = new THREE.MeshStandardMaterial({color:0x9c6b3a});
 const tail = new THREE.Mesh(tailGeo, tailMat); tail.rotation.x = Math.PI/2; tail.position.set(0,0.5,-0.7); tail.castShadow=true;
 monkey.add(tail);
 
-// set initial position
-monkey.position.set(0, 0, 0);
+// baker: pivot at feet level
+monkey.position.set(0, 0.02, 0);
 scene.add(monkey);
 
-// --- obstacles ---
+// --- obstacles
 const boxes = [];
 for(let i=0;i<5;i++){
   const bGeo = new THREE.BoxGeometry(2.4, 1.4, 2.4);
-  const bMat = new THREE.MeshStandardMaterial({color:0x2a4760});
+  const bMat = new THREE.MeshStandardMaterial({color:0xc6d7df});
   const box = new THREE.Mesh(bGeo, bMat);
   box.castShadow=true; box.receiveShadow=true;
   box.position.set((Math.random()-0.5)*28, 0.7, (Math.random()-0.5)*28);
-  scene.add(box);
-  boxes.push(box);
+  scene.add(box); boxes.push(box);
 }
 
 // --- bananas (collectibles) ---
 let bananas = [];
 function makeBananaMesh(){
-  // banana as slightly curved group of small spheres + cylinder (simple visual)
   const g = new THREE.Group();
-  const yellow = new THREE.MeshStandardMaterial({color:0xffd166, emissive:0xffa700, metalness:0.1, roughness:0.3});
-  // approximate curve with 5 small spheres
+  const yellow = new THREE.MeshStandardMaterial({color:0xffd166, emissive:0xffe5b4, metalness:0.05, roughness:0.3});
   for(let i=0;i<5;i++){
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.16,12,10), yellow);
-    s.position.set((i-2)*0.14, 0, Math.sin((i-2)/3)*0.12);
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.14,12,10), yellow);
+    s.position.set((i-2)*0.12, 0, Math.sin((i-2)/3)*0.1);
     g.add(s);
   }
-  // small tip
-  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.06,10,8), new THREE.MeshStandardMaterial({color:0x7f4c00}));
-  tip.position.set(-0.32,0,0.04); g.add(tip);
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.05,10,8), new THREE.MeshStandardMaterial({color:0x7f4c00}));
+  tip.position.set(-0.28,0,0.03); g.add(tip);
   return g;
 }
-
 function spawnBananas(n=10){
   bananas.forEach(b=>scene.remove(b.mesh)); bananas=[];
   for(let i=0;i<n;i++){
@@ -184,7 +184,7 @@ function spawnBananas(n=10){
         if(Math.abs(dx) < 2.7 && Math.abs(dz) < 2.7) ok = false;
       }});
     } while(!ok);
-    mesh.position.set(x, 0.16 + Math.random()*0.3, z);
+    mesh.position.set(x, 0.14 + Math.random()*0.28, z);
     mesh.rotation.y = Math.random()*Math.PI*2;
     scene.add(mesh);
     bananas.push({mesh, r:0.28});
@@ -195,60 +195,49 @@ spawnBananas(10);
 // --- camera follow ---
 const camTarget = new THREE.Vector3();
 function updateCamera(){
-  const desired = new THREE.Vector3(monkey.position.x, monkey.position.y + 4.5, monkey.position.z + 9);
+  const desired = new THREE.Vector3(monkey.position.x, monkey.position.y + 4.2, monkey.position.z + 9.2);
   camera.position.lerp(desired, 0.12);
-  camTarget.set(monkey.position.x, monkey.position.y + 1.4, monkey.position.z);
+  camTarget.set(monkey.position.x, monkey.position.y + 1.2, monkey.position.z);
   camera.lookAt(camTarget);
 }
 
-// --- physics-like state ---
+// --- state & physics ---
 const state = {
   vel: new THREE.Vector3(0,0,0),
   onGround: true,
   move: new THREE.Vector2(0,0),
-  jumpImpulse: 6.0,
+  jumpImpulse: 5.6,
   gravity: -18,
   maxSpeed: 5
 };
 
-// joystick logic with invert option
+// joystick (left)
 const joy = document.getElementById('joy');
 const thumb = document.getElementById('thumb');
-let joyActive = false;
-let joyCenter = {x:0,y:0};
-let joyRadius = 42;
+let joyActive = false, joyCenter = {x:0,y:0}, joyRadius = 42;
 let invert = false;
 const invertCheckbox = document.getElementById('invert');
 invertCheckbox.addEventListener('change', ()=>{ invert = invertCheckbox.checked; });
 
-function getTouchPos(t){ return {x: t.clientX, y: t.clientY}; }
 function startJoy(e){
   joyActive = true;
   const rect = joy.getBoundingClientRect();
   joyCenter = {x: rect.left + rect.width/2, y: rect.top + rect.height/2};
   joyRadius = Math.min(rect.width, rect.height)/2 - 6;
   const p = (e.touches ? e.touches[0] : e);
-  updateJoy(p.clientX, p.clientY);
-  e.preventDefault();
+  updateJoy(p.clientX, p.clientY); e.preventDefault();
 }
 function updateJoy(cx, cy){
-  const dx = cx - joyCenter.x;
-  const dy = cy - joyCenter.y;
+  const dx = cx - joyCenter.x, dy = cy - joyCenter.y;
   const dist = Math.hypot(dx, dy);
-  const nx = dx / (dist || 1);
-  const ny = dy / (dist || 1);
+  const nx = dx / (dist || 1), ny = dy / (dist || 1);
   const mag = Math.min(dist / joyRadius, 1);
-  // Map to move vector: up => forward
-  const forwardY = invert ? ny : -ny; // invert option flips vertical axis
-  state.move.x = (Math.abs(nx) < 0.13) ? 0 : nx * mag;
-  state.move.y = (Math.abs(forwardY) < 0.13) ? 0 : forwardY * mag;
+  const forwardY = invert ? ny : -ny;
+  state.move.x = (Math.abs(nx) < 0.12) ? 0 : nx * mag;
+  state.move.y = (Math.abs(forwardY) < 0.12) ? 0 : forwardY * mag;
   thumb.style.transform = `translate(${state.move.x * (joyRadius-18)}px, ${-state.move.y * (joyRadius-18)}px)`;
 }
-function endJoy(){
-  joyActive = false;
-  state.move.set(0,0);
-  thumb.style.transform = 'translate(0,0)';
-}
+function endJoy(){ joyActive = false; state.move.set(0,0); thumb.style.transform = 'translate(0,0)'; }
 
 joy.addEventListener('touchstart', startJoy, {passive:false});
 joy.addEventListener('touchmove', (e)=>{ if(joyActive){ updateJoy(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); } }, {passive:false});
@@ -271,14 +260,49 @@ function tryJump(){ if(state.onGround){ state.vel.y = state.jumpImpulse; state.o
 // restart
 document.getElementById('restart').addEventListener('click', resetGame);
 
+// rotate monkey by dragging on right half of screen
+let rotateActive = false;
+let lastRotX = 0;
+function startRotate(e){
+  rotateActive = true;
+  lastRotX = (e.touches ? e.touches[0].clientX : e.clientX);
+  e.preventDefault();
+}
+function moveRotate(e){
+  if(!rotateActive) return;
+  const x = (e.touches ? e.touches[0].clientX : e.clientX);
+  const dx = x - lastRotX;
+  lastRotX = x;
+  // rotate monkey around Y; sensitivity tuned for mobile
+  monkey.rotation.y -= dx * 0.006;
+}
+function endRotate(){ rotateActive = false; }
+
+window.addEventListener('touchstart', (e)=>{
+  const x = e.touches[0].clientX;
+  if(x > window.innerWidth * 0.55) startRotate(e);
+}, {passive:false});
+window.addEventListener('touchmove', (e)=>{ const x = e.touches[0].clientX; if(rotateActive) moveRotate(e); }, {passive:false});
+window.addEventListener('touchend', endRotate, {passive:true});
+
+// desktop mouse for rotate
+window.addEventListener('mousedown', (e)=>{
+  if(e.clientX > window.innerWidth * 0.55){
+    startRotate(e); window.addEventListener('mousemove', moveRotate);
+  }
+});
+window.addEventListener('mouseup', ()=>{
+  endRotate(); window.removeEventListener('mousemove', moveRotate);
+});
+
 // game variables and HUD
 let score = 0; let totalTime = 60; let timeLeft = totalTime; let level = 1;
 const scoreEl = document.getElementById('score'); const timeEl = document.getElementById('time'); const levelEl = document.getElementById('level');
 
-// helper
+// simple helpers
 function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 
-// simple physics and animations
+// physics & animation
 let walkPhase = 0;
 function physicsStep(dt){
   // keyboard if no joystick
@@ -288,13 +312,12 @@ function physicsStep(dt){
     if(keys['arrowright']||keys['d']) mx=1;
     if(keys['arrowup']||keys['w']) my=1;
     if(keys['arrowdown']||keys['s']) my=-1;
-    // respect invert checkbox for keyboard vertical controls
     const v = invert ? my : -my;
     state.move.x = mx; state.move.y = v;
     if(keys[' ']) tryJump();
   }
 
-  // map input relative to camera yaw
+  // map movement relative to camera yaw
   const camYaw = Math.atan2(camera.position.x - monkey.position.x, camera.position.z - monkey.position.z);
   const cos = Math.cos(camYaw), sin = Math.sin(camYaw);
   const input = new THREE.Vector3(state.move.x, 0, state.move.y);
@@ -312,13 +335,12 @@ function physicsStep(dt){
   monkey.position.y += state.vel.y * dt;
   monkey.position.z += state.vel.z * dt;
 
-  // ground collision and onGround
+  // ground collision
   if(monkey.position.y <= 0.02){
-    monkey.position.y = 0.02;
-    state.vel.y = 0; state.onGround = true;
+    monkey.position.y = 0.02; state.vel.y = 0; state.onGround = true;
   } else state.onGround = false;
 
-  // boxes collisions (push)
+  // collisions with boxes
   boxes.forEach(b=>{
     const minX = b.position.x - 1.2, maxX = b.position.x + 1.2;
     const minZ = b.position.z - 1.2, maxZ = b.position.z + 1.2;
@@ -328,48 +350,43 @@ function physicsStep(dt){
       const d = Math.hypot(dx, dz) || 0.001;
       const push = (1.2 + 0.9) - d;
       if(push > 0){
-        monkey.position.x += (dx/d) * push;
-        monkey.position.z += (dz/d) * push;
+        monkey.position.x += (dx/d) * push; monkey.position.z += (dz/d) * push;
         state.vel.x *= 0.4; state.vel.z *= 0.4;
       }
     }
   });
 
-  // bananas pickup
+  // banana pickup
   for(let i=bananas.length-1;i>=0;i--){
     const c = bananas[i];
     const d = Math.hypot(monkey.position.x - c.mesh.position.x, monkey.position.z - c.mesh.position.z);
     if(d < 0.9 && Math.abs(monkey.position.y - c.mesh.position.y) < 1.6){
-      scene.remove(c.mesh);
-      bananas.splice(i,1);
+      scene.remove(c.mesh); bananas.splice(i,1);
       score += 10; scoreEl.textContent = score;
       if(bananas.length === 0) levelUp();
     } else {
-      // bobbing animation
-      c.mesh.position.y = 0.16 + Math.sin(performance.now()*0.004 + i)*0.06;
+      c.mesh.position.y = 0.14 + Math.sin(performance.now()*0.004 + i)*0.06;
       c.mesh.rotation.y += 0.02;
     }
   }
 
-  // simple walking animation: lean body and swing arms
+  // walking animation (lean + arm swing) — respect horizontal rotation
   const speed = Math.hypot(state.vel.x, state.vel.z);
   walkPhase += speed * dt * 6;
-  const lean = Math.sin(walkPhase) * Math.min(0.18, speed*0.06);
+  const lean = Math.sin(walkPhase) * Math.min(0.16, speed*0.06);
   body.rotation.z = THREE.MathUtils.lerp(body.rotation.z, lean, 0.12);
   head.rotation.y = THREE.MathUtils.lerp(head.rotation.y, -state.vel.x*0.06, 0.12);
-  armL.rotation.x = 0.2 + Math.sin(walkPhase)*0.6*speed;
-  armR.rotation.x = -0.2 + Math.sin(walkPhase + Math.PI)*0.6*speed;
+  armL.rotation.x = 0.2 + Math.sin(walkPhase)*0.5*speed;
+  armR.rotation.x = -0.2 + Math.sin(walkPhase + Math.PI)*0.5*speed;
 }
 
-// level up
+// level up & reset
 function levelUp(){
   level++; levelEl.textContent = level;
   timeLeft = Math.min(totalTime, timeLeft + 18);
   spawnBananas(8 + Math.min(6, level));
   boxes.forEach(b => { b.position.x = (Math.random()-0.5)*28; b.position.z = (Math.random()-0.5)*28; });
 }
-
-// reset
 function resetGame(){
   score = 0; scoreEl.textContent = score;
   level = 1; levelEl.textContent = level;
@@ -379,17 +396,14 @@ function resetGame(){
   spawnBananas(10);
 }
 
-// --- spawn initial bananas call above already run ---
-
 // animate & camera
-let last = performance.now(); let accum = 0;
+let last = performance.now(), accum = 0;
 function animate(now){
   const dt = Math.min((now - last)/1000, 0.05);
   last = now;
   try { physicsStep(dt); } catch(e){ console.error(e); }
   updateCamera();
   renderer.render(scene, camera);
-
   accum += dt;
   if(accum >= 1){
     accum = 0; timeLeft = Math.max(0, timeLeft - 1); timeEl.textContent = Math.round(timeLeft);
@@ -399,32 +413,27 @@ function animate(now){
 }
 requestAnimationFrame(animate);
 
+// camera function uses camTarget var
+const camTarget = new THREE.Vector3();
 function updateCamera(){
-  const desired = new THREE.Vector3(monkey.position.x, monkey.position.y + 4.5, monkey.position.z + 9);
+  const desired = new THREE.Vector3(monkey.position.x, monkey.position.y + 4.2, monkey.position.z + 9.2);
   camera.position.lerp(desired, 0.12);
-  camTarget.set(monkey.position.x, monkey.position.y + 1.4, monkey.position.z);
+  camTarget.set(monkey.position.x, monkey.position.y + 1.2, monkey.position.z);
   camera.lookAt(camTarget);
 }
 
-// resize handling
+// resize
 window.addEventListener('resize', ()=>{ DPR = Math.min(window.devicePixelRatio||1,2); renderer.setPixelRatio(DPR); renderer.setSize(window.innerWidth, window.innerHeight); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); });
 
-// input: keyboard fallback (account for invert)
+// keyboard fallback
 window.addEventListener('keydown',(e)=>{ keys[e.key.toLowerCase()] = true; });
 window.addEventListener('keyup',(e)=>{ keys[e.key.toLowerCase()] = false; });
-
-// joystick setup (already wired above)
 
 // initial reset
 resetGame();
 
-// optional low-end performance tweak
-(function detectPerformance(){
-  const ua = navigator.userAgent || '';
-  if(/iPhone|Android/.test(ua) && (window.devicePixelRatio > 2.0)){
-    renderer.setPixelRatio(1.25);
-  }
-})();
+// low-end tweak
+(function detectPerf(){ const ua=navigator.userAgent||''; if(/iPhone|Android/.test(ua) && (window.devicePixelRatio>2.0)){ renderer.setPixelRatio(1.25); } })();
 
 </script>
 </body>
