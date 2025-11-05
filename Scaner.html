@@ -5,367 +5,155 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>LendX — люди людям</title>
   <style>
-    :root{
+    :root {
       --bg:#0b0e13;
       --glass:rgba(255,255,255,0.08);
-      --glass-strong:rgba(255,255,255,0.14);
-      --text:#e7e9ee;
+      --text:#f0f2f7;
       --muted:#a9afbf;
       --accent:#7aa9ff;
-      --good:#4ade80;
-      --bad:#fb7185;
-      --warn:#fbbf24;
-      --card-radius:18px;
-      --shadow:0 10px 30px rgba(0,0,0,0.35);
-      --blur:18px;
+      --radius:16px;
     }
-    *{box-sizing:border-box}
-    html,body{background:radial-gradient(1100px 700px at 70% 10%,#13223f 0%,#0b0e13 55%,#06070a 100%); color:var(--text); margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif}
-    .grid{display:grid; grid-template-columns:1fr minmax(320px,1100px) 1fr}
-    .wrap{grid-column:2}
-    header{grid-column:1/-1; padding:22px 16px; position:sticky; top:0; backdrop-filter:saturate(140%) blur(12px); background:linear-gradient(180deg,rgba(11,14,19,0.70),rgba(11,14,19,0)); z-index:10; border-bottom:1px solid rgba(255,255,255,0.06)}
-    .brand{display:flex; align-items:center; gap:12px}
-    .logo{width:40px; height:40px; border-radius:12px; background:conic-gradient(from 180deg at 50% 50%, #7aa9ff, #8b5cf6, #22d3ee, #7aa9ff); box-shadow:0 10px 30px rgba(122,169,255,0.25)}
-    .title{font-weight:700; letter-spacing:0.2px}
-    .subtitle{color:var(--muted); font-size:13px}
-    .hero{margin:12px 0 10px; display:flex; flex-wrap:wrap; align-items:center; gap:8px}
-    .pill{display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; background:linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02)); border:1px solid rgba(255,255,255,0.12)}
-    .pill .dot{width:8px; height:8px; border-radius:999px; background:var(--good); box-shadow:0 0 12px var(--good)}
-    .tabs{display:flex; gap:8px; margin:10px 0 12px}
-    .tab{padding:10px 14px; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text); cursor:pointer; font-weight:600}
-    .tab.active{background:linear-gradient(180deg,#85a9ff,#6f8df1); color:#081021; border:0}
-    .tools{display:grid; grid-template-columns:1fr; gap:12px; margin:8px 0 18px}
-    @media(min-width:900px){ .tools{grid-template-columns:1fr 1fr} }
-    .card{background:var(--glass); border:1px solid rgba(255,255,255,0.12); border-radius:var(--card-radius); box-shadow:var(--shadow); backdrop-filter:blur(var(--blur)) saturate(140%); position:relative}
-    .tool{padding:14px}
-    .tool h4{margin:0 0 8px}
-    .row{display:flex; gap:10px; align-items:center}
-    .col{display:flex; flex-direction:column; gap:8px}
-    .tool input,.tool select,.tool textarea{width:100%; padding:12px 14px; border-radius:14px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:var(--text); font-size:15px}
-    .tool button{padding:12px 14px; border-radius:14px; border:0; background:linear-gradient(180deg,#85a9ff,#6f8df1); color:#081021; font-weight:700; cursor:pointer}
-    .list{display:grid; grid-template-columns:1fr; gap:12px}
-    @media(min-width:720px){ .list{grid-template-columns:repeat(2,1fr)} }
-    @media(min-width:1040px){ .list{grid-template-columns:repeat(3,1fr)} }
-    .offer{padding:14px; overflow:hidden; transition:transform 0.25s ease, box-shadow 0.25s ease; transform-style:preserve-3d; animation:fadeUp 0.6s ease both}
-    .offer:hover{transform:perspective(800px) rotateX(3deg) rotateY(-3deg) scale(1.02); box-shadow:0 20px 40px rgba(0,0,0,0.45)}
-    @keyframes fadeUp{from{opacity:0; transform:translateY(16px)}to{opacity:1; transform:translateY(0)}}
-    .top{display:flex; justify-content:space-between; align-items:flex-start}
-    .badge{padding:6px 10px; border-radius:999px; font-size:12px; color:#081021; background:linear-gradient(180deg,#a7f3d0,#34d399); font-weight:700}
-    .role{padding:6px 10px; border-radius:999px; font-size:12px; color:#081021; background:linear-gradient(180deg,#c7d2fe,#818cf8); font-weight:700}
-    .risk{padding:6px 10px; border-radius:999px; font-size:12px; color:#081021; background:linear-gradient(180deg,#fde68a,#fbbf24); font-weight:700}
-    .apr{font-size:26px; font-weight:800; letter-spacing:0.2px}
-    .muted{color:var(--muted); font-size:13px}
-    .money{font-size:18px; font-weight:700}
-    .actions{display:flex; gap:8px; margin-top:10px}
-    .btn{padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:var(--text); cursor:pointer; font-weight:600}
-    .btn.primary{background:linear-gradient(180deg,#85a9ff,#6f8df1); color:#081021; border:0}
-    .btn.glow{box-shadow:0 0 0 rgba(122,169,255,0); animation:glow 2.4s ease-in-out infinite}
-    @keyframes glow{0%,100%{box-shadow:0 0 0 rgba(122,169,255,0)}50%{box-shadow:0 0 24px rgba(122,169,255,0.35)}}
-    .fav{cursor:pointer; width:32px; height:32px; display:grid; place-items:center; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); font-weight:900}
-    .fav.active{background:linear-gradient(180deg,#fb7185,#ef4444); color:#081021}
-    footer{grid-column:2; margin:20px 0 34px; color:var(--muted); font-size:12px}
-    @media(max-width:480px){
-      .apr{font-size:24px}
-      .money{font-size:17px}
-      .actions .btn{flex:1}
-      .fav{width:30px; height:30px}
-      .pill{padding:8px 12px}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body {
+      background:linear-gradient(160deg,#10131a,#0b0e13);
+      color:var(--text);
+      font-family:Inter,system-ui,sans-serif;
+      line-height:1.4;
     }
+    header {
+      padding:20px;
+      text-align:center;
+      backdrop-filter:blur(12px);
+      background:rgba(255,255,255,0.02);
+      border-bottom:1px solid rgba(255,255,255,0.1);
+      position:sticky;top:0;z-index:10;
+    }
+    header h1 {font-size:20px;font-weight:700;}
+    header p {font-size:13px;color:var(--muted);}
+    main {padding:20px;max-width:1000px;margin:0 auto;}
+    .list {display:grid;grid-template-columns:1fr;gap:16px;}
+    @media(min-width:700px){.list{grid-template-columns:1fr 1fr;}}
+    .card {
+      background:var(--glass);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:var(--radius);
+      padding:16px;
+      backdrop-filter:blur(20px);
+      transition:transform .2s;
+    }
+    .card:hover {transform:translateY(-4px);}
+    .card h3 {margin-bottom:6px;font-size:18px;}
+    .muted {color:var(--muted);font-size:13px;}
+    .money {font-size:20px;font-weight:700;margin:8px 0;}
+    .btn {
+      display:inline-block;
+      padding:10px 14px;
+      border-radius:12px;
+      border:none;
+      cursor:pointer;
+      font-weight:600;
+      margin-top:8px;
+    }
+    .btn.primary {
+      background:linear-gradient(180deg,#85a9ff,#6f8df1);
+      color:#081021;
+    }
+    /* Modal */
+    .modal-backdrop {
+      position:fixed;inset:0;
+      background:rgba(0,0,0,0.6);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:50;
+    }
+    .modal {
+      background:var(--glass);
+      border:1px solid rgba(255,255,255,0.15);
+      border-radius:var(--radius);
+      padding:20px;
+      max-width:400px;
+      width:90%;
+      backdrop-filter:blur(20px);
+    }
+    .modal h2 {margin-bottom:10px;}
+    .close {
+      float:right;
+      cursor:pointer;
+      font-weight:700;
+      color:var(--muted);
+    }
+    .modal .btn {width:100%;margin-top:16px;}
   </style>
 </head>
 <body>
-  <header class="grid">
-    <div class="wrap">
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <div>
-          <div class="title">LendX — люди людям</div>
-          <div class="subtitle">Маркетплейс займов: каждый может дать или взять деньги на честных условиях</div>
-        </div>
-      </div>
-      <div class="hero">
-        <div class="pill"><span class="dot"></span><span>Beta-концепт • локальные данные • без банков</span></div>
-        <div class="pill"><span>Надёжность ≈ рейтинг + история возвратов</span></div>
-      </div>
-      <div class="tabs">
-        <button class="tab active" data-tab="all">Все предложения</button>
-        <button class="tab" data-tab="favs">Избранные</button>
-      </div>
-      <div class="tools">
-        <div class="card tool">
-          <h4>Фильтры</h4>
-          <div class="col">
-            <div class="row">
-              <input id="fAmount" type="number" inputmode="numeric" placeholder="Мин. сумма, ₽" />
-              <select id="fTerm">
-                <option value="">Срок</option>
-                <option value="7">≤ 7 дней</option>
-                <option value="30">≤ 30 дней</option>
-                <option value="90">≤ 90 дней</option>
-              </select>
-              <input id="fApr" type="number" inputmode="numeric" placeholder="Макс. APR, %" />
-            </div>
-            <div class="row">
-              <select id="sort">
-                <option value="best">Выгодность</option>
-                <option value="rating">Надёжность</option>
-                <option value="amount">Сумма</option>
-                <option value="new">Новизна</option>
-              </select>
-              <button id="apply">Применить</button>
-              <button id="reset" style="background:rgba(255,255,255,0.06); color:var(--text)">Сброс</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card tool">
-          <h4>Опубликовать</h4>
-          <div class="col">
-            <div class="row">
-              <select id="role">
-                <option value="lender">Я кредитор (даю деньги)</option>
-                <option value="borrower">Я заёмщик (нужны деньги)</option>
-              </select>
-            </div>
-            <div class="row">
-              <input id="cAmount" type="number" inputmode="numeric" placeholder="Сумма, ₽" />
-              <input id="cTerm" type="number" inputmode="numeric" placeholder="Срок, дней" />
-              <input id="cApr" type="number" inputmode="numeric" placeholder="APR, %" />
-            </div>
-            <div class="row">
-              <button id="create" class="glow">Опубликовать</button>
-            </div>
-            <div class="muted">APR — годовая ставка, итог рассчитывается пропорционально сроку. Роли влияют на бейджи.</div>
-          </div>
-        </div>
-      </div>
-    </div>
+  <header>
+    <h1>LendX — люди людям</h1>
+    <p>Маркетплейс займов: каждый может дать или взять деньги на честных условиях</p>
   </header>
 
-  <main class="grid">
-    <div class="wrap">
-      <section class="list" id="list"></section>
-    </div>
+  <main>
+    <section class="list" id="list"></section>
   </main>
 
-  <footer class="wrap">
-    Концепт для шоукейса UX/финтех. Данные — в браузере. Анимации и стекло — для эффекта «premium boutique».
-  </footer>
+  <!-- Modal -->
+  <div class="modal-backdrop" id="backdrop">
+    <div class="modal">
+      <span class="close" id="close">✕</span>
+      <h2 id="mTitle">Предложение</h2>
+      <p id="mInfo"></p>
+      <button class="btn primary" id="mClose">Закрыть</button>
+    </div>
+  </div>
 
   <script>
-    const $ = sel => document.querySelector(sel);
-    const $$ = sel => document.querySelectorAll(sel);
-    const now = () => Date.now();
-
-    const storeKey = "lendx_offers_nomodal_v1";
-    const favKey = "lendx_favs_nomodal_v1";
-
-    const mock = [
-      {id:1, role:"lender", amount:5000, term:30, apr:240, rating:4.7, note:"Вернёте 6 000 за месяц. Без досрочного штрафа.", created:now()-86400000*2},
-      {id:2, role:"lender", amount:12000, term:14, apr:150, rating:4.9, note:"Ставка лояльная. Частичный досрочный ок.", created:now()-86400000*4},
-      {id:3, role:"lender", amount:3000, term:7, apr:320, rating:4.2, note:"Короткий займ. Возврат строго в срок.", created:now()-86400000*1},
-      {id:4, role:"lender", amount:25000, term:60, apr:90, rating:5.0, note:"Надёжный кредитор 100% возвратов.", created:now()-86400000*6},
-      {id:5, role:"borrower", amount:9000, term:21, apr:180, rating:4.5, note:"Нужны средства на ремонт. Гибкий график, можно частями.", created:now()-86400000*3}
+    const offers = [
+      {id:1, role:"Кредитор", amount:5000, term:30, apr:240, note:"Вернёте 6 000 за месяц."},
+      {id:2, role:"Кредитор", amount:12000, term:14, apr:150, note:"Ставка лояльная."},
+      {id:3, role:"Заёмщик", amount:9000, term:21, apr:180, note:"Нужны средства на ремонт."}
     ];
 
-    const load = (k, fallback) => {
-      const saved = localStorage.getItem(k);
-      return saved ? JSON.parse(saved) : fallback;
-    };
-    const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+    const list = document.getElementById("list");
+    const backdrop = document.getElementById("backdrop");
+    const closeBtn = document.getElementById("close");
+    const mClose = document.getElementById("mClose");
+    const mTitle = document.getElementById("mTitle");
+    const mInfo = document.getElementById("mInfo");
 
-    let offers = load(storeKey, mock.slice());
-    let favs = load(favKey, []);
-    let activeTab = "all";
-
-    function aprToTotal(amount, termDays, apr){
-      const perYear = apr/100;
-      const fractionOfYear = termDays/365;
-      const interest = amount * perYear * fractionOfYear;
-      return Math.round(amount + interest);
-    }
-    function trustLabel(rating){
-      return rating >= 4.8 ? "Надёжный" : (rating >= 4.3 ? "Хороший" : "Новый игрок");
-    }
-
-    function renderList(){
-      const list = $("#list");
-      list.innerHTML = "";
-
-      const fAmount = Number($("#fAmount").value) || 0;
-      const fTerm = Number($("#fTerm").value) || Infinity;
-      const fApr = $("#fApr").value ? Number($("#fApr").value) : Infinity;
-      const sortBy = $("#sort").value;
-
-      let rows = offers.filter(o =>
-        o.amount >= fAmount &&
-        o.term <= (isFinite(fTerm) ? fTerm : o.term) &&
-        o.apr <= (isFinite(fApr) ? fApr : o.apr)
-      );
-
-      if(activeTab === "favs"){ rows = rows.filter(o => favs.includes(o.id)); }
-
-      rows.sort((a,b) => {
-        if(sortBy === "best"){
-          const gainA = (aprToTotal(a.amount,a.term,a.apr)-a.amount)/a.amount;
-          const gainB = (aprToTotal(b.amount,b.term,b.apr)-b.amount)/b.amount;
-          return gainA - gainB;
-        }
-        if(sortBy === "rating") return b.rating - a.rating;
-        if(sortBy === "amount") return b.amount - a.amount;
-        if(sortBy === "new") return b.created - a.created;
-        return 0;
-      });
-
-      rows.forEach(o => {
-        const card = document.createElement("div");
-        card.className = "card offer";
-        const isFav = favs.includes(o.id);
-        const total = aprToTotal(o.amount,o.term,o.apr);
-        const riskClass = o.apr > 250 ? "risk" : "badge";
-        const tLabel = trustLabel(o.rating);
-        card.innerHTML = `
-          <div class="top">
-            <div>
-              <div class="row" style="gap:8px; align-items:center">
-                <div class="${riskClass}">${o.apr}% APR</div>
-                <div class="badge">${tLabel}</div>
-                <div class="role">${o.role==="lender"?"Кредитор":"Заёмщик"}</div>
-              </div>
-              <div class="apr">${o.amount.toLocaleString("ru-RU")} ₽</div>
-              <div class="muted">Срок: ${o.term} дн · Рейтинг: ${o.rating.toFixed(1)} / 5</div>
-            </div>
-            <div class="fav ${isFav ? "active":""}" data-id="${o.id}" title="В избранное">★</div>
-          </div>
-          <div class="row" style="margin-top:8px">
-            <div class="money">Итого: ${total.toLocaleString("ru-RU")} ₽</div>
-            <div class="muted">(${Math.round(total/o.term).toLocaleString("ru-RU")} ₽/день)</div>
-          </div>
-          <div class="muted" style="margin-top:8px">${o.note || ""}</div>
-          <div class="actions">
-            <button class="btn primary" data-id="${o.id}" data-action="peek">Посмотреть</button>
-            <button class="btn" data-id="${o.id}" data-action="share">Поделиться</button>
-          </div>
+    function render(){
+      list.innerHTML="";
+      offers.forEach(o=>{
+        const card=document.createElement("div");
+        card.className="card";
+        card.innerHTML=`
+          <h3>${o.role}</h3>
+          <div class="money">${o.amount.toLocaleString("ru-RU")} ₽</div>
+          <div class="muted">Срок: ${o.term} дн · APR: ${o.apr}%</div>
+          <p class="muted">${o.note}</p>
+          <button class="btn primary" data-id="${o.id}">Подробнее</button>
         `;
         list.appendChild(card);
-
-        // Subtle parallax on pointer
-        card.addEventListener("pointermove", (e) => {
-          const rect = card.getBoundingClientRect();
-          const x = e.clientX - rect.left - rect.width/2;
-          const y = e.clientY - rect.top - rect.height/2;
-          card.style.transform = `perspective(800px) rotateX(${y/rect.height*6}deg) rotateY(${x/rect.width*-6}deg) scale(1.01)`;
-        });
-        card.addEventListener("pointerleave", () => { card.style.transform = ""; });
       });
-
-      if(rows.length === 0){
-        const empty = document.createElement("div");
-        empty.className = "card offer";
-        empty.innerHTML = `<div class="muted">Нет предложений по текущим фильтрам/вкладке.</div>`;
-        list.appendChild(empty);
-      }
     }
 
-    function addOffer(role, amount, term, apr){
-      const newId = (offers.length ? Math.max(...offers.map(o=>o.id)) : 0) + 1;
-      const newOffer = { id:newId, role, amount, term, apr, rating: 4.5, note:"", created: now() };
-      offers.unshift(newOffer);
-      save(storeKey, offers);
-      renderList();
-      const el = document.querySelector(".offer");
-      el && el.animate([{transform:"scale(0.98)"},{transform:"scale(1)"}],{duration:300, easing:"ease-out"});
-    }
-
-    // Filters
-    $("#apply").addEventListener("click", renderList);
-    $("#reset").addEventListener("click", () => {
-      $("#fAmount").value = "";
-      $("#fTerm").value = "";
-      $("#fApr").value = "";
-      $("#sort").value = "best";
-      renderList();
-    });
-
-    // Tabs
-    $$(".tab").forEach(t => {
-      t.addEventListener("click", () => {
-        $$(".tab").forEach(x => x.classList.remove("active"));
-        t.classList.add("active");
-        activeTab = t.dataset.tab;
-        renderList();
-      });
-    });
-
-    // Create
-    $("#create").addEventListener("click", () => {
-      const role = $("#role").value;
-      const amount = Number($("#cAmount").value);
-      const term = Number($("#cTerm").value);
-      const apr = Number($("#cApr").value);
-
-      const errs = [];
-      if(!amount || amount < 500) errs.push("Сумма от 500 ₽");
-      if(!term || term < 3) errs.push("Срок от 3 дней");
-      if(!apr || apr < 10 || apr > 400) errs.push("APR 10–400%");
-      if(errs.length){ alert("Проверь поля:\n• " + errs.join("\n• ")); return; }
-
-      addOffer(role, amount, term, apr);
-
-      $("#cAmount").value = "";
-      $("#cTerm").value = "";
-      $("#cApr").value = "";
-    });
-
-    // Delegated actions (fav, peek/share)
-    document.body.addEventListener("click", (e) => {
-      const t = e.target;
-      if(t.classList.contains("fav")){
-        const id = Number(t.dataset.id);
-        const idx = favs.indexOf(id);
-        if(idx >= 0) favs.splice(idx,1); else favs.push(id);
-        save(favKey, favs);
-        t.classList.toggle("active");
-        return;
-      }
-      if(t.dataset && t.dataset.action === "peek"){
-        const id = Number(t.dataset.id);
-        const offer = offers.find(o=>o.id===id);
-        if(!offer) return;
-        const total = aprToTotal(offer.amount, offer.term, offer.apr);
-        alert(
-          `#${offer.id} • ${offer.role==="lender"?"Кредитор":"Заёмщик"}\n` +
-          `Сумма: ${offer.amount.toLocaleString("ru-RU")} ₽\n` +
-          `Срок: ${offer.term} дней\n` +
-          `APR: ${offer.apr}%\n` +
-          `Итого: ${total.toLocaleString("ru-RU")} ₽ (${Math.round(total/offer.term).toLocaleString("ru-RU")} ₽/день)\n` +
-          `Рейтинг: ${offer.rating.toFixed(1)} / 5\n` +
-          (offer.note ? `Заметка: ${offer.note}` : ``)
-        );
-        return;
-      }
-      if(t.dataset && t.dataset.action === "share"){
-        const id = Number(t.dataset.id);
-        const offer = offers.find(o=>o.id===id);
-        if(!offer) return;
-        const data = {
-          title: "LendX — предложение",
-          text: `Предложение #${offer.id}: ${offer.amount.toLocaleString("ru-RU")} ₽, ${offer.term} дн, ${offer.apr}% APR`,
-          url: location.href
-        };
-        if(navigator.share){
-          navigator.share(data).catch(()=>{ /* noop */ });
-        } else {
-          navigator.clipboard.writeText(`${data.title}\n${data.text}\n${data.url}`).then(()=>{
-            alert("Скопировано в буфер обмена.");
-          });
+    list.addEventListener("click", e=>{
+      if(e.target.tagName==="BUTTON"){
+        const id=Number(e.target.dataset.id);
+        const o=offers.find(x=>x.id===id);
+        if(o){
+          mTitle.textContent=`${o.role} #${o.id}`;
+          mInfo.textContent=`Сумма: ${o.amount} ₽ · Срок: ${o.term} дн · APR: ${o.apr}% · ${o.note}`;
+          backdrop.style.display="flex";
         }
-        return;
       }
     });
 
-    // Initial render
-    renderList();
+    function closeModal(){backdrop.style.display="none";}
+    closeBtn.addEventListener("click", closeModal);
+    mClose.addEventListener("click", closeModal);
+    backdrop.addEventListener("click", e=>{if(e.target===backdrop) closeModal();});
+
+    render();
   </script>
 </body>
 </html>
