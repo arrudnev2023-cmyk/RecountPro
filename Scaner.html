@@ -3,36 +3,32 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-<title>Mini 3D Game — CodeStep Prototype</title>
+<title>3D Monkey Quest — бананы</title>
 <style>
-  html,body{height:100%;margin:0;background:#071026;color:#eaf2ff;font-family:Inter,system-ui, -apple-system, "Segoe UI", Roboto, Arial;}
+  html,body{height:100%;margin:0;background:#071026;color:#eaf2ff;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial}
   #wrap{display:flex;flex-direction:column;height:100%}
-  header{padding:10px 12px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#071026,#08122a);box-shadow:0 6px 18px rgba(0,0,0,0.6)}
+  header{padding:10px 12px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#071026,#08122a)}
   h1{font-size:16px;margin:0}
   #hud{display:flex;gap:12px;align-items:center}
   .pill{background:rgba(255,255,255,0.04);padding:6px 10px;border-radius:12px;font-weight:700}
   main{flex:1;position:relative}
   canvas{display:block;width:100%;height:100%}
   #overlay{position:absolute;left:12px;bottom:12px;display:flex;gap:12px;align-items:end;pointer-events:none}
-  /* joystick */
   .joy{width:120px;height:120px;border-radius:999px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;pointer-events:auto;touch-action:none}
   .thumb{width:50px;height:50px;border-radius:999px;background:linear-gradient(180deg,#85a9ff,#6f8df1);transform:translate(0,0)}
-  /* jump button */
   #jump{width:84px;height:84px;border-radius:20px;background:linear-gradient(180deg,#34d399,#16a34a);display:flex;align-items:center;justify-content:center;font-weight:800;pointer-events:auto}
-  /* top-right controls */
   #topRight{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:10px;pointer-events:none}
   button.small{pointer-events:auto;padding:8px 10px;border-radius:10px;border:0;background:rgba(255,255,255,0.06);color:inherit;font-weight:800}
-  #codebox{position:absolute;left:12px;top:64px;background:rgba(0,0,0,0.35);padding:8px;border-radius:8px;font-size:13px}
+  #settings{background:rgba(0,0,0,0.35);padding:8px;border-radius:8px;font-size:13px;pointer-events:auto}
+  .hidden{display:none}
   footer{padding:8px 12px;font-size:12px;color:#9fb0d5;background:linear-gradient(180deg,transparent,#041123)}
-  @media(min-width:760px){
-    .joy{width:150px;height:150px}.thumb{width:64px;height:64px}.pill{font-size:14px}
-  }
+  @media(min-width:760px){ .joy{width:150px;height:150px}.thumb{width:64px;height:64px}.pill{font-size:14px} }
 </style>
 </head>
 <body>
 <div id="wrap">
   <header>
-    <h1>3D Quest — собрать монеты</h1>
+    <h1>Monkey Quest — собирай бананы</h1>
     <div id="hud">
       <div class="pill">Очки: <span id="score">0</span></div>
       <div class="pill">Время: <span id="time">60</span>s</div>
@@ -50,7 +46,9 @@
     </div>
 
     <div id="topRight">
-      <div id="codebox" style="display:none">Debug</div>
+      <div id="settings">
+        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="invert"> Инвертировать джойстик</label>
+      </div>
       <button id="jump" class="small">Прыжок</button>
       <button id="restart" class="small">Рестарт</button>
     </div>
@@ -59,21 +57,18 @@
   <footer>Управление: джойстик слева, кнопка прыжка справа. На десктопе — WASD / стрелки + пробел.</footer>
 </div>
 
-<!-- Three.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 
 <script>
-/*
-  Простой мобильный 3D прототип:
-  - шар (игрок), плоскость, монеты (сферы)
-  - управление: виртуальный джойстик + кнопка прыжка
-  - простая физика: гравитация, скорость, коллизии AABB/радиус
-  - таймер и счет
+/* Monkey Quest: обновлённый прототип
+   - заменил шар на "обезьяну" из примитивов
+   - бананы вместо монет
+   - исправлен джойстик (вперёд = вверх) + настройка инверсии
 */
 
-// --- сцена и рендер ---
+// --- three.js init ---
 const canvas = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
 renderer.setClearColor(0x071026);
 renderer.shadowMap.enabled = true;
 let DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -84,109 +79,149 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 200);
 camera.position.set(0, 8, 12);
 
-// light
-const hemi = new THREE.HemisphereLight(0xffffff, 0x111122, 0.6);
-scene.add(hemi);
-const dir = new THREE.DirectionalLight(0xffffff, 0.9);
-dir.position.set(5, 10, 5);
-dir.castShadow = true;
-dir.shadow.mapSize.set(1024,1024);
-scene.add(dir);
+const hemi = new THREE.HemisphereLight(0xffffff, 0x111122, 0.6); scene.add(hemi);
+const dir = new THREE.DirectionalLight(0xffffff, 0.9); dir.position.set(5,10,5); dir.castShadow=true; dir.shadow.mapSize.set(1024,1024); scene.add(dir);
 
-// ground
-const groundGeo = new THREE.PlaneGeometry(40, 40);
+const groundGeo = new THREE.PlaneGeometry(40,40);
 const groundMat = new THREE.MeshStandardMaterial({color:0x0d2335, metalness:0.1, roughness:0.8});
-const ground = new THREE.Mesh(groundGeo, groundMat);
-ground.rotation.x = -Math.PI/2;
-ground.receiveShadow = true;
-scene.add(ground);
+const ground = new THREE.Mesh(groundGeo, groundMat); ground.rotation.x = -Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+const grid = new THREE.GridHelper(40,20,0x223344,0x112233); grid.material.opacity=0.25; grid.material.transparent=true; scene.add(grid);
 
-// grid lines for orientation
-const grid = new THREE.GridHelper(40, 20, 0x223344, 0x112233);
-grid.material.opacity = 0.25; grid.material.transparent = true;
-scene.add(grid);
+// --- monkey (composition of primitives) ---
+const monkey = new THREE.Group();
 
-// player (sphere)
-const playerRadius = 0.6;
-const playerGeo = new THREE.SphereGeometry(playerRadius, 32, 24);
-const playerMat = new THREE.MeshStandardMaterial({color:0x85a9ff, metalness:0.2, roughness:0.3});
-const player = new THREE.Mesh(playerGeo, playerMat);
-player.castShadow = true;
-player.position.set(0, playerRadius + 0.02, 0);
-scene.add(player);
+// body
+const bodyGeo = new THREE.SphereGeometry(0.7, 24, 16);
+const bodyMat = new THREE.MeshStandardMaterial({color:0x8b5a2b, metalness:0.1, roughness:0.6});
+const body = new THREE.Mesh(bodyGeo, bodyMat);
+body.castShadow = true; body.position.set(0, 0.7, 0);
+monkey.add(body);
 
-// simple obstacles (low boxes)
+// head
+const headGeo = new THREE.SphereGeometry(0.45, 20, 16);
+const headMat = new THREE.MeshStandardMaterial({color:0x9b6b3b});
+const head = new THREE.Mesh(headGeo, headMat);
+head.position.set(0, 1.45, 0.08);
+head.castShadow = true;
+monkey.add(head);
+
+// face patch
+const faceGeo = new THREE.SphereGeometry(0.28, 12, 10);
+const faceMat = new THREE.MeshStandardMaterial({color:0xecc9a0});
+const face = new THREE.Mesh(faceGeo, faceMat);
+face.position.set(0, 1.35, 0.3);
+monkey.add(face);
+
+// ears
+const earGeo = new THREE.CylinderGeometry(0.12,0.12,0.06,12);
+const earMat = new THREE.MeshStandardMaterial({color:0x9b6b3b});
+const earL = new THREE.Mesh(earGeo, earMat); earL.rotation.z = Math.PI/2; earL.position.set(-0.45, 1.4, 0);
+const earR = earL.clone(); earR.position.x = 0.45;
+monkey.add(earL); monkey.add(earR);
+
+// arms
+const limbGeo = new THREE.CylinderGeometry(0.12,0.12,0.9,12);
+const limbMat = new THREE.MeshStandardMaterial({color:0x8b5a2b});
+const armL = new THREE.Mesh(limbGeo, limbMat); armL.position.set(-0.95, 0.8, 0); armL.rotation.z = 0.2; armL.castShadow=true;
+const armR = armL.clone(); armR.position.x = 0.95; armR.rotation.z = -0.2;
+monkey.add(armL); monkey.add(armR);
+
+// legs
+const legL = new THREE.Mesh(limbGeo, limbMat); legL.position.set(-0.36, 0.05, 0); legL.rotation.z = 0.05; legL.castShadow=true;
+const legR = legL.clone(); legR.position.x = 0.36; monkey.add(legL); monkey.add(legR);
+
+// tail (simple torus)
+const tailGeo = new THREE.TorusGeometry(0.5, 0.08, 8, 16, Math.PI*1.1);
+const tailMat = new THREE.MeshStandardMaterial({color:0x8b5a2b});
+const tail = new THREE.Mesh(tailGeo, tailMat); tail.rotation.x = Math.PI/2; tail.position.set(0,0.5,-0.7); tail.castShadow=true;
+monkey.add(tail);
+
+// set initial position
+monkey.position.set(0, 0, 0);
+scene.add(monkey);
+
+// --- obstacles ---
 const boxes = [];
-for(let i=0;i<6;i++){
-  const bGeo = new THREE.BoxGeometry(2.2, 1.2, 2.2);
+for(let i=0;i<5;i++){
+  const bGeo = new THREE.BoxGeometry(2.4, 1.4, 2.4);
   const bMat = new THREE.MeshStandardMaterial({color:0x2a4760});
   const box = new THREE.Mesh(bGeo, bMat);
-  box.castShadow = true; box.receiveShadow=true;
-  const x = (Math.random()-0.5)*28;
-  const z = (Math.random()-0.5)*28;
-  box.position.set(x, 0.6, z);
+  box.castShadow=true; box.receiveShadow=true;
+  box.position.set((Math.random()-0.5)*28, 0.7, (Math.random()-0.5)*28);
   scene.add(box);
   boxes.push(box);
 }
 
-// coins (collectibles)
-let coins = [];
-function spawnCoins(n = 8){
-  coins.forEach(c => scene.remove(c.mesh));
-  coins = [];
+// --- bananas (collectibles) ---
+let bananas = [];
+function makeBananaMesh(){
+  // banana as slightly curved group of small spheres + cylinder (simple visual)
+  const g = new THREE.Group();
+  const yellow = new THREE.MeshStandardMaterial({color:0xffd166, emissive:0xffa700, metalness:0.1, roughness:0.3});
+  // approximate curve with 5 small spheres
+  for(let i=0;i<5;i++){
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.16,12,10), yellow);
+    s.position.set((i-2)*0.14, 0, Math.sin((i-2)/3)*0.12);
+    g.add(s);
+  }
+  // small tip
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.06,10,8), new THREE.MeshStandardMaterial({color:0x7f4c00}));
+  tip.position.set(-0.32,0,0.04); g.add(tip);
+  return g;
+}
+
+function spawnBananas(n=10){
+  bananas.forEach(b=>scene.remove(b.mesh)); bananas=[];
   for(let i=0;i<n;i++){
-    const r = 0.25 + Math.random()*0.12;
-    const geo = new THREE.SphereGeometry(r, 16, 12);
-    const mat = new THREE.MeshStandardMaterial({color:0xffd166, emissive:0xffa700, metalness:0.2, roughness:0.2});
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.castShadow = true;
-    let x, z, ok;
+    const mesh = makeBananaMesh();
+    let x,z,ok;
     do{
       x = (Math.random()-0.5)*30;
       z = (Math.random()-0.5)*30;
-      ok = Math.hypot(x - player.position.x, z - player.position.z) > 3;
-      // avoid boxes
-      boxes.forEach(b => { if(ok){
-        const dx = x - b.position.x; const dz = z - b.position.z;
-        if(Math.abs(dx) < 2.5 && Math.abs(dz) < 2.5) ok = false;
+      ok = Math.hypot(x - monkey.position.x, z - monkey.position.z) > 3;
+      boxes.forEach(bx=>{ if(ok){
+        const dx = x - bx.position.x, dz = z - bx.position.z;
+        if(Math.abs(dx) < 2.7 && Math.abs(dz) < 2.7) ok = false;
       }});
     } while(!ok);
-    mesh.position.set(x, r + 0.02, z);
+    mesh.position.set(x, 0.16 + Math.random()*0.3, z);
+    mesh.rotation.y = Math.random()*Math.PI*2;
     scene.add(mesh);
-    coins.push({mesh, r});
+    bananas.push({mesh, r:0.28});
   }
 }
-spawnCoins(10);
+spawnBananas(10);
 
-// camera follow target helpers
+// --- camera follow ---
 const camTarget = new THREE.Vector3();
 function updateCamera(){
-  // chase camera behind player
-  const desired = new THREE.Vector3(player.position.x, player.position.y + 4, player.position.z + 8);
+  const desired = new THREE.Vector3(monkey.position.x, monkey.position.y + 4.5, monkey.position.z + 9);
   camera.position.lerp(desired, 0.12);
-  camTarget.set(player.position.x, player.position.y + 1.2, player.position.z);
+  camTarget.set(monkey.position.x, monkey.position.y + 1.4, monkey.position.z);
   camera.lookAt(camTarget);
 }
 
-// --- simple physics state ---
+// --- physics-like state ---
 const state = {
   vel: new THREE.Vector3(0,0,0),
-  onGround: false,
+  onGround: true,
   move: new THREE.Vector2(0,0),
-  jumpImpulse: 6.2,
+  jumpImpulse: 6.0,
   gravity: -18,
-  maxSpeed: 6
+  maxSpeed: 5
 };
 
-// input: virtual joystick
+// joystick logic with invert option
 const joy = document.getElementById('joy');
 const thumb = document.getElementById('thumb');
 let joyActive = false;
 let joyCenter = {x:0,y:0};
 let joyRadius = 42;
+let invert = false;
+const invertCheckbox = document.getElementById('invert');
+invertCheckbox.addEventListener('change', ()=>{ invert = invertCheckbox.checked; });
 
 function getTouchPos(t){ return {x: t.clientX, y: t.clientY}; }
-
 function startJoy(e){
   joyActive = true;
   const rect = joy.getBoundingClientRect();
@@ -203,10 +238,11 @@ function updateJoy(cx, cy){
   const nx = dx / (dist || 1);
   const ny = dy / (dist || 1);
   const mag = Math.min(dist / joyRadius, 1);
-  // Map to move vector (x -> left/right, y -> forward/back)
+  // Map to move vector: up => forward
+  const forwardY = invert ? ny : -ny; // invert option flips vertical axis
   state.move.x = (Math.abs(nx) < 0.13) ? 0 : nx * mag;
-  state.move.y = (Math.abs(ny) < 0.13) ? 0 : -ny * mag; // invert y so up = forward
-  thumb.style.transform = `translate(${state.move.x * (joyRadius-18)}px, ${state.move.y * (joyRadius-18)}px)`;
+  state.move.y = (Math.abs(forwardY) < 0.13) ? 0 : forwardY * mag;
+  thumb.style.transform = `translate(${state.move.x * (joyRadius-18)}px, ${-state.move.y * (joyRadius-18)}px)`;
 }
 function endJoy(){
   joyActive = false;
@@ -215,7 +251,7 @@ function endJoy(){
 }
 
 joy.addEventListener('touchstart', startJoy, {passive:false});
-joy.addEventListener('touchmove', (e)=>{ if(joyActive) { updateJoy(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); } }, {passive:false});
+joy.addEventListener('touchmove', (e)=>{ if(joyActive){ updateJoy(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); } }, {passive:false});
 joy.addEventListener('touchend', endJoy);
 joy.addEventListener('mousedown', (e)=>{ startJoy(e); window.addEventListener('mousemove', onMouseMove); });
 function onMouseMove(e){ if(joyActive) updateJoy(e.clientX,e.clientY); }
@@ -226,61 +262,44 @@ const keys = {};
 window.addEventListener('keydown', (e)=>{ keys[e.key.toLowerCase()] = true; });
 window.addEventListener('keyup', (e)=>{ keys[e.key.toLowerCase()] = false; });
 
-// jump button
+// jump
 const jumpBtn = document.getElementById('jump');
 jumpBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); tryJump(); }, {passive:false});
 jumpBtn.addEventListener('mousedown', ()=> tryJump());
-function tryJump(){
-  if(state.onGround){
-    state.vel.y = state.jumpImpulse;
-    state.onGround = false;
-  }
-}
+function tryJump(){ if(state.onGround){ state.vel.y = state.jumpImpulse; state.onGround = false; } }
 
 // restart
 document.getElementById('restart').addEventListener('click', resetGame);
 
-// game variables
-let score = 0;
-let totalTime = 60; // seconds
-let timeLeft = totalTime;
-let level = 1;
-const scoreEl = document.getElementById('score');
-const timeEl = document.getElementById('time');
-const levelEl = document.getElementById('level');
+// game variables and HUD
+let score = 0; let totalTime = 60; let timeLeft = totalTime; let level = 1;
+const scoreEl = document.getElementById('score'); const timeEl = document.getElementById('time'); const levelEl = document.getElementById('level');
 
-// helpers
+// helper
 function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 
-// simple collision sphere-plane + sphere-sphere for coins + AABB for boxes
+// simple physics and animations
+let walkPhase = 0;
 function physicsStep(dt){
-  // keyboard apply to move if no joystick
+  // keyboard if no joystick
   if(!joyActive){
     let mx=0,my=0;
     if(keys['arrowleft']||keys['a']) mx=-1;
     if(keys['arrowright']||keys['d']) mx=1;
     if(keys['arrowup']||keys['w']) my=1;
     if(keys['arrowdown']||keys['s']) my=-1;
-    state.move.x = mx; state.move.y = my;
+    // respect invert checkbox for keyboard vertical controls
+    const v = invert ? my : -my;
+    state.move.x = mx; state.move.y = v;
     if(keys[' ']) tryJump();
   }
 
-  // horizontal movement
-  const forward = new THREE.Vector3(0,0,-1);
-  const right = new THREE.Vector3(1,0,0);
-  // world directions relative to camera yaw
-  const camYaw = Math.atan2(camera.position.x - player.position.x, camera.position.z - player.position.z);
+  // map input relative to camera yaw
+  const camYaw = Math.atan2(camera.position.x - monkey.position.x, camera.position.z - monkey.position.z);
   const cos = Math.cos(camYaw), sin = Math.sin(camYaw);
-  // Map input to world vector rotated by camera yaw
   const input = new THREE.Vector3(state.move.x, 0, state.move.y);
-  const worldDir = new THREE.Vector3(
-    input.x * cos - input.z * sin,
-    0,
-    input.x * sin + input.z * cos
-  );
-  // accelerate towards desired vel
-  const targetVel = worldDir.clone().multiplyScalar(state.maxSpeed * (1 + 0.1*level));
-  // smooth velocity
+  const worldDir = new THREE.Vector3(input.x * cos - input.z * sin, 0, input.x * sin + input.z * cos);
+  const targetVel = worldDir.clone().multiplyScalar(state.maxSpeed * (1 + 0.08*level));
   const acc = 24;
   state.vel.x = THREE.MathUtils.damp(state.vel.x, targetVel.x, acc, dt);
   state.vel.z = THREE.MathUtils.damp(state.vel.z, targetVel.z, acc, dt);
@@ -288,76 +307,66 @@ function physicsStep(dt){
   // gravity
   state.vel.y += state.gravity * dt;
 
-  // integrate position
-  player.position.x += state.vel.x * dt;
-  player.position.y += state.vel.y * dt;
-  player.position.z += state.vel.z * dt;
+  // integrate
+  monkey.position.x += state.vel.x * dt;
+  monkey.position.y += state.vel.y * dt;
+  monkey.position.z += state.vel.z * dt;
 
-  // ground collision
-  if(player.position.y <= playerRadius + 0.02){
-    player.position.y = playerRadius + 0.02;
-    state.vel.y = 0;
-    state.onGround = true;
-  } else {
-    state.onGround = false;
-  }
+  // ground collision and onGround
+  if(monkey.position.y <= 0.02){
+    monkey.position.y = 0.02;
+    state.vel.y = 0; state.onGround = true;
+  } else state.onGround = false;
 
-  // simple box collisions: push out if overlapping
-  boxes.forEach(b => {
-    const minX = b.position.x - 1.1, maxX = b.position.x + 1.1;
-    const minZ = b.position.z - 1.1, maxZ = b.position.z + 1.1;
-    if(player.position.x > minX - playerRadius && player.position.x < maxX + playerRadius &&
-       player.position.z > minZ - playerRadius && player.position.z < maxZ + playerRadius){
-      // compute push vector away from box center in XZ
-      const dx = player.position.x - b.position.x;
-      const dz = player.position.z - b.position.z;
+  // boxes collisions (push)
+  boxes.forEach(b=>{
+    const minX = b.position.x - 1.2, maxX = b.position.x + 1.2;
+    const minZ = b.position.z - 1.2, maxZ = b.position.z + 1.2;
+    if(monkey.position.x > minX - 0.9 && monkey.position.x < maxX + 0.9 &&
+       monkey.position.z > minZ - 0.9 && monkey.position.z < maxZ + 0.9){
+      const dx = monkey.position.x - b.position.x, dz = monkey.position.z - b.position.z;
       const d = Math.hypot(dx, dz) || 0.001;
-      const push = (1.5 + playerRadius) - d;
+      const push = (1.2 + 0.9) - d;
       if(push > 0){
-        player.position.x += (dx/d) * push;
-        player.position.z += (dz/d) * push;
-        // reduce horizontal velocity
+        monkey.position.x += (dx/d) * push;
+        monkey.position.z += (dz/d) * push;
         state.vel.x *= 0.4; state.vel.z *= 0.4;
       }
     }
   });
 
-  // coin pickup
-  for(let i = coins.length-1; i>=0; i--){
-    const c = coins[i];
-    const d = Math.hypot(player.position.x - c.mesh.position.x, player.position.z - c.mesh.position.z);
-    if(d < playerRadius + c.r + 0.15 && Math.abs(player.position.y - c.mesh.position.y) < 1.6){
-      // collect
+  // bananas pickup
+  for(let i=bananas.length-1;i>=0;i--){
+    const c = bananas[i];
+    const d = Math.hypot(monkey.position.x - c.mesh.position.x, monkey.position.z - c.mesh.position.z);
+    if(d < 0.9 && Math.abs(monkey.position.y - c.mesh.position.y) < 1.6){
       scene.remove(c.mesh);
-      coins.splice(i,1);
-      score += 10;
-      scoreEl.textContent = score;
-      // small visual pop
-      // spawn particle (simple scale)
-      // when all collected -> next level
-      if(coins.length === 0){
-        levelUp();
-      }
+      bananas.splice(i,1);
+      score += 10; scoreEl.textContent = score;
+      if(bananas.length === 0) levelUp();
     } else {
-      // small coin bob animation
-      c.mesh.position.y = c.r + 0.02 + Math.sin(performance.now() * 0.004 + i) * 0.08;
+      // bobbing animation
+      c.mesh.position.y = 0.16 + Math.sin(performance.now()*0.004 + i)*0.06;
       c.mesh.rotation.y += 0.02;
     }
   }
+
+  // simple walking animation: lean body and swing arms
+  const speed = Math.hypot(state.vel.x, state.vel.z);
+  walkPhase += speed * dt * 6;
+  const lean = Math.sin(walkPhase) * Math.min(0.18, speed*0.06);
+  body.rotation.z = THREE.MathUtils.lerp(body.rotation.z, lean, 0.12);
+  head.rotation.y = THREE.MathUtils.lerp(head.rotation.y, -state.vel.x*0.06, 0.12);
+  armL.rotation.x = 0.2 + Math.sin(walkPhase)*0.6*speed;
+  armR.rotation.x = -0.2 + Math.sin(walkPhase + Math.PI)*0.6*speed;
 }
 
 // level up
 function levelUp(){
-  level++;
-  levelEl.textContent = level;
-  // give time bonus and respawn coins + new boxes sometimes
+  level++; levelEl.textContent = level;
   timeLeft = Math.min(totalTime, timeLeft + 18);
-  spawnCoins(8 + Math.min(6, level));
-  // randomize boxes positions a bit
-  boxes.forEach(b => {
-    b.position.x = (Math.random()-0.5)*28;
-    b.position.z = (Math.random()-0.5)*28;
-  });
+  spawnBananas(8 + Math.min(6, level));
+  boxes.forEach(b => { b.position.x = (Math.random()-0.5)*28; b.position.z = (Math.random()-0.5)*28; });
 }
 
 // reset
@@ -365,85 +374,55 @@ function resetGame(){
   score = 0; scoreEl.textContent = score;
   level = 1; levelEl.textContent = level;
   timeLeft = totalTime; timeEl.textContent = Math.round(timeLeft);
-  player.position.set(0, playerRadius + 0.02, 0);
+  monkey.position.set(0, 0.02, 0);
   state.vel.set(0,0,0);
-  spawnCoins(10);
+  spawnBananas(10);
 }
 
-// game loop
-let last = performance.now();
-let accum = 0;
+// --- spawn initial bananas call above already run ---
+
+// animate & camera
+let last = performance.now(); let accum = 0;
 function animate(now){
-  const dt = Math.min((now - last) / 1000, 0.05);
+  const dt = Math.min((now - last)/1000, 0.05);
   last = now;
-  // run physics at 60Hz style but integrating with dt
-  physicsStep(dt);
-
-  // update camera
+  try { physicsStep(dt); } catch(e){ console.error(e); }
   updateCamera();
-
-  // subtle player tilt based on velocity
-  player.rotation.x = THREE.MathUtils.lerp(player.rotation.x, -state.vel.z * 0.03, 0.12);
-  player.rotation.z = THREE.MathUtils.lerp(player.rotation.z, state.vel.x * 0.03, 0.12);
-
-  // render
   renderer.render(scene, camera);
 
-  // timer
   accum += dt;
   if(accum >= 1){
-    accum = 0;
-    timeLeft = Math.max(0, timeLeft - 1);
-    timeEl.textContent = Math.round(timeLeft);
-    if(timeLeft <= 0){
-      // game over: simple alert and restart
-      setTimeout(()=>{ alert('Время вышло! Набрано очков: ' + score); resetGame(); }, 50);
-    }
+    accum = 0; timeLeft = Math.max(0, timeLeft - 1); timeEl.textContent = Math.round(timeLeft);
+    if(timeLeft <= 0){ setTimeout(()=>{ alert('Время вышло! Набрано очков: '+score); resetGame(); }, 50); }
   }
-
   requestAnimationFrame(animate);
 }
 requestAnimationFrame(animate);
 
-// resize handling
-window.addEventListener('resize', onResize);
-function onResize(){
-  DPR = Math.min(window.devicePixelRatio || 1, 2);
-  renderer.setPixelRatio(DPR);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+function updateCamera(){
+  const desired = new THREE.Vector3(monkey.position.x, monkey.position.y + 4.5, monkey.position.z + 9);
+  camera.position.lerp(desired, 0.12);
+  camTarget.set(monkey.position.x, monkey.position.y + 1.4, monkey.position.z);
+  camera.lookAt(camTarget);
 }
-onResize();
 
-// simple debug toggle: long press header to show debug box
-let headerPressTimer = null;
-document.querySelector('header').addEventListener('touchstart', ()=> {
-  headerPressTimer = setTimeout(()=> document.getElementById('codebox').style.display = 'block', 700);
-}, {passive:true});
-document.querySelector('header').addEventListener('touchend', ()=> {
-  clearTimeout(headerPressTimer); headerPressTimer = null;
-}, {passive:true});
-document.getElementById('codebox').addEventListener('click', ()=> {
-  const el = document.getElementById('codebox');
-  el.style.display = 'none';
-});
+// resize handling
+window.addEventListener('resize', ()=>{ DPR = Math.min(window.devicePixelRatio||1,2); renderer.setPixelRatio(DPR); renderer.setSize(window.innerWidth, window.innerHeight); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); });
 
-// --- utilities and polish ---
-function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+// input: keyboard fallback (account for invert)
+window.addEventListener('keydown',(e)=>{ keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keyup',(e)=>{ keys[e.key.toLowerCase()] = false; });
 
-// initial call
+// joystick setup (already wired above)
+
+// initial reset
 resetGame();
 
-// Expose a simple FPS saver for weak devices
-let slowMode = false;
+// optional low-end performance tweak
 (function detectPerformance(){
-  // if devicePixelRatio high and mobile not powerful -> lower DPR
   const ua = navigator.userAgent || '';
   if(/iPhone|Android/.test(ua) && (window.devicePixelRatio > 2.0)){
-    // low-end heuristic: reduce DPR to 1.25 for performance
     renderer.setPixelRatio(1.25);
-    slowMode = true;
   }
 })();
 
