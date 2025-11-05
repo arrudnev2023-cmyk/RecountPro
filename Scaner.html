@@ -30,6 +30,26 @@
     }
     header h1 {font-size:20px;font-weight:700;}
     header p {font-size:13px;color:var(--muted);}
+    .tabs {
+      display:flex;
+      justify-content:center;
+      gap:8px;
+      margin-top:12px;
+    }
+    .tab {
+      padding:8px 14px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.15);
+      background:rgba(255,255,255,0.05);
+      color:var(--text);
+      cursor:pointer;
+      font-weight:600;
+    }
+    .tab.active {
+      background:linear-gradient(180deg,#85a9ff,#6f8df1);
+      color:#081021;
+      border:none;
+    }
     main {padding:20px;max-width:1000px;margin:0 auto;}
     .list {display:grid;grid-template-columns:1fr;gap:16px;}
     @media(min-width:700px){.list{grid-template-columns:1fr 1fr;}}
@@ -90,6 +110,11 @@
   <header>
     <h1>LendX — люди людям</h1>
     <p>Маркетплейс займов: каждый может дать или взять деньги на честных условиях</p>
+    <div class="tabs">
+      <div class="tab active" data-role="all">Все</div>
+      <div class="tab" data-role="borrower">Заёмщики</div>
+      <div class="tab" data-role="lender">Кредиторы</div>
+    </div>
   </header>
 
   <main>
@@ -108,9 +133,10 @@
 
   <script>
     const offers = [
-      {id:1, role:"Кредитор", amount:5000, term:30, apr:240, note:"Вернёте 6 000 за месяц."},
-      {id:2, role:"Кредитор", amount:12000, term:14, apr:150, note:"Ставка лояльная."},
-      {id:3, role:"Заёмщик", amount:9000, term:21, apr:180, note:"Нужны средства на ремонт."}
+      {id:1, role:"lender", amount:5000, term:30, apr:240, note:"Вернёте 6 000 за месяц."},
+      {id:2, role:"lender", amount:12000, term:14, apr:150, note:"Ставка лояльная."},
+      {id:3, role:"borrower", amount:9000, term:21, apr:180, note:"Нужны средства на ремонт."},
+      {id:4, role:"borrower", amount:15000, term:60, apr:120, note:"Учёба за границей."}
     ];
 
     const list = document.getElementById("list");
@@ -119,21 +145,23 @@
     const mClose = document.getElementById("mClose");
     const mTitle = document.getElementById("mTitle");
     const mInfo = document.getElementById("mInfo");
+    let currentRole = "all";
 
     function render(){
       list.innerHTML="";
-      offers.forEach(o=>{
-        const card=document.createElement("div");
-        card.className="card";
-        card.innerHTML=`
-          <h3>${o.role}</h3>
-          <div class="money">${o.amount.toLocaleString("ru-RU")} ₽</div>
-          <div class="muted">Срок: ${o.term} дн · APR: ${o.apr}%</div>
-          <p class="muted">${o.note}</p>
-          <button class="btn primary" data-id="${o.id}">Подробнее</button>
-        `;
-        list.appendChild(card);
-      });
+      offers.filter(o=> currentRole==="all" || o.role===currentRole)
+        .forEach(o=>{
+          const card=document.createElement("div");
+          card.className="card";
+          card.innerHTML=`
+            <h3>${o.role==="lender"?"Кредитор":"Заёмщик"}</h3>
+            <div class="money">${o.amount.toLocaleString("ru-RU")} ₽</div>
+            <div class="muted">Срок: ${o.term} дн · APR: ${o.apr}%</div>
+            <p class="muted">${o.note}</p>
+            <button class="btn primary" data-id="${o.id}">Подробнее</button>
+          `;
+          list.appendChild(card);
+        });
     }
 
     list.addEventListener("click", e=>{
@@ -141,7 +169,7 @@
         const id=Number(e.target.dataset.id);
         const o=offers.find(x=>x.id===id);
         if(o){
-          mTitle.textContent=`${o.role} #${o.id}`;
+          mTitle.textContent=`${o.role==="lender"?"Кредитор":"Заёмщик"} #${o.id}`;
           mInfo.textContent=`Сумма: ${o.amount} ₽ · Срок: ${o.term} дн · APR: ${o.apr}% · ${o.note}`;
           backdrop.style.display="flex";
         }
@@ -152,6 +180,15 @@
     closeBtn.addEventListener("click", closeModal);
     mClose.addEventListener("click", closeModal);
     backdrop.addEventListener("click", e=>{if(e.target===backdrop) closeModal();});
+
+    document.querySelectorAll(".tab").forEach(tab=>{
+      tab.addEventListener("click", ()=>{
+        document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+        tab.classList.add("active");
+        currentRole = tab.dataset.role;
+        render();
+      });
+    });
 
     render();
   </script>
