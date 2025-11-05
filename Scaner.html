@@ -147,16 +147,25 @@
     const mInfo = document.getElementById("mInfo");
     let currentRole = "all";
 
+    function calcOverpayPercent(amount, termDays, apr){
+      const perYear = apr/100;
+      const fractionOfYear = termDays/365;
+      const interest = amount * perYear * fractionOfYear;
+      const total = amount + interest;
+      return Math.round((total - amount)/amount*100);
+    }
+
     function render(){
       list.innerHTML="";
       offers.filter(o=> currentRole==="all" || o.role===currentRole)
         .forEach(o=>{
+          const overpay = calcOverpayPercent(o.amount,o.term,o.apr);
           const card=document.createElement("div");
           card.className="card";
           card.innerHTML=`
             <h3>${o.role==="lender"?"Кредитор":"Заёмщик"}</h3>
             <div class="money">${o.amount.toLocaleString("ru-RU")} ₽</div>
-            <div class="muted">Срок: ${o.term} дн · APR: ${o.apr}%</div>
+            <div class="muted">Срок: ${o.term} дн · Переплата: ${overpay}%</div>
             <p class="muted">${o.note}</p>
             <button class="btn primary" data-id="${o.id}">Подробнее</button>
           `;
@@ -169,8 +178,9 @@
         const id=Number(e.target.dataset.id);
         const o=offers.find(x=>x.id===id);
         if(o){
+          const overpay = calcOverpayPercent(o.amount,o.term,o.apr);
           mTitle.textContent=`${o.role==="lender"?"Кредитор":"Заёмщик"} #${o.id}`;
-          mInfo.textContent=`Сумма: ${o.amount} ₽ · Срок: ${o.term} дн · APR: ${o.apr}% · ${o.note}`;
+          mInfo.textContent=`Сумма: ${o.amount} ₽ · Срок: ${o.term} дн · Переплата: ${overpay}% · ${o.note}`;
           backdrop.style.display="flex";
         }
       }
