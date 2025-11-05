@@ -3,204 +3,619 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>LendX — люди людям</title>
+  <title>CodeStep — генератор кода по шагам</title>
   <style>
-    :root {
+    :root{
       --bg:#0b0e13;
+      --bg2:#0a0d12;
       --glass:rgba(255,255,255,0.08);
-      --text:#f0f2f7;
+      --text:#eef1f6;
       --muted:#a9afbf;
       --accent:#7aa9ff;
+      --accent2:#6f8df1;
+      --danger:#ef4444;
+      --success:#34d399;
       --radius:16px;
+      --shadow:0 12px 30px rgba(0,0,0,0.35);
     }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body {
-      background:linear-gradient(160deg,#10131a,#0b0e13);
-      color:var(--text);
-      font-family:Inter,system-ui,sans-serif;
-      line-height:1.4;
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--text);
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;
+      background:
+        radial-gradient(1200px 700px at 80% -10%, #17233b 0%, var(--bg) 60%, #06080c 100%),
+        linear-gradient(180deg, var(--bg2), var(--bg));
     }
-    header {
-      padding:20px;
-      text-align:center;
-      backdrop-filter:blur(12px);
-      background:rgba(255,255,255,0.02);
-      border-bottom:1px solid rgba(255,255,255,0.1);
-      position:sticky;top:0;z-index:10;
+
+    /* Layout */
+    header{
+      position:sticky; top:0; z-index:10;
+      backdrop-filter:saturate(140%) blur(12px);
+      background:linear-gradient(180deg, rgba(10,13,18,0.85), rgba(10,13,18,0.4) 70%, rgba(10,13,18,0));
+      border-bottom:1px solid rgba(255,255,255,0.08);
     }
-    header h1 {font-size:20px;font-weight:700;}
-    header p {font-size:13px;color:var(--muted);}
-    .tabs {
-      display:flex;
-      justify-content:center;
-      gap:8px;
-      margin-top:12px;
+    .wrap{max-width:1100px; margin:0 auto; padding:18px 16px;}
+    .brand{display:flex; align-items:center; gap:12px}
+    .logo{width:42px; height:42px; border-radius:12px;
+      background:conic-gradient(from 180deg at 50% 50%, #7aa9ff, #22d3ee, #8b5cf6, #7aa9ff);
+      box-shadow:0 10px 32px rgba(122,169,255,0.35)}
+    .title{font-weight:800; letter-spacing:.3px}
+    .subtitle{color:var(--muted); font-size:13px}
+
+    .tabs{display:flex; gap:8px; margin-top:12px}
+    .tab{
+      padding:10px 14px; border-radius:999px; cursor:pointer; font-weight:600;
+      background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text)
     }
-    .tab {
-      padding:8px 14px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,0.15);
-      background:rgba(255,255,255,0.05);
-      color:var(--text);
-      cursor:pointer;
-      font-weight:600;
+    .tab.active{background:linear-gradient(180deg, var(--accent), var(--accent2)); color:#0b0e13; border:0}
+
+    main{max-width:1100px; margin:0 auto; padding:20px 16px}
+    .grid{display:grid; grid-template-columns:1fr; gap:14px}
+    @media(min-width:960px){ .grid{grid-template-columns: 420px 1fr} }
+
+    /* Cards & inputs */
+    .card{
+      background:var(--glass); border:1px solid rgba(255,255,255,0.12);
+      border-radius:var(--radius); box-shadow:var(--shadow);
+      backdrop-filter:blur(18px) saturate(140%); overflow:hidden
     }
-    .tab.active {
-      background:linear-gradient(180deg,#85a9ff,#6f8df1);
-      color:#081021;
-      border:none;
+    .card h3{margin:0; padding:16px; border-bottom:1px solid rgba(255,255,255,0.08)}
+    .body{padding:16px}
+    .row{display:flex; gap:10px; align-items:center}
+    .col{display:flex; flex-direction:column; gap:10px}
+    label{font-size:13px; color:var(--muted)}
+    input,select,textarea{
+      width:100%; padding:12px 14px; border-radius:14px; font-size:15px;
+      border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:var(--text)
     }
-    main {padding:20px;max-width:1000px;margin:0 auto;}
-    .list {display:grid;grid-template-columns:1fr;gap:16px;}
-    @media(min-width:700px){.list{grid-template-columns:1fr 1fr;}}
-    .card {
-      background:var(--glass);
-      border:1px solid rgba(255,255,255,0.12);
-      border-radius:var(--radius);
-      padding:16px;
-      backdrop-filter:blur(20px);
-      transition:transform .2s;
+    textarea{min-height:80px; resize:vertical}
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      padding:12px 14px; border-radius:14px; border:0; cursor:pointer; font-weight:700
     }
-    .card:hover {transform:translateY(-4px);}
-    .card h3 {margin-bottom:6px;font-size:18px;}
-    .muted {color:var(--muted);font-size:13px;}
-    .money {font-size:20px;font-weight:700;margin:8px 0;}
-    .btn {
-      display:inline-block;
-      padding:10px 14px;
-      border-radius:12px;
-      border:none;
-      cursor:pointer;
-      font-weight:600;
-      margin-top:8px;
+    .btn.primary{background:linear-gradient(180deg, var(--accent), var(--accent2)); color:#0b0e13}
+    .btn.ghost{background:rgba(255,255,255,0.06); color:var(--text); border:1px solid rgba(255,255,255,0.12)}
+    .btn.danger{background:linear-gradient(180deg, #ff9aa2,#ef4444); color:#0b0e13}
+    .muted{color:var(--muted); font-size:13px}
+    .pill{display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px;
+      background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); font-size:13px}
+
+    /* Editor */
+    .code{
+      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.12); border-radius:14px;
+      padding:14px; min-height:280px; white-space:pre; overflow:auto; line-height:1.45; font-size:13.5px
     }
-    .btn.primary {
-      background:linear-gradient(180deg,#85a9ff,#6f8df1);
-      color:#081021;
-    }
+
     /* Modal */
-    .modal-backdrop {
-      position:fixed;inset:0;
-      background:rgba(0,0,0,0.6);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      z-index:50;
+    .backdrop{
+      position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:50;
+      background:rgba(0,0,0,0.6)
     }
-    .modal {
-      background:var(--glass);
-      border:1px solid rgba(255,255,255,0.15);
-      border-radius:var(--radius);
-      padding:20px;
-      max-width:400px;
-      width:90%;
-      backdrop-filter:blur(20px);
+    .modal{
+      width:min(620px, 92%); border-radius:18px; border:1px solid rgba(255,255,255,0.15);
+      background:var(--glass); backdrop-filter:blur(18px); box-shadow:var(--shadow)
     }
-    .modal h2 {margin-bottom:10px;}
-    .close {
-      float:right;
-      cursor:pointer;
-      font-weight:700;
-      color:var(--muted);
-    }
-    .modal .btn {width:100%;margin-top:16px;}
+    .modal .head{padding:16px; border-bottom:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center}
+    .modal .content{padding:16px}
+    .close{cursor:pointer; color:var(--muted); font-weight:800}
+    .fadeIn{animation:fadeIn .18s ease-out}
+    @keyframes fadeIn{from{opacity:0; transform:scale(.98)}to{opacity:1; transform:scale(1)}}
   </style>
 </head>
 <body>
   <header>
-    <h1>LendX — люди людям</h1>
-    <p>Маркетплейс займов: каждый может дать или взять деньги на честных условиях</p>
-    <div class="tabs">
-      <div class="tab active" data-role="all">Все</div>
-      <div class="tab" data-role="borrower">Заёмщики</div>
-      <div class="tab" data-role="lender">Кредиторы</div>
+    <div class="wrap">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <div class="title">CodeStep — генератор кода по пошаговому описанию</div>
+          <div class="subtitle">Скажи, что нужно — получи готовый, запускопригодный код с инструкциями</div>
+        </div>
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="brief">Бриф</button>
+        <button class="tab" data-tab="code">Код</button>
+        <button class="tab" data-tab="help">Подсказка</button>
+      </div>
     </div>
   </header>
 
   <main>
-    <section class="list" id="list"></section>
+    <div class="grid">
+      <!-- Left: Steps -->
+      <section class="card" id="panel-brief">
+        <h3>Пошаговый бриф</h3>
+        <div class="body col">
+          <div class="pill">Заполни 5 простых шагов — и получишь готовый код</div>
+
+          <div class="col">
+            <label>1) Цель программы</label>
+            <input id="goal" placeholder="Например: API заметок с CRUD" />
+          </div>
+
+          <div class="col">
+            <label>2) Язык и стек</label>
+            <div class="row">
+              <select id="lang">
+                <option value="node">Node.js (Fastify)</option>
+                <option value="python">Python (FastAPI)</option>
+                <option value="frontend">Frontend (HTML+JS)</option>
+              </select>
+              <select id="db">
+                <option value="none">Без БД (in-memory)</option>
+                <option value="sqlite">SQLite</option>
+                <option value="postgres">PostgreSQL</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="col">
+            <label>3) Вход / Выход</label>
+            <textarea id="io" placeholder="Опиши формат ввода/вывода. Например: JSON {title, body}, ответы: 200/404"></textarea>
+          </div>
+
+          <div class="col">
+            <label>4) Ограничения и требования</label>
+            <textarea id="constraints" placeholder="Лимиты, стиль кода, зависимости, авторизация, валидация..."></textarea>
+          </div>
+
+          <div class="col">
+            <label>5) Среда выполнения</label>
+            <div class="row">
+              <select id="env">
+                <option value="cli">CLI / локально</option>
+                <option value="server">Сервер (HTTP)</option>
+                <option value="browser">Браузер</option>
+              </select>
+              <select id="tests">
+                <option value="none">Без тестов</option>
+                <option value="unit">Unit-тесты</option>
+                <option value="api">API-тесты (curl)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:6px">
+            <button class="btn primary" id="generate">Сгенерировать код</button>
+            <button class="btn ghost" id="clear">Очистить</button>
+            <button class="btn ghost" id="previewModal">Открыть модалку</button>
+          </div>
+          <div class="muted">Код формируется локально в браузере, без серверной отправки.</div>
+        </div>
+      </section>
+
+      <!-- Right: Code -->
+      <section class="card" id="panel-code">
+        <h3>Готовый код и инструкции</h3>
+        <div class="body col">
+          <div class="code" id="codeBox">// Сгенерируй бриф слева и получишь здесь готовый код проекта</div>
+          <div class="row">
+            <button class="btn primary" id="copy">Скопировать</button>
+            <button class="btn ghost" id="download">Скачать .zip</button>
+            <button class="btn ghost" id="switchToCode">Показать вкладку «Код»</button>
+          </div>
+          <div class="muted">Совет: сначала скопируй в README, потом инициализируй проект через командную строку.</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Help panel -->
+    <section class="card" id="panel-help" style="margin-top:14px">
+      <h3>Подсказка по заполнению</h3>
+      <div class="body">
+        <ul style="margin:0; padding-left:18px">
+          <li><b>Цель:</b> коротко и конкретно. Пример: «REST API для заметок (create/read/update/delete)»</li>
+          <li><b>Язык/стек:</b> выбери то, с чем удобнее запускать (Node/Fastify, Python/FastAPI, фронт)</li>
+          <li><b>Вход/выход:</b> форматы данных, статус‑коды, структура ответа</li>
+          <li><b>Ограничения:</b> авторизация, валидация, стиль (ESLint/Black), лимиты, персистентность</li>
+          <li><b>Среда:</b> CLI, HTTP сервер, браузер. Тесты — по желанию</li>
+        </ul>
+      </div>
+    </section>
   </main>
 
   <!-- Modal -->
-  <div class="modal-backdrop" id="backdrop">
-    <div class="modal">
-      <span class="close" id="close">✕</span>
-      <h2 id="mTitle">Предложение</h2>
-      <p id="mInfo"></p>
-      <button class="btn primary" id="mClose">Закрыть</button>
+  <div class="backdrop" id="backdrop">
+    <div class="modal fadeIn">
+      <div class="head">
+        <div style="font-weight:800">Информация</div>
+        <div class="close" id="close">✕</div>
+      </div>
+      <div class="content">
+        <p class="muted">Это простая модалка: открывается по кнопке, закрывается крестиком, по фону или кнопкой.</p>
+        <div class="row">
+          <button class="btn primary" id="ok">Понятно</button>
+          <button class="btn ghost" id="cancel">Закрыть</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <script>
-    const offers = [
-      {id:1, role:"lender", amount:5000, term:30, apr:240, note:"Вернёте 6 000 за месяц."},
-      {id:2, role:"lender", amount:12000, term:14, apr:150, note:"Ставка лояльная."},
-      {id:3, role:"borrower", amount:9000, term:21, apr:180, note:"Нужны средства на ремонт."},
-      {id:4, role:"borrower", amount:15000, term:60, apr:120, note:"Учёба за границей."}
-    ];
+  <footer class="wrap" style="color:var(--muted); font-size:12px; margin-bottom:24px">
+    CodeStep — премиум‑минимализм без лишних элементов. Всё работает офлайн, данные не покидают браузер.
+  </footer>
 
-    const list = document.getElementById("list");
+  <script>
+    // Tabs
+    const tabs = document.querySelectorAll(".tab");
+    const panels = {
+      brief: document.getElementById("panel-brief"),
+      code: document.getElementById("panel-code"),
+      help: document.getElementById("panel-help"),
+    };
+    function switchTab(name){
+      tabs.forEach(t=>t.classList.toggle("active", t.dataset.tab===name));
+      Object.keys(panels).forEach(k=>{
+        panels[k].style.display = (k===name? "block":"none");
+      });
+    }
+    // initial state
+    switchTab("brief");
+    tabs.forEach(t=>t.addEventListener("click", ()=> switchTab(t.dataset.tab)));
+
+    // Elements
+    const el = {
+      goal: document.getElementById("goal"),
+      lang: document.getElementById("lang"),
+      db: document.getElementById("db"),
+      io: document.getElementById("io"),
+      constraints: document.getElementById("constraints"),
+      env: document.getElementById("env"),
+      tests: document.getElementById("tests"),
+      codeBox: document.getElementById("codeBox"),
+      generate: document.getElementById("generate"),
+      clear: document.getElementById("clear"),
+      copy: document.getElementById("copy"),
+      download: document.getElementById("download"),
+      switchToCode: document.getElementById("switchToCode"),
+      previewModal: document.getElementById("previewModal"),
+    };
+
+    // Modal
     const backdrop = document.getElementById("backdrop");
     const closeBtn = document.getElementById("close");
-    const mClose = document.getElementById("mClose");
-    const mTitle = document.getElementById("mTitle");
-    const mInfo = document.getElementById("mInfo");
-    let currentRole = "all";
+    const okBtn = document.getElementById("ok");
+    const cancelBtn = document.getElementById("cancel");
+    function openModal(){ backdrop.style.display = "flex"; }
+    function closeModal(){ backdrop.style.display = "none"; }
+    el.previewModal.addEventListener("click", openModal);
+    closeBtn.addEventListener("click", closeModal);
+    okBtn.addEventListener("click", closeModal);
+    cancelBtn.addEventListener("click", closeModal);
+    backdrop.addEventListener("click", (e)=>{ if(e.target===backdrop) closeModal(); });
 
-    function calcOverpayPercent(amount, termDays, apr){
-      const perYear = apr/100;
-      const fractionOfYear = termDays/365;
-      const interest = amount * perYear * fractionOfYear;
-      const total = amount + interest;
-      return Math.round((total - amount)/amount*100);
+    // Generators
+    function headerReadme(data){
+      return `# ${data.title}
+
+${data.subtitle}
+
+## Стек
+- Язык: ${data.langLabel}
+- БД: ${data.dbLabel}
+- Среда: ${data.envLabel}
+- Тесты: ${data.testsLabel}
+
+## Запуск
+${data.run}
+
+## Описание I/O
+${data.io}
+
+## Ограничения/требования
+${data.constraints}
+
+`;
     }
+
+    function nodeFastify(data){
+      const pkg = `{
+  "name": "codestep-${slugify(data.title)}",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "fastify": "^4.26.2"
+  }
+}
+`;
+      const server = `// server.js
+import Fastify from "fastify";
+const app = Fastify({ logger: true });
+
+// In-memory storage (demo)
+let items = [];
+
+// Routes (CRUD)
+app.get("/items", async (req, reply) => {
+  reply.send(items);
+});
+
+app.post("/items", async (req, reply) => {
+  const { title, body } = req.body || req.rawBody || req.params || {};
+  const item = { id: Date.now(), title, body };
+  items.push(item);
+  reply.code(201).send(item);
+});
+
+app.get("/items/:id", async (req, reply) => {
+  const id = Number(req.params.id);
+  const item = items.find(i => i.id === id);
+  if(!item) return reply.code(404).send({error:"Not found"});
+  reply.send(item);
+});
+
+app.put("/items/:id", async (req, reply) => {
+  const id = Number(req.params.id);
+  const idx = items.findIndex(i => i.id === id);
+  if(idx<0) return reply.code(404).send({error:"Not found"});
+  const { title, body } = req.body || {};
+  items[idx] = { ...items[idx], title, body };
+  reply.send(items[idx]);
+});
+
+app.delete("/items/:id", async (req, reply) => {
+  const id = Number(req.params.id);
+  const prev = items.length;
+  items = items.filter(i => i.id !== id);
+  if(items.length === prev) return reply.code(404).send({error:"Not found"});
+  reply.code(204).send();
+});
+
+app.listen({ port: 3000, host:"0.0.0.0" }).then(() => {
+  console.log("Server running on http://localhost:3000");
+});
+`;
+      const run = `1) Установи Node.js 18+
+2) Создай файлы: package.json, server.js
+3) Выполни: npm install
+4) Запуск: npm run dev
+5) Проверь: curl http://localhost:3000/items`;
+      return { pkg, files: [{name:"server.js", content:server}], run };
+    }
+
+    function pythonFastAPI(data){
+      const main = `# main.py
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List
+import uvicorn
+import time
+
+app = FastAPI(title="${escapeQuotes(data.title)}")
+
+class Item(BaseModel):
+    id: int
+    title: str
+    body: str
+
+items: List[Item] = []
+
+@app.get("/items", response_model=List[Item])
+def list_items():
+    return items
+
+@app.post("/items", response_model=Item, status_code=201)
+def create_item(item: Item):
+    items.append(item)
+    return item
+
+@app.get("/items/{item_id}", response_model=Item)
+def read_item(item_id: int):
+    for it in items:
+        if it.id == item_id:
+            return it
+    raise HTTPException(status_code=404, detail="Not found")
+
+@app.put("/items/{item_id}", response_model=Item)
+def update_item(item_id: int, item: Item):
+    for idx, it in enumerate(items):
+        if it.id == item_id:
+            items[idx] = item
+            return item
+    raise HTTPException(status_code=404, detail="Not found")
+
+@app.delete("/items/{item_id}", status_code=204)
+def delete_item(item_id: int):
+    global items
+    before = len(items)
+    items = [it for it in items if it.id != item_id]
+    if len(items) == before:
+        raise HTTPException(status_code=404, detail="Not found")
+    return
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+`;
+      const reqs = `fastapi==0.115.0
+uvicorn[standard]==0.30.0
+pydantic==2.9.0
+`;
+      const run = `1) Установи Python 3.11+
+2) Создай файлы: main.py, requirements.txt
+3) Установи зависимости: pip install -r requirements.txt
+4) Запуск: python main.py
+5) Проверь: curl http://localhost:8000/items`;
+      return { files:[{name:"main.py", content:main},{name:"requirements.txt", content:reqs}], run };
+    }
+
+    function frontendHTML(data){
+      const html = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>${escapeQuotes(data.title)}</title>
+  <style>
+    body{font-family:system-ui, sans-serif; margin:20px}
+    .row{display:flex; gap:8px; margin-bottom:12px}
+    input,textarea{padding:8px; width:100%}
+    button{padding:8px 12px}
+    .list{display:flex; flex-direction:column; gap:8px; margin-top:10px}
+    .card{border:1px solid #ddd; border-radius:10px; padding:10px}
+  </style>
+</head>
+<body>
+  <h1>${escapeQuotes(data.title)}</h1>
+  <div class="row">
+    <input id="title" placeholder="Заголовок" />
+    <input id="body" placeholder="Текст" />
+    <button id="add">Добавить</button>
+  </div>
+  <div class="list" id="list"></div>
+
+  <script>
+    const list = document.getElementById("list");
+    const add = document.getElementById("add");
+    const title = document.getElementById("title");
+    const body = document.getElementById("body");
+    const items = [];
 
     function render(){
-      list.innerHTML="";
-      offers.filter(o=> currentRole==="all" || o.role===currentRole)
-        .forEach(o=>{
-          const overpay = calcOverpayPercent(o.amount,o.term,o.apr);
-          const card=document.createElement("div");
-          card.className="card";
-          card.innerHTML=`
-            <h3>${o.role==="lender"?"Кредитор":"Заёмщик"}</h3>
-            <div class="money">${o.amount.toLocaleString("ru-RU")} ₽</div>
-            <div class="muted">Срок: ${o.term} дн · Переплата: ${overpay}%</div>
-            <p class="muted">${o.note}</p>
-            <button class="btn primary" data-id="${o.id}">Подробнее</button>
-          `;
-          list.appendChild(card);
-        });
+      list.innerHTML = "";
+      items.forEach(it=>{
+        const el = document.createElement("div");
+        el.className = "card";
+        el.innerHTML = "<b>"+it.title+"</b><div>"+it.body+"</div>";
+        list.appendChild(el);
+      });
     }
 
-    list.addEventListener("click", e=>{
-      if(e.target.tagName==="BUTTON"){
-        const id=Number(e.target.dataset.id);
-        const o=offers.find(x=>x.id===id);
-        if(o){
-          const overpay = calcOverpayPercent(o.amount,o.term,o.apr);
-          mTitle.textContent=`${o.role==="lender"?"Кредитор":"Заёмщик"} #${o.id}`;
-          mInfo.textContent=`Сумма: ${o.amount} ₽ · Срок: ${o.term} дн · Переплата: ${overpay}% · ${o.note}`;
-          backdrop.style.display="flex";
-        }
-      }
-    });
-
-    function closeModal(){backdrop.style.display="none";}
-    closeBtn.addEventListener("click", closeModal);
-    mClose.addEventListener("click", closeModal);
-    backdrop.addEventListener("click", e=>{if(e.target===backdrop) closeModal();});
-
-    document.querySelectorAll(".tab").forEach(tab=>{
-      tab.addEventListener("click", ()=>{
-        document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-        tab.classList.add("active");
-        currentRole = tab.dataset.role;
-        render();
-      });
+    add.addEventListener("click", ()=>{
+      if(!title.value) return alert("Введите заголовок");
+      items.push({ id: Date.now(), title: title.value, body: body.value });
+      title.value=""; body.value="";
+      render();
     });
 
     render();
+  </script>
+</body>
+</html>`;
+      const run = `1) Сохрани как index.html
+2) Открой файл в браузере
+3) Добавляй элементы и смотри результат`;
+      return { files:[{name:"index.html", content:html}], run };
+    }
+
+    function buildProject(){
+      const data = {
+        title: (el.goal.value || "Demo проект").trim(),
+        lang: el.lang.value,
+        db: el.db.value,
+        io: (el.io.value || "Ввод/вывод: не указан").trim(),
+        constraints: (el.constraints.value || "Нет дополнительных требований").trim(),
+        env: el.env.value,
+        tests: el.tests.value,
+        langLabel: labelLang(el.lang.value),
+        dbLabel: labelDb(el.db.value),
+        envLabel: labelEnv(el.env.value),
+        testsLabel: labelTests(el.tests.value),
+        run: "",
+      };
+
+      let files = [];
+      let readme = "";
+      let run = "";
+
+      if(data.lang === "node"){
+        const n = nodeFastify(data);
+        files.push({name:"package.json", content:n.pkg}, ...n.files);
+        run = n.run;
+      } else if(data.lang === "python"){
+        const p = pythonFastAPI(data);
+        files.push(...p.files);
+        run = p.run;
+      } else {
+        const f = frontendHTML(data);
+        files.push(...f.files);
+        run = f.run;
+      }
+
+      data.run = run;
+      readme = headerReadme(data);
+
+      return { readme, files, data };
+    }
+
+    function renderCode(){
+      const { readme, files, data } = buildProject();
+      const bundle = [
+        { name: "README.md", content: readme },
+        ...files
+      ];
+
+      const combined = bundle.map(f => `/* ==== ${f.name} ==== */\n${f.content}`).join("\n\n");
+      el.codeBox.textContent = combined;
+      switchTab("code");
+    }
+
+    // Actions
+    el.generate.addEventListener("click", renderCode);
+    el.clear.addEventListener("click", ()=>{
+      el.goal.value = "";
+      el.lang.value = "node";
+      el.db.value = "none";
+      el.io.value = "";
+      el.constraints.value = "";
+      el.env.value = "cli";
+      el.tests.value = "none";
+      el.codeBox.textContent = "// Сгенерируй бриф слева и получишь здесь готовый код проекта";
+    });
+    el.copy.addEventListener("click", async ()=>{
+      const txt = el.codeBox.textContent.trim();
+      if(!txt) return;
+      await navigator.clipboard.writeText(txt).catch(()=>{});
+      toast("Скопировано в буфер обмена");
+    });
+    el.download.addEventListener("click", ()=>{
+      const { readme, files } = buildProject();
+      // Простая "псевдо-zip": сохраняем один .txt с разделителями (офлайн, без библиотек)
+      const combined = [
+        "/* ==== README.md ==== */\n" + readme,
+        ...files.map(f => `/* ==== ${f.name} ==== */\n${f.content}`)
+      ].join("\n\n");
+      const blob = new Blob([combined], {type:"text/plain;charset=utf-8"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "project_bundle.txt";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+      toast("Скачан project_bundle.txt (внутри все файлы с разделителями)");
+    });
+    el.switchToCode.addEventListener("click", ()=> switchTab("code"));
+
+    // Utils
+    function labelLang(v){ return v==="node"?"Node.js (Fastify)":(v==="python"?"Python (FastAPI)":"Frontend (HTML+JS)"); }
+    function labelDb(v){ return v==="none"?"Без БД (in-memory)":(v==="sqlite"?"SQLite":"PostgreSQL"); }
+    function labelEnv(v){ return v==="cli"?"CLI / локально":(v==="server"?"Сервер (HTTP)":"Браузер"); }
+    function labelTests(v){ return v==="none"?"Без тестов":(v==="unit"?"Unit-тесты":"API-тесты (curl)"); }
+    function slugify(s){ return (s||"project").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,""); }
+    function escapeQuotes(s){ return (s||"").replace(/"/g,'\\"'); }
+    function toast(msg){
+      const div = document.createElement("div");
+      div.textContent = msg;
+      div.style.position = "fixed";
+      div.style.bottom = "16px";
+      div.style.left = "50%";
+      div.style.transform = "translateX(-50%)";
+      div.style.padding = "10px 14px";
+      div.style.borderRadius = "12px";
+      div.style.background = "linear-gradient(180deg, var(--accent), var(--accent2))";
+      div.style.color = "#0b0e13";
+      div.style.fontWeight = "800";
+      div.style.zIndex = "100";
+      document.body.appendChild(div);
+      setTimeout(()=>{ div.remove(); }, 1600);
+    }
   </script>
 </body>
 </html>
