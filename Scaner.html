@@ -2,543 +2,373 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
-  <title>Premium Rocket Timer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LendX — люди людям</title>
   <style>
     :root{
-      --bg:#060814;
+      --bg:#0b0e13;
       --glass:rgba(255,255,255,0.08);
       --glass-strong:rgba(255,255,255,0.14);
-      --border:rgba(255,255,255,0.18);
-      --white:#f8fafc;
-      --muted:#b6c2d5;
-      --accent:#6ea8ff;
-      --accent-2:#89f1ff;
-      --accent-3:#bda0ff;
-      --danger:#ff6e8a;
-      --success:#7cffc1;
-      --shadow:0 20px 60px rgba(0,0,0,0.45);
+      --text:#e7e9ee;
+      --muted:#a9afbf;
+      --accent:#7aa9ff;
+      --good:#4ade80;
+      --bad:#fb7185;
+      --warn:#fbbf24;
+      --card-radius:18px;
+      --shadow:0 10px 30px rgba(0,0,0,0.35);
+      --blur:20px;
     }
     *{box-sizing:border-box}
-    html,body{height:100%;background:radial-gradient(1200px 500px at 50% -200px,#0b1130,#060814 70%) fixed;color:var(--white);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial,sans-serif}
-    body{margin:0;display:flex;align-items:center;justify-content:center}
-
-    /* Scene */
-    .scene{
-      position:relative;width:100%;max-width:540px;height:84vh;min-height:620px;padding:20px;border-radius:24px;
-      background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.01));
-      backdrop-filter:blur(16px) saturate(140%); -webkit-backdrop-filter:blur(16px) saturate(140%);
-      border:1px solid var(--border); box-shadow:var(--shadow);
-      overflow:hidden;
-    }
-
-    /* Canvas sky */
-    #sky{
-      position:absolute;inset:0;z-index:0;
-      filter:contrast(1.05) saturate(1.1);
-    }
-
-    /* Subtle vignette and glow layers */
-    .glow{
-      position:absolute;inset:-30%;z-index:1;
-      background:radial-gradient(600px 280px at 50% 10%, rgba(140,200,255,0.20), transparent 60%),
-                  radial-gradient(900px 600px at 50% 110%, rgba(165,140,255,0.16), transparent 65%);
-      pointer-events:none;
-      mix-blend-mode:screen;
-    }
-    .vignette{
-      position:absolute;inset:0;z-index:2;
-      background:radial-gradient(120% 100% at 50% 50%, transparent 60%, rgba(0,0,0,0.35) 95%);
-      pointer-events:none;
-    }
-
-    /* HUD / Card content */
-    .card{
-      position:relative;z-index:3;display:flex;flex-direction:column;gap:16px;height:100%;
-    }
-
-    .header{
-      display:flex;align-items:center;justify-content:space-between;padding:6px 8px;
-    }
-    .logo{
-      display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:0.2px;
-    }
-    .logo-dot{
-      width:10px;height:10px;border-radius:50%;
-      background:conic-gradient(from 180deg, var(--accent), var(--accent-2), var(--accent-3), var(--accent));
-      box-shadow:0 0 12px 4px rgba(142,201,255,0.5);
-    }
-    .badge{
-      padding:6px 10px;border-radius:999px;background:var(--glass);
-      border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:500;
-    }
-
-    /* Time display */
-    .display{
-      display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 12px;
-      border-radius:16px;background:linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-      border:1px solid var(--border);
-    }
-    .time{
-      font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1;
-      font-size:52px; line-height:1; letter-spacing:2px; text-shadow:0 0 24px rgba(138,193,255,0.4);
-    }
-    .status{
-      font-size:13px;color:var(--muted);
-    }
-
-    /* Wheels (iPhone-like picker) */
-    .picker{
-      display:flex;gap:12px;align-items:center;justify-content:center;
-      padding:12px;border-radius:16px;background:var(--glass);
-      border:1px solid var(--border);
-    }
-    .wheel{
-      position:relative;width:44%;max-width:220px;height:140px;overflow-y:auto;scroll-snap-type:y mandatory;
-      scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch;
-      border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-      border:1px solid var(--border);
-    }
-    .wheel::-webkit-scrollbar{display:none}
-    .wheel-item{
-      scroll-snap-align:center; display:flex; align-items:center; justify-content:center;
-      height:44px; font-size:22px; color:var(--muted);
-    }
-    .wheel .spacer{height:48px}
-    .wheel .selected{
-      color:var(--white); font-weight:600; text-shadow:0 0 12px rgba(142,201,255,0.5);
-    }
-    .wheel-highlight{
-      position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%);pointer-events:none;
-      border-top:1px solid rgba(255,255,255,0.18); border-bottom:1px solid rgba(255,255,255,0.18);
-      background:linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
-    }
-    .picker-label{
-      position:absolute;top:-10px;left:12px;font-size:12px;color:var(--muted);
-      background:rgba(6,8,20,0.6);padding:2px 8px;border-radius:999px;border:1px solid var(--border);
-    }
-    .wheel-wrap{position:relative;flex:1}
-
-    /* Controls */
-    .controls{
-      display:flex;gap:10px;justify-content:center;align-items:center;
-    }
-    .btn{
-      flex:1;min-width:0;padding:14px 16px;border:none;border-radius:14px;cursor:pointer;
-      color:var(--white);font-weight:600;letter-spacing:0.2px;background:linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06));
-      border:1px solid var(--border); box-shadow:0 8px 30px rgba(0,0,0,0.35);
-      transition:transform .18s ease, box-shadow .18s ease, filter .18s ease;
-      touch-action:manipulation;
-    }
-    .btn:active{transform:scale(0.98)}
-    .btn-primary{
-      background:linear-gradient(180deg, rgba(110,168,255,0.35), rgba(110,168,255,0.18));
-      border-color:rgba(110,168,255,0.45);
-      box-shadow:0 8px 24px rgba(110,168,255,0.35);
-    }
-    .btn-danger{
-      background:linear-gradient(180deg, rgba(255,110,138,0.35), rgba(255,110,138,0.18));
-      border-color:rgba(255,110,138,0.45);
-      box-shadow:0 8px 24px rgba(255,110,138,0.35);
-    }
-    .btn-secondary{
-      background:linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
-    }
-
-    /* Rocket */
-    .rocket{
-      position:absolute;left:50%;bottom:18%;width:64px;height:auto;transform:translateX(-50%);
-      filter:drop-shadow(0 8px 24px rgba(140,200,255,0.35));
-      z-index:2;
-    }
-    .rocket.fly{
-      animation:lift 6s cubic-bezier(.22,.61,.36,1) forwards, sway 3.5s ease-in-out infinite;
-    }
-    @keyframes lift{
-      0%{transform:translateX(-50%) translateY(0) scale(1)}
-      20%{transform:translateX(-50%) translateY(-40px) scale(1.02)}
-      40%{transform:translateX(-50%) translateY(-120px) scale(1.04)}
-      60%{transform:translateX(-50%) translateY(-260px) scale(1.06)}
-      80%{transform:translateX(-50%) translateY(-420px) scale(1.08)}
-      100%{transform:translateX(-50%) translateY(-620px) scale(1.10); opacity:0}
-    }
-    @keyframes sway{
-      0%{transform:translateX(-50%) translateY(0)}
-      50%{transform:translateX(calc(-50% + 4px)) translateY(-2px)}
-      100%{transform:translateX(-50%) translateY(0)}
-    }
-    .flame{
-      transform-origin:50% 0%; animation:flame 0.08s infinite alternate ease-in-out;
-      filter:blur(0.6px) drop-shadow(0 6px 12px rgba(255,150,80,0.55));
-    }
-    @keyframes flame{
-      from{transform:scaleY(0.96)}
-      to{transform:scaleY(1.08)}
-    }
-
-    /* Footer tips */
-    .hint{
-      text-align:center;font-size:12px;color:var(--muted);
-    }
-
-    /* Responsive tweaks */
-    @media (max-width:380px){
-      .time{font-size:42px}
-      .wheel{height:128px}
-    }
+    html,body{background:radial-gradient(1200px 800px at 70% 10%,#12203a 0%,#0b0e13 55%,#06070a 100%); color:var(--text); margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif}
+    .grid{display:grid; grid-template-columns:1fr minmax(280px,1100px) 1fr}
+    header{grid-column:1/-1; padding:28px 24px; position:sticky; top:0; backdrop-filter:saturate(140%) blur(12px); background:linear-gradient(180deg,rgba(11,14,19,0.7),rgba(11,14,19,0)); z-index:10; border-bottom:1px solid rgba(255,255,255,0.06)}
+    .wrap{grid-column:2}
+    .brand{display:flex; align-items:center; gap:12px}
+    .logo{width:40px; height:40px; border-radius:12px; background:conic-gradient(from 180deg at 50% 50%, #7aa9ff, #8b5cf6, #22d3ee, #7aa9ff); box-shadow:0 10px 30px rgba(122,169,255,0.25)}
+    .title{font-weight:700; letter-spacing:0.2px}
+    .subtitle{color:var(--muted); font-size:13px}
+    .hero{margin:32px 0 18px; display:flex; align-items:flex-end; justify-content:space-between; gap:16px}
+    .pill{display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; background:linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02)); border:1px solid rgba(255,255,255,0.12)}
+    .pill .dot{width:8px; height:8px; border-radius:999px; background:var(--good); box-shadow:0 0 12px var(--good)}
+    .card{background:var(--glass); border:1px solid rgba(255,255,255,0.12); border-radius:var(--card-radius); box-shadow:var(--shadow); backdrop-filter:blur(var(--blur)) saturate(140%); position:relative}
+    .card:hover{border-color:rgba(255,255,255,0.18)}
+    .tools{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:14px 0 28px}
+    .tool{padding:14px}
+    .tool h4{margin:0 0 8px}
+    .tool .row{display:flex; gap:10px; margin-bottom:8px}
+    .tool input,.tool select{width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:var(--text)}
+    .tool button{padding:10px 14px; border-radius:12px; border:0; background:linear-gradient(180deg,#85a9ff,#6f8df1); color:#081021; font-weight:600; cursor:pointer}
+    .tool button:hover{filter:brightness(1.05)}
+    .list{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px}
+    .offer{padding:14px; overflow:hidden}
+    .offer .top{display:flex; justify-content:space-between; align-items:flex-start}
+    .badge{padding:6px 10px; border-radius:999px; font-size:12px; color:#081021; background:linear-gradient(180deg,#a7f3d0,#34d399); font-weight:700}
+    .risk{padding:6px 10px; border-radius:999px; font-size:12px; color:#081021; background:linear-gradient(180deg,#fde68a,#fbbf24); font-weight:700}
+    .apr{font-size:28px; font-weight:800; letter-spacing:0.2px}
+    .muted{color:var(--muted); font-size:13px}
+    .money{font-size:20px; font-weight:700}
+    .row{display:flex; gap:10px; align-items:center}
+    .actions{display:flex; gap:8px; margin-top:10px}
+    .btn{padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:var(--text); cursor:pointer}
+    .btn.primary{background:linear-gradient(180deg,#85a9ff,#6f8df1); color:#081021; border:0; font-weight:700}
+    .btn.glow{box-shadow:0 0 0 rgba(122,169,255,0); animation:glow 2.4s ease-in-out infinite}
+    @keyframes glow{0%,100%{box-shadow:0 0 0 rgba(122,169,255,0)}50%{box-shadow:0 0 28px rgba(122,169,255,0.35)}}
+    .fav{cursor:pointer; width:28px; height:28px; display:grid; place-items:center; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12)}
+    .fav.active{background:linear-gradient(180deg,#fb7185,#ef4444); color:#081021; font-weight:900}
+    footer{grid-column:2; margin:30px 0 40px; color:var(--muted); font-size:12px}
+    /* Modal */
+    .modal-backdrop{position:fixed; inset:0; background:rgba(6,7,10,0.6); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; z-index:50}
+    .modal{width:min(680px,92vw); padding:18px; border-radius:20px; background:var(--glass-strong); border:1px solid rgba(255,255,255,0.16); box-shadow:0 20px 60px rgba(0,0,0,0.55)}
+    .modal h3{margin:0 0 10px}
+    .split{display:grid; grid-template-columns:1.2fr 1fr; gap:14px}
+    .kv{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0}
+    .kv div{background:rgba(255,255,255,0.06); padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12)}
+    .close{float:right; cursor:pointer; opacity:0.7}
+    .close:hover{opacity:1}
+    .disclaimer{font-size:12px; color:var(--muted); border-top:1px dashed rgba(255,255,255,0.14); padding-top:8px; margin-top:8px}
   </style>
 </head>
 <body>
-  <div class="scene" id="scene">
-    <canvas id="sky"></canvas>
-    <div class="glow"></div>
-    <div class="vignette"></div>
-
-    <!-- Rocket SVG -->
-    <svg class="rocket" id="rocket" viewBox="0 0 64 128">
-      <!-- Body -->
-      <defs>
-        <linearGradient id="paintBody" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#cfe7ff"/>
-          <stop offset="50%" stop-color="#9dc2ff"/>
-          <stop offset="100%" stop-color="#7aa7ff"/>
-        </linearGradient>
-        <linearGradient id="paintFin" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#bda0ff"/>
-          <stop offset="100%" stop-color="#89f1ff"/>
-        </linearGradient>
-        <radialGradient id="windowGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="#89f1ff"/>
-          <stop offset="100%" stop-color="#6ea8ff"/>
-        </radialGradient>
-        <linearGradient id="flameGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#fff1b0"/>
-          <stop offset="50%" stop-color="#ffb46e"/>
-          <stop offset="100%" stop-color="#ff6e3a"/>
-        </linearGradient>
-      </defs>
-      <g>
-        <path d="M32 6 C40 18 46 36 46 56 C46 86 40 116 32 122 C24 116 18 86 18 56 C18 36 24 18 32 6 Z" fill="url(#paintBody)" stroke="#e8f2ff" stroke-opacity="0.6" stroke-width="1"/>
-        <circle cx="32" cy="44" r="8" fill="url(#windowGlow)" stroke="#e8ffff" stroke-opacity="0.8"/>
-        <path d="M18 64 L6 88 L18 84 Z" fill="url(#paintFin)" opacity="0.8"/>
-        <path d="M46 64 L58 88 L46 84 Z" fill="url(#paintFin)" opacity="0.8"/>
-        <!-- Flame -->
-        <path class="flame" id="flame" d="M32 108 C25 112 22 118 32 126 C42 118 39 112 32 108 Z" fill="url(#flameGrad)"/>
-      </g>
-    </svg>
-
-    <div class="card">
-      <div class="header">
-        <div class="logo"><span class="logo-dot"></span>Rocket Timer</div>
-        <div class="badge">Premium • Glass UI</div>
-      </div>
-
-      <div class="display">
-        <div class="time" id="timeText">00:00</div>
-        <div class="status" id="statusText">Готов к старту</div>
-      </div>
-
-      <div class="picker" id="picker">
-        <div class="wheel-wrap">
-          <div class="picker-label">Минуты</div>
-          <div class="wheel" id="wheelMin"></div>
-          <div class="wheel-highlight"></div>
-        </div>
-        <div class="wheel-wrap">
-          <div class="picker-label">Секунды</div>
-          <div class="wheel" id="wheelSec"></div>
-          <div class="wheel-highlight"></div>
+  <header class="grid">
+    <div class="wrap">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <div class="title">LendX — люди людям</div>
+          <div class="subtitle">Маркетплейс займов: каждый может дать или взять деньги на честных условиях</div>
         </div>
       </div>
-
-      <div class="controls">
-        <button class="btn btn-primary" id="btnStart">Старт</button>
-        <button class="btn btn-secondary" id="btnPause">Пауза</button>
-        <button class="btn btn-danger" id="btnStop">Стоп</button>
+      <div class="hero">
+        <div class="pill"><span class="dot"></span><span>Beta-концепт • локальные данные • без банков</span></div>
+        <div class="pill"><span>Надёжность ≈ рейтинг + история возвратов</span></div>
       </div>
+      <div class="tools">
+        <div class="card tool">
+          <h4>Фильтры</h4>
+          <div class="row">
+            <input id="fAmount" type="number" placeholder="Мин. сумма, ₽" />
+            <select id="fTerm">
+              <option value="">Срок</option>
+              <option value="7">≤ 7 дней</option>
+              <option value="30">≤ 30 дней</option>
+              <option value="90">≤ 90 дней</option>
+            </select>
+            <input id="fApr" type="number" placeholder="Макс. APR, %" />
+          </div>
+          <div class="row">
+            <select id="sort">
+              <option value="best">Выгодность</option>
+              <option value="rating">Надёжность</option>
+              <option value="amount">Сумма</option>
+              <option value="new">Новизна</option>
+            </select>
+            <button id="apply">Применить</button>
+            <button id="reset" style="background:rgba(255,255,255,0.06); color:var(--text)">Сброс</button>
+          </div>
+        </div>
+        <div class="card tool">
+          <h4>Стать кредитором</h4>
+          <div class="row">
+            <input id="cAmount" type="number" placeholder="Сумма, ₽" />
+            <input id="cTerm" type="number" placeholder="Срок, дней" />
+            <input id="cApr" type="number" placeholder="Ставка APR, %" />
+          </div>
+          <div class="row">
+            <input id="cNote" type="text" placeholder="Комментарий (например, вернёте +20%)" />
+            <button id="create">Опубликовать</button>
+          </div>
+          <div class="muted">Совет: APR — годовая ставка. Итог рассчитываем пропорционально сроку.</div>
+        </div>
+      </div>
+    </div>
+  </header>
 
-      <div class="hint">Пролистайте колеса для выбора времени. После окончания — ракета красиво улетит сквозь звёздное небо.</div>
+  <main class="grid">
+    <div class="wrap">
+      <section class="list" id="list"></section>
+    </div>
+  </main>
+
+  <div class="modal-backdrop" id="backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal">
+      <span class="close" id="close">✕</span>
+      <h3 id="mTitle">Предложение займа</h3>
+      <div class="split">
+        <div>
+          <div class="kv">
+            <div><b>Сумма:</b> <span id="mAmount"></span> ₽</div>
+            <div><b>Срок:</b> <span id="mTerm"></span> дней</div>
+            <div><b>APR:</b> <span id="mApr"></span>%</div>
+            <div><b>Рейтинг:</b> <span id="mRating"></span>/5</div>
+          </div>
+          <div class="kv">
+            <div><b>Итого к возврату:</b> <span id="mTotal"></span> ₽</div>
+            <div><b>На каждый день:</b> <span id="mPerDay"></span> ₽</div>
+          </div>
+          <div class="muted" id="mNote"></div>
+          <div class="disclaimer">
+            Концепт: здесь нет реальных договоров, KYC, страховки и арбитража. Это демо UX. Не используйте для реальных займов.
+          </div>
+        </div>
+        <div>
+          <div class="row" style="margin-bottom:8px">
+            <button class="btn primary glow" id="request">Запросить займ</button>
+            <button class="btn" id="favorite">В избранное</button>
+          </div>
+          <div class="muted" id="mStatus"></div>
+        </div>
+      </div>
     </div>
   </div>
 
+  <footer class="wrap">
+    Сделано как концепт для шоукейса UX/финтех. Данные — в браузере. Анимации и стекло — для эффекта «premium boutique».
+  </footer>
+
   <script>
-    // Utilities
-    const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
-    const pad2=(n)=>String(n).padStart(2,'0');
+    const $ = sel => document.querySelector(sel);
+    const now = () => Date.now();
 
-    // DOM
-    const sky = document.getElementById('sky');
-    const scene = document.getElementById('scene');
-    const wheelMin = document.getElementById('wheelMin');
-    const wheelSec = document.getElementById('wheelSec');
-    const timeText = document.getElementById('timeText');
-    const statusText = document.getElementById('statusText');
-    const btnStart = document.getElementById('btnStart');
-    const btnPause = document.getElementById('btnPause');
-    const btnStop = document.getElementById('btnStop');
-    const rocket = document.getElementById('rocket');
-    const flame = document.getElementById('flame');
+    const mock = [
+      {id:1, amount:5000, term:30, apr:240, rating:4.7, note:"Вернёте 6 000 за месяц. Без досрочного штрафа.", created:now()-86400000*2},
+      {id:2, amount:12000, term:14, apr:150, rating:4.9, note:"Ставка лояльная. Частичный досрочный ок.", created:now()-86400000*4},
+      {id:3, amount:3000, term:7, apr:320, rating:4.2, note:"Короткий займ. Возврат строго в срок.", created:now()-86400000*1},
+      {id:4, amount:25000, term:60, apr:90, rating:5.0, note:"Надёжный кредитор 100% возвратов.", created:now()-86400000*6},
+      {id:5, amount:9000, term:21, apr:180, rating:4.5, note:"Гибкий график, можно частями.", created:now()-86400000*3}
+    ];
 
-    // Picker build
-    function buildWheel(el, max){
-      const frag = document.createDocumentFragment();
-      const spacerTop = document.createElement('div'); spacerTop.className='spacer'; frag.appendChild(spacerTop);
-      for(let i=0;i<=max;i++){
-        const item = document.createElement('div');
-        item.className='wheel-item';
-        item.textContent=pad2(i);
-        frag.appendChild(item);
-      }
-      const spacerBottom = document.createElement('div'); spacerBottom.className='spacer'; frag.appendChild(spacerBottom);
-      el.appendChild(frag);
-      // default select 00
-      setTimeout(()=>el.scrollTo({top:44,behavior:'instant'}),10);
+    const storeKey = "lendx_offers";
+    const favKey = "lendx_favs";
+
+    const loadOffers = () => {
+      const saved = localStorage.getItem(storeKey);
+      return saved ? JSON.parse(saved) : mock.slice();
+    };
+    const saveOffers = (offers) => localStorage.setItem(storeKey, JSON.stringify(offers));
+    const loadFavs = () => {
+      const f = localStorage.getItem(favKey);
+      return f ? JSON.parse(f) : [];
+    };
+    const saveFavs = (favs) => localStorage.setItem(favKey, JSON.stringify(favs));
+
+    let offers = loadOffers();
+    let favs = loadFavs();
+    let current = null;
+
+    function aprToTotal(amount, termDays, apr){
+      const perYear = apr/100;
+      const fractionOfYear = termDays/365;
+      const interest = amount * perYear * fractionOfYear;
+      return Math.round(amount + interest);
     }
-    buildWheel(wheelMin, 59);
-    buildWheel(wheelSec, 59);
 
-    function getWheelValue(el){
-      const rect = el.getBoundingClientRect();
-      const centerY = rect.top + rect.height/2;
-      const items = Array.from(el.querySelectorAll('.wheel-item'));
-      let closest = {item:null,dist:Infinity,index:0};
-      items.forEach((it,idx)=>{
-        const r = it.getBoundingClientRect();
-        const d = Math.abs((r.top+r.height/2)-centerY);
-        if(d<closest.dist){closest={item:it,dist:d,index:idx}};
+    function render(){
+      const list = $("#list");
+      list.innerHTML = "";
+      const fAmount = Number($("#fAmount").value) || 0;
+      const fTerm = Number($("#fTerm").value) || Infinity;
+      const fApr = $("#fApr").value ? Number($("#fApr").value) : Infinity;
+      const sortBy = $("#sort").value;
+
+      let rows = offers.filter(o =>
+        o.amount >= fAmount &&
+        o.term <= (isFinite(fTerm) ? fTerm : o.term) &&
+        o.apr <= (isFinite(fApr) ? fApr : o.apr)
+      );
+
+      rows.sort((a,b) => {
+        if(sortBy === "best"){
+          const gainA = (aprToTotal(a.amount,a.term,a.apr)-a.amount)/a.amount;
+          const gainB = (aprToTotal(b.amount,b.term,b.apr)-b.amount)/b.amount;
+          return gainA - gainB; // меньше выгода для заёмщика — лучше
+        }
+        if(sortBy === "rating") return b.rating - a.rating;
+        if(sortBy === "amount") return b.amount - a.amount;
+        if(sortBy === "new") return b.created - a.created;
+        return 0;
       });
-      items.forEach(it=>it.classList.remove('selected'));
-      closest.item && closest.item.classList.add('selected');
-      const value = clamp(closest.index,0,59); // because we built 0..59
-      return value;
-    }
 
-    function snapWheel(el){
-      const rect = el.getBoundingClientRect();
-      const centerLine = rect.top + rect.height/2;
-      const items = Array.from(el.querySelectorAll('.wheel-item'));
-      let closest = {item:null,dist:Infinity};
-      items.forEach(it=>{
-        const r = it.getBoundingClientRect();
-        const d = Math.abs((r.top+r.height/2)-centerLine);
-        if(d<closest.dist){closest={item:it,dist:d}};
+      rows.forEach(o => {
+        const card = document.createElement("div");
+        card.className = "card offer";
+        const isFav = favs.includes(o.id);
+        const total = aprToTotal(o.amount,o.term,o.apr);
+        const riskClass = o.apr > 250 ? "risk" : "badge";
+        const trustLabel = o.rating >= 4.8 ? "Надёжный" : (o.rating >= 4.3 ? "Хороший" : "Норм");
+        card.innerHTML = `
+          <div class="top">
+            <div>
+              <div class="row" style="gap:8px; align-items:center">
+                <div class="${riskClass}">${o.apr}% APR</div>
+                <div class="badge">${trustLabel}</div>
+              </div>
+              <div class="apr">${o.amount.toLocaleString("ru-RU")} ₽</div>
+              <div class="muted">Срок: ${o.term} дн · Рейтинг: ${o.rating.toFixed(1)} / 5</div>
+            </div>
+            <div class="fav ${isFav ? "active":""}" data-id="${o.id}" title="В избранное">★</div>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <div class="money">Итого: ${total.toLocaleString("ru-RU")} ₽</div>
+            <div class="muted">(${Math.round(total/o.term).toLocaleString("ru-RU")} ₽/день)</div>
+          </div>
+          <div class="muted" style="margin-top:8px">${o.note || ""}</div>
+          <div class="actions">
+            <button class="btn primary" data-id="${o.id}" data-action="open">Детали</button>
+            <button class="btn" data-id="${o.id}" data-action="request">Запросить</button>
+          </div>
+        `;
+        list.appendChild(card);
       });
-      if(closest.item){
-        const currentScroll = el.scrollTop;
-        const itemTop = closest.item.offsetTop;
-        const target = itemTop - (el.clientHeight/2 - closest.item.clientHeight/2);
-        el.scrollTo({top:target, behavior:'smooth'});
-      }
     }
 
-    ['scroll','touchend','wheel'].forEach(evt=>{
-      wheelMin.addEventListener(evt,()=>{ getWheelValue(wheelMin); clearTimeout(wheelMin._snap); wheelMin._snap=setTimeout(()=>snapWheel(wheelMin),140); updateDisplayPreview(); }, {passive:true});
-      wheelSec.addEventListener(evt,()=>{ getWheelValue(wheelSec); clearTimeout(wheelSec._snap); wheelSec._snap=setTimeout(()=>snapWheel(wheelSec),140); updateDisplayPreview(); }, {passive:true});
+    function openModal(offer){
+      current = offer;
+      $("#mTitle").textContent = `Предложение #${offer.id}`;
+      $("#mAmount").textContent = offer.amount.toLocaleString("ru-RU");
+      $("#mTerm").textContent = offer.term;
+      $("#mApr").textContent = offer.apr;
+      $("#mRating").textContent = offer.rating.toFixed(1);
+      const total = aprToTotal(offer.amount, offer.term, offer.apr);
+      $("#mTotal").textContent = total.toLocaleString("ru-RU");
+      $("#mPerDay").textContent = Math.round(total/offer.term).toLocaleString("ru-RU");
+      $("#mNote").textContent = offer.note || "—";
+      $("#mStatus").textContent = "Статус: свободно • ожидает запросов";
+      $("#backdrop").style.display = "flex";
+      $("#backdrop").setAttribute("aria-hidden", "false");
+    }
+
+    function closeModal(){
+      $("#backdrop").style.display = "none";
+      $("#backdrop").setAttribute("aria-hidden", "true");
+      current = null;
+    }
+
+    // Events
+    $("#apply").addEventListener("click", render);
+    $("#reset").addEventListener("click", () => {
+      $("#fAmount").value = "";
+      $("#fTerm").value = "";
+      $("#fApr").value = "";
+      $("#sort").value = "best";
+      render();
     });
 
-    function updateDisplayPreview(){
-      const m = getWheelValue(wheelMin);
-      const s = getWheelValue(wheelSec);
-      timeText.textContent = pad2(m)+':'+pad2(s);
-    }
-    updateDisplayPreview();
+    $("#create").addEventListener("click", () => {
+      const amount = Number($("#cAmount").value);
+      const term = Number($("#cTerm").value);
+      const apr = Number($("#cApr").value);
+      const note = $("#cNote").value.trim();
 
-    // Timer logic
-    let total = 0;      // ms
-    let left = 0;       // ms
-    let running = false;
-    let paused = false;
-    let rafId = null;
-    let lastTs = 0;
-
-    function startTimer(){
-      const m = getWheelValue(wheelMin);
-      const s = getWheelValue(wheelSec);
-      total = (m*60 + s) * 1000;
-      if(total<=0){ statusText.textContent='Выберите время'; pulse(statusText); return; }
-      left = total;
-      running = true; paused = false;
-      statusText.textContent='Запущен';
-      rocket.classList.remove('fly'); rocket.style.opacity='1';
-      flame.style.opacity='1';
-      lastTs = performance.now();
-      tick(lastTs);
-    }
-
-    function tick(ts){
-      if(!running || paused){ return; }
-      const dt = ts - lastTs;
-      lastTs = ts;
-      left = Math.max(0, left - dt);
-      const mm = Math.floor(left/1000/60);
-      const ss = Math.floor((left/1000)%60);
-      timeText.textContent = pad2(mm)+':'+pad2(ss);
-
-      // Subtle flame modulation based on remaining
-      flame.style.transform = `scaleY(${0.95 + 0.12*Math.sin(left/180)})`;
-
-      if(left<=0){
-        complete();
+      // Простые проверки
+      const errs = [];
+      if(!amount || amount < 500) errs.push("Сумма от 500 ₽");
+      if(!term || term < 3) errs.push("Срок от 3 дней");
+      if(!apr || apr < 10 || apr > 400) errs.push("APR 10–400%");
+      if(errs.length){
+        alert("Проверь поля:\n• " + errs.join("\n• "));
         return;
       }
-      rafId = requestAnimationFrame(tick);
-    }
 
-    function pauseTimer(){
-      if(!running) return;
-      paused = !paused;
-      statusText.textContent = paused ? 'Пауза' : 'Запущен';
-      if(!paused){
-        lastTs = performance.now();
-        tick(lastTs);
-      }
-    }
-
-    function stopTimer(){
-      running = false; paused = false; left = 0; cancelAnimationFrame(rafId);
-      statusText.textContent='Сброшен';
-      updateDisplayPreview();
-      rocket.classList.remove('fly');
-      rocket.style.opacity='1';
-      flame.style.opacity='1';
-    }
-
-    function complete(){
-      running=false; paused=false; cancelAnimationFrame(rafId);
-      statusText.textContent='Время! 🚀';
-      // Rocket liftoff
-      rocket.classList.add('fly');
-      flame.style.opacity='0.85';
-      // Trigger meteor shower burst
-      showerBurst();
-    }
-
-    btnStart.addEventListener('click', startTimer);
-    btnPause.addEventListener('click', pauseTimer);
-    btnStop.addEventListener('click', stopTimer);
-
-    function pulse(el){
-      el.animate([{filter:'brightness(1)'},{filter:'brightness(1.4)'},{filter:'brightness(1)'}],{duration:600});
-    }
-
-    // Dynamic starry sky with meteors
-    const ctx = sky.getContext('2d');
-    let W = 0, H = 0, stars=[], meteors=[];
-    const STAR_COUNT = 240;
-    const METEOR_LIMIT = 14;
-
-    function resize(){
-      W = sky.width = scene.clientWidth;
-      H = sky.height = scene.clientHeight;
-      // regenerate stars for crispness
-      stars = Array.from({length:STAR_COUNT},()=>({
-        x: Math.random()*W,
-        y: Math.random()*H,
-        r: Math.random()*1.3 + 0.2,
-        tw: Math.random()*Math.PI*2,
-        hue: 210 + Math.random()*40
-      }));
-    }
-    window.addEventListener('resize', resize);
-    resize();
-
-    function spawnMeteor(intense=false){
-      if(meteors.length > METEOR_LIMIT && !intense) return;
-      const startX = Math.random()<0.5 ? Math.random()*W*0.4 : W*(0.6 + Math.random()*0.4);
-      const startY = -40 - Math.random()*60;
-      const speed = intense ? (3.5 + Math.random()*2) : (2 + Math.random()*1.5);
-      const len = intense ? (140 + Math.random()*120) : (90 + Math.random()*90);
-      meteors.push({
-        x:startX, y:startY, vx: speed, vy: speed*0.55, len, life: 1, fade: 0.006 + Math.random()*0.008,
-        hue: 200 + Math.random()*60
-      });
-    }
-
-    function showerBurst(){
-      // Rapid burst of meteors on complete
-      for(let i=0;i<10;i++){
-        setTimeout(()=>spawnMeteor(true), i*120);
-      }
-    }
-
-    // Ambient random meteors
-    setInterval(()=>spawnMeteor(false), 1800 + Math.random()*2200);
-
-    function draw(){
-      // Clear
-      ctx.clearRect(0,0,W,H);
-
-      // Gradient space glow
-      const g = ctx.createRadialGradient(W*0.5, H*0.1, 0, W*0.5, H*0.1, W*0.8);
-      g.addColorStop(0, 'rgba(142,201,255,0.10)');
-      g.addColorStop(1, 'rgba(6,8,20,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0,0,W,H);
-
-      // Stars
-      for(const s of stars){
-        s.tw += 0.02;
-        const alpha = 0.6 + Math.sin(s.tw)*0.4;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
-        ctx.fillStyle = `hsla(${s.hue}, 80%, ${65 + Math.sin(s.tw*2)*8}%, ${alpha})`;
-        ctx.fill();
-
-        // subtle parallax drift
-        s.x += Math.sin(s.tw*0.05)*0.05;
-        s.y += Math.cos(s.tw*0.05)*0.03;
-
-        // twinkle spike
-        if(Math.random()<0.002){
-          ctx.strokeStyle = `hsla(${s.hue},90%,80%,${alpha*0.8})`;
-          ctx.beginPath();
-          ctx.moveTo(s.x - s.r*2, s.y);
-          ctx.lineTo(s.x + s.r*2, s.y);
-          ctx.stroke();
-        }
-      }
-
-      // Meteors
-      for(let i=meteors.length-1;i>=0;i--){
-        const m = meteors[i];
-        m.x += m.vx;
-        m.y += m.vy;
-        m.life -= m.fade;
-
-        // trail
-        const grad = ctx.createLinearGradient(m.x, m.y, m.x - m.len, m.y - m.len*0.55);
-        grad.addColorStop(0, `hsla(${m.hue}, 100%, 75%, ${Math.max(0,m.life)})`);
-        grad.addColorStop(1, `hsla(${m.hue}, 100%, 75%, 0)`);
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(m.x, m.y);
-        ctx.lineTo(m.x - m.len, m.y - m.len*0.55);
-        ctx.stroke();
-
-        // head glow
-        ctx.fillStyle = `hsla(${m.hue}, 100%, 80%, ${Math.max(0,m.life)})`;
-        ctx.beginPath();
-        ctx.arc(m.x, m.y, 2.4, 0, Math.PI*2);
-        ctx.fill();
-
-        if(m.life<=0 || m.x<-80 || m.y>H+80){ meteors.splice(i,1); }
-      }
-
-      requestAnimationFrame(draw);
-    }
-    draw();
-
-    // Improve tap-feedback for mobile
-    ['btnStart','btnPause','btnStop'].forEach(id=>{
-      const el=document.getElementById(id);
-      el.addEventListener('touchstart',()=>el.style.filter='brightness(1.2)');
-      el.addEventListener('touchend',()=>el.style.filter='brightness(1)');
-      el.addEventListener('touchcancel',()=>el.style.filter='brightness(1)');
+      const newOffer = {
+        id: Math.max(...offers.map(o=>o.id)) + 1,
+        amount, term, apr, rating: 4.5, note,
+        created: now()
+      };
+      offers.unshift(newOffer);
+      saveOffers(offers);
+      $("#cAmount").value = "";
+      $("#cTerm").value = "";
+      $("#cApr").value = "";
+      $("#cNote").value = "";
+      render();
+      // микро-эффект
+      const el = document.querySelector(".offer");
+      el && el.animate([{transform:"scale(0.98)"},{transform:"scale(1)"}],{duration:300, easing:"ease-out"});
     });
 
-    // Initial state
-    updateDisplayPreview();
+    document.body.addEventListener("click", (e) => {
+      const t = e.target;
+      if(t.id === "close") closeModal();
+      if(t.id === "backdrop" && e.target === $("#backdrop")) closeModal();
+
+      if(t.classList.contains("fav")){
+        const id = Number(t.dataset.id);
+        const idx = favs.indexOf(id);
+        if(idx >= 0) favs.splice(idx,1); else favs.push(id);
+        saveFavs(favs);
+        t.classList.toggle("active");
+      }
+
+      if(t.dataset && t.dataset.action === "open"){
+        const id = Number(t.dataset.id);
+        const offer = offers.find(o=>o.id===id);
+        openModal(offer);
+      }
+
+      if(t.dataset && t.dataset.action === "request"){
+        const id = Number(t.dataset.id);
+        const offer = offers.find(o=>o.id===id);
+        openModal(offer);
+        $("#mStatus").textContent = "Заявка отправлена (демо). Кредитор увидит запрос и свяжется.";
+      }
+
+      if(t.id === "request"){
+        if(!current) return;
+        $("#mStatus").textContent = "Запрос подтверждён (демо). Ожидайте ответ.";
+      }
+
+      if(t.id === "favorite" && current){
+        const id = current.id;
+        const idx = favs.indexOf(id);
+        if(idx >= 0) favs.splice(idx,1); else favs.push(id);
+        saveFavs(favs);
+        $("#mStatus").textContent = favs.includes(id) ? "Добавлено в избранное." : "Удалено из избранного.";
+      }
+    });
+
+    // Initial
+    render();
   </script>
 </body>
 </html>
