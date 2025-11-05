@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-<title>Monkey Quest — мобильный (фикс)</title>
+<title>Monkey Quest — мобильный (упр. обновл.)</title>
 <style>
   html,body{height:100%;margin:0;background:linear-gradient(180deg,#f3f6fa,#e9eef6);color:#0b2233;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;touch-action:none}
   #wrap{display:flex;flex-direction:column;height:100%}
@@ -13,21 +13,27 @@
   .pill{background:linear-gradient(180deg,#ffffff,#f7fafc);padding:6px 10px;border-radius:12px;font-weight:700;border:1px solid rgba(7,34,51,0.06);color:#072033}
   main{flex:1;position:relative;overflow:hidden}
   canvas{display:block;width:100%;height:100%}
+  /* overlay left bottom joystick area */
   #overlay{position:absolute;left:12px;bottom:12px;display:flex;gap:12px;align-items:end;pointer-events:none}
   .joy{width:110px;height:110px;border-radius:999px;background:rgba(7,34,51,0.05);display:flex;align-items:center;justify-content:center;pointer-events:auto;touch-action:none;border:1px solid rgba(7,34,51,0.06)}
   .thumb{width:48px;height:48px;border-radius:999px;background:linear-gradient(180deg,#ffd77a,#ffc857);transform:translate(0,0)}
-  #topRight{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:10px;pointer-events:auto}
-  button.small{padding:8px 10px;border-radius:10px;border:0;background:linear-gradient(180deg,#ffffff,#f7fafc);color:#072033;font-weight:800;box-shadow:0 4px 10px rgba(13,40,58,0.04)}
-  #settings{background:rgba(255,255,255,0.9);padding:8px;border-radius:8px;font-size:13px;border:1px solid rgba(7,34,51,0.04)}
+  /* jump button: transparent circle with up arrow */
+  .jump-circle{width:72px;height:72px;border-radius:999px;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;pointer-events:auto;border:1px solid rgba(7,34,51,0.06);backdrop-filter:blur(4px)}
+  .jump-arrow{width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:18px solid #07323a;transform:translateY(-2px)}
+  /* top-left restart small icon */
+  #restartSmall{position:absolute;left:12px;top:12px;pointer-events:auto;width:44px;height:44px;border-radius:8px;background:linear-gradient(180deg,#ffffff,#f7fafc);display:flex;align-items:center;justify-content:center;border:1px solid rgba(7,34,51,0.06);box-shadow:0 4px 10px rgba(13,40,58,0.04)}
+  /* right-side helper text */
   #hint{position:absolute;left:12px;top:64px;background:rgba(255,255,255,0.9);padding:8px;border-radius:8px;font-size:13px;border:1px solid rgba(7,34,51,0.04)}
   footer{padding:8px 12px;font-size:12px;color:#3b5566;background:linear-gradient(180deg,transparent,#f1f5f9)}
+  /* ensure controls do not expand full width */
+  .control-column{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
   @media(min-width:760px){ .joy{width:140px;height:140px}.thumb{width:64px;height:64px}.pill{font-size:14px} }
 </style>
 </head>
 <body>
 <div id="wrap">
   <header>
-    <h1>Monkey Quest — мобильный</h1>
+    <h1>Monkey Quest</h1>
     <div id="hud">
       <div class="pill">Очки: <span id="score">0</span></div>
       <div class="pill">Время: <span id="time">60</span>s</div>
@@ -38,55 +44,58 @@
   <main id="game">
     <canvas id="c" role="img" aria-label="Игровое поле"></canvas>
 
+    <!-- small restart top-left -->
+    <div id="restartSmall" aria-label="Рестарт" title="Рестарт">
+      <!-- circular arrow icon (SVG) -->
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M21 12a9 9 0 1 0-2.64 6.09" stroke="#07323a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M21 4v6h-6" stroke="#07323a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <!-- left bottom overlay: joystick and jump -->
     <div id="overlay">
       <div class="joy" id="joy" aria-hidden="true">
         <div class="thumb" id="thumb"></div>
       </div>
-    </div>
 
-    <div id="topRight">
-      <div id="settings">
-        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="invert"> Инвертировать джойстик</label>
-        <div style="margin-top:6px;font-size:13px;color:#2f4a57">Касай правую часть экрана и двигай палец — поворот обезьяны</div>
+      <div style="pointer-events:auto;display:flex;align-items:center;justify-content:center">
+        <div class="jump-circle" id="jumpBtn" aria-label="Прыжок">
+          <div class="jump-arrow" aria-hidden="true"></div>
+        </div>
       </div>
-      <button id="jump" class="small">Прыжок</button>
-      <button id="restart" class="small">Рестарт</button>
     </div>
 
-    <div id="hint">Правая часть экрана — вращение, левая — джойстик</div>
+    <div id="hint">Правая часть экрана — вращение, левая — джойстик (джойстик по умолчанию реверсивный)</div>
   </main>
 
-  <footer>Полностью мобильная версия. Открой в Safari/Chrome на телефоне.</footer>
+  <footer>Открывай на телефоне в Safari/Chrome. Джойстик слева, поворот справа, рестарт — вверху слева.</footer>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 
 <script>
-/* Полностью мобильный index.html — исправления:
-   - объявлены все используемые переменные
-   - удалены десктопные фолбэки
-   - рабочий джойстик с инвертом
-   - поворот обезьяны по правой части экрана
-   - корректная последовательность объявлений
+/*
+  Мобильная версия: джойстик слева (реверсивный по умолчанию), прозрачная кнопка прыжка справа от джойстика,
+  рестарт — маленький значок в левом верхнем углу, инверт чекбокс убран.
 */
 
-// --- глобальные переменные ---
+// --- элементы UI ---
 const canvas = document.getElementById('c');
 const scoreEl = document.getElementById('score');
 const timeEl = document.getElementById('time');
 const levelEl = document.getElementById('level');
 const joy = document.getElementById('joy');
 const thumb = document.getElementById('thumb');
-const jumpBtn = document.getElementById('jump');
-const restartBtn = document.getElementById('restart');
-const invertCheckbox = document.getElementById('invert');
+const jumpBtn = document.getElementById('jumpBtn');
+const restartSmall = document.getElementById('restartSmall');
 
 let score = 0;
 let totalTime = 60;
 let timeLeft = totalTime;
 let level = 1;
 
-// --- THREE.js и сцена ---
+// --- three.js init (mobile-optimized) ---
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
 renderer.setClearColor(0xe9eef6);
 renderer.shadowMap.enabled = true;
@@ -98,80 +107,43 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 200);
 camera.position.set(0, 8, 12);
 
-// мягкое освещение для светлой комнаты
+// lights
 const amb = new THREE.AmbientLight(0xffffff, 0.7); scene.add(amb);
 const soft = new THREE.DirectionalLight(0xffffff, 0.6); soft.position.set(4,10,6); soft.castShadow=true; soft.shadow.mapSize.set(1024,1024); scene.add(soft);
 const rim = new THREE.DirectionalLight(0xfff6e6, 0.15); rim.position.set(-6,6,-4); scene.add(rim);
 
-// пол и сетка
+// ground & grid
 const groundGeo = new THREE.PlaneGeometry(40,40);
 const groundMat = new THREE.MeshStandardMaterial({color:0xe6eef4, metalness:0, roughness:0.9});
-const ground = new THREE.Mesh(groundGeo, groundMat); ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+const ground = new THREE.Mesh(groundGeo, groundMat); ground.rotation.x = -Math.PI/2; ground.receiveShadow=true; scene.add(ground);
 const grid = new THREE.GridHelper(40,20,0xcfdde6,0xddeaf0); grid.material.opacity=0.45; grid.material.transparent=true; scene.add(grid);
 
-// --- модель обезьяны (примитивы) ---
+// monkey primitive model
 const monkey = new THREE.Group();
-
-// тело
-const bodyGeo = new THREE.SphereGeometry(0.7,24,16);
-const bodyMat = new THREE.MeshStandardMaterial({color:0x9c6b3a, metalness:0.05, roughness:0.6});
-const body = new THREE.Mesh(bodyGeo, bodyMat); body.castShadow = true; body.position.set(0,0.7,0); monkey.add(body);
-
-// голова и лицо
-const headGeo = new THREE.SphereGeometry(0.45,20,16);
-const headMat = new THREE.MeshStandardMaterial({color:0xab7a4a});
-const head = new THREE.Mesh(headGeo, headMat); head.position.set(0,1.45,0.08); head.castShadow=true; monkey.add(head);
-const faceGeo = new THREE.SphereGeometry(0.28,12,10);
-const faceMat = new THREE.MeshStandardMaterial({color:0xfff1e6});
-const face = new THREE.Mesh(faceGeo, faceMat); face.position.set(0,1.35,0.3); monkey.add(face);
-
-// уши
-const earGeo = new THREE.CylinderGeometry(0.12,0.12,0.06,12);
-const earMat = new THREE.MeshStandardMaterial({color:0xab7a4a});
-const earL = new THREE.Mesh(earGeo, earMat); earL.rotation.z = Math.PI/2; earL.position.set(-0.45,1.4,0);
-const earR = earL.clone(); earR.position.x = 0.45; monkey.add(earL); monkey.add(earR);
-
-// руки и ноги
-const limbGeo = new THREE.CylinderGeometry(0.12,0.12,0.9,12);
-const limbMat = new THREE.MeshStandardMaterial({color:0x9c6b3a});
-const armL = new THREE.Mesh(limbGeo, limbMat); armL.position.set(-0.95,0.8,0); armL.rotation.z = 0.2; armL.castShadow=true;
-const armR = armL.clone(); armR.position.x = 0.95; armR.rotation.z = -0.2;
-const legL = new THREE.Mesh(limbGeo, limbMat); legL.position.set(-0.36,0.05,0); legL.rotation.z = 0.05; legL.castShadow=true;
-const legR = legL.clone(); legR.position.x = 0.36;
-monkey.add(armL, armR, legL, legR);
-
-// хвост
-const tailGeo = new THREE.TorusGeometry(0.5,0.08,8,16,Math.PI*1.1);
-const tailMat = new THREE.MeshStandardMaterial({color:0x9c6b3a});
-const tail = new THREE.Mesh(tailGeo, tailMat); tail.rotation.x = Math.PI/2; tail.position.set(0,0.5,-0.7); tail.castShadow=true;
-monkey.add(tail);
-
-// позиционирование
-monkey.position.set(0, 0.02, 0);
+const body = new THREE.Mesh(new THREE.SphereGeometry(0.7,24,16), new THREE.MeshStandardMaterial({color:0x9c6b3a, metalness:0.05, roughness:0.6})); body.castShadow=true; body.position.set(0,0.7,0); monkey.add(body);
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.45,20,16), new THREE.MeshStandardMaterial({color:0xab7a4a})); head.position.set(0,1.45,0.08); head.castShadow=true; monkey.add(head);
+const face = new THREE.Mesh(new THREE.SphereGeometry(0.28,12,10), new THREE.MeshStandardMaterial({color:0xfff1e6})); face.position.set(0,1.35,0.3); monkey.add(face);
+const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.9,12), new THREE.MeshStandardMaterial({color:0x9c6b3a})); armL.position.set(-0.95,0.8,0); armL.rotation.z=0.2; armL.castShadow=true;
+const armR = armL.clone(); armR.position.x=0.95; armR.rotation.z=-0.2; monkey.add(armL, armR);
+const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.9,12), new THREE.MeshStandardMaterial({color:0x9c6b3a})); legL.position.set(-0.36,0.05,0); legL.rotation.z=0.05; legL.castShadow=true;
+const legR = legL.clone(); legR.position.x=0.36; monkey.add(legL, legR);
+const tail = new THREE.Mesh(new THREE.TorusGeometry(0.5,0.08,8,16,Math.PI*1.1), new THREE.MeshStandardMaterial({color:0x9c6b3a})); tail.rotation.x=Math.PI/2; tail.position.set(0,0.5,-0.7); tail.castShadow=true; monkey.add(tail);
+monkey.position.set(0,0.02,0);
 scene.add(monkey);
 
-// --- препятствия (ящики) ---
+// obstacles and bananas
 const boxes = [];
 for(let i=0;i<5;i++){
-  const bGeo = new THREE.BoxGeometry(2.4,1.4,2.4);
-  const bMat = new THREE.MeshStandardMaterial({color:0xc6d7df});
-  const box = new THREE.Mesh(bGeo, bMat);
-  box.castShadow=true; box.receiveShadow=true;
-  box.position.set((Math.random()-0.5)*28, 0.7, (Math.random()-0.5)*28);
+  const box = new THREE.Mesh(new THREE.BoxGeometry(2.4,1.4,2.4), new THREE.MeshStandardMaterial({color:0xc6d7df}));
+  box.castShadow=true; box.receiveShadow=true; box.position.set((Math.random()-0.5)*28, 0.7, (Math.random()-0.5)*28);
   scene.add(box); boxes.push(box);
 }
-
-// --- бананы (коллективы) ---
 let bananas = [];
 function makeBananaMesh(){
   const g = new THREE.Group();
   const yellow = new THREE.MeshStandardMaterial({color:0xffd166, emissive:0xffe5b4, metalness:0.05, roughness:0.3});
-  for(let i=0;i<5;i++){
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.14,12,10), yellow);
-    s.position.set((i-2)*0.12, 0, Math.sin((i-2)/3)*0.1); g.add(s);
-  }
-  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.05,10,8), new THREE.MeshStandardMaterial({color:0x7f4c00}));
-  tip.position.set(-0.28,0,0.03); g.add(tip);
+  for(let i=0;i<5;i++){ const s = new THREE.Mesh(new THREE.SphereGeometry(0.14,12,10), yellow); s.position.set((i-2)*0.12,0,Math.sin((i-2)/3)*0.1); g.add(s); }
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.05,10,8), new THREE.MeshStandardMaterial({color:0x7f4c00})); tip.position.set(-0.28,0,0.03); g.add(tip);
   return g;
 }
 function spawnBananas(n=10){
@@ -180,63 +152,43 @@ function spawnBananas(n=10){
     const mesh = makeBananaMesh();
     let x,z,ok;
     do{
-      x = (Math.random()-0.5)*30;
-      z = (Math.random()-0.5)*30;
+      x = (Math.random()-0.5)*30; z = (Math.random()-0.5)*30;
       ok = Math.hypot(x - monkey.position.x, z - monkey.position.z) > 3;
-      boxes.forEach(bx=>{ if(ok){
-        const dx = x - bx.position.x, dz = z - bx.position.z;
-        if(Math.abs(dx) < 2.7 && Math.abs(dz) < 2.7) ok = false;
-      }});
+      boxes.forEach(bx=>{ if(ok){ const dx = x - bx.position.x, dz = z - bx.position.z; if(Math.abs(dx) < 2.7 && Math.abs(dz) < 2.7) ok = false; }});
     } while(!ok);
-    mesh.position.set(x, 0.14 + Math.random()*0.28, z);
-    mesh.rotation.y = Math.random()*Math.PI*2;
-    scene.add(mesh);
-    bananas.push({mesh, r:0.28});
+    mesh.position.set(x, 0.14 + Math.random()*0.28, z); mesh.rotation.y = Math.random()*Math.PI*2;
+    scene.add(mesh); bananas.push({mesh, r:0.28});
   }
 }
 spawnBananas(10);
 
-// --- камера ---
+// camera helper
 const camTarget = new THREE.Vector3();
-function updateCamera(){
-  const desired = new THREE.Vector3(monkey.position.x, monkey.position.y + 4.2, monkey.position.z + 9.2);
-  camera.position.lerp(desired, 0.12);
-  camTarget.set(monkey.position.x, monkey.position.y + 1.2, monkey.position.z);
-  camera.lookAt(camTarget);
-}
+function updateCamera(){ const desired = new THREE.Vector3(monkey.position.x, monkey.position.y + 4.2, monkey.position.z + 9.2); camera.position.lerp(desired, 0.12); camTarget.set(monkey.position.x, monkey.position.y + 1.2, monkey.position.z); camera.lookAt(camTarget); }
 
-// --- состояние и физика ---
-const state = {
-  vel: new THREE.Vector3(0,0,0),
-  onGround: true,
-  move: new THREE.Vector2(0,0),
-  jumpImpulse: 5.6,
-  gravity: -18,
-  maxSpeed: 5
-};
+// state + physics
+const state = { vel: new THREE.Vector3(0,0,0), onGround:true, move: new THREE.Vector2(0,0), jumpImpulse:5.6, gravity:-18, maxSpeed:5 };
 
-// объявляем все глобальные объекты управления (мобильный)
-const keys = {}; // необходимая переменная (даже если на телефоне не используем клавиатуру)
-let joyActive = false, joyCenter = {x:0,y:0}, joyRadius = 42;
-let invert = false;
-invertCheckbox.addEventListener('change', ()=>{ invert = invertCheckbox.checked; });
+// controls: joystick (left) - default REVERSED vertical
+let joyActive = false, joyCenter={x:0,y:0}, joyRadius=42;
+const defaultInvert = true; // joystick behaves as if "invert" is ON by default
+let invert = defaultInvert;
 
-// джойстик (левая часть)
 function startJoy(e){
   joyActive = true;
   const rect = joy.getBoundingClientRect();
   joyCenter = {x: rect.left + rect.width/2, y: rect.top + rect.height/2};
   joyRadius = Math.min(rect.width, rect.height)/2 - 6;
-  const p = (e.touches ? e.touches[0] : e);
-  updateJoy(p.clientX, p.clientY);
-  e.preventDefault();
+  const p = e.touches ? e.touches[0] : e;
+  updateJoy(p.clientX, p.clientY); e.preventDefault();
 }
 function updateJoy(cx, cy){
   const dx = cx - joyCenter.x, dy = cy - joyCenter.y;
   const dist = Math.hypot(dx, dy);
   const nx = dx / (dist || 1), ny = dy / (dist || 1);
   const mag = Math.min(dist / joyRadius, 1);
-  const forwardY = invert ? ny : -ny; // invert option
+  // invert is true by default
+  const forwardY = invert ? ny : -ny;
   state.move.x = (Math.abs(nx) < 0.12) ? 0 : nx * mag;
   state.move.y = (Math.abs(forwardY) < 0.12) ? 0 : forwardY * mag;
   thumb.style.transform = `translate(${state.move.x * (joyRadius-18)}px, ${-state.move.y * (joyRadius-18)}px)`;
@@ -247,41 +199,29 @@ joy.addEventListener('touchstart', startJoy, {passive:false});
 joy.addEventListener('touchmove', (e)=>{ if(joyActive){ updateJoy(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); } }, {passive:false});
 joy.addEventListener('touchend', endJoy);
 
-// прыжок
-jumpBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); tryJump(); }, {passive:false});
-function tryJump(){ if(state.onGround){ state.vel.y = state.jumpImpulse; state.onGround = false; } }
+// jump button handling (transparent circle)
+jumpBtn.addEventListener('touchstart', (e)=>{ e.stopPropagation(); e.preventDefault(); tryJump(); }, {passive:false});
 
-// перезапуск
-restartBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); resetGame(); }, {passive:false});
+// restart small
+restartSmall.addEventListener('touchstart', (e)=>{ e.stopPropagation(); e.preventDefault(); resetGame(); }, {passive:false});
 
-// поворот обезьяны: правая часть экрана свайп
-let rotateActive = false;
-let lastRotX = 0;
-function startRotate(e){
-  rotateActive = true;
-  lastRotX = (e.touches ? e.touches[0].clientX : e.clientX);
-  e.preventDefault();
-}
-function moveRotate(e){
-  if(!rotateActive) return;
-  const x = (e.touches ? e.touches[0].clientX : e.clientX);
-  const dx = x - lastRotX;
-  lastRotX = x;
-  monkey.rotation.y -= dx * 0.006;
-}
+// rotation on right half of screen (swipe)
+let rotateActive = false; let lastRotX = 0;
+function startRotate(e){ rotateActive = true; lastRotX = e.touches ? e.touches[0].clientX : e.clientX; e.preventDefault(); }
+function moveRotate(e){ if(!rotateActive) return; const x = e.touches ? e.touches[0].clientX : e.clientX; const dx = x - lastRotX; lastRotX = x; monkey.rotation.y -= dx * 0.006; }
 function endRotate(){ rotateActive = false; }
 
 window.addEventListener('touchstart', (e)=>{
   const t = e.touches[0];
-  if(t.clientX > window.innerWidth * 0.55) startRotate(e);
+  // make right-zone narrower so buttons don't overlap: rightmost 22%
+  if(t.clientX > window.innerWidth * 0.78) startRotate(e);
 }, {passive:false});
 window.addEventListener('touchmove', (e)=>{ if(rotateActive) moveRotate(e); }, {passive:false});
 window.addEventListener('touchend', endRotate, {passive:true});
 
-// --- простая физика и логика игры ---
+// physics and gameplay
 let walkPhase = 0;
 function physicsStep(dt){
-  // если джойстик не активен — ничего (мобильная версия без клавиатуры)
   // map input relative to camera yaw
   const camYaw = Math.atan2(camera.position.x - monkey.position.x, camera.position.z - monkey.position.z);
   const cos = Math.cos(camYaw), sin = Math.sin(camYaw);
@@ -301,11 +241,9 @@ function physicsStep(dt){
   monkey.position.z += state.vel.z * dt;
 
   // ground collision
-  if(monkey.position.y <= 0.02){
-    monkey.position.y = 0.02; state.vel.y = 0; state.onGround = true;
-  } else state.onGround = false;
+  if(monkey.position.y <= 0.02){ monkey.position.y = 0.02; state.vel.y = 0; state.onGround = true; } else state.onGround = false;
 
-  // box collisions (push-out)
+  // boxes collisions
   boxes.forEach(b=>{
     const minX = b.position.x - 1.2, maxX = b.position.x + 1.2;
     const minZ = b.position.z - 1.2, maxZ = b.position.z + 1.2;
@@ -314,10 +252,7 @@ function physicsStep(dt){
       const dx = monkey.position.x - b.position.x, dz = monkey.position.z - b.position.z;
       const d = Math.hypot(dx, dz) || 0.001;
       const push = (1.2 + 0.9) - d;
-      if(push > 0){
-        monkey.position.x += (dx/d) * push; monkey.position.z += (dz/d) * push;
-        state.vel.x *= 0.4; state.vel.z *= 0.4;
-      }
+      if(push > 0){ monkey.position.x += (dx/d) * push; monkey.position.z += (dz/d) * push; state.vel.x *= 0.4; state.vel.z *= 0.4; }
     }
   });
 
@@ -326,16 +261,11 @@ function physicsStep(dt){
     const c = bananas[i];
     const d = Math.hypot(monkey.position.x - c.mesh.position.x, monkey.position.z - c.mesh.position.z);
     if(d < 0.9 && Math.abs(monkey.position.y - c.mesh.position.y) < 1.6){
-      scene.remove(c.mesh); bananas.splice(i,1);
-      score += 10; scoreEl.textContent = score;
-      if(bananas.length === 0) levelUp();
-    } else {
-      c.mesh.position.y = 0.14 + Math.sin(performance.now()*0.004 + i)*0.06;
-      c.mesh.rotation.y += 0.02;
-    }
+      scene.remove(c.mesh); bananas.splice(i,1); score += 10; scoreEl.textContent = score; if(bananas.length === 0) levelUp();
+    } else { c.mesh.position.y = 0.14 + Math.sin(performance.now()*0.004 + i)*0.06; c.mesh.rotation.y += 0.02; }
   }
 
-  // walking animation: lean + arm swing
+  // walking animation
   const speed = Math.hypot(state.vel.x, state.vel.z);
   walkPhase += speed * dt * 6;
   const lean = Math.sin(walkPhase) * Math.min(0.16, speed*0.06);
@@ -345,46 +275,34 @@ function physicsStep(dt){
   armR.rotation.x = -0.2 + Math.sin(walkPhase + Math.PI)*0.5*speed;
 }
 
-// level up & reset
-function levelUp(){
-  level++; levelEl.textContent = level;
-  timeLeft = Math.min(totalTime, timeLeft + 18);
-  spawnBananas(8 + Math.min(6, level));
-  boxes.forEach(b => { b.position.x = (Math.random()-0.5)*28; b.position.z = (Math.random()-0.5)*28; });
-}
-function resetGame(){
-  score = 0; scoreEl.textContent = score;
-  level = 1; levelEl.textContent = level;
-  timeLeft = totalTime; timeEl.textContent = Math.round(timeLeft);
-  monkey.position.set(0, 0.02, 0);
-  state.vel.set(0,0,0);
-  spawnBananas(10);
-}
+function levelUp(){ level++; levelEl.textContent = level; timeLeft = Math.min(totalTime, timeLeft + 18); spawnBananas(8 + Math.min(6, level)); boxes.forEach(b=>{ b.position.x = (Math.random()-0.5)*28; b.position.z = (Math.random()-0.5)*28; }); }
+function resetGame(){ score = 0; scoreEl.textContent = score; level = 1; levelEl.textContent = level; timeLeft = totalTime; timeEl.textContent = Math.round(timeLeft); monkey.position.set(0,0.02,0); state.vel.set(0,0,0); spawnBananas(10); }
 
-// --- анимация и таймер ---
+// jump impl
+function tryJump(){ if(state.onGround){ state.vel.y = state.jumpImpulse; state.onGround = false; } }
+
+// animate loop & timer
 let last = performance.now(), accum = 0;
 function animate(now){
-  const dt = Math.min((now - last)/1000, 0.05);
-  last = now;
-  physicsStep(dt);
-  updateCamera();
-  renderer.render(scene, camera);
+  const dt = Math.min((now - last)/1000, 0.05); last = now;
+  physicsStep(dt); updateCamera(); renderer.render(scene, camera);
   accum += dt;
-  if(accum >= 1){
-    accum = 0; timeLeft = Math.max(0, timeLeft - 1); timeEl.textContent = Math.round(timeLeft);
-    if(timeLeft <= 0){ setTimeout(()=>{ alert('Время вышло! Набрано очков: '+score); resetGame(); }, 60); }
-  }
+  if(accum >= 1){ accum = 0; timeLeft = Math.max(0, timeLeft - 1); timeEl.textContent = Math.round(timeLeft); if(timeLeft <= 0){ setTimeout(()=>{ alert('Время вышло! Набрано очков: '+score); resetGame(); }, 60); } }
   requestAnimationFrame(animate);
 }
 requestAnimationFrame(animate);
 
+// camera update
+function updateCamera(){ const desired = new THREE.Vector3(monkey.position.x, monkey.position.y + 4.2, monkey.position.z + 9.2); camera.position.lerp(desired, 0.12); camTarget.set(monkey.position.x, monkey.position.y + 1.2, monkey.position.z); camera.lookAt(camTarget); }
+const camTarget = new THREE.Vector3();
+
 // resize handling
 window.addEventListener('resize', ()=>{ DPR = Math.min(window.devicePixelRatio||1,2); renderer.setPixelRatio(DPR); renderer.setSize(window.innerWidth, window.innerHeight); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); });
 
-// performance heuristic for weak phones
-(function detectPerf(){ const ua=navigator.userAgent||''; if(/iPhone|Android/.test(ua) && (window.devicePixelRatio>2.0)){ renderer.setPixelRatio(1.25); } })();
+// performance tweak for weak phones
+(function detectPerf(){ const ua = navigator.userAgent || ''; if(/iPhone|Android/.test(ua) && (window.devicePixelRatio > 2.0)){ renderer.setPixelRatio(1.25); } })();
 
-// initial reset
+// initial spawn/reset
 resetGame();
 
 </script>
