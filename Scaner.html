@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>LendX — люди людям</title>
   <style>
     :root{
@@ -17,56 +17,90 @@
       --warn:#fbbf24;
       --card-radius:18px;
       --shadow:0 10px 30px rgba(0,0,0,0.35);
-      --blur:20px;
+      --blur:18px;
     }
     *{box-sizing:border-box}
-    html,body{background:radial-gradient(1200px 800px at 70% 10%,#12203a 0%,#0b0e13 55%,#06070a 100%); color:var(--text); margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif}
-    .grid{display:grid; grid-template-columns:1fr minmax(280px,1100px) 1fr}
-    header{grid-column:1/-1; padding:28px 24px; position:sticky; top:0; backdrop-filter:saturate(140%) blur(12px); background:linear-gradient(180deg,rgba(11,14,19,0.7),rgba(11,14,19,0)); z-index:10; border-bottom:1px solid rgba(255,255,255,0.06)}
+    html,body{background:radial-gradient(1100px 700px at 70% 10%,#13223f 0%,#0b0e13 55%,#06070a 100%); color:var(--text); margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif}
+    /* Layout */
+    .grid{display:grid; grid-template-columns:1fr minmax(320px,1100px) 1fr}
     .wrap{grid-column:2}
+    header{grid-column:1/-1; padding:22px 16px; position:sticky; top:0; backdrop-filter:saturate(140%) blur(12px); background:linear-gradient(180deg,rgba(11,14,19,0.70),rgba(11,14,19,0)); z-index:10; border-bottom:1px solid rgba(255,255,255,0.06)}
     .brand{display:flex; align-items:center; gap:12px}
     .logo{width:40px; height:40px; border-radius:12px; background:conic-gradient(from 180deg at 50% 50%, #7aa9ff, #8b5cf6, #22d3ee, #7aa9ff); box-shadow:0 10px 30px rgba(122,169,255,0.25)}
     .title{font-weight:700; letter-spacing:0.2px}
     .subtitle{color:var(--muted); font-size:13px}
-    .hero{margin:32px 0 18px; display:flex; align-items:flex-end; justify-content:space-between; gap:16px}
+    .hero{margin:16px 0 12px; display:flex; flex-wrap:wrap; align-items:center; gap:8px}
     .pill{display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; background:linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02)); border:1px solid rgba(255,255,255,0.12)}
     .pill .dot{width:8px; height:8px; border-radius:999px; background:var(--good); box-shadow:0 0 12px var(--good)}
+    /* Tabs */
+    .tabs{display:flex; gap:8px; margin:10px 0 16px}
+    .tab{padding:10px 14px; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text); cursor:pointer; font-weight:600}
+    .tab.active{background:linear-gradient(180deg,#85a9ff,#6f8df1); color:#081021; border:0}
+    /* Tools */
+    .tools{display:grid; grid-template-columns:1fr; gap:12px; margin:8px 0 18px}
+    @media(min-width:900px){ .tools{grid-template-columns:1fr 1fr} }
     .card{background:var(--glass); border:1px solid rgba(255,255,255,0.12); border-radius:var(--card-radius); box-shadow:var(--shadow); backdrop-filter:blur(var(--blur)) saturate(140%); position:relative}
-    .card:hover{border-color:rgba(255,255,255,0.18)}
-    .tools{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:14px 0 28px}
     .tool{padding:14px}
     .tool h4{margin:0 0 8px}
-    .tool .row{display:flex; gap:10px; margin-bottom:8px}
-    .tool input,.tool select{width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:var(--text)}
-    .tool button{padding:10px 14px; border-radius:12px; border:0; background:linear-gradient(180deg,#85a9ff,#6f8df1); color:#081021; font-weight:600; cursor:pointer}
+    .row{display:flex; gap:10px; align-items:center}
+    .col{display:flex; flex-direction:column; gap:8px}
+    .tool input,.tool select,.tool textarea{width:100%; padding:12px 14px; border-radius:14px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:var(--text); font-size:15px}
+    .tool textarea{min-height:64px; resize:vertical}
+    .tool button{padding:12px 14px; border-radius:14px; border:0; background:linear-gradient(180deg,#85a9ff,#6f8df1); color:#081021; font-weight:700; cursor:pointer}
     .tool button:hover{filter:brightness(1.05)}
-    .list{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px}
-    .offer{padding:14px; overflow:hidden}
-    .offer .top{display:flex; justify-content:space-between; align-items:flex-start}
+    /* List */
+    .list{display:grid; grid-template-columns:1fr; gap:12px}
+    @media(min-width:720px){ .list{grid-template-columns:repeat(2,1fr)} }
+    @media(min-width:1040px){ .list{grid-template-columns:repeat(3,1fr)} }
+    .offer{padding:14px; overflow:hidden; transition:transform 0.25s ease, box-shadow 0.25s ease; transform-style:preserve-3d; animation:fadeUp 0.6s ease both}
+    .offer:hover{transform:perspective(800px) rotateX(3deg) rotateY(-3deg) scale(1.02); box-shadow:0 20px 40px rgba(0,0,0,0.45)}
+    @keyframes fadeUp{from{opacity:0; transform:translateY(16px)}to{opacity:1; transform:translateY(0)}}
+    .top{display:flex; justify-content:space-between; align-items:flex-start}
     .badge{padding:6px 10px; border-radius:999px; font-size:12px; color:#081021; background:linear-gradient(180deg,#a7f3d0,#34d399); font-weight:700}
     .risk{padding:6px 10px; border-radius:999px; font-size:12px; color:#081021; background:linear-gradient(180deg,#fde68a,#fbbf24); font-weight:700}
-    .apr{font-size:28px; font-weight:800; letter-spacing:0.2px}
+    .apr{font-size:26px; font-weight:800; letter-spacing:0.2px}
     .muted{color:var(--muted); font-size:13px}
-    .money{font-size:20px; font-weight:700}
-    .row{display:flex; gap:10px; align-items:center}
+    .money{font-size:18px; font-weight:700}
     .actions{display:flex; gap:8px; margin-top:10px}
-    .btn{padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:var(--text); cursor:pointer}
-    .btn.primary{background:linear-gradient(180deg,#85a9ff,#6f8df1); color:#081021; border:0; font-weight:700}
+    .btn{padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:var(--text); cursor:pointer; font-weight:600}
+    .btn.primary{background:linear-gradient(180deg,#85a9ff,#6f8df1); color:#081021; border:0}
     .btn.glow{box-shadow:0 0 0 rgba(122,169,255,0); animation:glow 2.4s ease-in-out infinite}
-    @keyframes glow{0%,100%{box-shadow:0 0 0 rgba(122,169,255,0)}50%{box-shadow:0 0 28px rgba(122,169,255,0.35)}}
-    .fav{cursor:pointer; width:28px; height:28px; display:grid; place-items:center; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12)}
-    .fav.active{background:linear-gradient(180deg,#fb7185,#ef4444); color:#081021; font-weight:900}
-    footer{grid-column:2; margin:30px 0 40px; color:var(--muted); font-size:12px}
+    @keyframes glow{0%,100%{box-shadow:0 0 0 rgba(122,169,255,0)}50%{box-shadow:0 0 24px rgba(122,169,255,0.35)}}
+    .fav{cursor:pointer; width:32px; height:32px; display:grid; place-items:center; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); font-weight:900}
+    .fav.active{background:linear-gradient(180deg,#fb7185,#ef4444); color:#081021}
+    footer{grid-column:2; margin:20px 0 34px; color:var(--muted); font-size:12px}
     /* Modal */
     .modal-backdrop{position:fixed; inset:0; background:rgba(6,7,10,0.6); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; z-index:50}
     .modal{width:min(680px,92vw); padding:18px; border-radius:20px; background:var(--glass-strong); border:1px solid rgba(255,255,255,0.16); box-shadow:0 20px 60px rgba(0,0,0,0.55)}
     .modal h3{margin:0 0 10px}
-    .split{display:grid; grid-template-columns:1.2fr 1fr; gap:14px}
+    .split{display:grid; grid-template-columns:1fr; gap:14px}
+    @media(min-width:800px){ .split{grid-template-columns:1.2fr 1fr} }
     .kv{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0}
     .kv div{background:rgba(255,255,255,0.06); padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12)}
     .close{float:right; cursor:pointer; opacity:0.7}
     .close:hover{opacity:1}
     .disclaimer{font-size:12px; color:var(--muted); border-top:1px dashed rgba(255,255,255,0.14); padding-top:8px; margin-top:8px}
+    /* Chat */
+    .chat{background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:10px; display:flex; flex-direction:column; gap:8px}
+    .msg{display:flex; gap:8px; align-items:flex-start}
+    .bubble{padding:10px 12px; border-radius:12px; background:rgba(255,255,255,0.08)}
+    .me .bubble{background:linear-gradient(180deg,#85a9ff,#6f8df1); color:#081021; font-weight:600}
+    .input-row{display:flex; gap:8px}
+    .input-row input{flex:1; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:var(--text)}
+    /* Event feed */
+    .feed{margin-top:16px; padding:12px; border-radius:16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12)}
+    .feed h4{margin:0 0 8px}
+    .feed-item{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed rgba(255,255,255,0.12)}
+    .feed-item:last-child{border-bottom:0}
+    .feed .tag{padding:6px 10px; border-radius:999px; font-size:12px; color:#081021; background:linear-gradient(180deg,#c7d2fe,#818cf8); font-weight:700}
+    /* Mobile tweaks */
+    @media(max-width:480px){
+      .apr{font-size:24px}
+      .money{font-size:17px}
+      .actions .btn{flex:1}
+      .fav{width:30px; height:30px}
+      .pill{padding:8px 12px}
+    }
   </style>
 </head>
 <body>
@@ -83,42 +117,60 @@
         <div class="pill"><span class="dot"></span><span>Beta-концепт • локальные данные • без банков</span></div>
         <div class="pill"><span>Надёжность ≈ рейтинг + история возвратов</span></div>
       </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="all">Все предложения</button>
+        <button class="tab" data-tab="favs">Избранные</button>
+        <button class="tab" data-tab="feed">Лента событий</button>
+      </div>
+
       <div class="tools">
         <div class="card tool">
           <h4>Фильтры</h4>
-          <div class="row">
-            <input id="fAmount" type="number" placeholder="Мин. сумма, ₽" />
-            <select id="fTerm">
-              <option value="">Срок</option>
-              <option value="7">≤ 7 дней</option>
-              <option value="30">≤ 30 дней</option>
-              <option value="90">≤ 90 дней</option>
-            </select>
-            <input id="fApr" type="number" placeholder="Макс. APR, %" />
-          </div>
-          <div class="row">
-            <select id="sort">
-              <option value="best">Выгодность</option>
-              <option value="rating">Надёжность</option>
-              <option value="amount">Сумма</option>
-              <option value="new">Новизна</option>
-            </select>
-            <button id="apply">Применить</button>
-            <button id="reset" style="background:rgba(255,255,255,0.06); color:var(--text)">Сброс</button>
+          <div class="col">
+            <div class="row">
+              <input id="fAmount" type="number" inputmode="numeric" placeholder="Мин. сумма, ₽" />
+              <select id="fTerm">
+                <option value="">Срок</option>
+                <option value="7">≤ 7 дней</option>
+                <option value="30">≤ 30 дней</option>
+                <option value="90">≤ 90 дней</option>
+              </select>
+              <input id="fApr" type="number" inputmode="numeric" placeholder="Макс. APR, %" />
+            </div>
+            <div class="row">
+              <select id="sort">
+                <option value="best">Выгодность</option>
+                <option value="rating">Надёжность</option>
+                <option value="amount">Сумма</option>
+                <option value="new">Новизна</option>
+              </select>
+              <button id="apply">Применить</button>
+              <button id="reset" style="background:rgba(255,255,255,0.06); color:var(--text)">Сброс</button>
+            </div>
           </div>
         </div>
+
         <div class="card tool">
-          <h4>Стать кредитором</h4>
-          <div class="row">
-            <input id="cAmount" type="number" placeholder="Сумма, ₽" />
-            <input id="cTerm" type="number" placeholder="Срок, дней" />
-            <input id="cApr" type="number" placeholder="Ставка APR, %" />
+          <h4>Опубликовать</h4>
+          <div class="col">
+            <div class="row">
+              <select id="role">
+                <option value="lender">Я кредитор (даю деньги)</option>
+                <option value="borrower">Я заёмщик (нужны деньги)</option>
+              </select>
+            </div>
+            <div class="row">
+              <input id="cAmount" type="number" inputmode="numeric" placeholder="Сумма, ₽" />
+              <input id="cTerm" type="number" inputmode="numeric" placeholder="Срок, дней" />
+              <input id="cApr" type="number" inputmode="numeric" placeholder="APR, %" />
+            </div>
+            <textarea id="cNote" placeholder="Комментарий (условия или цель займа)"></textarea>
+            <div class="row">
+              <button id="create" class="glow">Опубликовать</button>
+            </div>
+            <div class="muted">APR — годовая ставка, итог рассчитывается пропорционально сроку. Роли влияют на бейджи и ленту.</div>
           </div>
-          <div class="row">
-            <input id="cNote" type="text" placeholder="Комментарий (например, вернёте +20%)" />
-            <button id="create">Опубликовать</button>
-          </div>
-          <div class="muted">Совет: APR — годовая ставка. Итог рассчитываем пропорционально сроку.</div>
         </div>
       </div>
     </div>
@@ -127,9 +179,14 @@
   <main class="grid">
     <div class="wrap">
       <section class="list" id="list"></section>
+      <section class="feed card" id="feed" style="display:none">
+        <h4>Лента событий</h4>
+        <div id="feedItems"></div>
+      </section>
     </div>
   </main>
 
+  <!-- Modal -->
   <div class="modal-backdrop" id="backdrop" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="modal">
       <span class="close" id="close">✕</span>
@@ -137,14 +194,16 @@
       <div class="split">
         <div>
           <div class="kv">
+            <div><b>Роль:</b> <span id="mRole"></span></div>
+            <div><b>Рейтинг:</b> <span id="mRating"></span>/5</div>
             <div><b>Сумма:</b> <span id="mAmount"></span> ₽</div>
             <div><b>Срок:</b> <span id="mTerm"></span> дней</div>
             <div><b>APR:</b> <span id="mApr"></span>%</div>
-            <div><b>Рейтинг:</b> <span id="mRating"></span>/5</div>
+            <div><b>Итого к возврату:</b> <span id="mTotal"></span> ₽</div>
           </div>
           <div class="kv">
-            <div><b>Итого к возврату:</b> <span id="mTotal"></span> ₽</div>
             <div><b>На каждый день:</b> <span id="mPerDay"></span> ₽</div>
+            <div><b>Уровень доверия:</b> <span id="mTrust"></span></div>
           </div>
           <div class="muted" id="mNote"></div>
           <div class="disclaimer">
@@ -153,10 +212,23 @@
         </div>
         <div>
           <div class="row" style="margin-bottom:8px">
-            <button class="btn primary glow" id="request">Запросить займ</button>
+            <button class="btn primary glow" id="request">Запросить</button>
             <button class="btn" id="favorite">В избранное</button>
           </div>
-          <div class="muted" id="mStatus"></div>
+          <div class="muted" id="mStatus" style="margin-bottom:10px">Статус: свободно • ожидает запросов</div>
+
+          <!-- Chat imitation -->
+          <div class="chat" id="chat" style="display:none">
+            <div class="msg">
+              <div class="bubble">Здравствуйте! Уточните, для чего вам средства и удобно ли вернуть в срок?</div>
+            </div>
+            <div id="chatMessages"></div>
+            <div class="input-row">
+              <input id="chatInput" type="text" placeholder="Напишите сообщение…" />
+              <button class="btn primary" id="chatSend">Отправить</button>
+            </div>
+            <div class="muted">Чат — демо. Сообщения хранятся локально.</div>
+          </div>
         </div>
       </div>
     </div>
@@ -168,33 +240,34 @@
 
   <script>
     const $ = sel => document.querySelector(sel);
+    const $$ = sel => document.querySelectorAll(sel);
     const now = () => Date.now();
 
+    const storeKey = "lendx_offers_v2";
+    const favKey = "lendx_favs_v2";
+    const feedKey = "lendx_feed_v2";
+    const chatKey = "lendx_chat_v2";
+
     const mock = [
-      {id:1, amount:5000, term:30, apr:240, rating:4.7, note:"Вернёте 6 000 за месяц. Без досрочного штрафа.", created:now()-86400000*2},
-      {id:2, amount:12000, term:14, apr:150, rating:4.9, note:"Ставка лояльная. Частичный досрочный ок.", created:now()-86400000*4},
-      {id:3, amount:3000, term:7, apr:320, rating:4.2, note:"Короткий займ. Возврат строго в срок.", created:now()-86400000*1},
-      {id:4, amount:25000, term:60, apr:90, rating:5.0, note:"Надёжный кредитор 100% возвратов.", created:now()-86400000*6},
-      {id:5, amount:9000, term:21, apr:180, rating:4.5, note:"Гибкий график, можно частями.", created:now()-86400000*3}
+      {id:1, role:"lender", amount:5000, term:30, apr:240, rating:4.7, note:"Вернёте 6 000 за месяц. Без досрочного штрафа.", created:now()-86400000*2},
+      {id:2, role:"lender", amount:12000, term:14, apr:150, rating:4.9, note:"Ставка лояльная. Частичный досрочный ок.", created:now()-86400000*4},
+      {id:3, role:"lender", amount:3000, term:7, apr:320, rating:4.2, note:"Короткий займ. Возврат строго в срок.", created:now()-86400000*1},
+      {id:4, role:"lender", amount:25000, term:60, apr:90, rating:5.0, note:"Надёжный кредитор 100% возвратов.", created:now()-86400000*6},
+      {id:5, role:"borrower", amount:9000, term:21, apr:180, rating:4.5, note:"Нужны средства на ремонт. Гибкий график, можно частями.", created:now()-86400000*3}
     ];
 
-    const storeKey = "lendx_offers";
-    const favKey = "lendx_favs";
-
-    const loadOffers = () => {
-      const saved = localStorage.getItem(storeKey);
-      return saved ? JSON.parse(saved) : mock.slice();
+    const load = (k, fallback) => {
+      const saved = localStorage.getItem(k);
+      return saved ? JSON.parse(saved) : fallback;
     };
-    const saveOffers = (offers) => localStorage.setItem(storeKey, JSON.stringify(offers));
-    const loadFavs = () => {
-      const f = localStorage.getItem(favKey);
-      return f ? JSON.parse(f) : [];
-    };
-    const saveFavs = (favs) => localStorage.setItem(favKey, JSON.stringify(favs));
+    const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-    let offers = loadOffers();
-    let favs = loadFavs();
+    let offers = load(storeKey, mock.slice());
+    let favs = load(favKey, []);
+    let feed = load(feedKey, [{type:"system", text:"Добро пожаловать в LendX — демо-концепт.", time:now()}]);
+
     let current = null;
+    let activeTab = "all";
 
     function aprToTotal(amount, termDays, apr){
       const perYear = apr/100;
@@ -203,25 +276,41 @@
       return Math.round(amount + interest);
     }
 
-    function render(){
+    function trustLabel(rating){
+      return rating >= 4.8 ? "Надёжный" : (rating >= 4.3 ? "Хороший" : "Новый игрок");
+    }
+    function trustBar(rating){
+      const max = 5;
+      const pct = Math.round((rating/max)*100);
+      return `${pct}% к уровню`;
+    }
+
+    function renderList(){
       const list = $("#list");
       list.innerHTML = "";
+
+      // Filters
       const fAmount = Number($("#fAmount").value) || 0;
       const fTerm = Number($("#fTerm").value) || Infinity;
       const fApr = $("#fApr").value ? Number($("#fApr").value) : Infinity;
       const sortBy = $("#sort").value;
-
       let rows = offers.filter(o =>
         o.amount >= fAmount &&
         o.term <= (isFinite(fTerm) ? fTerm : o.term) &&
         o.apr <= (isFinite(fApr) ? fApr : o.apr)
       );
 
+      // Tabs
+      if(activeTab === "favs"){
+        rows = rows.filter(o => favs.includes(o.id));
+      }
+
+      // Sort
       rows.sort((a,b) => {
         if(sortBy === "best"){
           const gainA = (aprToTotal(a.amount,a.term,a.apr)-a.amount)/a.amount;
           const gainB = (aprToTotal(b.amount,b.term,b.apr)-b.amount)/b.amount;
-          return gainA - gainB; // меньше выгода для заёмщика — лучше
+          return gainA - gainB;
         }
         if(sortBy === "rating") return b.rating - a.rating;
         if(sortBy === "amount") return b.amount - a.amount;
@@ -229,19 +318,21 @@
         return 0;
       });
 
+      // Render
       rows.forEach(o => {
         const card = document.createElement("div");
         card.className = "card offer";
         const isFav = favs.includes(o.id);
         const total = aprToTotal(o.amount,o.term,o.apr);
         const riskClass = o.apr > 250 ? "risk" : "badge";
-        const trustLabel = o.rating >= 4.8 ? "Надёжный" : (o.rating >= 4.3 ? "Хороший" : "Норм");
+        const tLabel = trustLabel(o.rating);
         card.innerHTML = `
           <div class="top">
             <div>
               <div class="row" style="gap:8px; align-items:center">
                 <div class="${riskClass}">${o.apr}% APR</div>
-                <div class="badge">${trustLabel}</div>
+                <div class="badge">${tLabel}</div>
+                <div class="badge" style="background:linear-gradient(180deg,#c7d2fe,#818cf8)">${o.role==="lender"?"Кредитор":"Заёмщик"}</div>
               </div>
               <div class="apr">${o.amount.toLocaleString("ru-RU")} ₽</div>
               <div class="muted">Срок: ${o.term} дн · Рейтинг: ${o.rating.toFixed(1)} / 5</div>
@@ -259,12 +350,30 @@
           </div>
         `;
         list.appendChild(card);
+        // Subtle parallax reaction on pointer
+        card.addEventListener("pointermove", (e) => {
+          const rect = card.getBoundingClientRect();
+          const x = e.clientX - rect.left - rect.width/2;
+          const y = e.clientY - rect.top - rect.height/2;
+          card.style.transform = `perspective(800px) rotateX(${y/rect.height*6}deg) rotateY(${x/rect.width*-6}deg) scale(1.01)`;
+        });
+        card.addEventListener("pointerleave", () => {
+          card.style.transform = "";
+        });
       });
+
+      if(rows.length === 0){
+        const empty = document.createElement("div");
+        empty.className = "card offer";
+        empty.innerHTML = `<div class="muted">Нет предложений по текущим фильтрам/вкладке.</div>`;
+        list.appendChild(empty);
+      }
     }
 
     function openModal(offer){
       current = offer;
       $("#mTitle").textContent = `Предложение #${offer.id}`;
+      $("#mRole").textContent = offer.role==="lender"?"Кредитор":"Заёмщик";
       $("#mAmount").textContent = offer.amount.toLocaleString("ru-RU");
       $("#mTerm").textContent = offer.term;
       $("#mApr").textContent = offer.apr;
@@ -273,9 +382,17 @@
       $("#mTotal").textContent = total.toLocaleString("ru-RU");
       $("#mPerDay").textContent = Math.round(total/offer.term).toLocaleString("ru-RU");
       $("#mNote").textContent = offer.note || "—";
+      $("#mTrust").textContent = trustBar(offer.rating);
       $("#mStatus").textContent = "Статус: свободно • ожидает запросов";
+      $("#chat").style.display = "none";
+      $("#chatMessages").innerHTML = "";
       $("#backdrop").style.display = "flex";
       $("#backdrop").setAttribute("aria-hidden", "false");
+
+      // Load chat history
+      const chats = load(chatKey, {});
+      const thread = chats[offer.id] || [];
+      thread.forEach(msg => addChatMessage(msg.text, msg.me));
     }
 
     function closeModal(){
@@ -284,45 +401,107 @@
       current = null;
     }
 
+    function addFeedItem(item){
+      feed.unshift(item);
+      save(feedKey, feed);
+      renderFeed();
+    }
+
+    function renderFeed(){
+      const container = $("#feedItems");
+      container.innerHTML = "";
+      feed.slice(0,50).forEach(it => {
+        const row = document.createElement("div");
+        row.className = "feed-item";
+        const time = new Date(it.time).toLocaleString("ru-RU");
+        row.innerHTML = `
+          <div class="muted">${time}</div>
+          <div>${it.text}</div>
+          <div class="tag">${it.type}</div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function addChatMessage(text, me=false){
+      const wrap = document.createElement("div");
+      wrap.className = "msg" + (me ? " me" : "");
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+      wrap.appendChild(bubble);
+      $("#chatMessages").appendChild(wrap);
+      // auto scroll
+      $("#chatMessages").parentElement.scrollTop = $("#chatMessages").parentElement.scrollHeight;
+    }
+
+    function saveChatMessage(offerId, text, me=false){
+      const chats = load(chatKey, {});
+      const thread = chats[offerId] || [];
+      thread.push({text, me, time: now()});
+      chats[offerId] = thread;
+      save(chatKey, chats);
+    }
+
     // Events
-    $("#apply").addEventListener("click", render);
+    $("#apply").addEventListener("click", renderList);
     $("#reset").addEventListener("click", () => {
       $("#fAmount").value = "";
       $("#fTerm").value = "";
       $("#fApr").value = "";
       $("#sort").value = "best";
-      render();
+      renderList();
     });
 
+    // Tabs
+    $$(".tab").forEach(t => {
+      t.addEventListener("click", () => {
+        $$(".tab").forEach(x => x.classList.remove("active"));
+        t.classList.add("active");
+        activeTab = t.dataset.tab;
+        if(activeTab === "feed"){
+          $("#list").style.display = "none";
+          $("#feed").style.display = "block";
+          renderFeed();
+        } else {
+          $("#feed").style.display = "none";
+          $("#list").style.display = "grid";
+          renderList();
+        }
+      });
+    });
+
+    // Create offer (role-aware)
     $("#create").addEventListener("click", () => {
+      const role = $("#role").value;
       const amount = Number($("#cAmount").value);
       const term = Number($("#cTerm").value);
       const apr = Number($("#cApr").value);
       const note = $("#cNote").value.trim();
 
-      // Простые проверки
       const errs = [];
       if(!amount || amount < 500) errs.push("Сумма от 500 ₽");
       if(!term || term < 3) errs.push("Срок от 3 дней");
       if(!apr || apr < 10 || apr > 400) errs.push("APR 10–400%");
-      if(errs.length){
-        alert("Проверь поля:\n• " + errs.join("\n• "));
-        return;
-      }
+      if(errs.length){ alert("Проверь поля:\n• " + errs.join("\n• ")); return; }
 
-      const newOffer = {
-        id: Math.max(...offers.map(o=>o.id)) + 1,
-        amount, term, apr, rating: 4.5, note,
-        created: now()
-      };
+      const newId = (offers.length ? Math.max(...offers.map(o=>o.id)) : 0) + 1;
+      const newOffer = { id:newId, role, amount, term, apr, rating: 4.5, note, created: now() };
       offers.unshift(newOffer);
-      saveOffers(offers);
+      save(storeKey, offers);
+
+      addFeedItem({
+        type: role==="lender" ? "кредитор" : "заёмщик",
+        text: `${role==="lender"?"Кредитор":"Заёмщик"} опубликовал #${newId} на ${amount.toLocaleString("ru-RU")} ₽ · ${term} дн · ${apr}% APR`,
+        time: now()
+      });
+
       $("#cAmount").value = "";
       $("#cTerm").value = "";
       $("#cApr").value = "";
       $("#cNote").value = "";
-      render();
-      // микро-эффект
+      renderList();
+
       const el = document.querySelector(".offer");
       el && el.animate([{transform:"scale(0.98)"},{transform:"scale(1)"}],{duration:300, easing:"ease-out"});
     });
@@ -336,7 +515,7 @@
         const id = Number(t.dataset.id);
         const idx = favs.indexOf(id);
         if(idx >= 0) favs.splice(idx,1); else favs.push(id);
-        saveFavs(favs);
+        save(favKey, favs);
         t.classList.toggle("active");
       }
 
@@ -350,25 +529,67 @@
         const id = Number(t.dataset.id);
         const offer = offers.find(o=>o.id===id);
         openModal(offer);
-        $("#mStatus").textContent = "Заявка отправлена (демо). Кредитор увидит запрос и свяжется.";
+        $("#mStatus").textContent = "Заявка отправлена (демо). Сторона получит уведомление.";
+        $("#chat").style.display = "flex";
+        addChatMessage("Привет! Готов обсудить условия.", true);
+        saveChatMessage(offer.id, "Привет! Готов обсудить условия.", true);
+
+        addFeedItem({
+          type: "заявка",
+          text: `Отправлен запрос по #${offer.id} на ${offer.amount.toLocaleString("ru-RU")} ₽`,
+          time: now()
+        });
       }
 
       if(t.id === "request"){
         if(!current) return;
         $("#mStatus").textContent = "Запрос подтверждён (демо). Ожидайте ответ.";
+        $("#chat").style.display = "flex";
+        addChatMessage("Подтверждаю запрос. Расскажите о графике возврата.", false);
+        saveChatMessage(current.id, "Подтверждаю запрос. Расскажите о графике возврата.", false);
+
+        addFeedItem({
+          type: "подтверждение",
+          text: `Запрос подтверждён по #${current.id}`,
+          time: now()
+        });
       }
 
       if(t.id === "favorite" && current){
         const id = current.id;
         const idx = favs.indexOf(id);
         if(idx >= 0) favs.splice(idx,1); else favs.push(id);
-        saveFavs(favs);
+        save(favKey, favs);
         $("#mStatus").textContent = favs.includes(id) ? "Добавлено в избранное." : "Удалено из избранного.";
       }
     });
 
-    // Initial
-    render();
+    // Chat input
+    $("#chatSend").addEventListener("click", () => {
+      const v = $("#chatInput").value.trim();
+      if(!v || !current) return;
+      addChatMessage(v, true);
+      saveChatMessage(current.id, v, true);
+      $("#chatInput").value = "";
+      // Simulate reply
+      setTimeout(() => {
+        const reply = "Принято. Предлагаю оформить договор (демо).";
+        addChatMessage(reply, false);
+        saveChatMessage(current.id, reply, false);
+      }, 800);
+    });
+
+    // Enter key in chat
+    $("#chatInput").addEventListener("keydown", (e) => {
+      if(e.key === "Enter"){
+        e.preventDefault();
+        $("#chatSend").click();
+      }
+    });
+
+    // Initial render
+    renderList();
+    renderFeed();
   </script>
 </body>
 </html>
