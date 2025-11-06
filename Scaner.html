@@ -1,370 +1,302 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>GTA-SA x Roblox — Mobile Prototype</title>
-<style>
-  :root{
-    --ui-bg: rgba(0,0,0,0.45);
-    --accent: #ff7043;
-    --accent2: #29b6f6;
-    --glass: rgba(255,255,255,0.06);
-  }
-  html,body{height:100%;margin:0;background:#87ceeb;overflow:hidden;-webkit-user-select:none;-ms-user-select:none;user-select:none}
-  canvas{display:block;touch-action:none}
-  /* top UI */
-  #uiTop{position:absolute;left:8px;top:8px;right:8px;display:flex;gap:8px;z-index:60;pointer-events:auto}
-  .pill{background:var(--ui-bg);color:#fff;padding:8px 10px;border-radius:10px;font-family:Inter,system-ui,Arial,sans-serif;font-size:14px;display:flex;gap:8px;align-items:center}
-  .pill small{opacity:0.9}
-  /* bottom controls */
-  #controls{position:absolute;left:0;right:0;bottom:8px;height:150px;display:flex;justify-content:space-between;padding:0 12px;align-items:flex-end;z-index:60;pointer-events:none}
-  /* joystick */
-  #joystick{width:140px;height:140px;display:flex;align-items:center;pointer-events:auto}
-  .stickOuter{width:100%;height:100%;border-radius:50%;background:var(--glass);display:flex;align-items:center;justify-content:center;position:relative}
-  .stick{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.18);transform:translate(0,0);touch-action:none}
-  /* action buttons */
-  #actions{display:flex;flex-direction:column;gap:10px;pointer-events:auto}
-  .actBtn{width:64px;height:64px;border-radius:12px;background:var(--ui-bg);display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:13px}
-  .actBtn.primary{background:var(--accent)}
-  .actBtn.alt{background:var(--accent2)}
-  /* small minimap */
-  #minimap{position:absolute;right:10px;bottom:170px;width:120px;height:120px;border-radius:10px;background:rgba(0,0,0,0.6);padding:6px;z-index:60;pointer-events:none}
-  #minimap canvas{width:100%;height:100%;display:block;border-radius:6px}
-  /* hint */
-  #hint{position:absolute;left:8px;bottom:170px;color:#fff;background:rgba(0,0,0,0.35);padding:8px;border-radius:8px;font-size:13px;z-index:60;pointer-events:none}
-  /* debug toggle for tilt */
-  #tiltToggle{margin-left:auto}
-  @media (min-width:900px){
-    #controls{height:220px}
-    #joystick{width:200px;height:200px}
-    .stick{width:72px;height:72px}
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>GTA x Roblox — Mobile</title>
+  <style>
+    :root {
+      --ui-bg: rgba(0, 0, 0, 0.45);
+      --accent: #ff7043;
+      --accent2: #29b6f6;
+      --glass: rgba(255, 255, 255, 0.06);
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #87ceeb;
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+    }
+    canvas {
+      display: block;
+    }
+    #uiTop {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      gap: 8px;
+      z-index: 60;
+    }
+    .pill {
+      background: var(--ui-bg);
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-family: Inter, system-ui, Arial, sans-serif;
+      font-size: 14px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .pill small {
+      opacity: 0.9;
+    }
+    #controls {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 8px;
+      height: 150px;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 12px;
+      align-items: flex-end;
+      z-index: 60;
+    }
+    #joystick {
+      width: 140px;
+      height: 140px;
+      display: flex;
+      align-items: center;
+    }
+    .stickOuter {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: var(--glass);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .stick {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.18);
+      transform: translate(0, 0);
+    }
+    #actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .actBtn {
+      width: 64px;
+      height: 64px;
+      border-radius: 12px;
+      background: var(--ui-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .actBtn.primary {
+      background: var(--accent);
+    }
+    .actBtn.alt {
+      background: var(--accent2);
+    }
+    #minimap {
+      position: absolute;
+      right: 10px;
+      bottom: 170px;
+      width: 120px;
+      height: 120px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 6px;
+      z-index: 60;
+    }
+    #minimap canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 6px;
+    }
+    #hint {
+      position: absolute;
+      left: 8px;
+      bottom: 170px;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 60;
+    }
+  </style>
 </head>
 <body>
+  <div id="uiTop">
+    <div class="pill">Mode: <small id="mode">OnFoot</small></div>
+    <div class="pill">Speed: <small id="speed">0</small></div>
+    <div class="pill">Money: <small id="money">0</small></div>
+  </div>
 
-<div id="uiTop">
-  <div class="pill">Mode: <small id="mode">OnFoot</small></div>
-  <div class="pill">Speed: <small id="speed">0</small></div>
-  <div class="pill">Money: <small id="money">0</small></div>
-  <div class="pill" id="tiltToggle"><label style="display:flex;gap:8px;align-items:center"><input id="useTilt" type="checkbox" /> Tilt steer</label></div>
-</div>
+  <div id="minimap"><canvas id="map" width="160" height="160"></canvas></div>
+  <div id="hint">Двигай джойстиком слева. Вправо — кнопки: Enter/Exit, Spawn, Cam, Mission.</div>
 
-<div id="minimap"><canvas id="map" width="160" height="160"></canvas></div>
-<div id="hint">Двигай джойстиком слева. Вправо — кнопки: Enter/Exit, Spawn, Cam, Mission.</div>
-
-<div id="controls">
-  <div id="joystick">
-    <div class="stickOuter" id="joyOuter">
-      <div class="stick" id="stick"></div>
+  <div id="controls">
+    <div id="joystick">
+      <div class="stickOuter" id="joyOuter">
+        <div class="stick" id="stick"></div>
+      </div>
+    </div>
+    <div id="actions">
+      <div class="actBtn primary" id="btnEnter">E</div>
+      <div class="actBtn" id="btnSpawn">Car</div>
+      <div class="actBtn alt" id="btnCam">Cam</div>
+      <div class="actBtn" id="btnMission">M</div>
     </div>
   </div>
 
-  <div id="actions">
-    <div class="actBtn primary" id="btnEnter">E</div>
-    <div class="actBtn" id="btnSpawn">Car</div>
-    <div class="actBtn alt" id="btnCam">Cam</div>
-    <div class="actBtn" id="btnMission">M</div>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.min.js"></script>
-
-<script>
-/* ===========================
-   Mobile-optimized 3D prototype
-   Single file, touch controls
-   =========================== */
-
-/* --- Config --- */
-const WORLD_SIZE = 320;
-const PLAYER_SPEED = 3.6;
-const CAR_MAX_SPEED = 36;
-const CAR_ACCEL = 6;
-const CAR_TURN = 0.045;
-const MOBILE_PIXEL_RATIO = Math.min(window.devicePixelRatio||1, 1.5);
-
-/* --- Renderer & Scene --- */
-const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x87ceeb, 0.0009);
-const renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance'});
-renderer.setPixelRatio(MOBILE_PIXEL_RATIO);
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x87ceeb);
-document.body.appendChild(renderer.domElement);
-
-/* --- Camera --- */
-const cam = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 3000);
-cam.position.set(0,8,18);
-let camMode = 'follow';
-let activeCamera = cam;
-
-/* --- Lights --- */
-scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-const sun = new THREE.DirectionalLight(0xfff7e6, 0.7); sun.position.set(120,220,80); scene.add(sun);
-
-/* --- Ground & low-poly world --- */
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE), new THREE.MeshLambertMaterial({color:0x4caf50}));
-ground.rotation.x = -Math.PI/2; ground.receiveShadow = false; scene.add(ground);
-
-const blockMat = new THREE.MeshLambertMaterial({color:0x8d6e63});
-const blocks = [];
-for(let i=-2;i<=2;i++){
-  for(let j=-2;j<=2;j++){
-    if(Math.random() < 0.55){
-      const h = 6 + Math.floor(Math.random()*16);
-      const box = new THREE.Mesh(new THREE.BoxGeometry(20, h, 20), blockMat);
-      box.position.set(i*48 + (Math.random()*8-4), h/2, j*48 + (Math.random()*8-4));
-      box.userData.block = true;
-      scene.add(box);
-      blocks.push(box);
-    }
-  }
-}
-const roadBase = new THREE.BoxGeometry(WORLD_SIZE, 0.1, 10);
-for(let r=-2;r<=2;r++){
-  const rr = new THREE.Mesh(roadBase, new THREE.MeshLambertMaterial({color:0x2c2c2c}));
-  rr.position.set(0,0.05,r*48); scene.add(rr);
-}
-for(let c=-2;c<=2;c++){
-  const rr = new THREE.Mesh(roadBase, new THREE.MeshLambertMaterial({color:0x2c2c2c}));
-  rr.rotation.y = Math.PI/2;
-  rr.position.set(c*48,0.05,0); scene.add(rr);
-}
-
-/* --- Player (simplified Roblox style) --- */
-const player = new THREE.Mesh(new THREE.BoxGeometry(2,3.6,2), new THREE.MeshLambertMaterial({color:0x29b6f6}));
-player.position.set(0,1.8,36);
-player.userData.velocity = new THREE.Vector3();
-scene.add(player);
-
-/* --- Car prototype --- */
-let car = null;
-function spawnCar(x=6,z=30){
-  if(car){ scene.remove(car.root); car = null; }
-  const root = new THREE.Object3D();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(5.6,2.2,3.4), new THREE.MeshLambertMaterial({color:0xff7043}));
-  body.position.y = 1.1; root.add(body);
-  const glass = new THREE.Mesh(new THREE.BoxGeometry(2.2,0.7,1.2), new THREE.MeshLambertMaterial({color:0x88cfff}));
-  glass.position.set(0,1.35,0.2); root.add(glass);
-  root.position.set(x,0.12,z);
-  scene.add(root);
-  car = { root, body, speed:0, steer:0, driver:null };
-  return car;
-}
-
-/* --- Touch joystick implementation --- */
-const joyOuter = document.getElementById('joyOuter');
-const stick = document.getElementById('stick');
-const joyRect = {x:0,y:0,w:0,h:0};
-let touchId = null;
-let stickPos = {x:0,y:0};
-function updateJoyRect(){ const r = joyOuter.getBoundingClientRect(); joyRect.x=r.left; joyRect.y=r.top; joyRect.w=r.width; joyRect.h=r.height; }
-updateJoyRect();
-window.addEventListener('resize', updateJoyRect);
-
-function setStick(x,y){
-  const cx = joyRect.w/2, cy = joyRect.h/2;
-  const dx = x - (joyRect.x + cx), dy = y - (joyRect.y + cy);
-  const max = joyRect.w/2 - 10;
-  let rx = dx, ry = dy;
-  const len = Math.hypot(rx,ry);
-  if(len > max){ rx = rx/len*max; ry = ry/len*max; }
-  stick.style.transform = `translate(${rx}px, ${ry}px)`;
-  stickPos.x = rx / max; stickPos.y = ry / max;
-}
-function resetStick(){ stick.style.transition='transform 0.12s ease'; setStick(joyRect.x + joyRect.w/2, joyRect.y + joyRect.h/2); setTimeout(()=>stick.style.transition='',120); stickPos.x=0; stickPos.y=0; touchId=null; }
-joyOuter.addEventListener('touchstart', e=>{
-  const t = e.changedTouches[0]; touchId = t.identifier; updateJoyRect(); setStick(t.clientX,t.clientY);
-}, {passive:true});
-joyOuter.addEventListener('touchmove', e=>{
-  for(const t of e.changedTouches) if(t.identifier === touchId){ setStick(t.clientX,t.clientY); e.preventDefault(); break; }
-}, {passive:false});
-joyOuter.addEventListener('touchend', e=>{
-  for(const t of e.changedTouches) if(t.identifier === touchId){ resetStick(); break; }
-}, {passive:true});
-
-/* --- Buttons --- */
-document.getElementById('btnSpawn').addEventListener('click', ()=>{ spawnCar(player.position.x+6, player.position.z+6); });
-document.getElementById('btnCam').addEventListener('click', ()=>{ camMode = camMode==='follow' ? 'top' : 'follow'; });
-document.getElementById('btnMission').addEventListener('click', ()=>{ spawnMarker(new THREE.Vector3((Math.random()-0.5)*200,0,(Math.random()-0.5)*200)); });
-document.getElementById('btnEnter').addEventListener('click', ()=>{
-  if(car && car.driver === null && car.root.position.distanceTo(player.position) < 6){
-    car.driver = player; player.visible = false; document.getElementById('mode').textContent='InCar';
-  } else if(car && car.driver === player){
-    car.driver = null; player.visible = true; player.position.copy(car.root.position).add(new THREE.Vector3(4,0,0)); document.getElementById('mode').textContent='OnFoot';
-  }
-});
-
-/* --- Tilt steering optional --- */
-let useTilt = false;
-const tiltInput = document.getElementById('useTilt');
-tiltInput.addEventListener('change', ()=>{ useTilt = tiltInput.checked; if(useTilt) startTilt(); else stopTilt(); });
-let tiltGamma = 0;
-function tiltHandler(e){ tiltGamma = e.gamma || 0; }
-function startTilt(){ window.addEventListener('deviceorientation', tiltHandler); }
-function stopTilt(){ window.removeEventListener('deviceorientation', tiltHandler); tiltGamma = 0; }
-
-/* --- Markers and mission handling --- */
-const markers = [];
-function spawnMarker(pos){
-  const geo = new THREE.CylinderGeometry(0.7,0.7,0.2,6);
-  const mat = new THREE.MeshBasicMaterial({color:0xffff66});
-  const m = new THREE.Mesh(geo, mat); m.position.copy(pos).add(new THREE.Vector3(0,0.12,0)); scene.add(m); markers.push(m);
-}
-
-/* --- Minimap drawing (small, cheap) --- */
-const mapCanvas = document.getElementById('map'); const mapCtx = mapCanvas.getContext('2d');
-function drawMinimap(){
-  const W=mapCanvas.width, H=mapCanvas.height;
-  mapCtx.clearRect(0,0,W,H);
-  mapCtx.fillStyle='#245a24'; mapCtx.fillRect(0,0,W,H);
-  mapCtx.fillStyle='#222';
-  for(let r=-2;r<=2;r++){ const y = H/2 + r*(H/5); mapCtx.fillRect(0,y-6,W,12); }
-  for(let c=-2;c<=2;c++){ const x = W/2 + c*(W/5); mapCtx.fillRect(x-6,0,12,H); }
-  const scale = 0.35;
-  const px = W/2 + player.position.x*scale;
-  const py = H/2 + player.position.z*scale;
-  mapCtx.fillStyle='#29b6f6'; mapCtx.beginPath(); mapCtx.arc(px,py,5,0,Math.PI*2); mapCtx.fill();
-  if(car){
-    const cx = W/2 + car.root.position.x*scale; const cy = H/2 + car.root.position.z*scale;
-    mapCtx.fillStyle='#ff7043'; mapCtx.beginPath(); mapCtx.arc(cx,cy,5,0,Math.PI*2); mapCtx.fill();
-  }
-  mapCtx.fillStyle='#ffff66';
-  markers.forEach(m=>{ const mx = W/2 + m.position.x*scale; const my = H/2 + m.position.z*scale; mapCtx.fillRect(mx-3,my-3,6,6); });
-}
-
-/* --- Collision AABB utility (cheap) --- */
-function intersects(objA, objB){
-  const a = new THREE.Box3().setFromObject(objA);
-  const b = new THREE.Box3().setFromObject(objB);
-  return a.intersectsBox(b);
-}
-function resolvePenetration(mover){
-  for(const b of blocks){
-    if(intersects(mover, b)){
-      const v = mover.userData.velocity ? mover.userData.velocity.clone() : new THREE.Vector3();
-      v.y = 0;
-      mover.position.sub(v.multiplyScalar(0.35));
-      if(mover.userData.velocity) mover.userData.velocity.multiplyScalar(0.2);
-      if(car && mover===car.root) car.speed *= 0.6;
-    }
-  }
-}
-
-/* --- UI text updates --- */
-function setSpeed(val){ document.getElementById('speed').textContent = Math.round(val); }
-function setMoney(val){ document.getElementById('money').textContent = val; }
-
-/* --- Main update loop --- */
-let money = 0;
-const clock = new THREE.Clock();
-
-function update(){
-  const dt = Math.min(0.05, clock.getDelta());
-  let inputX = stickPos.x || 0;
-  let inputY = -(stickPos.y || 0);
-
-  if(useTilt && car && car.driver === player){
-    const g = Math.max(-30, Math.min(30, tiltGamma));
-    car.steer = THREE.MathUtils.lerp(car.steer, (g/30)*0.6, 0.12);
-  }
-
-  if(car && car.driver === player){
-    if(inputY > 0.12) car.speed = Math.min(CAR_MAX_SPEED, car.speed + CAR_ACCEL * inputY * dt * 20);
-    else if(inputY < -0.12) car.speed = Math.max(-8, car.speed + CAR_ACCEL * inputY * dt * 10);
-    else car.speed *= 0.986;
-
-    if(Math.abs(inputX) > 0.12) car.steer = THREE.MathUtils.lerp(car.steer, inputX*0.7, 0.16);
-    else if(!useTilt) car.steer *= 0.88;
-
-    car.root.rotation.y += car.steer * car.speed * 0.00075 * (1 + Math.abs(car.speed)/20);
-    const forwardVec = new THREE.Vector3(Math.sin(car.root.rotation.y),0,Math.cos(car.root.rotation.y));
-    car.root.position.add(forwardVec.multiplyScalar(car.speed * 0.018 * dt * 60));
-    car.speed *= 0.999;
-    resolvePenetration(car.root);
-
-    if(camMode === 'follow'){
-      const offset = new THREE.Vector3(0,6,-10).applyAxisAngle(new THREE.Vector3(0,1,0), car.root.rotation.y);
-      cam.position.copy(car.root.position).add(offset);
-      cam.lookAt(car.root.position.clone().add(new THREE.Vector3(0,1.4,0)));
-    } else {
-      cam.position.set(car.root.position.x, 110, car.root.position.z+0.1);
-      cam.lookAt(car.root.position);
-    }
-    setSpeed(Math.abs(car.speed));
-    document.getElementById('mode').textContent = 'InCar';
-  } else {
-    const move = new THREE.Vector3(inputX, 0, inputY);
-    if(move.length() > 0.001){
-      const angle = Math.atan2(move.x, move.z);
-      player.rotation.y = THREE.MathUtils.lerpAngle(player.rotation.y, angle, 0.12);
-      const worldDir = new THREE.Vector3(0,0,1).applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
-      worldDir.multiplyScalar(PLAYER_SPEED * dt * 60 * move.length());
-      player.userData.velocity.lerp(worldDir, 0.4);
-    } else {
-      player.userData.velocity.multiplyScalar(0.85);
-    }
-    player.position.add(player.userData.velocity);
-    player.position.y = 1.8;
-    resolvePenetration(player);
-
-    if(camMode === 'follow'){
-      const back = new THREE.Vector3(0,6,-10).applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
-      cam.position.copy(player.position).add(back);
-      cam.lookAt(player.position.clone().add(new THREE.Vector3(0,1.4,0)));
-    } else {
-      cam.position.set(player.position.x, 110, player.position.z+0.1);
-      cam.lookAt(player.position);
-    }
-    setSpeed(player.userData.velocity.length()*8);
-    document.getElementById('mode').textContent = 'OnFoot';
-  }
-
-  for(let i=markers.length-1;i>=0;i--){
-    const m = markers[i];
-    if((car && car.root.position.distanceTo(m.position) < 6) || player.position.distanceTo(m.position) < 4){
-      scene.remove(m); markers.splice(i,1);
-      money += 100; setMoney(money);
-      const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.28,0.08,10), new THREE.MeshBasicMaterial({color:0xffd700}));
-      coin.position.copy((car && car.root.position.distanceTo(m.position) < 6) ? car.root.position.clone() : player.position.clone()).add(new THREE.Vector3(0,2.6,0));
-      scene.add(coin);
-      setTimeout(()=>scene.remove(coin), 1600);
-    }
-  }
-
-  player.position.x = Math.max(-WORLD_SIZE/2, Math.min(WORLD_SIZE/2, player.position.x));
-  player.position.z = Math.max(-WORLD_SIZE/2, Math.min(WORLD_SIZE/2, player.position.z));
-  if(car){
-    car.root.position.x = Math.max(-WORLD_SIZE/2, Math.min(WORLD_SIZE/2, car.root.position.x));
-    car.root.position.z = Math.max(-WORLD_SIZE/2, Math.min(WORLD_SIZE/2, car.root.position.z));
-  }
-
-  drawMinimap();
-  renderer.render(scene, cam);
-  requestAnimationFrame(update);
-}
-
-/* --- Start up --- */
-player.userData.velocity = new THREE.Vector3();
-spawnCar(8,28);
-update();
-
-/* --- Resize handling optimized --- */
-let resizeTimeout = null;
-window.addEventListener('resize', ()=>{
-  clearTimeout(resizeTimeout);
-  resizeTimeout = setTimeout(()=>{
+  <script src="https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.min.js"></script>
+  <script>
+    // Инициализация сцены
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({antialias:true});
     renderer.setSize(window.innerWidth, window.innerHeight);
-    cam.aspect = window.innerWidth/window.innerHeight; cam.updateProjectionMatrix();
-    updateJoyRect();
-  }, 120);
-});
+    document.body.appendChild(renderer.domElement);
+    scene.fog = new THREE.Fog(0x87ceeb, 50, 300);
+    camera.position.set(0, 10, 20);
 
-/* --- Prevent default gestures that interfere on mobile --- */
-['gesturestart','gesturechange','gestureend','touchcancel'].forEach(ev=>window.addEventListener(ev, e=>e.preventDefault(), {passive:false}));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+    sun.position.set(100, 200, 100);
+    scene.add(sun);
 
-</script>
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(500, 500),
+      new THREE.MeshLambertMaterial({color: 0x4caf50})
+    );
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+
+    const player = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 4, 2),
+      new THREE.MeshLambertMaterial({color: 0x2196f3})
+    );
+    player.position.y = 2;
+    scene.add(player);
+
+    // Джойстик
+    let stickX = 0, stickY = 0;
+    const stick = document.getElementById('stick');
+    const joyOuter = document.getElementById('joyOuter');
+    joyOuter.addEventListener('touchmove', e => {
+      const t = e.touches[0];
+      const rect = joyOuter.getBoundingClientRect();
+      const dx = t.clientX - (rect.left + rect.width / 2);
+      const dy = t.clientY - (rect.top + rect.height / 2);
+      const max = rect.width / 2;
+      const dist = Math.min(Math.hypot(dx, dy), max);
+      const angle = Math.atan2(dy, dx);
+      stickX = Math.cos(angle) * dist / max;
+      stickY = Math.sin(angle) * dist / max;
+      stick.style.transform = `translate(${stickX * max}px, ${stickY * max}px)`;
+    }, {passive: false});
+    joyOuter.addEventListener('touchend', () => {
+      stickX = 0; stickY = 0;
+      stick.style.transform = 'translate(0,0)';
+    });
+
+    // Кнопки
+    let money = 0;
+    const markers = [];
+    document.getElementById('btnMission').addEventListener('click', () => {
+      const marker = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.5, 0.2, 6),
+        new THREE.MeshBasicMaterial({color: 0xffff00})
+      );
+      marker.position.set((Math.random() - 0.5) * 200, 0.1, (Math.random() - 0.5) * 200);
+      scene.add(marker);
+      markers.push(marker);
+    });
+    document.getElementById('btnCam').addEventListener('click', () => {
+      camMode = camMode === 'follow' ? 'top' : 'follow';
+    });
+    document.getElementById('btnSpawn').addEventListener('click', () => {
+      alert('🚗 Машина пока не реализована — добавим позже!');
+    });
+    document.getElementById('btnEnter').addEventListener('click', () => {
+      alert('🚪 Вход/выход из машины пока не реализован — добавим позже!');
+    });
+
+    // Миникарта
+    const mapCanvas = document.getElementById('map');
+        const mapCtx = mapCanvas.getContext('2d');
+    function drawMinimap() {
+      mapCtx.clearRect(0, 0, 160, 160);
+      mapCtx.fillStyle = '#2b7a2b';
+      mapCtx.fillRect(0, 0, 160, 160);
+      const px = 80 + player.position.x * 0.4;
+      const py = 80 + player.position.z * 0.4;
+      mapCtx.fillStyle = '#2196f3';
+      mapCtx.beginPath();
+      mapCtx.arc(px, py, 5, 0, Math.PI * 2);
+      mapCtx.fill();
+      markers.forEach(m => {
+        const mx = 80 + m.position.x * 0.4;
+        const my = 80 + m.position.z * 0.4;
+        mapCtx.fillStyle = '#ffff00';
+        mapCtx.fillRect(mx - 3, my - 3, 6, 6);
+      });
+    }
+
+    // Анимация и движение
+    const clock = new THREE.Clock();
+    let camMode = 'follow';
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+
+      // Движение игрока
+      const move = new THREE.Vector3(stickX, 0, stickY);
+      if (move.length() > 0.05) {
+        move.normalize().multiplyScalar(10 * dt);
+        player.position.add(move);
+        player.rotation.y = Math.atan2(stickX, stickY);
+      }
+
+      // Камера
+      if (camMode === 'follow') {
+        const offset = new THREE.Vector3(0, 10, -15).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
+        camera.position.copy(player.position).add(offset);
+        camera.lookAt(player.position);
+      } else {
+        camera.position.set(player.position.x, 100, player.position.z + 0.1);
+        camera.lookAt(player.position);
+      }
+
+      // Миссии
+      for (let i = markers.length - 1; i >= 0; i--) {
+        if (player.position.distanceTo(markers[i].position) < 4) {
+          scene.remove(markers[i]);
+          markers.splice(i, 1);
+          money += 100;
+          document.getElementById('money').textContent = money;
+          if (navigator.vibrate) navigator.vibrate(100);
+          const audio = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
+          audio.play();
+        }
+      }
+
+      document.getElementById('speed').textContent = Math.round(move.length() * 100);
+      drawMinimap();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
 </body>
 </html>
+
