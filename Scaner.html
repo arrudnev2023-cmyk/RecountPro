@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
-<title>Monkey Quest — симпатичная обезьяна</title>
+<title>Monkey Quest — Premium</title>
 <style>
   :root{--bg1:#f7fbff;--bg2:#eaf3fb;--panel:#ffffff;--accent:#ffd77a;--dark:#07323a}
   html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg1),var(--bg2));font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;-webkit-text-size-adjust:100%}
@@ -21,19 +21,21 @@
   .jump-circle{position:fixed;right:12px;bottom:12px;width:110px;height:110px;border-radius:999px;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;pointer-events:auto;border:1px solid rgba(7,34,51,0.06);z-index:35}
   .jump-arrow{width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:22px solid var(--dark);transform:translateY(-3px)}
   #restartSmall{position:fixed;left:12px;top:12px;pointer-events:auto;width:44px;height:44px;border-radius:8px;background:linear-gradient(180deg,var(--panel),#f7fafc);display:flex;align-items:center;justify-content:center;border:1px solid rgba(7,34,51,0.06);box-shadow:0 4px 10px rgba(13,40,58,0.04);z-index:35}
-  #hint{position:fixed;left:12px;top:64px;background:rgba(255,255,255,0.95);padding:8px;border-radius:8px;font-size:13px;border:1px solid rgba(7,34,51,0.04);z-index:35;pointer-events:auto}
+  #hint{position:fixed;left:12px;top:64px;background:rgba(255,255,255,0.95);padding:8px;border-radius:8px;font-size:13px;border:1px solid rgba(7,34,51,0.04);z-index:35;pointer-events:auto;display:flex;gap:8px;align-items:center}
+  #hint small{font-size:11px;color:#5b6b75}
   footer{padding:8px 12px;font-size:12px;color:#3b5566;background:linear-gradient(180deg,transparent,#f1f5f9);z-index:20}
   #errorBox{position:absolute;left:12px;right:12px;top:50%;transform:translateY(-50%);background:#fff0f0;color:#6b0b0b;padding:12px;border-radius:8px;border:1px solid #ebb;z-index:50;display:none}
+  .toggle{display:inline-flex;align-items:center;gap:6px;font-size:13px;background:transparent;border-radius:6px;padding:6px 8px;border:1px solid rgba(7,34,51,0.04);cursor:pointer}
   @media(min-width:760px){ .joy{width:140px;height:140px}.thumb{width:64px;height:64px}.jump-circle{width:140px;height:140px} }
 </style>
 </head>
 <body>
 <div id="wrap">
   <header>
-    <h1>Monkey Quest</h1>
+    <h1>Monkey Quest — Premium</h1>
     <div id="hud">
       <div class="pill">Очки: <span id="score">0</span></div>
-      <div class="pill">Время: <span id="time">60</span>s</div>
+      <div class="pill">Время: <span id="time">90</span>s</div>
       <div class="pill">Уровень: <span id="level">1</span></div>
     </div>
   </header>
@@ -55,7 +57,10 @@
         </svg>
       </div>
 
-      <div id="hint">Джойстик слева — ходьба, правая часть — вращение (yaw + pitch). Можно одновременно ходить и смотреть вверх/вниз.</div>
+      <div id="hint">
+        <div>Джойстик слева — ходьба, правая часть — вращение, pinch — zoom</div>
+        <button id="revToggle" class="toggle" title="Реверсивное управление джойстика">Джойстик: <strong id="revState">Реверс</strong></button>
+      </div>
 
       <div class="jump-circle" id="jumpBtn" aria-label="Прыжок" title="Прыжок">
         <div class="jump-arrow" aria-hidden="true"></div>
@@ -65,7 +70,7 @@
     <div id="errorBox" role="alert"></div>
   </main>
 
-  <footer>Открой в мобильном Safari/Chrome. Левая рука — джойстик, правая — поворот.</footer>
+  <footer>Открой в мобильном Safari/Chrome. Настройки: реверс джойстика включён по умолчанию.</footer>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
@@ -81,35 +86,49 @@
   const jumpBtn = document.getElementById('jumpBtn');
   const restartSmall = document.getElementById('restartSmall');
   const errorBox = document.getElementById('errorBox');
+  const revToggle = document.getElementById('revToggle');
+  const revState = document.getElementById('revState');
 
-  function showError(msg){
-    errorBox.textContent = msg; errorBox.style.display = 'block';
-  }
+  function showError(msg){ errorBox.textContent = msg; errorBox.style.display = 'block'; }
   function webglAvailable(){ try { const c=document.createElement('canvas'); return !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl'))); } catch(e){ return false; } }
   if(!webglAvailable()){ showError('WebGL не поддерживается. Откройте в мобильном Safari/Chrome.'); return; }
 
   // --- three.js init ---
-  const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
   renderer.setClearColor(0xeaf3fb);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
-  camera.position.set(0, 8, 12);
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 250);
+  camera.position.set(0, 6, 10);
 
-  // lights
-  const key = new THREE.DirectionalLight(0xffffff, 0.9);
-  key.position.set(5, 12, 6); key.castShadow = true; key.shadow.mapSize.set(1024,1024); scene.add(key);
-  const fill = new THREE.HemisphereLight(0xddeeff, 0x404060, 0.55); scene.add(fill);
-  const rim = new THREE.DirectionalLight(0xfff6e6, 0.18); rim.position.set(-6,6,-4); scene.add(rim);
+  const key = new THREE.DirectionalLight(0xffffff, 0.95);
+  key.position.set(6, 16, 8); key.castShadow = true; key.shadow.mapSize.set(2048,2048);
+  key.shadow.camera.near = 0.5; key.shadow.camera.far = 60; scene.add(key);
+  const fill = new THREE.HemisphereLight(0xdfefff, 0x404060, 0.6); scene.add(fill);
+  const rim = new THREE.DirectionalLight(0xfff6e6, 0.15); rim.position.set(-6,6,-4); scene.add(rim);
 
-  // ground + grid
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(40,40), new THREE.MeshStandardMaterial({color:0xe6eef4, metalness:0, roughness:0.95}));
+  // --- ground texture (canvas) ---
+  function createGroundMaterial(){
+    const size = 1024;
+    const c = document.createElement('canvas'); c.width = c.height = size;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#eaf3fb'; ctx.fillRect(0,0,size,size);
+    for(let i=0;i<4000;i++){ const x=Math.random()*size, y=Math.random()*size, r=Math.random()*1.2; ctx.fillStyle = 'rgba(90,110,120,'+(Math.random()*0.03)+')'; ctx.fillRect(x,y,r,r); }
+    ctx.strokeStyle = 'rgba(120,140,150,0.04)'; ctx.lineWidth = 2;
+    for(let i=0;i<size;i+=128){ ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,size); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(size,i); ctx.stroke(); }
+    const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(1,1);
+    return new THREE.MeshStandardMaterial({map:tex, color:0xffffff, roughness:0.92, metalness:0.02});
+  }
+  const groundMat = createGroundMaterial();
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(60,60), groundMat);
   ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
-  const grid = new THREE.GridHelper(40,20,0xcfdde6,0xddeaf0); grid.material.opacity = 0.45; grid.material.transparent = true; scene.add(grid);
 
-  // soft shadow texture under monkey
+  // decorations group
+  const decoGroup = new THREE.Group(); scene.add(decoGroup);
+
+  // shadow blob
   function makeShadowTexture(){
     const size = 256;
     const ctxCanvas = document.createElement('canvas'); ctxCanvas.width = ctxCanvas.height = size;
@@ -120,55 +139,99 @@
     const tex = new THREE.CanvasTexture(ctxCanvas); tex.needsUpdate = true; return tex;
   }
   const shadowTex = makeShadowTexture();
-  const shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.6,2.6), new THREE.MeshBasicMaterial({map:shadowTex, transparent:true, opacity:1}));
+  const shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(3.2,3.2), new THREE.MeshBasicMaterial({map:shadowTex, transparent:true, opacity:1}));
   shadowMesh.rotation.x = -Math.PI/2; shadowMesh.position.y = 0.021; scene.add(shadowMesh);
 
-  // --- player / monkey model (консолидированный и симпатичный) ---
-  const monkey = new THREE.Group();
+  // --- environment: boxes, logs, rocks ---
+  const boxes = [], logs = [], rocks = [];
+  function spawnEnvironment(){
+    boxes.forEach(b=>scene.remove(b.mesh)); logs.forEach(l=>scene.remove(l.mesh)); rocks.forEach(r=>scene.remove(r.mesh));
+    boxes.length=0; logs.length=0; rocks.length=0;
+    for(let i=0;i<6;i++){
+      const h = 0.8 + Math.random()*1.2;
+      const geo = new THREE.BoxGeometry(2.4, h, 2.4);
+      const mat = new THREE.MeshStandardMaterial({color: new THREE.Color().setHSL(0.56 + Math.random()*0.02,0.16,0.84)});
+      const mesh = new THREE.Mesh(geo, mat); mesh.castShadow = true; mesh.receiveShadow = true;
+      mesh.position.set((Math.random()-0.5)*40, h/2, (Math.random()-0.5)*40);
+      scene.add(mesh); boxes.push({mesh, h});
+    }
+    for(let i=0;i<4;i++){
+      const len = 2.6 + Math.random()*3.2;
+      const geo = new THREE.CylinderGeometry(0.28,0.28,len,10);
+      const mat = new THREE.MeshStandardMaterial({color:0x6b4628, roughness:0.8});
+      const mesh = new THREE.Mesh(geo, mat); mesh.castShadow=true; mesh.receiveShadow=true;
+      mesh.rotation.z = Math.random()*Math.PI*0.6 - 0.3;
+      mesh.rotation.y = Math.random()*Math.PI;
+      mesh.position.set((Math.random()-0.5)*40, 0.28, (Math.random()-0.5)*40);
+      scene.add(mesh); logs.push({mesh, len});
+    }
+    for(let i=0;i<8;i++){
+      const s = 0.3 + Math.random()*0.9;
+      const geo = new THREE.IcosahedronGeometry(s, 0);
+      const mat = new THREE.MeshStandardMaterial({color:0x9aa6a8, roughness:0.95});
+      const mesh = new THREE.Mesh(geo, mat); mesh.castShadow=true; mesh.receiveShadow=true;
+      mesh.position.set((Math.random()-0.5)*40, s, (Math.random()-0.5)*40);
+      mesh.rotation.set(Math.random()*2, Math.random()*2, Math.random()*2);
+      scene.add(mesh); rocks.push(mesh);
+    }
+    for(let i=0;i<40;i++){
+      const g = new THREE.PlaneGeometry(0.28,0.28);
+      const c = document.createElement('canvas'); c.width=c.height=64; const ctx=c.getContext('2d');
+      ctx.fillStyle='#8fcf6e'; ctx.beginPath(); ctx.ellipse(32,32,18,10,0,0,Math.PI*2); ctx.fill();
+      const tex = new THREE.CanvasTexture(c);
+      const mat = new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, depthWrite:false});
+      const mesh = new THREE.Mesh(g, mat);
+      const x=(Math.random()-0.5)*56, z=(Math.random()-0.5)*56;
+      mesh.position.set(x, 0.02, z);
+      mesh.rotation.y = Math.random()*Math.PI;
+      mesh.rotateX(-Math.PI/2);
+      scene.add(mesh);
+    }
+  }
+  spawnEnvironment();
 
+  // --- monkey improved model ---
+  const monkey = new THREE.Group();
   const bodyMat = new THREE.MeshStandardMaterial({color:0x9c6b3a, metalness:0.06, roughness:0.48, clearcoat:0.12});
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.78,28,20), bodyMat); body.castShadow=true; body.position.set(0,0.75,0); monkey.add(body);
-
-  const headMat = new THREE.MeshStandardMaterial({color:0xab7a4a, metalness:0.02, roughness:0.5, clearcoat:0.08});
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.58,32,24), headMat); head.position.set(0,1.47,0.06); head.castShadow=true; monkey.add(head);
-
+  const headMat = new THREE.MeshStandardMaterial({color:0xab7a4a, metalness:0.02, roughness:0.45, clearcoat:0.06});
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.58,32,24), headMat); head.position.set(0,1.48,0.06); head.castShadow=true; monkey.add(head);
   const faceMat = new THREE.MeshStandardMaterial({color:0xfff1e6, metalness:0, roughness:0.6});
-  const face = new THREE.Mesh(new THREE.SphereGeometry(0.34,24,16), faceMat); face.position.set(0,1.36,0.34); face.scale.set(1,0.9,1); monkey.add(face);
-
+  const face = new THREE.Mesh(new THREE.SphereGeometry(0.34,24,16), faceMat); face.position.set(0,1.36,0.34); face.scale.set(1,0.92,1); monkey.add(face);
   const earOuterMat = new THREE.MeshStandardMaterial({color:0xab7a4a});
-  const earInnerMat = new THREE.MeshStandardMaterial({color:0xffd6c2, emissive:0xffc6b0, emissiveIntensity:0.1});
-  const earGeo = new THREE.CylinderGeometry(0.12,0.12,0.06,16);
+  const earInnerMat = new THREE.MeshStandardMaterial({color:0xffd6c2, emissive:0xffc6b0, emissiveIntensity:0.12});
+  const earGeo = new THREE.CylinderGeometry(0.12,0.12,0.08,16);
   const earL = new THREE.Mesh(earGeo, earOuterMat); earL.rotation.z = Math.PI/2; earL.position.set(-0.46,1.44,0);
   const earR = earL.clone(); earR.position.x = 0.46;
   const innerL = new THREE.Mesh(new THREE.SphereGeometry(0.07,12,8), earInnerMat); innerL.position.set(-0.46,1.44,0.02);
   const innerR = innerL.clone(); innerR.position.x = 0.46;
   monkey.add(earL, earR, innerL, innerR);
-
   const cheekMat = new THREE.MeshStandardMaterial({color:0xffc8b8, emissive:0xffb8a8, emissiveIntensity:0.08});
   const cheekL = new THREE.Mesh(new THREE.SphereGeometry(0.07,12,10), cheekMat); cheekL.position.set(-0.17,1.28,0.46);
-  const cheekR = cheekL.clone(); cheekR.position.x = 0.17;
-  monkey.add(cheekL, cheekR);
-
+  const cheekR = cheekL.clone(); cheekR.position.x = 0.17; monkey.add(cheekL, cheekR);
   const nose = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.06,0.06), new THREE.MeshStandardMaterial({color:0x7f4c2a}));
   nose.position.set(0,1.32,0.52); nose.rotation.x = 0.06; monkey.add(nose);
   const mouthMat = new THREE.MeshStandardMaterial({color:0x5f3b2a, roughness:0.8});
   const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.24,0.06,0.02), mouthMat); mouth.position.set(0,1.22,0.52); monkey.add(mouth);
 
-  const eyeWhiteMat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.4});
-  const pupilMat = new THREE.MeshStandardMaterial({color:0x071018, metalness:0.2, roughness:0.3});
-  const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.14,20,16), eyeWhiteMat); eyeL.position.set(-0.15,1.42,0.42);
-  const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.14,20,16), eyeWhiteMat); eyeR.position.set(0.15,1.42,0.42);
+  const eyeWhiteMat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.45});
+  const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.15,20,16), eyeWhiteMat); eyeL.position.set(-0.16,1.42,0.41);
+  const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.15,20,16), eyeWhiteMat); eyeR.position.set(0.16,1.42,0.41);
   eyeL.castShadow = eyeR.castShadow = true;
-  const pupilL = new THREE.Mesh(new THREE.SphereGeometry(0.06,16,12), pupilMat); pupilL.position.set(-0.15,1.42,0.52);
-  const pupilR = pupilL.clone(); pupilR.position.x = 0.15;
+  const pupilMat = new THREE.MeshStandardMaterial({color:0x071018, metalness:0.25, roughness:0.2});
+  const pupilL = new THREE.Mesh(new THREE.SphereGeometry(0.065,16,12), pupilMat); pupilL.position.set(-0.16,1.42,0.52);
+  const pupilR = pupilL.clone(); pupilR.position.x = 0.16;
   monkey.add(eyeL, eyeR, pupilL, pupilR);
 
+  const lidMat = new THREE.MeshStandardMaterial({color:0xab7a4a, roughness:0.8});
+  const lidL = new THREE.Mesh(new THREE.SphereGeometry(0.155,12,10), lidMat); lidL.scale.set(1,0.6,1); lidL.position.set(-0.16,1.46,0.38); lidL.rotation.x = 0.12;
+  const lidR = lidL.clone(); lidR.position.x = 0.16; monkey.add(lidL, lidR);
+
   const limbMat = new THREE.MeshStandardMaterial({color:0x9c6b3a});
-  const armL = new THREE.Mesh(new THREE.CapsuleGeometry(0.12,0.7,4,8), limbMat); armL.position.set(-0.95,0.9,0); armL.rotation.z = 0.25; armL.castShadow=true;
-  const armR = armL.clone(); armR.position.x = 0.95; armR.rotation.z = -0.25;
-  const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.12,0.6,4,8), limbMat); legL.position.set(-0.36,0.05,0); legL.rotation.z = 0.05; legL.castShadow=true;
-  const legR = legL.clone(); legR.position.x = 0.36;
-  monkey.add(armL, armR, legL, legR);
+  const armL = new THREE.Mesh(new THREE.CapsuleGeometry(0.16,0.64,6,10), limbMat); armL.position.set(-0.92,0.9,0); armL.rotation.z = 0.32; armL.castShadow=true;
+  const armR = armL.clone(); armR.position.x = 0.92; armR.rotation.z = -0.32;
+  const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.14,0.6,6,10), limbMat); legL.position.set(-0.36,0.05,0); legL.rotation.z = 0.05; legL.castShadow=true;
+  const legR = legL.clone(); legR.position.x = 0.36; monkey.add(armL, armR, legL, legR);
 
   const tailMat = new THREE.MeshStandardMaterial({color:0x9c6b3a});
   const tail = new THREE.Mesh(new THREE.TorusGeometry(0.5,0.07,10,24,Math.PI*1.1), tailMat); tail.rotation.x = Math.PI/2; tail.position.set(0,0.5,-0.7); tail.castShadow=true;
@@ -178,14 +241,7 @@
   monkey.castShadow = true;
   scene.add(monkey);
 
-  // --- boxes and bananas ---
-  const boxes = [];
-  for(let i=0;i<5;i++){
-    const box = new THREE.Mesh(new THREE.BoxGeometry(2.4,1.4,2.4), new THREE.MeshStandardMaterial({color:0xc6d7df}));
-    box.castShadow=true; box.receiveShadow=true; box.position.set((Math.random()-0.5)*28, 0.7, (Math.random()-0.5)*28);
-    scene.add(box); boxes.push(box);
-  }
-
+  // --- bananas and particles (cached) ---
   const _cache = { bananaMat: null, particleTex: null };
   function getBananaMaterial(){
     if(_cache.bananaMat) return _cache.bananaMat;
@@ -193,18 +249,14 @@
     const c = document.createElement('canvas'); c.width = c.height = size;
     const ctx = c.getContext('2d');
     const g = ctx.createLinearGradient(0,0,size,size);
-    g.addColorStop(0, '#fff3c6'); g.addColorStop(0.5, '#ffd85a'); g.addColorStop(1, '#ffdf7a');
+    g.addColorStop(0, '#fff3c6'); g.addColorStop(0.55, '#ffd85a'); g.addColorStop(1, '#ffdf7a');
     ctx.fillStyle = g; ctx.fillRect(0,0,size,size);
     ctx.fillStyle = 'rgba(85,42,12,0.14)';
     for(let i=0;i<40;i++){ ctx.beginPath(); ctx.arc(Math.random()*size, Math.random()*size, Math.random()*2.2, 0, Math.PI*2); ctx.fill(); }
-    const tg = ctx.createLinearGradient(size*0.6,0,size, size);
-    tg.addColorStop(0, 'rgba(0,0,0,0)'); tg.addColorStop(1, 'rgba(90,40,8,0.28)');
-    ctx.fillStyle = tg; ctx.fillRect(size*0.6,0,size*0.4,size);
     const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    _cache.bananaMat = new THREE.MeshStandardMaterial({map:tex, color:0xffffff, metalness:0.05, roughness:0.45, emissive:0x0b0b00, emissiveIntensity:0.02});
+    _cache.bananaMat = new THREE.MeshStandardMaterial({map:tex, color:0xffffff, metalness:0.05, roughness:0.45});
     return _cache.bananaMat;
   }
-
   function makeBananaGeometry(length = 0.9, thickness = 0.18, seg = 14){
     const pts = [];
     for(let i=0;i<=seg;i++){
@@ -218,7 +270,6 @@
     lathe.rotateZ(Math.PI/2);
     return lathe;
   }
-
   function createBanana(){
     const geo = makeBananaGeometry(0.9, 0.18, 14);
     const mat = getBananaMaterial();
@@ -230,17 +281,17 @@
     mesh.position.set(0,0,0);
     return {pivot, mesh, cap};
   }
-
   let bananas = [];
-  function spawnBananas(n=10){
+  function spawnBananas(n=12){
     bananas.forEach(b=>scene.remove(b.pivot)); bananas = [];
     for(let i=0;i<n;i++){
       const b = createBanana();
       let x,z,ok;
       do{
-        x = (Math.random()-0.5)*30; z = (Math.random()-0.5)*30;
+        x = (Math.random()-0.5)*48; z = (Math.random()-0.5)*48;
         ok = Math.hypot(x - monkey.position.x, z - monkey.position.z) > 3;
-        boxes.forEach(bx=>{ if(ok){ const dx = x - bx.position.x, dz = z - bx.position.z; if(Math.abs(dx) < 2.7 && Math.abs(dz) < 2.7) ok = false; }});
+        boxes.forEach(bx=>{ if(ok){ const dx = x - bx.mesh.position.x, dz = z - bx.mesh.position.z; if(Math.abs(dx) < 3 && Math.abs(dz) < 3) ok = false; }});
+        logs.forEach(l=>{ if(ok){ const dx = x - l.mesh.position.x, dz = z - l.mesh.position.z; if(Math.abs(dx) < 2 && Math.abs(dz) < 2) ok = false; }});
       } while(!ok);
       b.pivot.position.set(x, 0.12 + Math.random()*0.28, z);
       b.pivot.rotation.y = Math.random()*Math.PI*2;
@@ -251,10 +302,8 @@
       bananas.push(b);
     }
   }
-  spawnBananas(10);
+  spawnBananas();
 
-  // particles pool
-  const particles = [];
   function getParticleTexture(color='#ffd75a'){
     if(_cache.particleTex) return _cache.particleTex;
     const canvas = document.createElement('canvas'); canvas.width = canvas.height = 64;
@@ -263,10 +312,11 @@
     _cache.particleTex = new THREE.CanvasTexture(canvas);
     return _cache.particleTex;
   }
+  const particles = [];
   function spawnCollectParticles(posWorld, color='#ffd75a', count=12){
+    const tex = getParticleTexture(color);
     for(let i=0;i<count;i++){
-      const size = 0.06 + Math.random()*0.08;
-      const tex = getParticleTexture(color);
+      const size = 0.04 + Math.random()*0.08;
       const mat = new THREE.SpriteMaterial({map: tex, transparent:true, depthWrite:false});
       const sp = new THREE.Sprite(mat);
       sp.scale.set(size, size, size);
@@ -276,71 +326,77 @@
     }
   }
 
-  // --- unified game state (единственный объект) ---
-  const playerState = {
-    vel: new THREE.Vector3(0, 0, 0),
+  // --- unified game state ---
+  const game = {
+    vel: new THREE.Vector3(0,0,0),
     onGround: true,
-    move: new THREE.Vector2(0, 0),
-    jumpImpulse: 5.6,
-    gravity: -18,
-    maxSpeed: 5,
+    move: new THREE.Vector2(0,0),
+    jumpImpulse: 6.6,
+    gravity: -20,
+    maxSpeed: 5.2,
     score: 0,
     level: 1,
-    totalTime: 60,
-    timeLeft: 60,
-    running: true
+    totalTime: 90,
+    timeLeft: 90,
+    running: true,
+    joystickReversed: true,
+    cameraDistance: 4.8,
+    cameraDistanceTarget: 4.8
   };
+  scoreEl.textContent = game.score; timeEl.textContent = Math.ceil(game.timeLeft); levelEl.textContent = game.level;
+  revState.textContent = game.joystickReversed ? 'Реверс' : 'Обычный';
+  revToggle.addEventListener('click', ()=>{ game.joystickReversed = !game.joystickReversed; revState.textContent = game.joystickReversed ? 'Реверс' : 'Обычный'; });
 
-  let playerYaw = 0, playerPitch = 0;
-  const FLOOR_Y = 0.02;
-
-  // HUD init
-  playerState.score = 0; playerState.level = 1; playerState.timeLeft = playerState.totalTime;
-  scoreEl.textContent = playerState.score; timeEl.textContent = Math.ceil(playerState.timeLeft); levelEl.textContent = playerState.level;
-
-  // --- input: joystick (left) + rotate (right) multitouch ---
+  // --- input (joystick left / rotate right / pinch zoom) ---
   let joyTouchId = null, rotTouchId = null;
-  let joyCenter = {x:0,y:0}, joyRadius = 42;
+  let joyCenter = {x:0,y:0}, joyRadius = 46;
   let lastRotX = 0, lastRotY = 0;
-  const PITCH_MIN = -0.8, PITCH_MAX = 0.6, SENS_X = 0.0065, SENS_Y = 0.006;
+  const PITCH_MIN = -0.9, PITCH_MAX = 0.7, SENS_X = 0.006, SENS_Y = 0.0065;
+  let playerYaw = 0, playerPitch = 0;
 
   function updateJoy(cx, cy){
     const dx = cx - joyCenter.x, dy = cy - joyCenter.y;
     const dist = Math.hypot(dx, dy);
     const nx = dx / (dist || 1), ny = dy / (dist || 1);
     const mag = Math.min(dist / joyRadius, 1);
-    const forwardY = -ny; // вверх джойстика — движение вперёд
-    playerState.move.x = (Math.abs(nx) < 0.12) ? 0 : nx * mag;
-    playerState.move.y = (Math.abs(forwardY) < 0.12) ? 0 : forwardY * mag;
-    thumb.style.transform = `translate(${playerState.move.x * (joyRadius-18)}px, ${-playerState.move.y * (joyRadius-18)}px)`;
+    const forward = game.joystickReversed ? ny : -ny;
+    game.move.x = (Math.abs(nx) < 0.12) ? 0 : nx * mag;
+    game.move.y = (Math.abs(forward) < 0.12) ? 0 : forward * mag;
+    thumb.style.transform = `translate(${game.move.x * (joyRadius-18)}px, ${-game.move.y * (joyRadius-18)}px)`;
   }
-  function endJoy(){ playerState.move.set(0,0); thumb.style.transform = 'translate(0,0)'; joyTouchId = null; }
+  function endJoy(){ game.move.set(0,0); thumb.style.transform = 'translate(0,0)'; joyTouchId = null; }
 
   function findTouchById(touches, id){ for(let i=0;i<touches.length;i++) if(touches[i].identifier === id) return touches[i]; return null; }
+  function getTouchDist(t1,t2){ const dx=t1.clientX-t2.clientX, dy=t1.clientY-t2.clientY; return Math.hypot(dx,dy); }
 
+  let pinchStartDist = 0, pinchStartCam = game.cameraDistance;
   function onTouchStart(e){
+    if(e.touches.length === 2){ pinchStartDist = getTouchDist(e.touches[0], e.touches[1]); pinchStartCam = game.cameraDistanceTarget; }
     for(const t of e.changedTouches){
-      const x = t.clientX, y = t.clientY, W = window.innerWidth;
+      const x = t.clientX, W = window.innerWidth;
       const leftZone = x < W * 0.45, rightZone = x > W * 0.55;
       const rect = joy.getBoundingClientRect();
-      const inJoyVisual = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-      if((leftZone || inJoyVisual) && joyTouchId === null){
+      const inJoyVisual = x >= rect.left && x <= rect.right && t.clientY >= rect.top && t.clientY <= rect.bottom;
+      if((leftZone || inJoyVisual) && joyTouchId === null && e.touches.length <= 2){
         joyTouchId = t.identifier;
         const r = joy.getBoundingClientRect();
         joyCenter = {x: r.left + r.width/2, y: r.top + r.height/2};
         joyRadius = Math.min(r.width, r.height)/2 - 6;
         updateJoy(t.clientX, t.clientY);
         e.preventDefault();
-      } else if(rightZone && rotTouchId === null){
-        rotTouchId = t.identifier; lastRotX = t.clientX; lastRotY = t.clientY;
-        e.preventDefault();
+      } else if(rightZone && rotTouchId === null && e.touches.length <= 2){
+        rotTouchId = t.identifier; lastRotX = t.clientX; lastRotY = t.clientY; e.preventDefault();
       }
     }
   }
   function onTouchMove(e){
+    if(e.touches.length === 2){
+      const d = getTouchDist(e.touches[0], e.touches[1]);
+      const scale = pinchStartDist ? d / pinchStartDist : 1;
+      game.cameraDistanceTarget = THREE.MathUtils.clamp(pinchStartCam / scale, 2.8, 12);
+    }
     if(joyTouchId !== null){
-      const jt = findTouchById(e.touches, joyTouchId);
-      if(jt) updateJoy(jt.clientX, jt.clientY);
+      const jt = findTouchById(e.touches, joyTouchId); if(jt) updateJoy(jt.clientX, jt.clientY);
     }
     if(rotTouchId !== null){
       const rt = findTouchById(e.touches, rotTouchId);
@@ -354,118 +410,92 @@
     e.preventDefault();
   }
   function onTouchEnd(e){
+    if(e.touches.length < 2) pinchStartDist = 0;
     for(const t of e.changedTouches){
       if(t.identifier === joyTouchId) endJoy();
       if(t.identifier === rotTouchId){ rotTouchId = null; }
     }
   }
-
   window.addEventListener('touchstart', onTouchStart, {passive:false});
   window.addEventListener('touchmove', onTouchMove, {passive:false});
   window.addEventListener('touchend', onTouchEnd, {passive:false});
   window.addEventListener('touchcancel', onTouchEnd, {passive:false});
 
-  // fallback mouse/pointer for desktop testing
+  window.addEventListener('wheel', (e)=>{ const factor = Math.sign(e.deltaY) > 0 ? 1.06 : 0.94; game.cameraDistanceTarget = THREE.MathUtils.clamp(game.cameraDistanceTarget * factor, 2.8, 12); }, {passive:true});
+
   let pointerDown = false, pointerMode = null;
   window.addEventListener('pointerdown', (e)=>{
     pointerDown = true;
     if(e.clientX < window.innerWidth*0.45){
       pointerMode = 'joy';
-      const r = joy.getBoundingClientRect();
-      joyCenter = {x: r.left + r.width/2, y: r.top + r.height/2};
-      joyRadius = Math.min(r.width, r.height)/2 - 6;
+      const r = joy.getBoundingClientRect(); joyCenter = {x:r.left+r.width/2, y:r.top+r.height/2}; joyRadius = Math.min(r.width,r.height)/2 - 6;
       updateJoy(e.clientX, e.clientY);
     } else {
-      pointerMode = 'rotate';
-      lastRotX = e.clientX; lastRotY = e.clientY;
+      pointerMode = 'rotate'; lastRotX = e.clientX; lastRotY = e.clientY;
     }
   }, {passive:true});
-  window.addEventListener('pointermove', (e)=>{
-    if(!pointerDown) return;
-    if(pointerMode === 'joy') updateJoy(e.clientX, e.clientY);
-    if(pointerMode === 'rotate'){
-      const dx = e.clientX - lastRotX, dy = e.clientY - lastRotY;
-      lastRotX = e.clientX; lastRotY = e.clientY;
-      playerYaw -= dx * SENS_X;
-      playerPitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, playerPitch - dy * SENS_Y));
-    }
-  }, {passive:true});
-  window.addEventListener('pointerup', ()=>{ pointerDown = false; pointerMode = null; endJoy(); }, {passive:true});
+  window.addEventListener('pointermove', (e)=>{ if(!pointerDown) return; if(pointerMode==='joy') updateJoy(e.clientX,e.clientY); if(pointerMode==='rotate'){ const dx=e.clientX-lastRotX, dy=e.clientY-lastRotY; lastRotX=e.clientX; lastRotY=e.clientY; playerYaw -= dx*SENS_X; playerPitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, playerPitch - dy*SENS_Y)); } }, {passive:true});
+  window.addEventListener('pointerup', ()=>{ pointerDown=false; pointerMode=null; endJoy(); }, {passive:true});
 
-  // jump & restart
-  jumpBtn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); if(playerState.onGround){ playerState.vel.y = playerState.jumpImpulse; playerState.onGround = false; } }, {passive:false});
+  jumpBtn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); if(game.onGround){ game.vel.y = game.jumpImpulse; game.onGround = false; } }, {passive:false});
   restartSmall.addEventListener('pointerdown', (e)=>{ e.preventDefault(); resetGame(); }, {passive:false});
 
-  // look target for pupils
-  let lookTarget = new THREE.Vector3();
-  function updateLookTargetFromTouch(x, y){
-    const rect = renderer.domElement.getBoundingClientRect();
-    const nx = (x - rect.left) / rect.width * 2 - 1;
-    const ny = -((y - rect.top) / rect.height) * 2 + 1;
-    const v = new THREE.Vector3(nx, ny, 0.5).unproject(camera);
-    lookTarget.copy(v);
-    lastPointerTime = performance.now();
-  }
-  function updateLookTargetDefault(){
-    const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
-    lookTarget.copy(camera.position).add(dir.multiplyScalar(8));
-  }
-  let lastPointerTime = 0;
+  // pupils look target
+  let lookTarget = new THREE.Vector3(), lastPointerTime = 0;
+  function updateLookTargetFromTouch(x,y){ const rect = renderer.domElement.getBoundingClientRect(); const nx = (x - rect.left) / rect.width * 2 - 1; const ny = -((y - rect.top) / rect.height) * 2 + 1; const v = new THREE.Vector3(nx, ny, 0.5).unproject(camera); lookTarget.copy(v); lastPointerTime = performance.now(); }
+  function updateLookTargetDefault(){ const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); lookTarget.copy(camera.position).add(dir.multiplyScalar(8)); }
   window.addEventListener('mousemove', (e)=>{ updateLookTargetFromTouch(e.clientX, e.clientY); }, {passive:true});
-  window.addEventListener('touchstart', (e)=>{ const t = e.touches[0]; if(t) updateLookTargetFromTouch(t.clientX, t.clientY); }, {passive:true});
-  window.addEventListener('touchmove', (e)=>{ const t = e.touches[0]; if(t) updateLookTargetFromTouch(t.clientX, t.clientY); }, {passive:true});
+  window.addEventListener('touchstart', (e)=>{ const t=e.touches[0]; if(t) updateLookTargetFromTouch(t.clientX,t.clientY); }, {passive:true});
+  window.addEventListener('touchmove', (e)=>{ const t=e.touches[0]; if(t) updateLookTargetFromTouch(t.clientX,t.clientY); }, {passive:true});
 
-  // pupil update
   function updatePupils(dt){
     const pLworld = new THREE.Vector3().setFromMatrixPosition(pupilL.matrixWorld);
     const pRworld = new THREE.Vector3().setFromMatrixPosition(pupilR.matrixWorld);
     const dirL = lookTarget.clone().sub(pLworld).normalize();
     const dirR = lookTarget.clone().sub(pRworld).normalize();
-    const pupilOffsetMax = 0.045;
-    const desiredL = new THREE.Vector3(-0.15 + dirL.x * pupilOffsetMax, 1.42 + dirL.y * pupilOffsetMax, 0.52 + 0.03);
-    const desiredR = new THREE.Vector3(0.15 + dirR.x * pupilOffsetMax, 1.42 + dirR.y * pupilOffsetMax, 0.52 + 0.03);
+    const pupilOffsetMax = 0.05;
+    const desiredL = new THREE.Vector3(-0.16 + dirL.x * pupilOffsetMax, 1.42 + dirL.y * pupilOffsetMax, 0.52 + 0.03);
+    const desiredR = new THREE.Vector3(0.16 + dirR.x * pupilOffsetMax, 1.42 + dirR.y * pupilOffsetMax, 0.52 + 0.03);
     pupilL.position.lerp(desiredL, Math.min(1, dt*8));
     pupilR.position.lerp(desiredR, Math.min(1, dt*8));
   }
 
-  // --- animations / physics / collisions / pickups ---
+  // --- physics / animation / collection ---
   let walkPhase = 0;
   function physicsStep(dt){
-    if(!playerState.running) return;
-
-    // camera-aligned movement using playerYaw
+    if(!game.running) return;
     const cos = Math.cos(playerYaw), sin = Math.sin(playerYaw);
-    const input = new THREE.Vector3(playerState.move.x, 0, playerState.move.y);
+    const input = new THREE.Vector3(game.move.x, 0, game.move.y);
     const worldDir = new THREE.Vector3(input.x * cos - input.z * sin, 0, input.x * sin + input.z * cos);
-    const targetVel = worldDir.clone().multiplyScalar(playerState.maxSpeed * (1 + 0.08 * playerState.level));
-    const accel = 24;
-    playerState.vel.x = THREE.MathUtils.damp(playerState.vel.x, targetVel.x, accel, dt);
-    playerState.vel.z = THREE.MathUtils.damp(playerState.vel.z, targetVel.z, accel, dt);
-    playerState.vel.y += playerState.gravity * dt;
+    const targetVel = worldDir.clone().multiplyScalar(game.maxSpeed * (1 + 0.05 * game.level));
+    const accel = 28;
+    game.vel.x = THREE.MathUtils.damp(game.vel.x, targetVel.x, accel, dt);
+    game.vel.z = THREE.MathUtils.damp(game.vel.z, targetVel.z, accel, dt);
+    game.vel.y += game.gravity * dt;
 
-    monkey.position.x += playerState.vel.x * dt;
-    monkey.position.y += playerState.vel.y * dt;
-    monkey.position.z += playerState.vel.z * dt;
+    monkey.position.x += game.vel.x * dt;
+    monkey.position.y += game.vel.y * dt;
+    monkey.position.z += game.vel.z * dt;
 
-    if(monkey.position.y <= FLOOR_Y){
-      monkey.position.y = FLOOR_Y;
-      playerState.vel.y = 0;
-      playerState.onGround = true;
-    } else playerState.onGround = false;
+    if(monkey.position.y <= 0.02){ monkey.position.y = 0.02; game.vel.y = 0; game.onGround = true; } else game.onGround = false;
 
-    // box collisions (simple push-out)
-    boxes.forEach(b=>{
-      const dx = monkey.position.x - b.position.x, dz = monkey.position.z - b.position.z;
-      const d = Math.hypot(dx,dz) || 0.001;
-      const push = (1.2 + 0.9) - d;
-      if(push > 0 && Math.abs(dx) < 4 && Math.abs(dz) < 4){
-        monkey.position.x += (dx/d) * push;
-        monkey.position.z += (dz/d) * push;
-        playerState.vel.x *= 0.4; playerState.vel.z *= 0.4;
+    // support on top for boxes/logs/rocks
+    function trySupportOnTop(objMesh, topHalfHeight){
+      const dx = monkey.position.x - objMesh.position.x;
+      const dz = monkey.position.z - objMesh.position.z;
+      const horiz = Math.hypot(dx,dz);
+      const supportRadius = Math.max(1.2, Math.max(objMesh.scale.x || 1, objMesh.scale.z || 1));
+      const topYWorld = objMesh.position.y + topHalfHeight;
+      if(horiz < (supportRadius + 0.9) && monkey.position.y > topYWorld - 0.9 && monkey.position.y <= topYWorld + 1.2 && game.vel.y <= 2.0){
+        monkey.position.y = topYWorld + 0.02;
+        game.vel.y = 0; game.onGround = true;
       }
-    });
+    }
+    boxes.forEach(b => trySupportOnTop(b.mesh, b.h/2));
+    logs.forEach(l => trySupportOnTop(l.mesh, 0.28));
+    rocks.forEach(r => trySupportOnTop(r, r.geometry.boundingSphere ? r.geometry.boundingSphere.radius : 0.5));
 
-    // bananas animate & collect
+    // animate & collect bananas
     const time = performance.now()*0.001;
     for(let i=bananas.length-1;i>=0;i--){
       const b = bananas[i];
@@ -478,7 +508,7 @@
         b._collected = true;
         const startPos = b.pivot.position.clone();
         spawnCollectParticles(startPos, '#ffd85a', 10);
-        playerState.score += 10; scoreEl.textContent = playerState.score;
+        game.score += 10; scoreEl.textContent = game.score;
         const popDuration = 260; const start = performance.now();
         (function localRemove(){
           const now = performance.now(); const t = (now - start)/popDuration;
@@ -506,8 +536,8 @@
       p.scale.setScalar(scale);
     }
 
-    // animate monkey limbs & head
-    const speed = Math.hypot(playerState.vel.x, playerState.vel.z);
+    // animate limbs/head
+    const speed = Math.hypot(game.vel.x, game.vel.z);
     walkPhase += (speed + 0.2) * dt * 6;
     const idleWave = Math.sin(performance.now()*0.004) * 0.12;
     const waveAmp = 0.18 + Math.min(0.42, speed * 0.28);
@@ -515,40 +545,39 @@
     armR.rotation.x = THREE.MathUtils.lerp(armR.rotation.x, -0.2 + Math.sin(walkPhase + Math.PI) * waveAmp - idleWave * 0.15, 0.12);
     const lean = Math.sin(walkPhase) * Math.min(0.16, speed*0.06);
     body.rotation.z = THREE.MathUtils.lerp(body.rotation.z, lean, 0.12);
-    head.rotation.y = THREE.MathUtils.lerp(head.rotation.y, -playerState.vel.x*0.06, 0.12);
+    head.rotation.y = THREE.MathUtils.lerp(head.rotation.y, -game.vel.x*0.06, 0.12);
 
-    // pupils/look target
     if(!lastPointerTime || (performance.now() - lastPointerTime) > 1500) updateLookTargetDefault();
     updatePupils(dt);
   }
 
   function levelUp(){
-    playerState.level++; levelEl.textContent = playerState.level;
-    playerState.timeLeft = Math.min(playerState.totalTime, playerState.timeLeft + 18);
-    spawnBananas(8 + Math.min(6, playerState.level));
-    boxes.forEach(b=>{ b.position.x = (Math.random()-0.5)*28; b.position.z = (Math.random()-0.5)*28; });
+    game.level++; levelEl.textContent = game.level;
+    game.timeLeft = Math.min(game.totalTime, game.timeLeft + 18);
+    spawnBananas(8 + Math.min(6, game.level));
+    boxes.forEach(b=>{ b.mesh.position.x = (Math.random()-0.5)*28; b.mesh.position.z = (Math.random()-0.5)*28; });
   }
 
   function resetGame(){
-    playerState.score = 0; playerState.level = 1; playerState.timeLeft = playerState.totalTime; playerState.running = true;
-    scoreEl.textContent = playerState.score; levelEl.textContent = playerState.level; timeEl.textContent = Math.round(playerState.timeLeft);
-    monkey.position.set(0,FLOOR_Y,0); playerState.vel.set(0,0,0); spawnBananas(10);
+    game.score = 0; game.level = 1; game.timeLeft = game.totalTime; game.running = true;
+    scoreEl.textContent = game.score; levelEl.textContent = game.level; timeEl.textContent = Math.round(game.timeLeft);
+    monkey.position.set(0,0.02,0); game.vel.set(0,0,0); spawnBananas(12); spawnEnvironment();
   }
 
-  // camera follow
+  // camera follow + smooth zoom
   function updateCamera(){
-    const camDistance = 4.8 + Math.min(3, playerState.level*0.2);
-    const desired = new THREE.Vector3(monkey.position.x, monkey.position.y + 2.2, monkey.position.z + camDistance);
+    game.cameraDistance += (game.cameraDistanceTarget - game.cameraDistance) * 0.12;
+    const camDistance = game.cameraDistance;
+    const camOffset = new THREE.Vector3(0, 2.2, camDistance);
     const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), playerYaw);
-    desired.sub(monkey.position).applyQuaternion(q).add(monkey.position);
+    camOffset.applyQuaternion(q);
     const pitchOffset = new THREE.Vector3(0, Math.sin(playerPitch)*1.6, 0);
-    camera.position.lerp(desired.add(pitchOffset), 0.12);
-    const camTarget = new THREE.Vector3(monkey.position.x, monkey.position.y + 1.2, monkey.position.z);
-    camera.lookAt(camTarget);
+    camera.position.copy(monkey.position).add(camOffset).add(pitchOffset);
+    camera.lookAt(monkey.position.x, monkey.position.y + 1.2, monkey.position.z);
     shadowMesh.position.set(monkey.position.x, 0.021, monkey.position.z);
   }
 
-  // resize handling
+  // resize
   function resizeRenderer(){
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     renderer.setPixelRatio(dpr);
@@ -562,7 +591,7 @@
   }
   window.addEventListener('resize', resizeRenderer); resizeRenderer();
 
-  // unified animation loop
+  // main loop
   let last = performance.now(), accum = 0;
   function animate(now){
     const dt = Math.min((now - last)/1000, 0.05); last = now;
@@ -573,11 +602,11 @@
     accum += dt;
     if(accum >= 1){
       accum = 0;
-      playerState.timeLeft = Math.max(0, playerState.timeLeft - 1);
-      timeEl.textContent = Math.round(playerState.timeLeft);
-      if(playerState.timeLeft <= 0){
-        playerState.running = false;
-        setTimeout(()=>{ alert('Время вышло! Очков: '+playerState.score); resetGame(); }, 60);
+      game.timeLeft = Math.max(0, game.timeLeft - 1);
+      timeEl.textContent = Math.round(game.timeLeft);
+      if(game.timeLeft <= 0){
+        game.running = false;
+        setTimeout(()=>{ alert('Время вышло! Очков: '+game.score); resetGame(); }, 80);
       }
     }
 
@@ -585,7 +614,7 @@
   }
   requestAnimationFrame(animate);
 
-  // expose helpers for debugging
+  // expose debug helpers
   window._spawn = spawnBananas; window._reset = resetGame; window._monkey = monkey;
 
 })();
