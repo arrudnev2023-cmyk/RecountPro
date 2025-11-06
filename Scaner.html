@@ -5,192 +5,175 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>GTA x Roblox — Mobile</title>
   <style>
-    :root {
-      --ui-bg: rgba(0, 0, 0, 0.45);
-      --accent: #ff7043;
-      --accent2: #29b6f6;
-      --glass: rgba(255, 255, 255, 0.06);
-    }
     html, body {
-      height: 100%;
       margin: 0;
+      padding: 0;
+      height: 100%;
       background: #87ceeb;
       overflow: hidden;
       touch-action: none;
       user-select: none;
     }
-    canvas {
-      display: block;
-    }
+    canvas { display: block; }
     #uiTop {
       position: absolute;
-      left: 8px;
       top: 8px;
+      left: 8px;
       right: 8px;
       display: flex;
       gap: 8px;
-      z-index: 60;
+      font-family: sans-serif;
+      font-size: 14px;
+      color: white;
+      z-index: 10;
     }
     .pill {
-      background: var(--ui-bg);
-      color: #fff;
-      padding: 8px 10px;
-      border-radius: 10px;
-      font-family: Inter, system-ui, Arial, sans-serif;
-      font-size: 14px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .pill small {
-      opacity: 0.9;
+      background: rgba(0,0,0,0.5);
+      padding: 6px 10px;
+      border-radius: 8px;
     }
     #controls {
       position: absolute;
-      left: 0;
-      right: 0;
       bottom: 8px;
-      height: 150px;
+      left: 8px;
+      right: 8px;
       display: flex;
       justify-content: space-between;
-      padding: 0 12px;
       align-items: flex-end;
-      z-index: 60;
+      z-index: 10;
     }
     #joystick {
       width: 140px;
       height: 140px;
-      display: flex;
-      align-items: center;
-    }
-    .stickOuter {
-      width: 100%;
-      height: 100%;
       border-radius: 50%;
-      background: var(--glass);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      background: rgba(255,255,255,0.1);
       position: relative;
+      touch-action: none;
     }
-    .stick {
+    #stick {
       width: 56px;
       height: 56px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.18);
-      transform: translate(0, 0);
+      background: rgba(255,255,255,0.3);
+      position: absolute;
+      left: 42px;
+      top: 42px;
+      transform: translate(0,0);
     }
-    #actions {
+    #buttons {
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
-    .actBtn {
+    .btn {
       width: 64px;
       height: 64px;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      font-weight: bold;
       border-radius: 12px;
-      background: var(--ui-bg);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
-      font-weight: 600;
-      font-size: 13px;
-    }
-    .actBtn.primary {
-      background: var(--accent);
-    }
-    .actBtn.alt {
-      background: var(--accent2);
+      font-size: 16px;
     }
     #minimap {
       position: absolute;
-      right: 10px;
       bottom: 170px;
+      right: 10px;
       width: 120px;
       height: 120px;
+      background: rgba(0,0,0,0.6);
       border-radius: 10px;
-      background: rgba(0, 0, 0, 0.6);
       padding: 6px;
-      z-index: 60;
+      z-index: 10;
     }
     #minimap canvas {
       width: 100%;
       height: 100%;
-      display: block;
       border-radius: 6px;
-    }
-    #hint {
-      position: absolute;
-      left: 8px;
-      bottom: 170px;
-      color: #fff;
-      background: rgba(0, 0, 0, 0.35);
-      padding: 8px;
-      border-radius: 8px;
-      font-size: 13px;
-      z-index: 60;
     }
   </style>
 </head>
 <body>
   <div id="uiTop">
-    <div class="pill">Mode: <small id="mode">OnFoot</small></div>
-    <div class="pill">Speed: <small id="speed">0</small></div>
-    <div class="pill">Money: <small id="money">0</small></div>
+    <div class="pill">Mode: <span id="mode">OnFoot</span></div>
+    <div class="pill">Speed: <span id="speed">0</span></div>
+    <div class="pill">Money: <span id="money">0</span></div>
   </div>
 
   <div id="minimap"><canvas id="map" width="160" height="160"></canvas></div>
-  <div id="hint">Двигай джойстиком слева. Вправо — кнопки: Enter/Exit, Spawn, Cam, Mission.</div>
 
   <div id="controls">
-    <div id="joystick">
-      <div class="stickOuter" id="joyOuter">
-        <div class="stick" id="stick"></div>
-      </div>
-    </div>
-    <div id="actions">
-      <div class="actBtn primary" id="btnEnter">E</div>
-      <div class="actBtn" id="btnSpawn">Car</div>
-      <div class="actBtn alt" id="btnCam">Cam</div>
-      <div class="actBtn" id="btnMission">M</div>
+    <div id="joystick"><div id="stick"></div></div>
+    <div id="buttons">
+      <div class="btn" id="btnEnter">E</div>
+      <div class="btn" id="btnSpawn">Car</div>
+      <div class="btn" id="btnCam">Cam</div>
+      <div class="btn" id="btnMission">M</div>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.min.js"></script>
   <script>
-    // Инициализация сцены
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({antialias:true});
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-    scene.fog = new THREE.Fog(0x87ceeb, 50, 300);
-    camera.position.set(0, 10, 20);
+    // Персонаж с руками и ногами
+    function createCharacter(color = 0x2196f3) {
+      const root = new THREE.Object3D();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.5, 1), new THREE.MeshLambertMaterial({color}));
+      body.position.y = 2.5;
+      root.add(body);
+      const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), new THREE.MeshLambertMaterial({color: 0xfff8dc}));
+      head.position.y = 4.6;
+      root.add(head);
+      const armL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.6, 0.4), new THREE.MeshLambertMaterial({color}));
+      armL.position.set(-1.1, 2.5, 0); root.add(armL);
+      const armR = armL.clone(); armR.position.x = 1.1; root.add(armR);
+      const legL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), new THREE.MeshLambertMaterial({color}));
+      legL.position.set(-0.4, 0.9, 0); root.add(legL);
+      const legR = legL.clone(); legR.position.x = 0.4; root.add(legR);
+      return root;
+    }
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
-    sun.position.set(100, 200, 100);
-    scene.add(sun);
+    const playerRoot = createCharacter();
+    playerRoot.position.set(0, 0, 0);
+    scene.add(playerRoot);
 
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(500, 500),
-      new THREE.MeshLambertMaterial({color: 0x4caf50})
-    );
-    ground.rotation.x = -Math.PI / 2;
-    scene.add(ground);
+    // Машина
+    let car = null;
+    function spawnCar(x = 10, z = 10) {
+      if (car) scene.remove(car.root);
+      const root = new THREE.Object3D();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(4, 1.5, 2), new THREE.MeshLambertMaterial({color: 0xff7043}));
+      body.position.y = 1;
+      root.add(body);
+      const wheel = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshLambertMaterial({color: 0x222}));
+      for (let dx of [-1.5, 1.5]) {
+        for (let dz of [-0.9, 0.9]) {
+          const w = wheel.clone();
+          w.position.set(dx, 0.3, dz);
+          root.add(w);
+        }
+      }
+      root.position.set(x, 0.1, z);
+      scene.add(root);
+      car = { root, speed: 0, steer: 0, driver: null };
+    }
 
-    const player = new THREE.Mesh(
-      new THREE.BoxGeometry(2, 4, 2),
-      new THREE.MeshLambertMaterial({color: 0x2196f3})
-    );
-    player.position.y = 2;
-    scene.add(player);
+    // NPC
+    const npcs = [];
+    function spawnNPC(x, z) {
+      const npc = createCharacter(0x9c27b0);
+      npc.position.set(x, 0, z);
+      npc.userData.dir = new THREE.Vector3(Math.random()-0.5, 0, Math.random()-0.5).normalize();
+      scene.add(npc);
+      npcs.push(npc);
+    }
+    for (let i = 0; i < 5; i++) spawnNPC(Math.random()*100-50, Math.random()*100-50);
 
     // Джойстик
     let stickX = 0, stickY = 0;
     const stick = document.getElementById('stick');
-    const joyOuter = document.getElementById('joyOuter');
+    const joyOuter = document.getElementById('joystick');
     joyOuter.addEventListener('touchmove', e => {
       const t = e.touches[0];
       const rect = joyOuter.getBoundingClientRect();
@@ -224,34 +207,56 @@
       camMode = camMode === 'follow' ? 'top' : 'follow';
     });
     document.getElementById('btnSpawn').addEventListener('click', () => {
-      alert('🚗 Машина пока не реализована — добавим позже!');
+      spawnCar(playerRoot.position.x + 6, playerRoot.position.z + 6);
     });
     document.getElementById('btnEnter').addEventListener('click', () => {
-      alert('🚪 Вход/выход из машины пока не реализован — добавим позже!');
+      if (car && car.driver === null && car.root.position.distanceTo(playerRoot.position) < 6) {
+        car.driver = playerRoot;
+        playerRoot.visible = false;
+        document.getElementById('mode').textContent = 'InCar';
+      } else if (car && car.driver === playerRoot) {
+        car.driver = null;
+        playerRoot.visible = true;
+        playerRoot.position.copy(car.root.position).add(new THREE.Vector3(4, 0, 0));
+        document.getElementById('mode').textContent = 'OnFoot';
+      }
     });
-
     // Миникарта
     const mapCanvas = document.getElementById('map');
-        const mapCtx = mapCanvas.getContext('2d');
+    const mapCtx = mapCanvas.getContext('2d');
     function drawMinimap() {
       mapCtx.clearRect(0, 0, 160, 160);
       mapCtx.fillStyle = '#2b7a2b';
       mapCtx.fillRect(0, 0, 160, 160);
-      const px = 80 + player.position.x * 0.4;
-      const py = 80 + player.position.z * 0.4;
+      const px = 80 + playerRoot.position.x * 0.4;
+      const py = 80 + playerRoot.position.z * 0.4;
       mapCtx.fillStyle = '#2196f3';
       mapCtx.beginPath();
       mapCtx.arc(px, py, 5, 0, Math.PI * 2);
       mapCtx.fill();
+      if (car) {
+        const cx = 80 + car.root.position.x * 0.4;
+        const cy = 80 + car.root.position.z * 0.4;
+        mapCtx.fillStyle = '#ff7043';
+        mapCtx.beginPath();
+        mapCtx.arc(cx, cy, 5, 0, Math.PI * 2);
+        mapCtx.fill();
+      }
       markers.forEach(m => {
         const mx = 80 + m.position.x * 0.4;
         const my = 80 + m.position.z * 0.4;
         mapCtx.fillStyle = '#ffff00';
         mapCtx.fillRect(mx - 3, my - 3, 6, 6);
       });
+      npcs.forEach(npc => {
+        const nx = 80 + npc.position.x * 0.4;
+        const ny = 80 + npc.position.z * 0.4;
+        mapCtx.fillStyle = '#9c27b0';
+        mapCtx.fillRect(nx - 2, ny - 2, 4, 4);
+      });
     }
 
-    // Анимация и движение
+    // Анимация
     const clock = new THREE.Clock();
     let camMode = 'follow';
 
@@ -263,23 +268,47 @@
       const move = new THREE.Vector3(stickX, 0, stickY);
       if (move.length() > 0.05) {
         move.normalize().multiplyScalar(10 * dt);
-        player.position.add(move);
-        player.rotation.y = Math.atan2(stickX, stickY);
+        if (!car || car.driver !== playerRoot) {
+          playerRoot.position.add(move);
+          playerRoot.rotation.y = Math.atan2(stickX, stickY);
+        }
       }
 
+      // Машина
+      if (car && car.driver === playerRoot) {
+        car.speed += stickY * 20 * dt;
+        car.speed *= 0.98;
+        car.steer = stickX * 0.04;
+        car.root.rotation.y += car.steer * car.speed * 0.001;
+        const dir = new THREE.Vector3(Math.sin(car.root.rotation.y), 0, Math.cos(car.root.rotation.y));
+        car.root.position.add(dir.multiplyScalar(car.speed * dt));
+      }
+
+      // NPC движение
+      npcs.forEach(npc => {
+        npc.position.add(npc.userData.dir.clone().multiplyScalar(dt * 2));
+        if (Math.random() < 0.01) {
+          npc.userData.dir = new THREE.Vector3(Math.random()-0.5, 0, Math.random()-0.5).normalize();
+        }
+        if (npc.position.distanceTo(playerRoot.position) < 6) {
+          npc.userData.dir.set(0,0,0);
+        }
+      });
+
       // Камера
+      const target = car && car.driver === playerRoot ? car.root : playerRoot;
       if (camMode === 'follow') {
-        const offset = new THREE.Vector3(0, 10, -15).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
-        camera.position.copy(player.position).add(offset);
-        camera.lookAt(player.position);
+        const offset = new THREE.Vector3(0, 10, -15).applyAxisAngle(new THREE.Vector3(0, 1, 0), target.rotation.y);
+        camera.position.copy(target.position).add(offset);
+        camera.lookAt(target.position);
       } else {
-        camera.position.set(player.position.x, 100, player.position.z + 0.1);
-        camera.lookAt(player.position);
+        camera.position.set(target.position.x, 100, target.position.z + 0.1);
+        camera.lookAt(target.position);
       }
 
       // Миссии
       for (let i = markers.length - 1; i >= 0; i--) {
-        if (player.position.distanceTo(markers[i].position) < 4) {
+        if (target.position.distanceTo(markers[i].position) < 4) {
           scene.remove(markers[i]);
           markers.splice(i, 1);
           money += 100;
@@ -299,4 +328,3 @@
   </script>
 </body>
 </html>
-
