@@ -1,1 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Генератор служебной записки</title>
+  <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; }
+    label { display: block; margin-top: 12px; font-weight: bold; }
+    input, textarea { width: 100%; padding: 8px; margin-top: 4px; }
+    button { margin-top: 20px; padding: 10px 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h2>Генератор служебной записки (.docx)</h2>
+  <form id="form">
+    <label>От кого: <input name="from_whom" value="Копейкин А.В."></label>
+    <label>Дата: <input name="date" value="01.01.2023"></label>
+    <label>Номер магазина: <input name="store_number" value="12345"></label>
+    <label>Адрес магазина: <input name="store_address" value="г. Санкт-Петербург, ул. Пейзажная, д. 14"></label>
+    <label>По невнимательности кого: <input name="by_whom" value="Иванова И.И."></label>
+    <label>Недопринятый товар: <textarea name="undelivered_items">Игристое вино полусладкое белое «Промо-Бокале» - 12 шт.,
+Виски купажированный Вилиам Лоусон не менее 3 лет 40% 0,5 - 6 шт.</textarea></label>
+    <label>Сумма: <input name="total_amount" value="3378 рублей 68 копеек"></label>
+    <label>С какого магазина списать: <input name="remaining_store_number" value="12345"></label>
+    <label>Кому вынесено ННП: <input name="penalty_employee" value="Иванову И.И."></label>
+    <label>Номер ННП: <input name="penalty_code" value="№ 24400191"></label>
+    <label>Подпись инспектора: <input name="inspector_name" value="Копейкин А.В."></label>
+    <button type="submit">Скачать .docx</button>
+  </form>
+
+  <script>
+    const { Document, Packer, Paragraph, TextRun } = window.docx;
+
+    const template = (data) => `
+Директору ООО «Альфа-М»
+Михайленко К.В.
+
+От инспектора ДПП
+${data.from_whom}
+
+Служебная записка.
+
+Довожу до вашего сведения, что ${data.date} в магазине № ${data.store_number}, расположенном по адресу: ${data.store_address}, по невнимательности администратора ${data.by_whom}, был недопринят товар:
+
+${data.undelivered_items}
+
+Всего на общую сумму ${data.total_amount}. В ходе просмотра видеозаписей с камер видеонаблюдения факт недоприема товара подтвержден.
+
+На основании вышеизложенного, прошу снять с магазина № ${data.remaining_store_number} вышеуказанный товар.
+
+Администратору ${data.penalty_employee} вынесено ННП — 1000 руб. (${data.penalty_code}).
+
+Инспектор ДПП ${data.inspector_name}
+`;
+
+    document.getElementById("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData.entries());
+
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: template(data).split("\n").map(line =>
+            new Paragraph({ children: [new TextRun(line.trim())] })
+          )
+        }]
+      });
+
+      const blob = await Packer.toBlob(doc);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `Служебная_записка_${data.store_number}_${data.date}.docx`;
+      a.click();
+    });
+  </script>
+</body>
+</html>
 
