@@ -37,9 +37,18 @@
       pointer-events:auto;
     }
 
-    /* logo */
-    .logo{width:120px;height:120px;border-radius:16px;background:#000;border:4px solid var(--neon);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:56px;color:#000;position:relative;overflow:visible}
+    /* logo: black box with neon purple outline, letter R in gold */
+    .logo{
+      width:120px;height:120px;border-radius:16px;background:#000;border:4px solid var(--neon);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:56px;color:var(--gold);position:relative;overflow:visible;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    }
     .logo::after{content:"";position:absolute;inset:-8px;border-radius:20px;pointer-events:none;filter:blur(10px);opacity:0.85;background:linear-gradient(90deg, rgba(155,92,255,0.18), rgba(155,92,255,0.08))}
+    .logo .logo-char{
+      color:var(--gold); font-weight:900; font-size:64px; line-height:1;
+      -webkit-text-stroke: 0px rgba(0,0,0,0.2);
+      text-shadow: 0 6px 18px rgba(0,0,0,0.6);
+    }
+
     .headline{font-size:28px;font-weight:800;margin:0;background:linear-gradient(90deg,#ffffff, rgba(155,92,255,0.95));-webkit-background-clip:text;color:transparent;letter-spacing:-0.4px}
     .sub{margin:0;color:var(--muted);font-size:16px;max-width:760px;line-height:1.45}
 
@@ -54,6 +63,7 @@
     @media (max-width:640px){
       .card{padding:20px;border-radius:14px}
       .logo{width:96px;height:96px;font-size:44px}
+      .logo .logo-char{font-size:52px}
       .headline{font-size:20px}
       .sub{font-size:15px}
       .btn{padding:10px 12px}
@@ -68,7 +78,11 @@
   <div class="wrap" role="main">
     <div class="card" aria-labelledby="headline">
       <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-        <div class="logo" aria-hidden="true">R</div>
+        <!-- Logo with visible R -->
+        <div class="logo" aria-hidden="true">
+          <span class="logo-char">R</span>
+        </div>
+
         <h1 id="headline" class="headline">Пересчёт, который возвращает время. Начни экономить в 2–3 раза уже сегодня.</h1>
         <p class="sub">RecountPro убирает бумагу и фиктивный пересчёт: сканируйте, сверяйте, получайте отчёт. Всё — быстро, надёжно и прозрачно. Попробуйте и почувствуйте разницу в первой смене.</p>
 
@@ -87,7 +101,7 @@
   </div>
 
   <script>
-    // Canvas: stars + parallax + shimmering twinkle + comet system with long soft tails
+    // Canvas: enhanced stars + comets with long tails and shimmer
     const canvas = document.getElementById('bgCanvas');
     const ctx = canvas.getContext('2d', { alpha: true });
     let W = 0, H = 0, DPR = Math.max(1, window.devicePixelRatio || 1);
@@ -102,84 +116,71 @@
     window.addEventListener('resize', resize);
     resize();
 
-    // utilities
-    const rand = (a,b) => Math.random()*(b-a)+a;
-    const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+    const rand = (a,b)=>Math.random()*(b-a)+a;
+    const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
 
-    // stars layers
+    // Stars: layered with shimmer
     let stars = [];
-    let starLayerCount = 3;
     function initStars(){
       stars = [];
-      const base = Math.floor((W*H)/8000);
-      for(let layer=0; layer<starLayerCount; layer++){
-        const count = base * (layer+1) * 2;
-        const arr = [];
+      const layers = 3;
+      for(let layer=0; layer<layers; layer++){
+        const count = Math.floor((W*H)/(8000/(layer+1))) + 80;
         for(let i=0;i<count;i++){
-          arr.push({
+          stars.push({
             x: Math.random()*W,
             y: Math.random()*H,
-            size: Math.random()* (layer===0?1.6: (layer===1?1.1:0.6)) + (layer===0?0.6:0.2),
-            baseAlpha: Math.random()*0.7 + 0.15,
+            size: Math.random()*(layer===0?1.8: (layer===1?1.2:0.7)) + 0.2,
+            baseAlpha: Math.random()*0.7 + 0.1,
             phase: Math.random()*Math.PI*2,
             speed: (layer===0?0.02: (layer===1?0.01:0.004)) * (Math.random()*0.6+0.7),
             layer
           });
         }
-        stars.push(...arr);
       }
     }
 
-    // comets (long soft tails)
+    // Comets
     let comets = [];
     function spawnComet(){
-      // entry from random edge, prefer top-left to bottom-right motion
-      const fromLeft = Math.random() < 0.6;
+      const fromLeft = Math.random() < 0.65;
       const y = rand(H*0.05, H*0.6);
-      const x = fromLeft ? -rand(100, 300) : W + rand(100,300);
-      const vx = fromLeft ? rand(3.8, 10.0) : -rand(3.8, 10.0);
+      const x = fromLeft ? -rand(150, 400) : W + rand(150,400);
+      const vx = fromLeft ? rand(4, 12) : -rand(4, 12);
       const vy = rand(-0.6, 1.8);
-      const speed = Math.hypot(vx, vy);
-      const hue = rand(250, 300); // purple-blue
-      const tailLen = rand(Math.max(W,H)*0.35, Math.max(W,H)*0.9);
       comets.push({
-        x, y, vx, vy, speed, life:0, ttl: rand(3.5, 7.5), alpha: rand(0.6, 1.0),
-        tailLen, hue, size: rand(1.8, 3.8)
+        x, y, vx, vy, life:0, ttl: rand(3.5, 8.0), alpha: rand(0.6, 1.0),
+        tailLen: rand(Math.max(W,H)*0.6, Math.max(W,H)*1.2),
+        hue: rand(260, 300), size: rand(1.8, 4.0)
       });
-      // keep limit
-      if(comets.length > 5) comets.shift();
+      if(comets.length > 6) comets.shift();
     }
 
-    // subtle nebula glow elements for depth
+    // Nebula blobs
     let blobs = [];
     function initBlobs(){
       blobs = [];
-      const zones = [
-        {x: W*0.15, y: H*0.18, r: Math.max(W,H)*0.45, hue: 270},
-        {x: W*0.82, y: H*0.82, r: Math.max(W,H)*0.55, hue: 210}
-      ];
+      const zones = [{x: W*0.12, y:H*0.18, r: Math.max(W,H)*0.45, hue: 270}, {x: W*0.86, y:H*0.82, r: Math.max(W,H)*0.6, hue: 220}];
       zones.forEach(z=>{
         for(let i=0;i<18;i++){
           blobs.push({
             x: z.x + rand(-z.r*0.45, z.r*0.45),
             y: z.y + rand(-z.r*0.45, z.r*0.45),
             r: rand(z.r*0.06, z.r*0.32),
-            hue: z.hue + rand(-20,20),
-            alpha: rand(0.03, 0.18),
-            vx: rand(-0.02,0.02),
-            vy: rand(-0.01,0.01),
-            phase: Math.random()*Math.PI*2
+            hue: z.hue + rand(-18,18),
+            alpha: rand(0.03,0.18),
+            vx: rand(-0.02,0.02), vy: rand(-0.01,0.01), phase: Math.random()*Math.PI*2
           });
         }
       });
     }
 
-    // parallax via pointer
+    // pointer parallax
     const pointer = {x: W/2, y: H/2, tx: W/2, ty: H/2};
-    window.addEventListener('mousemove', (e)=>{ pointer.tx = e.clientX; pointer.ty = e.clientY; });
-    window.addEventListener('touchmove', (e)=>{ if(e.touches[0]){ pointer.tx = e.touches[0].clientX; pointer.ty = e.touches[0].clientY; } }, {passive:true});
+    window.addEventListener('mousemove', e=>{ pointer.tx = e.clientX; pointer.ty = e.clientY; });
+    window.addEventListener('touchmove', e=>{ if(e.touches[0]){ pointer.tx = e.touches[0].clientX; pointer.ty = e.touches[0].clientY; } }, {passive:true});
 
-    // draw helpers
+    // draw functions
     function drawBlobs(dt){
       ctx.globalCompositeOperation = 'lighter';
       blobs.forEach(b=>{
@@ -188,8 +189,8 @@
         b.phase += dt * 0.6;
         const r = b.r;
         const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
-        g.addColorStop(0, `hsla(${b.hue},85%,60%,${b.alpha})`);
-        g.addColorStop(0.5, `hsla(${b.hue+18},75%,52%,${b.alpha*0.6})`);
+        g.addColorStop(0, `hsla(${b.hue},90%,65%,${b.alpha})`);
+        g.addColorStop(0.45, `hsla(${b.hue+22},80%,55%,${b.alpha*0.6})`);
         g.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = g;
         ctx.beginPath();
@@ -203,14 +204,24 @@
       for(let i=0;i<stars.length;i++){
         const s = stars[i];
         s.phase += s.speed * 0.6;
-        const tw = Math.sin(s.phase*1.6)*0.25 + 0.9;
+        const tw = Math.sin(s.phase*1.6)*0.3 + 0.9;
         const x = s.x + (pointer.x - W/2) * (s.layer*0.002) * tw;
         const y = s.y + (pointer.y - H/2) * (s.layer*0.002) * tw;
         const alpha = clamp(s.baseAlpha * (0.6 + 0.4*tw), 0.03, 1);
         ctx.fillStyle = `rgba(255,255,255,${alpha})`;
         ctx.beginPath();
-        ctx.arc(x, y, s.size * (1 + 0.25*tw), 0, Math.PI*2);
+        ctx.arc(x, y, s.size * (1 + 0.3*tw), 0, Math.PI*2);
         ctx.fill();
+        // tiny glow for brightest stars
+        if(s.baseAlpha > 0.7){
+          const g = ctx.createRadialGradient(x,y,0, x,y, 8);
+          g.addColorStop(0, `rgba(255,255,255,${alpha*0.12})`);
+          g.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(x,y,8,0,Math.PI*2);
+          ctx.fill();
+        }
       }
     }
 
@@ -219,27 +230,36 @@
       for(let i=comets.length-1;i>=0;i--){
         const c = comets[i];
         c.life += dt;
-        const pcount = Math.min(80, Math.floor(c.tailLen/6));
-        // head
+        const headAlpha = c.alpha * (1 - (c.life / c.ttl)*0.7);
+        // head glow
+        const headGrd = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.size*12);
+        headGrd.addColorStop(0, `rgba(255,255,255,${headAlpha})`);
+        headGrd.addColorStop(0.2, `hsla(${c.hue},90%,65%,${headAlpha*0.9})`);
+        headGrd.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = headGrd;
         ctx.beginPath();
-        const headAlpha = c.alpha * (1 - (c.life / c.ttl)*0.6);
-        ctx.fillStyle = `rgba(255,255,255,${headAlpha})`;
+        ctx.arc(c.x, c.y, c.size*6, 0, Math.PI*2);
+        ctx.fill();
+
+        // core
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(255,255,255,${Math.min(1, headAlpha)})`;
         ctx.arc(c.x, c.y, c.size*1.6, 0, Math.PI*2);
         ctx.fill();
 
-        // tail - draw back along velocity vector with fading segments
+        // tail - long soft trail made of many faded segments
         const angle = Math.atan2(c.vy, c.vx);
         const cos = Math.cos(angle), sin = Math.sin(angle);
-        for(let t=0;t<pcount;t++){
-          const frac = t / pcount;
+        const segs = Math.min(120, Math.floor(c.tailLen / 6));
+        for(let sI=0; sI<segs; sI++){
+          const frac = sI / segs;
           const tx = c.x - cos * frac * c.tailLen;
           const ty = c.y - sin * frac * c.tailLen;
-          const tailW = Math.max(0.6, c.size * (1 - frac) * 6);
-          const tailAlpha = headAlpha * (1 - frac) * 0.9;
-          const grd = ctx.createRadialGradient(tx, ty, 0, tx, ty, tailW*5);
-          // purple-blue gradient inside tail
-          grd.addColorStop(0, `hsla(${c.hue},90%,65%,${tailAlpha})`);
-          grd.addColorStop(0.5, `hsla(${c.hue+18},80%,55%,${tailAlpha*0.45})`);
+          const tailW = Math.max(0.6, c.size * (1 - frac) * 7);
+          const tailAlpha = headAlpha * (1 - frac) * 0.95;
+          const grd = ctx.createRadialGradient(tx, ty, 0, tx, ty, tailW*6);
+          grd.addColorStop(0, `hsla(${c.hue},95%,65%,${tailAlpha*0.95})`);
+          grd.addColorStop(0.45, `hsla(${c.hue+18},80%,55%,${tailAlpha*0.5})`);
           grd.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = grd;
           ctx.beginPath();
@@ -251,7 +271,7 @@
         c.x += c.vx * dt * 60;
         c.y += c.vy * dt * 60;
 
-        // fade and remove
+        // remove
         if(c.life > c.ttl || c.x < -c.tailLen*1.2 || c.x > W + c.tailLen*1.2 || c.y < -200 || c.y > H + 200){
           comets.splice(i,1);
         }
@@ -262,22 +282,18 @@
     let last = performance.now();
     function frame(now){
       const dt = Math.min(60, now - last) / 1000; last = now;
-      // smooth pointer
+      // pointer smoothing
       pointer.x += (pointer.tx - pointer.x) * 0.06;
       pointer.y += (pointer.ty - pointer.y) * 0.06;
 
-      // clear with slight alpha for motion blur trail effect
+      // motion blur by semi-clear fill
       ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = 'rgba(3,4,8,0.22)'; // larger alpha -> longer trails
+      ctx.fillStyle = 'rgba(3,4,8,0.22)';
       ctx.fillRect(0,0,W,H);
 
-      // subtle moving nebula blobs
+      // draw
       drawBlobs(dt);
-
-      // stars on top
       drawStars(now);
-
-      // comets and tails
       drawComets(dt);
 
       // soft vignette
@@ -292,28 +308,21 @@
       requestAnimationFrame(frame);
     }
 
-    // initialization
+    // init
     function initAll(){
       resize();
       initStars();
       initBlobs();
       comets = [];
-      // spawn occasional comets
       if(window._cometInterval) clearInterval(window._cometInterval);
-      window._cometInterval = setInterval(()=>{
-        if(Math.random() < 0.8) spawnComet();
-      }, 2200 + Math.random()*3000);
+      window._cometInterval = setInterval(()=>{ if(Math.random() < 0.85) spawnComet(); }, 2000 + Math.random()*3000);
       last = performance.now();
       requestAnimationFrame(frame);
     }
 
-    // responsive recalculation
     let rtid;
     window.addEventListener('resize', ()=>{ clearTimeout(rtid); rtid = setTimeout(()=>{ initAll(); }, 220); });
-
     initAll();
-
-    // initial extra spawns for richer start
     for(let i=0;i<3;i++) setTimeout(()=>spawnComet(), 400*i);
   </script>
 </body>
