@@ -1,290 +1,117 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <title>RecountPro — пересчет это просто</title>
-  <meta name="description" content="Мобильное приложение для быстрой инвентаризации. Telegram-отчёты, PDF-экспорт, умный ввод, интеграция с 1С.">
-  <meta name="keywords" content="RecountPro, инвентаризация, пересчёт, остатки, склад, ревизия, 1С, мобильное приложение, Telegram, PDF, учет, ритейл, автоматизация, ревизор, пересчёт остатков, складской учёт, торговля, бизнес, приложение для склада">
-  <meta name="author" content="Артём Руднев">
-  <meta name="robots" content="index, follow">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="description" content="RecountPro — удобный пересчёт, экономит время в 2-3 раза. Никакой бумаги, будь в тренде." />
+  <meta name="author" content="Артём Руднев" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
 
-  <meta property="og:title" content="RecountPro — инвентаризация без Excel">
-  <meta property="og:description" content="Ускорьте пересчёт остатков. Telegram-отчёты, PDF-экспорт, интеграция с 1С.">
-  <meta property="og:image" content="https://recount-pro.ru/preview.jpg">
-  <meta property="og:url" content="https://recount-pro.ru">
-  <meta property="og:type" content="website">
-
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="RecountPro — пересчёт остатков без Excel">
-  <meta name="twitter:description" content="Мобильное приложение для ревизии. Telegram-отчёты, PDF, 1С.">
-  <meta name="twitter:image" content="https://recount-pro.ru/preview.jpg">
-
-  <!-- Сохранён оригинальный подключаемый стиль (не трогаю локальные файлы) -->
-  <link rel="stylesheet" href="css/style.css" />
-
-  <!-- Встроенная премиум тема (не заменяет оригинальный css, а дополняет) -->
   <style>
     :root{
       --bg: #07090c;
-      --panel: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-      --muted: #98a7b3;
       --accent: #00e6ff;
       --accent-2: #9b5cff;
-      --glass-border: 1px solid rgba(255,255,255,0.04);
       --text: #e6f7ff;
-      --radius: 12px;
-      --shadow-1: 0 12px 40px rgba(0,0,0,0.7);
-      --transition: 200ms cubic-bezier(.2,.9,.3,1);
-      --max-width: 1200px;
+      --muted: #98a7b3;
+      --glass-border: 1px solid rgba(255,255,255,0.04);
+      --radius: 14px;
+      --max-width: 720px;
     }
 
-    /* Base page */
-    html,body{height:100%;background:
-      radial-gradient(1200px 500px at 10% 10%, rgba(155,92,255,0.06), transparent),
-      radial-gradient(800px 400px at 90% 90%, rgba(0,230,255,0.03), transparent),
-      var(--bg); color:var(--text); font-family:Inter, "Segoe UI", Roboto, system-ui, -apple-system; margin:0; -webkit-font-smoothing:antialiased;}
-    .container{max-width:var(--max-width);margin:0 auto;padding:28px}
-
-    /* Hero */
-    .hero{
-      display:flex;flex-direction:column;gap:12px;align-items:flex-start;padding:28px;border-radius:16px;margin:18px auto;max-width:1100px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));
-      border: var(--glass-border); box-shadow: var(--shadow-1); backdrop-filter: blur(8px) saturate(120%);
+    /* Reset & base */
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter, "Segoe UI", Roboto, system-ui, -apple-system;background:
+      radial-gradient(700px 300px at 10% 10%, rgba(155,92,255,0.06), transparent),
+      radial-gradient(600px 240px at 90% 90%, rgba(0,230,255,0.03), transparent),
+      var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+    .page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px}
+    .card{
+      width:100%;max-width:var(--max-width);padding:22px;border-radius:18px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));
+      border:var(--glass-border); box-shadow:0 30px 80px rgba(0,0,0,0.6);backdrop-filter:blur(8px) saturate(120%);
+      display:flex;flex-direction:column;gap:18px;align-items:center;text-align:center;
     }
-    .hero h1{margin:0;font-size:34px;letter-spacing:0.4px;background:linear-gradient(90deg,var(--accent),var(--accent-2)); -webkit-background-clip:text; color:transparent}
-    .hero p{margin:0;color:var(--muted);font-size:15px}
 
-    .buttons{display:flex;gap:12px;margin-top:8px}
-    a.btn{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;text-decoration:none;font-weight:700;transition:all var(--transition)}
-    a.btn.primary{background:linear-gradient(90deg, rgba(0,230,255,0.08), rgba(155,92,255,0.06));border:1px solid rgba(0,230,255,0.12);color:var(--text)}
-    a.btn.primary:hover{transform:translateY(-3px);box-shadow:0 16px 50px rgba(0,230,255,0.06)}
-    a.btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
-    .telegram-btn{background:linear-gradient(90deg,#00c2ff,#0078ff);color:#021115;padding:12px 16px;border-radius:12px;display:inline-block}
+    /* Branding */
+    .logo{
+      width:84px;height:84px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-weight:800;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#021115;font-size:22px;box-shadow:0 12px 40px rgba(155,92,255,0.08);
+    }
+    .title{font-size:26px;font-weight:800;margin:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;color:transparent}
+    .subtitle{margin:0;color:var(--muted);font-size:15px;line-height:1.45;max-width:760px;padding:0 6px}
 
-    /* Navbar */
-    .navbar{display:flex;gap:18px;padding:10px 18px;border-radius:12px;margin:12px auto;max-width:1100px;align-items:center;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border:var(--glass-border)}
-    .navbar a{color:var(--muted);text-decoration:none;font-weight:600}
-    .navbar a:hover{color:var(--text)}
+    /* Buttons */
+    .actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;width:100%}
+    .btn{
+      -webkit-tap-highlight-color: transparent;
+      display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:12px 16px;border-radius:12px;font-weight:700;
+      cursor:pointer;border:0;text-decoration:none;color:var(--text);transition:transform 180ms ease, box-shadow 180ms ease;
+      min-width:140px;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{
+      background:linear-gradient(90deg, rgba(0,230,255,0.09), rgba(155,92,255,0.06));
+      border:1px solid rgba(0,230,255,0.12); box-shadow:0 14px 40px rgba(0,230,255,0.06);
+      color:var(--text)
+    }
+    .btn.primary:hover{transform:translateY(-4px);box-shadow:0 28px 80px rgba(0,230,255,0.08)}
+    .btn.ghost{
+      background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)
+    }
 
-    /* Sections */
-    .section{max-width:1100px;margin:18px auto;padding:18px;border-radius:12px;border:var(--glass-border);background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));box-shadow:0 12px 40px rgba(0,0,0,0.5)}
-    .section h2{margin:0 0 12px 0;color:var(--text)}
-    .section ul{margin:0;padding-left:18px;color:var(--muted);line-height:1.8}
-    .muted{color:var(--muted)}
+    /* Contact button (accent) */
+    .contact{
+      width:100%;display:flex;justify-content:center;margin-top:4px;
+    }
+    .contact .btn-accent{
+      background:linear-gradient(90deg,#00c2ff,#0078ff);
+      color:#021115;padding:12px 18px;border-radius:12px;font-weight:800;border:0;min-width:200px;
+      box-shadow:0 16px 48px rgba(0,120,255,0.08);
+    }
+    .contact .btn-accent:hover{transform:translateY(-3px)}
 
-    /* Pricing grid */
-    .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
-    .pricing-card{padding:18px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0.006));border:var(--glass-border);text-align:center}
-    .pricing-card h3{margin:6px 0 8px 0}
-    .pricing-card p{color:var(--muted)}
+    /* Small note */
+    .note{font-size:13px;color:var(--muted);max-width:720px;margin-top:6px;padding:0 6px}
 
-    /* Slider */
-    .slider{position:relative;overflow:hidden;border-radius:12px;border:var(--glass-border);display:flex;align-items:center;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));padding:16px}
-    .slider-wrapper{display:flex;gap:12px;transition:transform 480ms cubic-bezier(.2,.9,.3,1);width:100%}
-    .slide{min-width:240px;max-width:240px;opacity:0.15;transform:scale(0.96);transition:opacity 320ms,var(--transition);border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.03);background:#061018}
-    .slide img{width:100%;display:block;object-fit:cover}
-    .slide.active{opacity:1;transform:scale(1);box-shadow:0 18px 60px rgba(0,0,0,0.7)}
-    .nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.55);border:0;color:var(--text);padding:8px 10px;border-radius:10px;cursor:pointer}
-    .nav.prev{left:10px}
-    .nav.next{right:10px}
+    /* Footer spacing for mobile */
+    .spacer{height:6px}
 
-    /* Contact / footer */
-    .contact-cta{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
-    .footer{max-width:1100px;margin:18px auto;padding:18px;color:var(--muted);text-align:left}
-
-    /* Intersection animation */
-    .hidden{opacity:0;transform:translateY(10px);transition:opacity 560ms ease, transform 560ms ease}
-    .visible{opacity:1;transform:none}
-
-    /* Small screens adjustments */
-    @media (max-width:720px){
-      .hero{padding:18px}
-      .slider-wrapper{gap:10px}
-      .slide{min-width:180px;max-width:180px}
-      .navbar{overflow:auto;padding:10px;gap:12px}
+    /* Responsive */
+    @media (max-width:480px){
+      .card{padding:18px;border-radius:14px}
+      .title{font-size:22px}
+      .logo{width:68px;height:68px;font-size:18px}
+      .btn{min-width:120px;padding:10px 12px}
+      .contact .btn-accent{min-width:160px}
+      .subtitle{font-size:14px}
     }
   </style>
-
-  <link rel="icon" href="favicon.ico" type="image/x-icon" />
 </head>
 <body>
-  <div class="container">
-    <header class="hero" id="hero">
-      <div style="display:flex;align-items:center;gap:14px;">
-        <div style="width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#021115;box-shadow:0 10px 30px rgba(155,92,255,0.08);">RP</div>
-        <div>
-          <h1>RecountPro</h1>
-          <p class="muted">Инвентаризация — это просто</p>
-        </div>
+  <div class="page">
+    <div class="card" role="main" aria-labelledby="rp-title">
+      <div class="logo" aria-hidden="true">RP</div>
+
+      <h1 id="rp-title" class="title">RecountPro</h1>
+
+      <p class="subtitle">RecountPro — это то, что вы давно искали. Удобный пересчёт сократит ваше время в 2–3 раза. Никакой бумаги — будь в тренде и следи за технологиями.</p>
+
+      <div class="actions" role="group" aria-label="Основные действия">
+        <!-- ссылки сохранены -->
+        <a href="login.html" class="btn primary" target="_blank" rel="noopener">WEB Version</a>
+        <a href="Scaner.html" class="btn primary" target="_blank" rel="noopener">Скачать приложение</a>
       </div>
 
-      <div class="buttons" style="margin-top:10px;">
-        <!-- ссылки сохранены как в оригинале -->
-        <a href="login.html" class="btn primary" target="_blank">WEB Version</a>
-        <a href="Scaner.html" class="btn primary" target="_blank">Скачать приложение</a>
+      <div class="spacer"></div>
+
+      <p class="note">RecountPro — мобильное решение для быстрой инвентаризации: Telegram‑отчёты, PDF‑экспорт, интеграция с 1С и умный ввод.</p>
+
+      <div class="contact">
+        <a href="https://t.me/Artem_Rudnev1" class="btn-accent" target="_blank" rel="noopener">Связаться с разработчиком</a>
       </div>
-    </header>
-
-    <nav class="navbar" role="navigation" aria-label="Главное меню">
-      <a href="#hero">Главная</a>
-      <a href="#features">Функции</a>
-      <a href="#value">Ценность</a>
-      <a href="#pricing">Тарифы</a>
-      <a href="#team">Команда</a>
-      <a href="#contact">Контакты</a>
-    </nav>
-
-    <section class="section" id="features">
-      <h2>Что умеет RecountPro</h2>
-      <ul>
-        <li>🔗 Синхронизация с 1С</li>
-        <li>📊 Telegram-отчёты</li>
-        <li>🧠 Умный ввод с формулами</li>
-        <li>📄 PDF-экспорт</li>
-        <li>💾 Автосохранение</li>
-        <li>🔦 Фонарик</li>
-        <li>📜 История пересчетов</li>
-      </ul>
-    </section>
-
-    <section class="section" id="screenshots">
-      <h2>Скриншоты приложения</h2>
-      <div class="slider" aria-hidden="false">
-        <div class="slider-wrapper" id="sliderWrapper">
-          <div class="slide active"><img src="IMG_2589-frame.png" alt="Скрин 1" /></div>
-          <div class="slide"><img src="IMG_2616-frame.png" alt="Скрин 2" /></div>
-          <div class="slide"><img src="IMG_2621-frame.png" alt="Скрин 3" /></div>
-          <div class="slide"><img src="IMG_2623-frame.png" alt="Скрин 4" /></div>
-          <div class="slide"><img src="IMG_2624-frame.png" alt="Скрин 5" /></div>
-          <div class="slide"><img src="IMG_2629-frame.png" alt="Скрин 6" /></div>
-        </div>
-        <button class="nav prev" aria-label="Предыдущий кадр">←</button>
-        <button class="nav next" aria-label="Следующий кадр">→</button>
-      </div>
-    </section>
-
-    <section class="section" id="value">
-      <h2>Зачем нужен RecountPro</h2>
-      <p class="muted">RecountPro — это мобильное приложение, которое ускоряет локальную ревизию, исключает ошибки и экономит ресурсы.</p>
-      <ul>
-        <li>⏱ Пересчёт остатков в 2–3 раза быстрее</li>
-        <li>📲 Удобный интерфейс — понятен даже новичкам</li>
-        <li>🔍 Быстрый поиск по названию товара</li>
-        <li>🧮 Автоматический подсчёт итогов</li>
-        <li>🧠 Интеграция с 1С без лишних шагов</li>
-        <li>✅ Исключает ошибки в пересчётах</li>
-        <li>💸 Экономит рабочее время и деньги на бумагу</li>
-      </ul>
-    </section>
-
-    <section class="section pricing" id="pricing">
-      <h2>Тарифы</h2>
-      <div class="pricing-grid">
-        <div class="pricing-card">
-          <h3>Базовый</h3>
-          <p>Бесплатно. До 100 позиций. Без Telegram и PDF.</p>
-        </div>
-        <div class="pricing-card">
-          <h3>Pro</h3>
-          <p>499 ₽/мес. Telegram-отчёты, PDF-экспорт, история сессий.</p>
-        </div>
-        <div class="pricing-card">
-          <h3>Бизнес</h3>
-          <p>2990 ₽/мес. Синхронизация с 1С, поддержка, мультидоступ.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="team">
-      <h2>Кто делает RecountPro</h2>
-      <p><strong>Руднев Артём</strong> — основатель, разработчик, дизайнер, эксперт в инвентаризации</p>
-    </section>
-
-    <section class="section contact-cta">
-      <h2>Остались вопросы?</h2>
-      <a href="https://t.me/Artem_Rudnev1" class="telegram-btn">Написать в Telegram</a>
-    </section>
-
-    <footer class="footer" id="contact">
-      <p>Связаться: <a href="mailto:ar.rudnev2012@icloud.com">info@recount-pro.ru</a></p>
-    </footer>
+    </div>
   </div>
-
-  <script>
-    // Intersection observer — логика сохранена
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
-      });
-    }, {
-      threshold: 0.1
-    });
-
-    document.querySelectorAll('.section, .hero, .footer').forEach(el => {
-      el.classList.add('hidden');
-      observer.observe(el);
-    });
-
-    // Слайдер — логика сохранена, адаптирован под новую структуру
-    const slides = document.querySelectorAll('.slide');
-    let current = 0;
-
-    function showSlide(index) {
-      // защита от выхода за пределы
-      if (!slides.length) return;
-      slides.forEach(slide => slide.classList.remove('active'));
-      slides[index].classList.add('active');
-
-      // плавный скролл wrapper (чтобы активный слайд был видим)
-      const wrapper = document.getElementById('sliderWrapper');
-      const slideWidth = slides[index].getBoundingClientRect().width + 12; // gap
-      const offset = Math.max(0, index * slideWidth - (wrapper.parentElement.clientWidth - slideWidth) / 2);
-      wrapper.style.transform = `translateX(${-offset}px)`;
-    }
-
-    document.querySelector('.next').addEventListener('click', () => {
-      current = (current + 1) % slides.length;
-      showSlide(current);
-    });
-
-    document.querySelector('.prev').addEventListener('click', () => {
-      current = (current - 1 + slides.length) % slides.length;
-      showSlide(current);
-    });
-
-    showSlide(current);
-
-    // Accessibility: allow arrow keys for slider
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight') { current = (current + 1) % slides.length; showSlide(current); }
-      if (e.key === 'ArrowLeft') { current = (current - 1 + slides.length) % slides.length; showSlide(current); }
-    });
-
-    // Небольшая фиксация: оставляю место для интеграции сканера модалки
-    // Если в проекте есть window.initScanner(container) — модал можно вызвать инициализацией туда.
-    window.openScannerModal = function() {
-      // Создаём модалку, не трогаем основную логику — если используется другой скрипт для камеры, он продолжит работать.
-      const overlay = document.createElement('div');
-      overlay.style = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1200;';
-      const modal = document.createElement('div');
-      modal.style = 'width:100%;max-width:720px;border-radius:12px;padding:12px;background:linear-gradient(180deg, rgba(6,10,14,0.98), rgba(6,10,14,0.95));border:1px solid rgba(0,230,255,0.06);box-shadow:0 30px 80px rgba(0,0,0,0.6);';
-      modal.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.02)"><div><strong>Сканер</strong><div style="color:var(--muted);font-size:13px">Наведи камеру на штрихкод</div></div><button id="closeScanner" style="background:transparent;border:0;color:var(--muted);font-weight:700;padding:6px 8px;border-radius:8px">✕</button></div><div id="scannerContainer" style="padding-top:12px"></div>`;
-      overlay.appendChild(modal);
-      document.body.appendChild(overlay);
-      document.getElementById('closeScanner').addEventListener('click', () => {
-        try { if (window.stopCamera) window.stopCamera(); } catch(e){}
-        overlay.remove();
-      });
-      // Точка интеграции: если есть initScanner(container) — используем её, иначе просто оставляем контейнер пустым.
-      if (window.initScanner) {
-        try { window.initScanner(document.getElementById('scannerContainer')); } catch(e) { console.error(e); }
-      }
-    };
-
-    // Если нужно — можно подвесить openScannerModal на кнопку: document.querySelector('#openScannerBtn').addEventListener('click', window.openScannerModal);
-  </script>
 </body>
 </html>
