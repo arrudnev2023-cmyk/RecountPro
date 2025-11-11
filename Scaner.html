@@ -1,184 +1,295 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Сканер + Open Food Facts</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Сканер штрихкодов — 1C style</title>
+
+<!-- ZXing для декодирования -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
+
 <style>
-  :root{--bg:#f7f8fa;--card:#fff;--accent:#0b76ff;--muted:#666}
-  html,body{height:100%;margin:0;font-family:Inter,Roboto,Arial,sans-serif;background:var(--bg);color:#111}
-  .wrap{max-width:980px;margin:18px auto;padding:18px}
-  .panel{background:var(--card);border-radius:10px;padding:12px;box-shadow:0 2px 8px rgba(20,20,30,0.05)}
+  :root{--bg:#f6f7fb;--card:#fff;--accent:#0b76ff;--muted:#666}
+  body{margin:0;font-family:Inter,Roboto,Arial,sans-serif;background:var(--bg);color:#111}
+  .wrap{max-width:980px;margin:14px auto;padding:14px}
+  header{display:flex;align-items:center;gap:12px}
+  h1{font-size:18px;margin:0}
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:14px;margin-top:12px}
+  @media(max-width:920px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--card);border-radius:10px;padding:12px;box-shadow:0 6px 18px rgba(12,15,30,0.06)}
   #video{width:100%;height:360px;background:#000;border-radius:8px;object-fit:cover}
-  .status{margin-top:10px;font-size:14px;color:var(--muted)}
-  .result-area{margin-top:14px;min-height:120px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+  .controls{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  button{border:0;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:600;background:var(--accent);color:#fff}
+  button.ghost{background:#eef2ff;color:#111}
+  .status{margin-top:8px;color:var(--muted);font-size:14px}
+  .result{margin-top:12px;min-height:120px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px}
   .card{display:flex;gap:12px;align-items:flex-start;width:100%}
-  .thumb{width:120px;height:90px;background:#eee;border-radius:6px;flex:0 0 120px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;overflow:hidden}
+  .thumb{width:120px;height:90px;background:#f0f0f3;border-radius:8px;flex:0 0 120px;display:flex;align-items:center;justify-content:center;color:var(--muted);overflow:hidden}
   .thumb img{width:100%;height:100%;object-fit:cover;display:block}
-  .meta{flex:1}
   .meta h3{margin:0;font-size:16px}
-  .meta p{margin:6px 0;color:var(--muted);font-size:14px}
-  button{background:var(--accent);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:600}
-  button.ghost{background:#eee;color:#111}
+  .meta p{margin:6px 0;color:var(--muted)}
+  .meta .price{font-weight:700;color:#111}
+  .sidebar .section{margin-bottom:12px}
+  .hint{font-size:13px;color:var(--muted)}
+  .notfound{color:#b33;font-weight:700}
+  .small{font-size:13px;color:var(--muted)}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1 class="panel">📦 Сканер штрихкодов + Open Food Facts</h1>
+  <header>
+    <h1>📦 Быстрый сканер — как в 1C</h1>
+  </header>
 
-  <div class="panel">
-    <video id="video" autoplay playsinline></video>
-    <div class="status" id="status">Ожидаю сканирования…</div>
-    <div class="result-area" id="resultArea">
-      <div class="hint">Наведи камеру на штрихкод</div>
-    </div>
-    <div style="margin-top:12px">
-      <button id="toggleCamera">Остановить камеру</button>
-      <button id="clearResult" class="ghost">Очистить</button>
-    </div>
+  <div class="grid">
+    <main class="panel">
+      <video id="video" autoplay playsinline></video>
+      <div class="status" id="status">Ожидаю сканирования…</div>
+
+      <div class="result" id="resultArea">
+        <div class="hint">Наведи камеру на штрихкод — карточка появится мгновенно</div>
+      </div>
+
+      <div class="controls">
+        <button id="toggleCam">Остановить камеру</button>
+        <button id="clearRes" class="ghost">Очистить</button>
+        <button id="prefetchHot" class="ghost">Предзагрузить горячие префиксы</button>
+      </div>
+      <div class="small" style="margin-top:8px">Локальные примеры можно править в PRODUCTS. Если товар не найден — ищем в чанке префикса, затем в Open Food Facts (кэшируется).</div>
+    </main>
+
+    <aside class="panel sidebar">
+      <div class="section">
+        <h3 style="margin:0 0 8px 0">Корзина (демо)</h3>
+        <div id="cart" class="small hint">Корзина пуста</div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button id="clearCart" class="ghost">Очистить</button>
+          <button id="showCart" class="ghost">Показать JSON</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3 style="margin:0 0 8px 0">Настройки</h3>
+        <div class="small">Chunks base: <code id="chunksBase">./chunks/</code></div>
+        <div style="margin-top:8px" class="small">Префикс длины: <strong id="prefLen">3</strong> (можно изменить в коде)</div>
+      </div>
+    </aside>
   </div>
 
-  <p style="font-size:13px;color:#666;margin-top:8px">
-    Локальные примеры можно редактировать в массиве PRODUCTS. Если товар не найден локально — используется Open Food Facts API и результат кэшируется локально.
-  </p>
+  <footer style="text-align:center;margin-top:12px;color:var(--muted);font-size:13px">Сохраните scanner-1c.html локально и разместите рядом папку chunks/ с файлами префиксов</footer>
 </div>
 
 <script>
-/* ----------------- Настройки и локальная база ----------------- */
-const PRODUCTS = [
+/* ========== Настройки ========== */
+const PRODUCTS = [ // локальные быстрые примеры
   { ean: "5901234123457", name: "Coca-Cola 0.5L", price: "79 ₽", image: "" },
-  { ean: "4601234567890", name: "Молоко Домик в деревне 1.5%", price: "95 ₽", image: "" },
-  { ean: "4006381333931", name: "Маркер Staedtler", price: "49 ₽", image: "" }
+  { ean: "4601234567890", name: "Молоко Домик в деревне 1.5%", price: "95 ₽", image: "" }
 ];
-// Open Food Facts base URL (API v0 product endpoint)
-const OFF_PRODUCT_URL = 'https://world.openfoodfacts.org/api/v0/product/'; // {code}.json
+const PREFIX_LEN = 3;                // длина префикса чанка (должна соответствовать сборке)
+const CHUNKS_BASE = './chunks/';     // папка с файлами {prefix}.json или {prefix}.json.gz
+const OFF_PRODUCT_URL = 'https://world.openfoodfacts.org/api/v0/product/'; // fallback API
 
-/* ----------------- Небольший IndexedDB-Cache (простой) ----------------- */
-const DB_NAME = 'off_cache_db';
-const STORE = 'products';
-function openDB(){ return new Promise((res, rej)=>{
-  const r = indexedDB.open(DB_NAME,1);
-  r.onupgradeneeded = ()=> r.result.createObjectStore(STORE, { keyPath: 'ean' });
-  r.onsuccess = ()=> res(r.result);
-  r.onerror = ()=> rej(r.error);
-});}
-async function dbGet(ean){
+/* ========== IndexedDB для кеша чанков и OFF-результатов ========== */
+const DB_NAME = 'scanner_cache_db';
+async function openDB(){
+  return new Promise((res, rej)=>{
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = ()=> {
+      const db = r.result;
+      if(!db.objectStoreNames.contains('chunks')) db.createObjectStore('chunks', { keyPath: 'prefix' });
+      if(!db.objectStoreNames.contains('off')) db.createObjectStore('off', { keyPath: 'ean' });
+    };
+    r.onsuccess = ()=> res(r.result);
+    r.onerror = ()=> rej(r.error);
+  });
+}
+async function idbGet(store, key){
   const db = await openDB();
   return new Promise((res, rej)=>{
-    const tx = db.transaction(STORE,'readonly').objectStore(STORE).get(ean);
+    const tx = db.transaction(store,'readonly').objectStore(store).get(key);
     tx.onsuccess = ()=> res(tx.result?.data || null);
     tx.onerror = ()=> rej(tx.error);
   });
 }
-async function dbPut(ean, data){
+async function idbPut(store, key, data){
   const db = await openDB();
   return new Promise((res, rej)=>{
-    const tx = db.transaction(STORE,'readwrite').objectStore(STORE).put({ ean, data });
+    const tx = db.transaction(store,'readwrite').objectStore(store).put({ [store==='chunks'?'prefix':'ean']: key, data });
     tx.onsuccess = ()=> res(true);
     tx.onerror = ()=> rej(tx.error);
   });
 }
 
-/* ----------------- UI ----------------- */
+/* ========== UI helpers ========== */
 const video = document.getElementById('video');
 const status = document.getElementById('status');
 const resultArea = document.getElementById('resultArea');
-const toggleCameraBtn = document.getElementById('toggleCamera');
-const clearResultBtn = document.getElementById('clearResult');
+const toggleCamBtn = document.getElementById('toggleCam');
+const clearResBtn = document.getElementById('clearRes');
+const prefetchBtn = document.getElementById('prefetchHot');
+const cartEl = document.getElementById('cart');
+const clearCartBtn = document.getElementById('clearCart');
+const showCartBtn = document.getElementById('showCart');
+document.getElementById('prefLen').textContent = PREFIX_LEN;
+document.getElementById('chunksBase').textContent = CHUNKS_BASE;
 
-function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+let cart = JSON.parse(localStorage.getItem('scanner_cart') || '[]');
+function saveCart(){ localStorage.setItem('scanner_cart', JSON.stringify(cart)); renderCart(); }
+function renderCart(){
+  if(!cart.length) cartEl.textContent = 'Корзина пуста';
+  else cartEl.innerHTML = cart.map(i=>`${i.qty}× ${i.name}`).join('<br>');
+}
+function addToCart(ean){
+  const p = PRODUCTS.find(x=>x.ean===ean) || { name: ean, price: '—' };
+  const ex = cart.find(i=>i.ean===ean);
+  if(ex) ex.qty++;
+  else cart.push({ ean, name: p.name || p.product_name || ean, qty: 1 });
+  saveCart();
+}
+
+/* ========== быстрый рендер карточки ========== */
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
 function renderCard(product){
-  const img = product.image || (product.image_small_url || product.image_url) || '';
-  const imgHtml = img ? `<img src="${escapeHtml(img)}" alt="" />` : `<div style="width:120px;height:90px;display:flex;align-items:center;justify-content:center;color:#666">Нет фото</div>`;
-  const price = product.price || product['price'] || '—';
+  const name = product.name || product.product_name || product.product_name || '';
+  const img = product.image || product.image_small_url || product.image_url || '';
+  const imgHtml = img ? `<img src="${escapeHtml(img)}" alt="" />` : `<div style="width:120px;height:90px;display:flex;align-items:center;justify-content:center;color:var(--muted)">Нет фото</div>`;
+  const price = product.price || product.price || '—';
   return `
     <div class="card">
       <div class="thumb">${imgHtml}</div>
       <div class="meta">
-        <h3>${escapeHtml(product.name || product.product_name || 'Без названия')}</h3>
+        <h3>${escapeHtml(name)}</h3>
         <p class="price">${escapeHtml(price)}</p>
-        <p><small>EAN: ${escapeHtml(product.ean || product.code)}</small></p>
+        <p><small>EAN: ${escapeHtml(product.ean || product.code || '')}</small></p>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button onclick="addToCart('${escapeHtml(product.ean || product.code || '')}')">Добавить в корзину</button>
+          <button class="ghost" onclick="navigator.clipboard?.writeText('${escapeHtml(product.ean || product.code || '')}')">Копировать EAN</button>
+        </div>
       </div>
     </div>
   `;
 }
-function renderNotFound(code){ return `<div style="color:#b33;font-weight:600">❌ Товар не найден: ${escapeHtml(code)}</div>`; }
+function renderNotFound(code){ return `<div class="notfound">❌ Товар не найден: ${escapeHtml(code)}</div>`; }
 
-/* ----------------- Open Food Facts запрос и логика поиска ----------------- */
-async function fetchFromOFF(ean){
+/* ========== chunks loader и поиск ========== */
+const loadedChunks = new Map(); // prefix -> Map(ean->name)
+async function loadChunk(prefix){
+  if(loadedChunks.has(prefix)) return loadedChunks.get(prefix);
+  // try idb
+  const cached = await idbGet('chunks', prefix);
+  if(cached){
+    const m = new Map(Object.entries(cached));
+    loadedChunks.set(prefix, m);
+    return m;
+  }
+  // fetch chunk .json.gz or .json
+  const gzUrl = `${CHUNKS_BASE}${encodeURIComponent(prefix)}.json.gz`;
+  const plainUrl = `${CHUNKS_BASE}${encodeURIComponent(prefix)}.json`;
+  try{
+    let resp = await fetch(gzUrl);
+    if(!resp.ok) resp = await fetch(plainUrl);
+    if(!resp.ok) return null;
+    const obj = await resp.json();
+    await idbPut('chunks', prefix, obj);
+    const map = new Map(Object.entries(obj));
+    loadedChunks.set(prefix, map);
+    return map;
+  } catch(e){
+    console.debug('chunk load err', e);
+    return null;
+  }
+}
+
+async function fetchOFF(ean){
+  // try idb off cache
+  const cached = await idbGet('off', ean);
+  if(cached) return cached;
   try{
     const res = await fetch(`${OFF_PRODUCT_URL}${encodeURIComponent(ean)}.json`);
     if(!res.ok) return null;
     const j = await res.json();
     if(j.status === 1 && j.product){
-      // вытаскиваем полезные поля: product_name, image_small_url, image_url
       const p = {
         ean,
         name: j.product.product_name || j.product.generic_name || j.product.brands,
-        image_small_url: j.product.image_small_url || j.product.image_front_small_url || j.product.image_url,
-        image_url: j.product.image_url || j.product.image_front_url,
-        ingredients_text: j.product.ingredients_text,
-        nutriments: j.product.nutriments,
+        image: j.product.image_small_url || j.product.image_front_small_url || j.product.image_url,
         raw: j.product
       };
+      await idbPut('off', ean, p);
       return p;
-    } else return null;
-  } catch(e){ console.debug('OFF fetch err', e); return null; }
+    }
+    return null;
+  } catch(e){
+    console.debug('OFF fetch err', e);
+    return null;
+  }
 }
 
-/* main search: локально -> indexedDB cache -> Open Food Facts API */
 async function findProduct(ean){
-  // 1) локальная база PRODUCTS
-  const local = PRODUCTS.find(p => p.ean === ean);
+  // 1. local small PRODUCTS
+  const local = PRODUCTS.find(p=>p.ean===ean);
   if(local) return local;
-  // 2) кеш
-  const cached = await dbGet(ean);
-  if(cached) return cached;
-  // 3) запрос к Open Food Facts
-  const off = await fetchFromOFF(ean);
-  if(off){ await dbPut(ean, off); return off; }
+  // 2. chunk by prefix
+  const prefix = (ean+'').slice(0, PREFIX_LEN);
+  const chunk = await loadChunk(prefix);
+  if(chunk){
+    const name = chunk.get(ean) || chunk[ean];
+    if(name) return { ean, name, price: '—' };
+  }
+  // 3. offline cache / Open Food Facts
+  const off = await fetchOFF(ean);
+  if(off) return off;
   return null;
 }
 
-/* ----------------- ZXing scanner ----------------- */
+/* ========== ZXing scanner ========== */
 const codeReader = new ZXing.BrowserMultiFormatReader();
 let streaming = false;
 let lastDetected = { code: null, time: 0 };
 
 function startCamera(){
-  codeReader.listVideoInputDevices()
-    .then(devices=>{
-      if(!devices || devices.length === 0) throw new Error('Камера не найдена');
-      const prefer = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[0];
-      codeReader.decodeFromVideoDevice(prefer.deviceId, video, (result, err)=>{
-        if(result) handleCode(result.text);
-      });
-      streaming = true; toggleCameraBtn.textContent = 'Остановить камеру';
-      status.textContent = 'Камера включена. Наведи на штрихкод.';
-    })
-    .catch(err=> status.textContent = 'Ошибка камеры: ' + (err && err.message ? err.message : err));
+  codeReader.listVideoInputDevices().then(devices=>{
+    if(!devices || devices.length===0) { status.textContent = 'Камера не найдена'; return; }
+    const prefer = devices.find(d=>/back|rear|environment/i.test(d.label)) || devices[0];
+    codeReader.decodeFromVideoDevice(prefer.deviceId, video, (result, err) => {
+      if(result) handleCode(result.text);
+    });
+    streaming = true; toggleCamBtn.textContent = 'Остановить камеру'; status.textContent = 'Камера включена';
+  }).catch(err=> status.textContent = 'Ошибка камеры: ' + (err && err.message || err));
 }
-
-function stopCamera(){ try{ codeReader.reset(); }catch(e){} streaming=false; toggleCameraBtn.textContent='Запустить камеру'; status.textContent='Камера остановлена'; }
+function stopCamera(){ try{ codeReader.reset(); }catch(e){} streaming=false; toggleCamBtn.textContent='Запустить камеру'; status.textContent='Камера остановлена'; }
 
 async function handleCode(code){
   const now = Date.now();
-  if(code === lastDetected.code && (now - lastDetected.time) < 1200) return;
+  if(code === lastDetected.code && now - lastDetected.time < 1200) return;
   lastDetected = { code, time: now };
   status.textContent = 'Считан: ' + code;
-  resultArea.innerHTML = `<div style="color:#666">Ищу...</div>`;
+  resultArea.innerHTML = '<div class="small">Ищу...</div>';
   const found = await findProduct(code);
   if(found) resultArea.innerHTML = renderCard(found);
   else resultArea.innerHTML = renderNotFound(code);
 }
 
-/* кнопки */
-toggleCameraBtn.addEventListener('click', ()=> streaming ? stopCamera() : startCamera());
-clearResultBtn.addEventListener('click', ()=> { resultArea.innerHTML = '<div class="hint">Ожидаю сканирования…</div>'; status.textContent='Очищено'; });
+/* ========== UI events и инициализация ========== */
+toggleCamBtn.addEventListener('click', ()=> streaming ? stopCamera() : startCamera());
+clearResBtn.addEventListener('click', ()=> { resultArea.innerHTML = '<div class="hint">Ожидаю сканирования…</div>'; status.textContent = 'Очищено'; });
+prefetchBtn.addEventListener('click', async ()=>{
+  // пример горячих префиксов — можно собрать по статистике или задать вручную
+  const hot = ['460','481','489','590','401','400','761']; // RU/EU/популярные в демонстрации
+  status.textContent = 'Предзагрузка ' + hot.join(', ');
+  for(const p of hot){ await loadChunk(p); }
+  status.textContent = 'Предзагрузка завершена';
+});
+clearCartBtn.addEventListener('click', ()=> { if(confirm('Очистить корзину?')) { cart=[]; saveCart(); } });
+showCartBtn.addEventListener('click', ()=> {
+  const w = window.open(); if(w){ w.document.write('<pre>'+escapeHtml(JSON.stringify(cart, null, 2))+'</pre>'); w.document.close(); }
+});
 
-/* старт */
+renderCart();
 startCamera();
+
+/* Экспорт функций для inline кнопок */
+window.addToCart = addToCart;
 </script>
 </body>
 </html>
