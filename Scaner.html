@@ -1,80 +1,184 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Генератор служебной записки</title>
-  <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
-  <style>
-    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; }
-    label { display: block; margin-top: 12px; font-weight: bold; }
-    input, textarea { width: 100%; padding: 8px; margin-top: 4px; }
-    button { margin-top: 20px; padding: 10px 20px; font-size: 16px; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Сканер + Open Food Facts</title>
+<script src="https://unpkg.com/@zxing/library@latest"></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--accent:#0b76ff;--muted:#666}
+  html,body{height:100%;margin:0;font-family:Inter,Roboto,Arial,sans-serif;background:var(--bg);color:#111}
+  .wrap{max-width:980px;margin:18px auto;padding:18px}
+  .panel{background:var(--card);border-radius:10px;padding:12px;box-shadow:0 2px 8px rgba(20,20,30,0.05)}
+  #video{width:100%;height:360px;background:#000;border-radius:8px;object-fit:cover}
+  .status{margin-top:10px;font-size:14px;color:var(--muted)}
+  .result-area{margin-top:14px;min-height:120px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+  .card{display:flex;gap:12px;align-items:flex-start;width:100%}
+  .thumb{width:120px;height:90px;background:#eee;border-radius:6px;flex:0 0 120px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;overflow:hidden}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .meta{flex:1}
+  .meta h3{margin:0;font-size:16px}
+  .meta p{margin:6px 0;color:var(--muted);font-size:14px}
+  button{background:var(--accent);border:none;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:600}
+  button.ghost{background:#eee;color:#111}
+</style>
 </head>
 <body>
-  <h2>Генератор служебной записки (.docx)</h2>
-  <form id="form">
-    <label>От кого: <input name="from_whom" value="Копейкин А.В."></label>
-    <label>Дата: <input name="date" value="01.01.2023"></label>
-    <label>Номер магазина: <input name="store_number" value="12345"></label>
-    <label>Адрес магазина: <input name="store_address" value="г. Санкт-Петербург, ул. Пейзажная, д. 14"></label>
-    <label>По невнимательности кого: <input name="by_whom" value="Иванова И.И."></label>
-    <label>Недопринятый товар: <textarea name="undelivered_items">Игристое вино полусладкое белое «Промо-Бокале» - 12 шт.,
-Виски купажированный Вилиам Лоусон не менее 3 лет 40% 0,5 - 6 шт.</textarea></label>
-    <label>Сумма: <input name="total_amount" value="3378 рублей 68 копеек"></label>
-    <label>С какого магазина списать: <input name="remaining_store_number" value="12345"></label>
-    <label>Кому вынесено ННП: <input name="penalty_employee" value="Иванову И.И."></label>
-    <label>Номер ННП: <input name="penalty_code" value="№ 24400191"></label>
-    <label>Подпись инспектора: <input name="inspector_name" value="Копейкин А.В."></label>
-    <button type="submit">Скачать .docx</button>
-  </form>
+<div class="wrap">
+  <h1 class="panel">📦 Сканер штрихкодов + Open Food Facts</h1>
 
-  <script>
-    const { Document, Packer, Paragraph, TextRun } = window.docx;
+  <div class="panel">
+    <video id="video" autoplay playsinline></video>
+    <div class="status" id="status">Ожидаю сканирования…</div>
+    <div class="result-area" id="resultArea">
+      <div class="hint">Наведи камеру на штрихкод</div>
+    </div>
+    <div style="margin-top:12px">
+      <button id="toggleCamera">Остановить камеру</button>
+      <button id="clearResult" class="ghost">Очистить</button>
+    </div>
+  </div>
 
-    const template = (data) => `
-Директору ООО «Альфа-М»
-Михайленко К.В.
+  <p style="font-size:13px;color:#666;margin-top:8px">
+    Локальные примеры можно редактировать в массиве PRODUCTS. Если товар не найден локально — используется Open Food Facts API и результат кэшируется локально.
+  </p>
+</div>
 
-От инспектора ДПП
-${data.from_whom}
+<script>
+/* ----------------- Настройки и локальная база ----------------- */
+const PRODUCTS = [
+  { ean: "5901234123457", name: "Coca-Cola 0.5L", price: "79 ₽", image: "" },
+  { ean: "4601234567890", name: "Молоко Домик в деревне 1.5%", price: "95 ₽", image: "" },
+  { ean: "4006381333931", name: "Маркер Staedtler", price: "49 ₽", image: "" }
+];
+// Open Food Facts base URL (API v0 product endpoint)
+const OFF_PRODUCT_URL = 'https://world.openfoodfacts.org/api/v0/product/'; // {code}.json
 
-Служебная записка.
+/* ----------------- Небольший IndexedDB-Cache (простой) ----------------- */
+const DB_NAME = 'off_cache_db';
+const STORE = 'products';
+function openDB(){ return new Promise((res, rej)=>{
+  const r = indexedDB.open(DB_NAME,1);
+  r.onupgradeneeded = ()=> r.result.createObjectStore(STORE, { keyPath: 'ean' });
+  r.onsuccess = ()=> res(r.result);
+  r.onerror = ()=> rej(r.error);
+});}
+async function dbGet(ean){
+  const db = await openDB();
+  return new Promise((res, rej)=>{
+    const tx = db.transaction(STORE,'readonly').objectStore(STORE).get(ean);
+    tx.onsuccess = ()=> res(tx.result?.data || null);
+    tx.onerror = ()=> rej(tx.error);
+  });
+}
+async function dbPut(ean, data){
+  const db = await openDB();
+  return new Promise((res, rej)=>{
+    const tx = db.transaction(STORE,'readwrite').objectStore(STORE).put({ ean, data });
+    tx.onsuccess = ()=> res(true);
+    tx.onerror = ()=> rej(tx.error);
+  });
+}
 
-Довожу до вашего сведения, что ${data.date} в магазине № ${data.store_number}, расположенном по адресу: ${data.store_address}, по невнимательности администратора ${data.by_whom}, был недопринят товар:
+/* ----------------- UI ----------------- */
+const video = document.getElementById('video');
+const status = document.getElementById('status');
+const resultArea = document.getElementById('resultArea');
+const toggleCameraBtn = document.getElementById('toggleCamera');
+const clearResultBtn = document.getElementById('clearResult');
 
-${data.undelivered_items}
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function renderCard(product){
+  const img = product.image || (product.image_small_url || product.image_url) || '';
+  const imgHtml = img ? `<img src="${escapeHtml(img)}" alt="" />` : `<div style="width:120px;height:90px;display:flex;align-items:center;justify-content:center;color:#666">Нет фото</div>`;
+  const price = product.price || product['price'] || '—';
+  return `
+    <div class="card">
+      <div class="thumb">${imgHtml}</div>
+      <div class="meta">
+        <h3>${escapeHtml(product.name || product.product_name || 'Без названия')}</h3>
+        <p class="price">${escapeHtml(price)}</p>
+        <p><small>EAN: ${escapeHtml(product.ean || product.code)}</small></p>
+      </div>
+    </div>
+  `;
+}
+function renderNotFound(code){ return `<div style="color:#b33;font-weight:600">❌ Товар не найден: ${escapeHtml(code)}</div>`; }
 
-Всего на общую сумму ${data.total_amount}. В ходе просмотра видеозаписей с камер видеонаблюдения факт недоприема товара подтвержден.
+/* ----------------- Open Food Facts запрос и логика поиска ----------------- */
+async function fetchFromOFF(ean){
+  try{
+    const res = await fetch(`${OFF_PRODUCT_URL}${encodeURIComponent(ean)}.json`);
+    if(!res.ok) return null;
+    const j = await res.json();
+    if(j.status === 1 && j.product){
+      // вытаскиваем полезные поля: product_name, image_small_url, image_url
+      const p = {
+        ean,
+        name: j.product.product_name || j.product.generic_name || j.product.brands,
+        image_small_url: j.product.image_small_url || j.product.image_front_small_url || j.product.image_url,
+        image_url: j.product.image_url || j.product.image_front_url,
+        ingredients_text: j.product.ingredients_text,
+        nutriments: j.product.nutriments,
+        raw: j.product
+      };
+      return p;
+    } else return null;
+  } catch(e){ console.debug('OFF fetch err', e); return null; }
+}
 
-На основании вышеизложенного, прошу снять с магазина № ${data.remaining_store_number} вышеуказанный товар.
+/* main search: локально -> indexedDB cache -> Open Food Facts API */
+async function findProduct(ean){
+  // 1) локальная база PRODUCTS
+  const local = PRODUCTS.find(p => p.ean === ean);
+  if(local) return local;
+  // 2) кеш
+  const cached = await dbGet(ean);
+  if(cached) return cached;
+  // 3) запрос к Open Food Facts
+  const off = await fetchFromOFF(ean);
+  if(off){ await dbPut(ean, off); return off; }
+  return null;
+}
 
-Администратору ${data.penalty_employee} вынесено ННП — 1000 руб. (${data.penalty_code}).
+/* ----------------- ZXing scanner ----------------- */
+const codeReader = new ZXing.BrowserMultiFormatReader();
+let streaming = false;
+let lastDetected = { code: null, time: 0 };
 
-Инспектор ДПП ${data.inspector_name}
-`;
-
-    document.getElementById("form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const formData = new FormData(e.target);
-      const data = Object.fromEntries(formData.entries());
-
-      const doc = new Document({
-        sections: [{
-          properties: {},
-          children: template(data).split("\n").map(line =>
-            new Paragraph({ children: [new TextRun(line.trim())] })
-          )
-        }]
+function startCamera(){
+  codeReader.listVideoInputDevices()
+    .then(devices=>{
+      if(!devices || devices.length === 0) throw new Error('Камера не найдена');
+      const prefer = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[0];
+      codeReader.decodeFromVideoDevice(prefer.deviceId, video, (result, err)=>{
+        if(result) handleCode(result.text);
       });
+      streaming = true; toggleCameraBtn.textContent = 'Остановить камеру';
+      status.textContent = 'Камера включена. Наведи на штрихкод.';
+    })
+    .catch(err=> status.textContent = 'Ошибка камеры: ' + (err && err.message ? err.message : err));
+}
 
-      const blob = await Packer.toBlob(doc);
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `Служебная_записка_${data.store_number}_${data.date}.docx`;
-      a.click();
-    });
-  </script>
+function stopCamera(){ try{ codeReader.reset(); }catch(e){} streaming=false; toggleCameraBtn.textContent='Запустить камеру'; status.textContent='Камера остановлена'; }
+
+async function handleCode(code){
+  const now = Date.now();
+  if(code === lastDetected.code && (now - lastDetected.time) < 1200) return;
+  lastDetected = { code, time: now };
+  status.textContent = 'Считан: ' + code;
+  resultArea.innerHTML = `<div style="color:#666">Ищу...</div>`;
+  const found = await findProduct(code);
+  if(found) resultArea.innerHTML = renderCard(found);
+  else resultArea.innerHTML = renderNotFound(code);
+}
+
+/* кнопки */
+toggleCameraBtn.addEventListener('click', ()=> streaming ? stopCamera() : startCamera());
+clearResultBtn.addEventListener('click', ()=> { resultArea.innerHTML = '<div class="hint">Ожидаю сканирования…</div>'; status.textContent='Очищено'; });
+
+/* старт */
+startCamera();
+</script>
 </body>
 </html>
-
