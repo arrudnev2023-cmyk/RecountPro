@@ -1,46 +1,422 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Счётчик кликов</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      background: linear-gradient(to right, #1e3c72, #2a5298);
-      color: white;
-      text-align: center;
-      padding-top: 100px;
-    }
-    button {
-      font-size: 24px;
-      padding: 15px 30px;
-      border: none;
-      border-radius: 8px;
-      background-color: #ff9800;
-      color: white;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-    button:hover {
-      transform: scale(1.1);
-    }
-    h1 {
-      font-size: 48px;
-      margin-bottom: 20px;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Бюджет — контроль доходов и расходов (MVP)</title>
+<style>
+  :root{--bg:#0b1226;--card:#0f1724;--accent:#ffb86b;--muted:#9fb0c8}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',sans-serif;background:linear-gradient(180deg,#071029,#0b1226);color:#e6eef8}
+  .wrap{max-width:980px;margin:28px auto;padding:20px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  h1{margin:0;font-size:20px}
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:16px;margin-top:18px}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input[type=text], input[type=number], input[type=date], select, textarea {
+    width:100%;padding:8px;border-radius:8px;border:none;background:rgba(255,255,255,0.02);color:inherit;
+  }
+  .row{display:flex;gap:8px;align-items:center}
+  .btn{background:var(--accent);color:#08101b;padding:8px 10px;border-radius:8px;border:none;cursor:pointer}
+  .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px 10px;border-radius:8px;cursor:pointer}
+  .list{max-height:420px;overflow:auto;margin-top:10px}
+  .txn{display:flex;justify-content:space-between;padding:10px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.01);border:1px solid rgba(255,255,255,0.02)}
+  .txn .left{display:flex;gap:10px;align-items:center}
+  .badge{padding:6px 8px;border-radius:8px;font-weight:600}
+  .income{background:linear-gradient(90deg,#bff1c7,#6be3a9);color:#042214}
+  .expense{background:linear-gradient(90deg,#ffb6b6,#ff8b8b);color:#2a0606}
+  .meta{font-size:13px;color:var(--muted)}
+  footer{margin-top:18px;color:var(--muted);font-size:13px}
+  .summary{display:flex;gap:10px;align-items:center}
+  .tile{padding:12px;border-radius:10px;background:rgba(255,255,255,0.015);min-width:120px;text-align:center}
+  canvas{max-width:100%}
+  .controls{display:flex;gap:8px;flex-wrap:wrap}
+  .small{font-size:13px;color:var(--muted)}
+  pre{white-space:pre-wrap;word-break:break-word}
+</style>
 </head>
 <body>
-  <h1>🔥 Счётчик кликов</h1>
-  <p>Количество кликов: <span id="count">0</span></p>
-  <button onclick="increment()">Кликни меня</button>
+  <div class="wrap">
+    <header>
+      <h1>MyBudget — контроль расходов и доходов (MVP)</h1>
+      <div class="controls">
+        <select id="monthSelect" class="small"></select>
+        <button id="exportBtn" class="btn-ghost small">Экспорт CSV</button>
+        <button id="importBtn" class="btn-ghost small">Импорт CSV</button>
+        <input id="fileInput" type="file" accept=".csv" style="display:none" />
+      </div>
+    </header>
 
-  <script>
-    let count = 0;
-    function increment() {
-      count++;
-      document.getElementById("count").textContent = count;
-    }
-  </script>
+    <div class="grid">
+      <main class="card">
+        <div class="summary" style="justify-content:space-between">
+          <div style="display:flex;gap:10px">
+            <div class="tile">
+              <div class="meta">Баланс</div>
+              <div id="balance" style="font-size:20px;font-weight:700">0 ₽</div>
+            </div>
+            <div class="tile">
+              <div class="meta">Доходы</div>
+              <div id="income" style="font-weight:700;color:#bff1c7">0 ₽</div>
+            </div>
+            <div class="tile">
+              <div class="meta">Расходы</div>
+              <div id="expense" style="font-weight:700;color:#ffb6b6">0 ₽</div>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div class="meta">Транзакций</div>
+            <div id="count" style="font-weight:700">0</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+          <input id="search" type="text" placeholder="Поиск по заметке или категории" />
+          <select id="categoryFilter"><option value="">Все категории</option></select>
+          <button id="clearFilter" class="btn-ghost small">Сброс</button>
+        </div>
+
+        <div class="list" id="txList" aria-live="polite" style="margin-top:12px"></div>
+      </main>
+
+      <aside>
+        <div class="card" aria-label="Форма транзакции">
+          <label>Тип</label>
+          <div class="row" style="margin-bottom:8px">
+            <select id="type">
+              <option value="expense">Расход</option>
+              <option value="income">Доход</option>
+            </select>
+            <input id="amount" type="number" step="0.01" placeholder="Сумма" />
+          </div>
+
+          <label>Категория</label>
+          <select id="category"></select>
+
+          <label>Дата</label>
+          <input id="date" type="date" />
+
+          <label>Заметка</label>
+          <input id="note" type="text" placeholder="Короткая заметка" />
+
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button id="addBtn" class="btn">Добавить</button>
+            <button id="clearBtn" class="btn-ghost">Очистить</button>
+          </div>
+
+          <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)" />
+
+          <div style="text-align:center;margin-bottom:8px"><strong>Диаграмма расходов</strong></div>
+          <canvas id="chart" width="300" height="200"></canvas>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <div class="meta">Импорт / экспорт</div>
+          <div style="margin-top:8px" class="small">CSV формат: type,amount,category,date,note</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button id="downloadSample" class="btn-ghost small">Пример CSV</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      Это прототип. Данные хранятся локально в браузере. Для резервации и синхронизации подключить бэкенд/аккаунты.
+    </footer>
+  </div>
+
+<script>
+/* Простая реализация хранилища в localStorage и UI логики */
+const STORAGE_KEY = 'mybudget_tx_v1';
+const DEFAULT_CATEGORIES = ['Еда','Транспорт','Развлечения','Зарплата','Фриланс','Коммуналка','Покупки','Другое'];
+
+const els = {
+  txList: document.getElementById('txList'),
+  balance: document.getElementById('balance'),
+  income: document.getElementById('income'),
+  expense: document.getElementById('expense'),
+  count: document.getElementById('count'),
+  type: document.getElementById('type'),
+  amount: document.getElementById('amount'),
+  category: document.getElementById('category'),
+  date: document.getElementById('date'),
+  note: document.getElementById('note'),
+  addBtn: document.getElementById('addBtn'),
+  clearBtn: document.getElementById('clearBtn'),
+  monthSelect: document.getElementById('monthSelect'),
+  search: document.getElementById('search'),
+  categoryFilter: document.getElementById('categoryFilter'),
+  clearFilter: document.getElementById('clearFilter'),
+  chart: document.getElementById('chart'),
+  exportBtn: document.getElementById('exportBtn'),
+  importBtn: document.getElementById('importBtn'),
+  fileInput: document.getElementById('fileInput'),
+  downloadSample: document.getElementById('downloadSample')
+};
+
+let txs = loadTxs();
+let selectedMonth = 'all';
+let categories = loadCategories();
+
+// UI init
+function init(){
+  populateCategories();
+  populateMonthSelect();
+  bindEvents();
+  render();
+  // default date today
+  if(!els.date.value) els.date.value = new Date().toISOString().slice(0,10);
+}
+
+function loadTxs(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e){ return []; }
+}
+function saveTxs(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(txs)); }
+
+function loadCategories(){
+  const raw = localStorage.getItem('mybudget_cats_v1');
+  if(!raw) { localStorage.setItem('mybudget_cats_v1', JSON.stringify(DEFAULT_CATEGORIES)); return DEFAULT_CATEGORIES.slice(); }
+  try{ return JSON.parse(raw); }catch(e){ return DEFAULT_CATEGORIES.slice(); }
+}
+function saveCategories(){
+  localStorage.setItem('mybudget_cats_v1', JSON.stringify(categories));
+}
+
+function populateCategories(){
+  els.category.innerHTML = '';
+  els.category.appendChild(opt('', 'Выбрать категорию'));
+  categories.forEach(c => els.category.appendChild(opt(c,c)));
+  // filter select
+  els.categoryFilter.innerHTML = '';
+  els.categoryFilter.appendChild(opt('', 'Все категории'));
+  categories.forEach(c => els.categoryFilter.appendChild(opt(c,c)));
+}
+
+function populateMonthSelect(){
+  const months = getAvailableMonths();
+  els.monthSelect.innerHTML = '';
+  els.monthSelect.appendChild(opt('all','Все месяцы'));
+  months.forEach(m => els.monthSelect.appendChild(opt(m.value,m.label)));
+}
+
+// helpers
+function opt(v,t){ const o = document.createElement('option'); o.value = v; o.textContent = t; return o; }
+function formatMoney(n){ return Number(n).toLocaleString('ru-RU',{maximumFractionDigits:2}) + ' ₽'; }
+
+function getAvailableMonths(){
+  const set = new Set(txs.map(t => t.date.slice(0,7)));
+  const arr = Array.from(set).sort().reverse();
+  return arr.map(m => ({value:m, label: monthLabel(m)}));
+}
+function monthLabel(ym){
+  const [y,m] = ym.split('-'); const mm = new Date(y,Number(m)-1).toLocaleString('ru-RU',{month:'long'});
+  return `${mm} ${y}`;
+}
+
+// add transaction
+els.addBtn.addEventListener('click', () => {
+  const type = els.type.value;
+  const amount = parseFloat(els.amount.value);
+  const category = els.category.value || 'Другое';
+  const date = els.date.value;
+  const note = els.note.value || '';
+  if(isNaN(amount) || amount === 0){ alert('Укажите сумму'); return; }
+  const tx = {
+    id: 'tx_' + Date.now(),
+    type, amount: Math.round(amount*100)/100, category, date, note
+  };
+  txs.push(tx); saveTxs();
+  clearForm();
+  populateMonthSelect();
+  render();
+});
+
+// clear
+els.clearBtn.addEventListener('click', () => { clearForm(); });
+function clearForm(){ els.amount.value=''; els.note.value=''; els.type.value='expense'; els.category.value=''; els.date.value = new Date().toISOString().slice(0,10); }
+
+// render list and summary
+function render(){
+  // filters
+  const search = els.search.value.trim().toLowerCase();
+  const catFilter = els.categoryFilter.value;
+  selectedMonth = els.monthSelect.value;
+
+  let filtered = txs.slice().sort((a,b)=> b.date.localeCompare(a.date));
+  if(selectedMonth !== 'all') filtered = filtered.filter(t=> t.date.startsWith(selectedMonth));
+  if(catFilter) filtered = filtered.filter(t=> t.category === catFilter);
+  if(search) filtered = filtered.filter(t => (t.note || '').toLowerCase().includes(search) || t.category.toLowerCase().includes(search));
+
+  // summary
+  const incomeSum = filtered.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const expenseSum = filtered.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const balance = incomeSum - expenseSum;
+  els.income.textContent = formatMoney(incomeSum);
+  els.expense.textContent = formatMoney(expenseSum);
+  els.balance.textContent = formatMoney(balance);
+  els.count.textContent = filtered.length;
+
+  // list
+  els.txList.innerHTML = '';
+  if(filtered.length === 0) els.txList.innerHTML = '<div class="meta">Транзакций не найдено</div>';
+  filtered.forEach(tx => {
+    const div = document.createElement('div'); div.className='txn';
+    const left = document.createElement('div'); left.className='left';
+    const badge = document.createElement('div'); badge.className = 'badge ' + (tx.type==='income'?'income':'expense'); badge.textContent = tx.type==='income'? 'Доход':'Расход';
+    const info = document.createElement('div');
+    const title = document.createElement('div'); title.textContent = tx.category + (tx.note ? ' — '+tx.note : '');
+    title.style.fontWeight = 600;
+    const date = document.createElement('div'); date.className='meta'; date.textContent = tx.date;
+    info.appendChild(title); info.appendChild(date);
+    left.appendChild(badge); left.appendChild(info);
+
+    const right = document.createElement('div'); right.style.textAlign='right';
+    const amt = document.createElement('div'); amt.style.fontWeight=700; amt.textContent = (tx.type==='income'?'+':'-') + formatMoney(Math.abs(tx.amount));
+    const btns = document.createElement('div'); btns.style.marginTop='6px';
+    const del = document.createElement('button'); del.className='btn-ghost small'; del.textContent='Удалить';
+    del.addEventListener('click', () => { if(confirm('Удалить транзакцию?')){ txs = txs.filter(t=>t.id!==tx.id); saveTxs(); populateMonthSelect(); render(); }});
+    btns.appendChild(del);
+    right.appendChild(amt); right.appendChild(btns);
+
+    div.appendChild(left); div.appendChild(right);
+    els.txList.appendChild(div);
+  });
+
+  // chart
+  renderChart(filtered);
+}
+
+// simple pie chart of expenses by category
+function renderChart(list){
+  const ctx = els.chart.getContext('2d');
+  const width = els.chart.width; const height = els.chart.height;
+  ctx.clearRect(0,0,width,height);
+  const expenses = list.filter(t=>t.type==='expense');
+  const map = {};
+  expenses.forEach(t => map[t.category] = (map[t.category]||0) + t.amount);
+  const entries = Object.entries(map);
+  if(entries.length === 0){
+    ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.font='14px sans-serif';
+    ctx.fillText('Нет расходов для диаграммы', 20, height/2);
+    return;
+  }
+  const total = entries.reduce((s,[k,v])=>s+v,0);
+  let start = -Math.PI/2;
+  const colors = ['#ff7a7a','#ffb86b','#ffd88a','#bff1c7','#8ad4ff','#b39cff','#f6a0ff','#cfcfcf'];
+  entries.forEach(([k,v],i) => {
+    const slice = v/total * Math.PI*2;
+    ctx.beginPath();
+    ctx.moveTo(width*0.5, height*0.5);
+    ctx.arc(width*0.5, height*0.5, Math.min(width,height)*0.38, start, start+slice);
+    ctx.closePath();
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fill();
+    start += slice;
+  });
+  // legend
+  let x = 10, y = height - 70;
+  ctx.font='12px sans-serif';
+  entries.forEach(([k,v],i) => {
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fillRect(x, y, 12, 12);
+    ctx.fillStyle = '#e6eef8';
+    ctx.fillText(`${k} — ${Math.round(v*100)/100} ₽`, x+18, y+11);
+    y += 18;
+  });
+}
+
+// filters & events
+els.monthSelect.addEventListener('change', () => { render(); });
+els.search.addEventListener('input', debounce(()=> render(), 200));
+els.categoryFilter.addEventListener('change', () => render());
+els.clearFilter.addEventListener('click', () => { els.search.value=''; els.categoryFilter.value=''; els.monthSelect.value='all'; render(); });
+
+// export CSV
+els.exportBtn.addEventListener('click', () => {
+  const csv = toCSV(txs);
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'mybudget_export.csv'; a.click();
+  URL.revokeObjectURL(url);
+});
+
+// import CSV
+els.importBtn.addEventListener('click', () => els.fileInput.click());
+els.fileInput.addEventListener('change', (e)=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const raw = reader.result;
+    const parsed = fromCSV(raw);
+    if(!parsed || parsed.length===0){ alert('Нечего импортировать'); return; }
+    parsed.forEach(row => {
+      // validate minimal
+      if(!row.type || !row.amount || !row.date) return;
+      txs.push({ id: 'tx_' + Date.now() + Math.random().toString(36).slice(2,6), type:row.type, amount: Number(row.amount), category: row.category||'Другое', date:row.date, note:row.note||''});
+    });
+    saveTxs(); populateMonthSelect(); render(); alert('Импортировано ' + parsed.length + ' строк');
+  };
+  reader.readAsText(f,'utf-8');
+  e.target.value = '';
+});
+
+// sample CSV
+els.downloadSample.addEventListener('click', () => {
+  const sample = 'type,amount,category,date,note\nincome,50000,Зарплата,2025-11-01,Ноябрь\nexpense,800,Еда,2025-11-02,Ужин\nexpense,350,Транспорт,2025-11-03,Метро';
+  const blob = new Blob([sample],{type:'text/csv'}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download='sample.csv'; a.click(); URL.revokeObjectURL(url);
+});
+
+// CSV helpers
+function toCSV(arr){
+  const header = ['type','amount','category','date','note'];
+  const lines = [header.join(',')];
+  arr.forEach(t => {
+    const row = [t.type, String(t.amount), escapeCsv(t.category), t.date, escapeCsv(t.note||'')];
+    lines.push(row.join(','));
+  });
+  return lines.join('\n');
+}
+function escapeCsv(s){ if(s == null) return ''; return `"${String(s).replace(/"/g,'""')}"`; }
+
+function fromCSV(raw){
+  const lines = raw.trim().split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if(lines.length <= 1) return [];
+  const header = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+  const res = [];
+  for(let i=1;i<lines.length;i++){
+    const row = parseCsvLine(lines[i]);
+    if(row.length === 0) continue;
+    const obj = {};
+    header.forEach((h,idx) => { obj[h] = row[idx] !== undefined ? row[idx].replace(/^"|"$/g,'') : ''; });
+    res.push(obj);
+  }
+  return res;
+}
+function parseCsvLine(line){
+  const res=[];
+  let cur=''; let inQuotes=false;
+  for(let i=0;i<line.length;i++){
+    const ch = line[i];
+    if(ch === '"' ){ inQuotes = !inQuotes; cur += ch; continue; }
+    if(ch === ',' && !inQuotes){ res.push(cur.replace(/^"|"$/g,'')); cur=''; continue; }
+    cur += ch;
+  }
+  if(cur!=='') res.push(cur.replace(/^"|"$/g,'')); 
+  return res;
+}
+
+// small utils
+function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
+
+// CSV import supports categories not in list: add them dynamically
+// optional: add custom category by typing and pressing Enter in category select (not needed for MVP)
+
+init();
+render();
+
+</script>
 </body>
 </html>
