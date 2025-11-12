@@ -2,94 +2,45 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Messenger MVP</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-firestore.js"></script>
-  <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <title>Счётчик кликов</title>
   <style>
     body {
-      margin: 0;
       font-family: sans-serif;
-      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+      background: linear-gradient(to right, #1e3c72, #2a5298);
       color: white;
+      text-align: center;
+      padding-top: 100px;
     }
-    .chat {
-      max-width: 600px;
-      margin: 50px auto;
-      padding: 20px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 12px;
-    }
-    .message {
-      margin: 10px 0;
-      padding: 10px;
-      background: rgba(255, 255, 255, 0.1);
+    button {
+      font-size: 24px;
+      padding: 15px 30px;
+      border: none;
       border-radius: 8px;
+      background-color: #ff9800;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: scale(1.1);
+    }
+    h1 {
+      font-size: 48px;
+      margin-bottom: 20px;
     }
   </style>
 </head>
 <body>
-  <div id="root"></div>
+  <h1>🔥 Счётчик кликов</h1>
+  <p>Количество кликов: <span id="count">0</span></p>
+  <button onclick="increment()">Кликни меня</button>
 
-  <script type="text/babel">
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_AUTH_DOMAIN",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_STORAGE_BUCKET",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    function App() {
-      const [messages, setMessages] = React.useState([]);
-      const [text, setText] = React.useState("");
-
-      React.useEffect(() => {
-        db.collection("messages")
-          .orderBy("timestamp")
-          .onSnapshot(snapshot => {
-            const data = snapshot.docs.map(doc => doc.data());
-            setMessages(data);
-          });
-      }, []);
-
-      const sendMessage = () => {
-        if (text.trim()) {
-          db.collection("messages").add({
-            text,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-          });
-          setText("");
-        }
-      };
-
-      return (
-        <div className="chat">
-          <h2>🔥 Космический мессенджер</h2>
-          {messages.map((msg, i) => (
-            <div key={i} className="message">{msg.text}</div>
-          ))}
-          <input
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder="Введите сообщение"
-            style={{ width: "80%", padding: "10px", borderRadius: "8px" }}
-          />
-          <button onClick={sendMessage} style={{ padding: "10px", marginLeft: "10px" }}>
-            Отправить
-          </button>
-        </div>
-      );
+  <script>
+    let count = 0;
+    function increment() {
+      count++;
+      document.getElementById("count").textContent = count;
     }
-
-    ReactDOM.render(<App />, document.getElementById("root"));
   </script>
 </body>
 </html>
