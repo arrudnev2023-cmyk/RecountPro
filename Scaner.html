@@ -3,95 +3,56 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PetHub MVP</title>
-  <meta name="description" content="Экосистема для владельцев животных: поиск питомцев, клиники, груминг, дрессировка, календарь, пожертвования и магазин"/> 
-  <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#17d9ff">
-
+  <title>PetHub — Питомцы (MVP)</title>
+  <meta name="description" content="Поиск и публикация объявлений о питомцах: фото, описание, город, контакты"/>
   <style>
     :root {
-      --bg: #0b1020;
-      --card: #151a2e;
-      --accent: #7cf0ff;
-      --accent2: #ffd36e;
-      --text: #eaf2ff;
-      --muted: #9fb0cc;
-      --ok: #4bd17e;
-      --danger: #ff6e6e;
-      --border: #223058;
+      --bg: #0b1020; --card: #151a2e; --text: #eaf2ff; --muted: #9fb0cc; --accent: #17d9ff; --border:#223058;
     }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    header {
-      position: sticky; top: 0; z-index: 50;
-      backdrop-filter: blur(8px);
-      background: linear-gradient(180deg, rgba(11,16,32,0.7), rgba(11,16,32,0.4));
-      border-bottom: 1px solid var(--border);
-    }
-    .brand {
-      display: flex; align-items: center; gap: 12px; padding: 14px 16px;
-    }
-    .logo {
-      width: 36px; height: 36px; border-radius: 10px; background:
-        radial-gradient(120% 120% at 20% 20%, #0ef 0%, #637cff 45%, #742dff 70%, #0b1020 100%);
+    * { box-sizing:border-box; }
+    html, body { margin:0; padding:0; background:var(--bg); color:var(--text); font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    header { position:sticky; top:0; z-index:10; backdrop-filter: blur(8px);
+      background: linear-gradient(180deg, rgba(11,16,32,0.8), rgba(11,16,32,0.4)); border-bottom:1px solid var(--border); }
+    .brand { max-width:1100px; margin:0 auto; display:flex; gap:14px; align-items:center; padding:14px 16px; }
+    .logo { width:38px; height:38px; border-radius:10px; background:
+      radial-gradient(120% 120% at 20% 20%, #0ef 0%, #637cff 45%, #742dff 70%, #0b1020 100%);
       box-shadow: 0 0 24px rgba(124,240,255,0.35), inset 0 0 24px rgba(99,124,255,0.25);
     }
-    h1 { font-size: 18px; margin: 0; letter-spacing: 0.3px; }
-    .sub { font-size: 12px; color: var(--muted); }
-    nav {
-      display: grid; grid-template-columns: repeat(7,1fr);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-    }
-    nav button {
-      appearance: none; background: transparent; border: 0; color: var(--muted);
-      padding: 12px 8px; cursor: pointer; font-weight: 600; letter-spacing: 0.2px;
-    }
-    nav button.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
-    main { max-width: 1100px; margin: 0 auto; padding: 16px; }
-    .grid { display: grid; grid-template-columns: repeat( auto-fill, minmax(280px, 1fr) ); gap: 12px; }
-    .card {
-      background: linear-gradient(180deg, rgba(21,26,46,0.9), rgba(21,26,46,0.7));
-      border: 1px solid var(--border);
-      border-radius: 14px; padding: 12px; box-shadow: 0 12px 30px rgba(0,0,0,0.25);
-    }
-    .card h3 { margin: 4px 0 8px; font-size: 18px; }
-    .card p { margin: 6px 0; color: var(--muted); }
-    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .row > * { flex: 1; min-width: 160px; }
+    h1 { margin:0; font-size:18px; letter-spacing:0.3px; }
+    .sub { font-size:12px; color:var(--muted); }
+    main { max-width:1100px; margin:0 auto; padding:16px; }
+    .toolbar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
     input, select, textarea {
-      width: 100%; padding: 10px 12px; border-radius: 10px;
-      border: 1px solid var(--border); background: #0f1530; color: var(--text);
-      outline: none; transition: border .15s;
+      width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#0f1530; color:var(--text);
     }
-    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
-    .btn {
-      padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border);
-      background: #102040; color: var(--text); font-weight: 700; cursor: pointer;
-    }
-    .btn.primary { background: linear-gradient(90deg, #17d9ff, #7f77ff); border: 0; }
-    .btn.ghost { background: transparent; border-color: var(--border); color: var(--muted); }
-    .pill { display: inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-size: 12px; }
-    .tag { display: inline-block; margin-right: 8px; font-size: 12px; color: var(--accent2); }
-    .section-title { display: flex; align-items: center; justify-content: space-between; margin: 8px 0 12px; }
-    .kpis { display: flex; gap: 12px; flex-wrap: wrap; }
-    .kpi { flex: 1; min-width: 160px; background: #121a34; border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
-    .kpi strong { font-size: 18px; }
-    footer { color: var(--muted); font-size: 12px; text-align: center; padding: 24px; }
-    /* subtle animated cosmic background */
-    body::before {
-      content: ""; position: fixed; inset: -10%; z-index: -1;
-      background:
-        radial-gradient(1200px 600px at 10% 20%, rgba(23,217,255,0.15), transparent 60%),
-        radial-gradient(800px 800px at 88% 10%, rgba(127,119,255,0.12), transparent 60%),
-        radial-gradient(600px 400px at 70% 80%, rgba(116,45,255,0.16), transparent 60%),
-        linear-gradient(180deg, #070b18, #0b1020 50%, #0e1427);
-      filter: saturate(1.15);
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); outline:none; }
+    .btn { padding:10px 14px; border-radius:10px; border:1px solid var(--border); background:#102040; color:var(--text); font-weight:700; cursor:pointer; }
+    .btn.primary { background: linear-gradient(90deg, #17d9ff, #7f77ff); border:0; }
+    .btn.ghost { background: transparent; color: var(--muted); }
+    .grid { display:grid; grid-template-columns: repeat( auto-fill, minmax(260px, 1fr) ); gap:12px; }
+    .card { background: linear-gradient(180deg, rgba(21,26,46,0.9), rgba(21,26,46,0.7)); border:1px solid var(--border);
+      border-radius:14px; padding:12px; box-shadow: 0 12px 30px rgba(0,0,0,0.25); cursor:pointer; }
+    .card img { width:100%; height:180px; object-fit:cover; border-radius:12px; margin-bottom:8px; }
+    .tag { display:inline-block; font-size:12px; color:#ffd36e; margin-bottom:6px; }
+    .mini { font-size:12px; color:var(--muted); }
+    .section-title { display:flex; align-items:center; justify-content:space-between; margin:8px 0 12px; }
+    .panel { background: var(--card); border:1px solid var(--border); border-radius:14px; padding:12px; }
+    /* Modal */
+    #pet-modal { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:100; }
+    #pet-modal .box { background:#151a2e; border:1px solid var(--border); border-radius:16px; padding:16px; width:min(560px, 92vw); position:relative; }
+    #pet-modal img { width:100%; border-radius:12px; margin-bottom:12px; max-height:60vh; object-fit:cover; }
+    #pet-modal .close { position:absolute; top:10px; right:10px; background:transparent; border:0; color:#fff; font-size:20px; cursor:pointer; }
+    footer { color:var(--muted); font-size:12px; text-align:center; padding:24px; }
+    /* Soft cosmic bg */
+    body::before { content:""; position:fixed; inset:-10%; z-index:-1; background:
+      radial-gradient(1200px 600px at 10% 20%, rgba(23,217,255,0.15), transparent 60%),
+      radial-gradient(800px 800px at 88% 10%, rgba(127,119,255,0.12), transparent 60%),
+      radial-gradient(600px 400px at 70% 80%, rgba(116,45,255,0.16), transparent 60%),
+      linear-gradient(180deg, #070b18, #0b1020 50%, #0e1427);
+      filter:saturate(1.1);
       animation: float 18s ease-in-out infinite alternate;
     }
-    @keyframes float { from { transform: translateY(-1%) } to { transform: translateY(1%) } }
-    .hidden { display: none; }
-    .mini { font-size: 12px; color: var(--muted); }
+    @keyframes float { from { transform:translateY(-1%)} to { transform:translateY(1%)} }
   </style>
 </head>
 <body>
@@ -99,527 +60,205 @@
     <div class="brand">
       <div class="logo"></div>
       <div>
-        <h1>PetHub</h1>
-        <div class="sub">Все для вашего друга — от сердца до хвоста</div>
+        <h1>PetHub — Питомцы</h1>
+        <div class="sub">Поиск и публикация объявлений о животных</div>
       </div>
     </div>
-    <nav id="tabs">
-      <button data-tab="pets" class="active">Питомцы</button>
-      <button data-tab="clinics">Клиники</button>
-      <button data-tab="grooming">Груминг</button>
-      <button data-tab="trainers">Дрессировка</button>
-      <button data-tab="calendar">Календарь</button>
-      <button data-tab="donations">Пожертвования</button>
-      <button data-tab="shop">Магазин</button>
-    </nav>
   </header>
 
   <main>
-    <!-- KPIs / quick numbers -->
-    <div class="kpis">
-      <div class="kpi"><div class="mini">Питомцы</div><strong id="kpi-pets">0</strong></div>
-      <div class="kpi"><div class="mini">Клиники рядом</div><strong id="kpi-clinics">—</strong></div>
-      <div class="kpi"><div class="mini">Записи</div><strong id="kpi-events">0</strong></div>
-      <div class="kpi"><div class="mini">Собрано для приютов</div><strong id="kpi-donations">0 ₽</strong></div>
+    <!-- Toolbar: поиск и фильтры -->
+    <div class="toolbar">
+      <input id="q" placeholder="Поиск по имени, породе, описанию, городу…" />
+      <select id="type">
+        <option value="">Тип: любой</option>
+        <option value="dog">Собака</option>
+        <option value="cat">Кошка</option>
+        <option value="other">Другое</option>
+      </select>
+      <select id="age">
+        <option value="">Возраст: любой</option>
+        <option value="baby">Щенок/котёнок</option>
+        <option value="adult">Взрослый</option>
+        <option value="senior">Пожилой</option>
+      </select>
+      <button class="btn" id="reset">Сбросить</button>
+      <button class="btn primary" id="open-form">Разместить объявление</button>
     </div>
 
-    <!-- Pets -->
-    <section id="view-pets">
+    <!-- Список карточек -->
+    <div class="grid" id="list"></div>
+
+    <!-- Форма добавления объявления -->
+    <div id="form-panel" class="panel" style="margin-top:16px; display:none;">
       <div class="section-title">
-        <h2>Поиск питомца</h2>
-        <button class="btn ghost" id="btn-add-pet">Добавить объявление</button>
+        <h2 style="margin:0;">Новое объявление</h2>
+        <button class="btn ghost" id="close-form">Закрыть</button>
       </div>
-      <div class="row">
-        <input id="pets-query" placeholder="Поиск по имени, породе, городу…" />
-        <select id="pets-type">
-          <option value="">Тип: любой</option>
-          <option value="cat">Кошка</option>
+      <div class="toolbar">
+        <input id="f-name" placeholder="Имя животного"/>
+        <input id="f-breed" placeholder="Порода (необязательно)"/>
+      </div>
+      <div class="toolbar">
+        <input id="f-city" placeholder="Город"/>
+        <select id="f-type">
           <option value="dog">Собака</option>
+          <option value="cat">Кошка</option>
           <option value="other">Другое</option>
         </select>
-        <select id="pets-age">
-          <option value="">Возраст: любой</option>
+        <select id="f-age">
           <option value="baby">Щенок/котёнок</option>
           <option value="adult">Взрослый</option>
           <option value="senior">Пожилой</option>
         </select>
-        <button class="btn" id="pets-reset">Сбросить</button>
       </div>
-      <div class="grid" id="pets-list"></div>
-    </section>
-
-    <!-- Clinics -->
-    <section id="view-clinics" class="hidden">
-      <div class="section-title">
-        <h2>Вет‑клиники и онлайн запись</h2>
-        <button class="btn primary" id="locate-me">Найти рядом</button>
+      <textarea id="f-desc" rows="4" placeholder="Описание: характер, здоровье, требования к будущему владельцу…"></textarea>
+      <div class="toolbar">
+        <input id="f-phone" placeholder="Контактный телефон (+7...)"/>
+        <input id="f-photo" type="file" accept="image/*"/>
       </div>
-      <div class="row">
-        <input id="clinics-city" placeholder="Город или район (например, Санкт-Петербург)" />
-        <button class="btn" id="clinics-search">Показать на карте</button>
-      </div>
-      <div class="grid" id="clinics-list"></div>
-      <div class="card">
-        <h3>Карта клиник</h3>
-        <p class="mini">Откроется внешняя карта по запросу. Позже подключим нативную карту и онлайн‑запись.</p>
-        <div class="row">
-          <button class="btn" id="open-maps">Открыть Google Maps</button>
-          <button class="btn" id="open-yandex">Открыть Яндекс Карты</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Grooming -->
-    <section id="view-grooming" class="hidden">
-      <div class="section-title">
-        <h2>Груминг и запись в салон</h2>
-        <button class="btn ghost" id="groom-add">Добавить стиль</button>
-      </div>
-      <div class="row">
-        <input id="groom-query" placeholder="Порода или стиль (например, шпиц, тримминг)" />
-        <select id="groom-length">
-          <option value="">Длина: любая</option>
-          <option value="short">Коротко</option>
-          <option value="medium">Средне</option>
-          <option value="long">Длинно</option>
-        </select>
-      </div>
-      <div class="grid" id="groom-list"></div>
-      <div class="card">
-        <h3>Запись</h3>
-        <div class="row">
-          <input id="groom-date" type="date"/>
-          <input id="groom-time" type="time"/>
-          <input id="groom-master" placeholder="Мастер/салон"/>
-          <button class="btn primary" id="groom-book">Записать</button>
-        </div>
-        <p class="mini">Запись добавится в календарь (локально). Позже подключим онлайн‑бронь и оплату.</p>
-      </div>
-    </section>
-
-    <!-- Trainers -->
-    <section id="view-trainers" class="hidden">
-      <div class="section-title">
-        <h2>Дрессировка</h2>
-        <button class="btn ghost" id="train-add">Добавить тренера</button>
-      </div>
-      <div class="row">
-        <input id="train-query" placeholder="Порода/цель (послушание, защита, щенки)"/>
-        <select id="train-city">
-          <option value="">Город: любой</option>
-          <option>Санкт-Петербург</option>
-          <option>Москва</option>
-          <option>Новосибирск</option>
-        </select>
-      </div>
-      <div class="grid" id="train-list"></div>
-    </section>
-
-    <!-- Calendar -->
-    <section id="view-calendar" class="hidden">
-      <div class="section-title">
-        <h2>Календарь питомца</h2>
-        <button class="btn ghost" id="birth-add">Добавить день рождения</button>
-      </div>
-      <div class="row">
-        <input id="event-title" placeholder="Событие (например, приём у врача)"/>
-        <input id="event-date" type="date"/>
-        <input id="event-time" type="time"/>
-        <select id="event-type">
-          <option value="general">Общее</option>
-          <option value="vet">Врач</option>
-          <option value="groom">Груминг</option>
-          <option value="training">Тренировка</option>
-          <option value="birthday">День рождения</option>
-        </select>
-        <button class="btn primary" id="event-add">Добавить</button>
-      </div>
-      <div class="grid" id="events-list"></div>
-    </section>
-
-    <!-- Donations -->
-    <section id="view-donations" class="hidden">
-      <div class="section-title">
-        <h2>Пожертвования для приютов</h2>
-        <button class="btn ghost" id="shelter-add">Добавить приют</button>
-      </div>
-      <div class="grid" id="shelter-list"></div>
-      <div class="card">
-        <h3>Сделать пожертвование</h3>
-        <div class="row">
-          <select id="donation-shelter"></select>
-          <input id="donation-amount" type="number" min="50" step="50" placeholder="Сумма (₽)"/>
-          <button class="btn primary" id="donation-make">Пожертвовать</button>
-        </div>
-        <p class="mini">Пока без оплаты — фиксируем намерение и сумму. Позже подключим платёжный шлюз.</p>
-      </div>
-    </section>
-
-    <!-- Shop -->
-    <section id="view-shop" class="hidden">
-      <div class="section-title">
-        <h2>Магазин для животных</h2>
-        <button class="btn ghost" id="shop-add">Добавить товар</button>
-      </div>
-      <div class="row">
-        <input id="shop-query" placeholder="Поиск: корм, игрушки, переноска…"/>
-        <select id="shop-type">
-          <option value="">Категория: любая</option>
-          <option value="food">Корм</option>
-          <option value="toys">Игрушки</option>
-          <option value="care">Уход</option>
-          <option value="accessories">Аксессуары</option>
-        </select>
-      </div>
-      <div class="grid" id="shop-list"></div>
-    </section>
+      <button class="btn primary" id="f-save">Опубликовать</button>
+      <p class="mini" style="margin-top:8px;">Фото и данные сохраняются локально в вашем браузере. Для общего доступа позже подключим сервер.</p>
+    </div>
   </main>
 
-  <footer>
-    PetHub MVP • v0.1 • Локальные данные, без серверной части. Сделано для быстрого теста.
-  </footer>
+  <!-- Модальное окно карточки -->
+  <div id="pet-modal">
+    <div class="box">
+      <button class="close" onclick="closeModal()">✖</button>
+      <img id="m-photo" alt="Фото питомца"/>
+      <h2 id="m-name" style="margin:6px 0;"></h2>
+      <div class="mini" id="m-meta"></div>
+      <p id="m-desc" style="margin:10px 0;"></p>
+      <div class="toolbar" style="margin-top:8px;">
+        <a class="btn" id="m-call" href="#" target="_blank">Позвонить</a>
+        <button class="btn ghost" id="m-share">Поделиться</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>PetHub • v1.0 • Только поиск и публикация питомцев (локальные данные)</footer>
 
   <script>
-    // ---------- Mock data ----------
-    const db = {
-      pets: [
-        {id:'p1', name:'Маруся', type:'cat', age:'adult', city:'Санкт-Петербург', desc:'Ласковая и спокойная, стерилизована.', tags:['приют'], phone:'+79990000001'},
-        {id:'p2', name:'Рекс', type:'dog', age:'baby', city:'Санкт-Петербург', desc:'Щенок, дружелюбный, любит детей.', tags:['частное'], phone:'+79990000002'},
-        {id:'p3', name:'Боня', type:'dog', age:'adult', city:'Москва', desc:'Активный, привит, знает базовые команды.', tags:['приют'], phone:'+79990000003'},
-        {id:'p4', name:'Сима', type:'cat', age:'senior', city:'Новосибирск', desc:'Спокойная, любит уют, нужна забота.', tags:['частное'], phone:'+79990000004'}
-      ],
-      clinics: [
-        {id:'c1', name:'ВетКласс на Невском', city:'Санкт-Петербург', phone:'+78120000001', site:'https://example.com'},
-        {id:'c2', name:'ЗооДоктор центр', city:'Санкт-Петербург', phone:'+78120000002', site:'https://example.com'},
-        {id:'c3', name:'Друг Ветеринарная', city:'Москва', phone:'+74950000001', site:'https://example.com'}
-      ],
-      groom: [
-        {id:'g1', breed:'Шпиц', style:'Плюшевый', length:'medium', desc:'Ровная линия, аккуратная мордочка.'},
-        {id:'g2', breed:'Пудель', style:'Львиный', length:'long', desc:'Классическая выставочная стрижка.'},
-        {id:'g3', breed:'Йоркширский терьер', style:'Коротко', length:'short', desc:'Практично для активных прогулок.'}
-      ],
-      trainers: [
-        {id:'t1', name:'Алексей', city:'Санкт-Петербург', focus:'Послушание, щенки', phone:'+78120000011'},
-        {id:'t2', name:'Марина', city:'Москва', focus:'Защита, др. породы', phone:'+74950000012'},
-        {id:'t3', name:'Игорь', city:'Санкт-Петербург', focus:'Носовая работа', phone:'+78120000013'}
-      ],
-      shelters: [
-        {id:'s1', name:'СПБ Приют "Луч"', city:'Санкт-Петербург'},
-        {id:'s2', name:'Москва "Верность"', city:'Москва'}
-      ],
-      shop: [
-        {id:'sh1', name:'Корм SuperCat 2кг', type:'food', price:899, city:'Санкт-Петербург', seller:'ЗооМаркет'},
-        {id:'sh2', name:'Игрушка Мяч XL', type:'toys', price:349, city:'Санкт-Петербург', seller:'ЗооМаркет'},
-        {id:'sh3', name:'Переноска AirSoft', type:'accessories', price:2190, city:'Москва', seller:'PetStore'}
-      ],
-      events: JSON.parse(localStorage.getItem('events') || '[]'),
-      donationsTotal: Number(localStorage.getItem('donationsTotal') || 0)
-    };
-
-    // ---------- Utilities ----------
+    // --------- Хранилище ---------
     const el = id => document.getElementById(id);
-    const fmtPrice = n => new Intl.NumberFormat('ru-RU').format(n) + ' ₽';
-    const saveEvents = () => localStorage.setItem('events', JSON.stringify(db.events));
-    const saveDonations = () => localStorage.setItem('donationsTotal', String(db.donationsTotal));
-    const setActiveTab = tab => {
-      document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-      ['pets','clinics','grooming','trainers','calendar','donations','shop'].forEach(t => {
-        el('view-'+t).classList.toggle('hidden', t !== tab);
-      });
-    };
+    const persist = () => localStorage.setItem('pets', JSON.stringify(db.pets));
+    const load = () => JSON.parse(localStorage.getItem('pets') || '[]');
 
-    // ---------- Tabs ----------
-    document.querySelectorAll('#tabs button').forEach(btn => {
-      btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
-    });
+    let db = { pets: load() };
+    if (db.pets.length === 0) {
+      db.pets = [
+        { id:'p1', name:'Маруся', breed:'', type:'cat', age:'adult', city:'Санкт-Петербург',
+          desc:'Ласковая и спокойная, стерилизована. Ищет заботливую семью.',
+          phone:'+79990000001', photo:'https://placekitten.com/800/500' },
+        { id:'p2', name:'Рекс', breed:'метис', type:'dog', age:'baby', city:'Санкт-Петербург',
+          desc:'Активный щенок, дружелюбный, любит детей. Прививки по возрасту.',
+          phone:'+79990000002', photo:'https://placedog.net/800/500?id=12' },
+        { id:'p3', name:'Сима', breed:'британская', type:'cat', age:'senior', city:'Москва',
+          desc:'Спокойная, любит уют. Идеальна для тихого дома. Нужна забота.',
+          phone:'+74950000003', photo:'https://placekitten.com/801/501' }
+      ];
+      persist();
+    }
 
-    // ---------- Pets ----------
-    function renderPets() {
-      const q = el('pets-query').value.trim().toLowerCase();
-      const type = el('pets-type').value;
-      const age = el('pets-age').value;
-      const list = el('pets-list');
+    // --------- Рендер карточек ---------
+    function render() {
+      const q = el('q').value.trim().toLowerCase();
+      const type = el('type').value;
+      const age = el('age').value;
+
       const items = db.pets.filter(p => {
-        const text = [p.name, p.city, p.desc, ...(p.tags||[])].join(' ').toLowerCase();
-        const matchQ = !q || text.includes(q);
-        const matchType = !type || p.type === type;
-        const matchAge = !age || p.age === age;
-        return matchQ && matchType && matchAge;
+        const text = `${p.name} ${p.breed||''} ${p.city} ${p.desc}`.toLowerCase();
+        const passQ = !q || text.includes(q);
+        const passType = !type || p.type === type;
+        const passAge = !age || p.age === age;
+        return passQ && passType && passAge;
       });
-      list.innerHTML = items.map(p => `
-        <div class="card">
-          <div class="tag">${p.type==='dog'?'🐶':'🐱'} ${p.city}</div>
-          <h3>${p.name}</h3>
-          <p>${p.desc}</p>
-          <p class="mini">Возраст: ${p.age==='baby'?'щенок/котёнок':p.age==='adult'?'взрослый':'пожилой'} · Метки: ${p.tags.join(', ')}</p>
-          <div class="row">
-            <a class="btn" href="tel:${p.phone}">Позвонить</a>
-            <button class="btn" onclick="addEventQuick('Знакомство: ${p.name}','general')">В календарь</button>
-            <button class="btn ghost" onclick="shareText('Посмотри питомца ${p.name} — ${p.city}. Тел: ${p.phone}')">Поделиться</button>
-          </div>
-        </div>
-      `).join('');
-      el('kpi-pets').textContent = String(items.length);
-    }
-    ['pets-query','pets-type','pets-age'].forEach(id => el(id).addEventListener('input', renderPets));
-    el('pets-reset').addEventListener('click', () => { el('pets-query').value=''; el('pets-type').value=''; el('pets-age').value=''; renderPets(); });
-    el('btn-add-pet').addEventListener('click', () => {
-      const name = prompt('Имя питомца');
-      if(!name) return;
-      const city = prompt('Город');
-      const type = prompt('Тип (cat/dog/other)') || 'other';
-      const age = prompt('Возраст (baby/adult/senior)') || 'adult';
-      const desc = prompt('Короткое описание') || '';
-      const phone = prompt('Телефон (в формате +7...)') || '';
-      db.pets.unshift({id:'p'+Date.now(), name, city, type, age, desc, tags:['частное'], phone});
-      renderPets();
-    });
 
-    // ---------- Clinics ----------
-    function renderClinics() {
-      const city = el('clinics-city').value.trim();
-      const items = db.clinics.filter(c => !city || c.city.toLowerCase().includes(city.toLowerCase()));
-      const list = el('clinics-list');
-      list.innerHTML = items.map(c => `
-        <div class="card">
-          <div class="tag">🏥 ${c.city}</div>
-          <h3>${c.name}</h3>
-          <p class="mini">Онлайн запись появится позже. Сейчас — звонок или сайт.</p>
-          <div class="row">
-            <a class="btn" href="tel:${c.phone}">Позвонить</a>
-            <a class="btn" href="${c.site}" target="_blank">Сайт</a>
-            <button class="btn" onclick="addEventQuick('Врач: ${c.name}','vet')">В календарь</button>
-          </div>
-        </div>
-      `).join('');
-      el('kpi-clinics').textContent = items.length ? String(items.length) : '—';
-    }
-    el('clinics-search').addEventListener('click', renderClinics);
-    el('locate-me').addEventListener('click', () => {
-      if(!navigator.geolocation) { alert('Геолокация недоступна'); return; }
-      navigator.geolocation.getCurrentPosition(pos => {
-        const {latitude, longitude} = pos.coords;
-        // Открываем общие карты с поиском
-        window.open(`https://maps.google.com/?q=вет+клиника&ll=${latitude},${longitude}`, '_blank');
-      }, () => alert('Не удалось получить геолокацию'));
-    });
-    el('open-maps').addEventListener('click', () => {
-      const q = encodeURIComponent('вет клиника рядом');
-      window.open(`https://www.google.com/maps/search/${q}`, '_blank');
-    });
-    el('open-yandex').addEventListener('click', () => {
-      const q = encodeURIComponent('вет клиника рядом');
-      window.open(`https://yandex.ru/maps/?text=${q}`, '_blank');
-    });
-
-    // ---------- Grooming ----------
-    function renderGroom() {
-      const q = el('groom-query').value.trim().toLowerCase();
-      const len = el('groom-length').value;
-      const list = el('groom-list');
-      const items = db.groom.filter(g => {
-        const text = `${g.breed} ${g.style} ${g.desc}`.toLowerCase();
-        const matchQ = !q || text.includes(q);
-        const matchL = !len || g.length === len;
-        return matchQ && matchL;
-      });
-      list.innerHTML = items.map(g => `
-        <div class="card">
-          <div class="tag">✂️ ${g.breed}</div>
-          <h3>${g.style}</h3>
-          <p>${g.desc}</p>
-          <div class="row">
-            <button class="btn" onclick="prefillGroom('${g.breed}','${g.style}')">Выбрать стиль</button>
-            <button class="btn ghost" onclick="addEventQuick('Груминг: ${g.breed} • ${g.style}','groom')">В календарь</button>
-          </div>
+      el('list').innerHTML = items.map(p => `
+        <div class="card" onclick="openModal('${p.id}')">
+          <span class="tag">${p.type==='dog'?'🐶 Собака':p.type==='cat'?'🐱 Кошка':'🐾 Другое'}</span>
+          <img src="${p.photo}" alt="${p.name}">
+          <h3 style="margin:6px 0;">${p.name}${p.breed ? ' • ' + p.breed : ''}</h3>
+          <div class="mini">${p.city} · ${p.age==='baby'?'щенок/котёнок':p.age==='adult'?'взрослый':'пожилой'}</div>
+          <p style="margin:8px 0 0;" class="mini">${p.desc.slice(0,100)}${p.desc.length>100?'…':''}</p>
         </div>
       `).join('');
     }
-    function prefillGroom(breed, style) {
-      el('groom-master').value = `${breed} • ${style}`;
-    }
-    el('groom-query').addEventListener('input', renderGroom);
-    el('groom-length').addEventListener('change', renderGroom);
-    el('groom-book').addEventListener('click', () => {
-      const date = el('groom-date').value, time = el('groom-time').value, master = el('groom-master').value.trim();
-      if(!date || !time || !master) { alert('Заполните дату, время и мастера'); return; }
-      db.events.push({id:'e'+Date.now(), title:`Груминг: ${master}`, type:'groom', date, time});
-      saveEvents(); renderEvents(); setActiveTab('calendar');
-      alert('Запись добавлена в календарь');
-    });
-    el('groom-add').addEventListener('click', () => {
-      const breed = prompt('Порода'), style = prompt('Стиль'), length = prompt('Длина (short/medium/long)'), desc = prompt('Описание');
-      if(!breed || !style) return;
-      db.groom.unshift({id:'g'+Date.now(), breed, style, length:length||'medium', desc:desc||''});
-      renderGroom();
-    });
 
-    // ---------- Trainers ----------
-    function renderTrainers() {
-      const q = el('train-query').value.trim().toLowerCase();
-      const city = el('train-city').value.trim();
-      const list = el('train-list');
-      const items = db.trainers.filter(t => {
-        const matchQ = !q || `${t.focus} ${t.name}`.toLowerCase().includes(q);
-        const matchCity = !city || t.city === city;
-        return matchQ && matchCity;
-      });
-      list.innerHTML = items.map(t => `
-        <div class="card">
-          <div class="tag">🎓 ${t.city}</div>
-          <h3>${t.name}</h3>
-          <p>${t.focus}</p>
-          <div class="row">
-            <a class="btn" href="tel:${t.phone}">Позвонить</a>
-            <button class="btn" onclick="addEventQuick('Тренировка: ${t.name}','training')">В календарь</button>
-          </div>
-        </div>
-      `).join('');
-    }
-    el('train-query').addEventListener('input', renderTrainers);
-    el('train-city').addEventListener('change', renderTrainers);
-    el('train-add').addEventListener('click', () => {
-      const name = prompt('Имя тренера'), city = prompt('Город'), focus = prompt('Направление'), phone = prompt('Телефон (+7...)');
-      if(!name || !city) return;
-      db.trainers.unshift({id:'t'+Date.now(), name, city, focus:focus||'', phone:phone||''});
-      renderTrainers();
-    });
+    // --------- Модал ---------
+    function openModal(id) {
+      const p = db.pets.find(x => x.id === id);
+      if (!p) return;
+      el('m-photo').src = p.photo;
+      el('m-name').textContent = p.name + (p.breed ? ' • ' + p.breed : '');
+      el('m-meta').textContent = `${p.city} · ${p.age==='baby'?'щенок/котёнок':p.age==='adult'?'взрослый':'пожилой'}`;
+      el('m-desc').textContent = p.desc;
+      el('m-call').href = 'tel:' + p.phone;
 
-    // ---------- Calendar ----------
-    function renderEvents() {
-      const list = el('events-list');
-      const events = [...db.events].sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
-      el('kpi-events').textContent = String(events.length);
-      list.innerHTML = events.map(e => `
-        <div class="card">
-          <div class="tag">${e.type==='vet'?'🏥':e.type==='groom'?'✂️':e.type==='training'?'🎓':e.type==='birthday'?'🎂':'📌'}</div>
-          <h3>${e.title}</h3>
-          <p class="mini">${e.date} • ${e.time || '—'}</p>
-          <div class="row">
-            <button class="btn" onclick="shareText('Событие: ${e.title} • ${e.date} ${e.time||''}')">Поделиться</button>
-            <button class="btn ghost" onclick="deleteEvent('${e.id}')">Удалить</button>
-          </div>
-        </div>
-      `).join('');
-    }
-    function addEventQuick(title, type='general') {
-      const dt = new Date(), date = dt.toISOString().slice(0,10);
-      db.events.push({id:'e'+Date.now(), title, type, date, time:''});
-      saveEvents(); renderEvents(); setActiveTab('calendar');
-    }
-    function deleteEvent(id) {
-      db.events = db.events.filter(e => e.id !== id);
-      saveEvents(); renderEvents();
-    }
-    el('event-add').addEventListener('click', () => {
-      const title = el('event-title').value.trim();
-      const date = el('event-date').value;
-      const time = el('event-time').value;
-      const type = el('event-type').value;
-      if(!title || !date) { alert('Нужно указать название и дату'); return; }
-      db.events.push({id:'e'+Date.now(), title, type, date, time});
-      saveEvents(); renderEvents();
-      el('event-title').value=''; el('event-date').value=''; el('event-time').value='';
-    });
-    el('birth-add').addEventListener('click', () => {
-      const name = prompt('Имя питомца'), date = prompt('Дата рождения (ГГГГ-ММ-ДД)');
-      if(!name || !date) return;
-      db.events.push({id:'e'+Date.now(), title:`ДР: ${name}`, type:'birthday', date, time:''});
-      saveEvents(); renderEvents(); setActiveTab('calendar');
-    });
+      el('m-share').onclick = () => {
+        const text = `Питомец: ${p.name}${p.breed?' • '+p.breed:''}\nГород: ${p.city}\nОписание: ${p.desc}\nТел: ${p.phone}`;
+        if (navigator.share) navigator.share({ text }).catch(()=>{});
+        else {
+          navigator.clipboard?.writeText(text);
+          alert('Скопировано. Отправьте в любой мессенджер.');
+        }
+      };
 
-    // ---------- Donations ----------
-    function renderShelters() {
-      const list = el('shelter-list');
-      list.innerHTML = db.shelters.map(s => `
-        <div class="card">
-          <div class="tag">🤝 ${s.city}</div>
-          <h3>${s.name}</h3>
-          <p class="mini">Регулярная поддержка появится позже</p>
-        </div>
-      `).join('');
-      const select = el('donation-shelter');
-      select.innerHTML = db.shelters.map(s => `<option value="${s.id}">${s.name} (${s.city})</option>`).join('');
-      el('kpi-donations').textContent = fmtPrice(db.donationsTotal);
+      el('pet-modal').style.display = 'flex';
     }
-    el('donation-make').addEventListener('click', () => {
-      const sid = el('donation-shelter').value;
-      const amt = Number(el('donation-amount').value);
-      if(!sid || !amt || amt < 50) { alert('Введите сумму не меньше 50 ₽'); return; }
-      db.donationsTotal += amt; saveDonations();
-      el('kpi-donations').textContent = fmtPrice(db.donationsTotal);
-      alert('Спасибо! Зафиксировали пожертвование (демо). Позже подключим оплату.');
-      el('donation-amount').value='';
-    });
-    el('shelter-add').addEventListener('click', () => {
-      const name = prompt('Название приюта'), city = prompt('Город');
-      if(!name || !city) return;
-      db.shelters.push({id:'s'+Date.now(), name, city});
-      renderShelters();
-    });
+    function closeModal() { el('pet-modal').style.display = 'none'; }
 
-    // ---------- Shop ----------
-    function renderShop() {
-      const q = el('shop-query').value.trim().toLowerCase();
-      const type = el('shop-type').value;
-      const list = el('shop-list');
-      const items = db.shop.filter(it => {
-        const text = `${it.name} ${it.city} ${it.seller}`.toLowerCase();
-        const matchQ = !q || text.includes(q);
-        const matchT = !type || it.type === type;
-        return matchQ && matchT;
-      });
-      list.innerHTML = items.map(it => `
-        <div class="card">
-          <div class="tag">🛒 ${it.city} • ${it.seller}</div>
-          <h3>${it.name}</h3>
-          <p>${fmtPrice(it.price)}</p>
-          <div class="row">
-            <button class="btn" onclick="openShopSearch('${encodeURIComponent(it.name)}')">Искать в магазинах</button>
-            <button class="btn ghost" onclick="addEventQuick('Покупка: ${it.name}','general')">В календарь</button>
-          </div>
-        </div>
-      `).join('');
-    }
-    function openShopSearch(q) {
-      window.open(`https://www.google.com/search?q=${q}+купить`, '_blank');
-    }
-    el('shop-query').addEventListener('input', renderShop);
-    el('shop-type').addEventListener('change', renderShop);
-    el('shop-add').addEventListener('click', () => {
-      const name = prompt('Товар'), type = prompt('Категория (food/toys/care/accessories)'), price = Number(prompt('Цена, ₽')), city = prompt('Город'), seller = prompt('Магазин');
-      if(!name || !type || !price) return;
-      db.shop.unshift({id:'sh'+Date.now(), name, type, price, city: city||'', seller: seller||''});
-      renderShop();
-    });
+    // --------- Форма ---------
+    el('open-form').addEventListener('click', () => el('form-panel').style.display = 'block');
+    el('close-form').addEventListener('click', () => el('form-panel').style.display = 'none');
 
-    // ---------- Share ----------
-    function shareText(text) {
-      if(navigator.share) navigator.share({text}).catch(()=>{});
-      else {
-        navigator.clipboard?.writeText(text);
-        alert('Текст скопирован. Можно отправить в любой мессенджер.');
+    el('f-save').addEventListener('click', () => {
+      const name = el('f-name').value.trim();
+      const breed = el('f-breed').value.trim();
+      const city = el('f-city').value.trim();
+      const type = el('f-type').value;
+      const age = el('f-age').value;
+      const desc = el('f-desc').value.trim();
+      const phone = el('f-phone').value.trim();
+      const file = el('f-photo').files[0];
+
+      if (!name || !city || !desc || !phone || !file) {
+        alert('Заполните имя, город, описание, телефон и добавьте фото.');
+        return;
       }
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        const photo = e.target.result; // DataURL
+        const pet = { id: 'p' + Date.now(), name, breed, city, type, age, desc, phone, photo };
+        db.pets.unshift(pet);
+        persist();
+        clearForm();
+        el('form-panel').style.display = 'none';
+        render();
+        alert('Объявление опубликовано!');
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function clearForm() {
+      ['f-name','f-breed','f-city','f-desc','f-phone'].forEach(id => el(id).value = '');
+      el('f-type').value = 'dog';
+      el('f-age').value = 'adult';
+      el('f-photo').value = '';
     }
 
-    // ---------- Init ----------
-    function init() {
-      renderPets();
-      renderClinics();
-      renderGroom();
-      renderTrainers();
-      renderEvents();
-      renderShelters();
-      renderShop();
-    }
-    init();
+    // --------- Поиск/сброс ---------
+    el('q').addEventListener('input', render);
+    el('type').addEventListener('change', render);
+    el('age').addEventListener('change', render);
+    el('reset').addEventListener('click', () => {
+      el('q').value = ''; el('type').value = ''; el('age').value = ''; render();
+    });
+
+    // --------- Init ---------
+    render();
   </script>
-  <script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js")
-      .then(() => console.log("SW registered"));
-  }
-</script>
-
 </body>
 </html>
