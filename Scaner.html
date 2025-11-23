@@ -1,52 +1,26 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>PetHub — Питомцы</title>
   <style>
-    :root {
-      --bg: #fdfdfd;
-      --card: #ffffff;
-      --text: #222;
-      --muted: #666;
-      --accent: #ff914d;
-      --border: #ddd;
-    }
-    * { box-sizing:border-box; }
-    body {
-      margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: var(--bg);
-      color:var(--text);
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='10' cy='10' r='5' fill='%23ddd'/><circle cx='25' cy='10' r='5' fill='%23ddd'/><circle cx='17.5' cy='25' r='5' fill='%23ddd'/><circle cx='17.5' cy='17.5' r='3' fill='%23ddd'/></svg>");
-      background-repeat: repeat;
-    }
-    header { background: var(--accent); color:#fff; padding:12px; display:flex; align-items:center; gap:12px; }
+    body { font-family: sans-serif; background:#fdfdfd; margin:0; }
+    header { background:#ff914d; color:#fff; padding:12px; display:flex; align-items:center; gap:12px; }
     .logo svg { display:block; }
     h1 { margin:0; font-size:20px; }
-    .sub { font-size:12px; color:#fff; }
-    main { max-width:1100px; margin:0 auto; padding:16px; }
-    .toolbar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
-    input, select, textarea {
-      width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:#fff; color:var(--text);
-    }
-    .btn { padding:10px 14px; border-radius:8px; border:1px solid var(--border); background:var(--accent); color:#fff; font-weight:700; cursor:pointer; }
-    .btn.ghost { background:#fff; color:var(--accent); }
-    .grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1); cursor:pointer; }
-    .card img { width:100%; height:180px; object-fit:cover; border-radius:10px; margin-bottom:8px; }
-    .tag { font-size:12px; color:var(--accent); margin-bottom:6px; }
-    .mini { font-size:12px; color:var(--muted); }
-    #pet-modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:100; }
-    #pet-modal .box { background:#fff; border-radius:12px; padding:16px; width:min(560px,92vw); position:relative; }
-    #pet-modal img { width:100%; border-radius:12px; margin-bottom:12px; }
-    #pet-modal .close { position:absolute; top:10px; right:10px; background:none; border:0; font-size:20px; cursor:pointer; }
-    footer { text-align:center; color:var(--muted); font-size:12px; padding:20px; }
+    main { max-width:800px; margin:0 auto; padding:16px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; }
+    .card { background:#fff; border:1px solid #ddd; border-radius:8px; padding:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); cursor:pointer; }
+    .card img { width:100%; height:160px; object-fit:cover; border-radius:6px; }
+    #form-panel { margin-top:16px; }
+    input, textarea { width:100%; margin:6px 0; padding:8px; border:1px solid #ccc; border-radius:6px; }
+    button { padding:10px 14px; border:none; border-radius:6px; background:#ff914d; color:#fff; font-weight:bold; cursor:pointer; }
   </style>
 </head>
 <body>
   <header>
     <div class="logo">
+      <!-- SVG собачка -->
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40">
         <circle cx="32" cy="32" r="28" fill="#fff" stroke="#222" stroke-width="2"/>
         <circle cx="22" cy="28" r="4" fill="#222"/>
@@ -56,108 +30,54 @@
         <path d="M52 20 Q56 8 44 12" fill="#fff" stroke="#222" stroke-width="2"/>
       </svg>
     </div>
-    <div>
-      <h1>PetHub — Питомцы</h1>
-      <div class="sub">Поиск и публикация объявлений о животных</div>
-    </div>
+    <h1>PetHub — Питомцы</h1>
   </header>
 
   <main>
-    <div class="toolbar">
-      <input id="q" placeholder="Поиск по имени, породе, городу…" />
-      <button class="btn" id="reset">Сбросить</button>
-      <button class="btn ghost" id="open-form">Разместить объявление</button>
-    </div>
-
     <div class="grid" id="list"></div>
 
-    <div id="form-panel" style="display:none; margin-top:16px;">
+    <div id="form-panel">
       <h3>Новое объявление</h3>
       <input id="f-name" placeholder="Имя"/>
       <input id="f-city" placeholder="Город"/>
       <textarea id="f-desc" placeholder="Описание"></textarea>
       <input id="f-phone" placeholder="Телефон"/>
       <input id="f-photo" type="file" accept="image/*"/>
-      <button class="btn" id="f-save">Опубликовать</button>
+      <button id="f-save">Опубликовать</button>
     </div>
   </main>
 
-  <div id="pet-modal">
-    <div class="box">
-      <button class="close" onclick="closeModal()">✖</button>
-      <img id="m-photo"/>
-      <h2 id="m-name"></h2>
-      <p id="m-desc"></p>
-      <p id="m-city" class="mini"></p>
-      <a id="m-call" class="btn" href="#">Позвонить</a>
-    </div>
-  </div>
-
-  <footer>PetHub • v1.2 • Светлая тема с лапками 🐾</footer>
-
   <script>
-    const el=id=>document.getElementById(id);
-    let db={pets:JSON.parse(localStorage.getItem('pets')||'[]')};
-    if(db.pets.length===0){
-      db.pets=[{id:'p1',name:'Рекс',city:'СПб',desc:'Дружелюбный щенок',phone:'+79990000001',photo:'https://placedog.net/400/300?id=2'}];
-    }
-    function render(){
-      const q=el('q').value.toLowerCase();
-      el('list').innerHTML=db.pets.filter(p=>{
-        return (!q||p.name.toLowerCase().includes(q)||p.city.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q));
-      }).map(p=>`
-        <div class="card" onclick="openModal('${p.id}')">
-          <span class="tag">🐾 ${p.city}</span>
-          <img src="${p.photo}" alt="${p.name}"/>
+    async function loadPets(){
+      const res = await fetch("pets.php");
+      const pets = await res.json();
+      document.getElementById("list").innerHTML = pets.map(p=>`
+        <div class="card">
+          <img src="${p.photo}" alt="${p.name}">
           <h3>${p.name}</h3>
-          <p class="mini">${p.desc}</p>
-        </div>`).join('');
-      localStorage.setItem('pets',JSON.stringify(db.pets));
+          <p>${p.city}</p>
+          <p>${p.desc}</p>
+          <p>${p.phone}</p>
+        </div>`).join("");
     }
-    function openModal(id){
-      const p=db.pets.find(x=>x.id===id);
-      if(!p)return;
-      el('m-photo').src=p.photo;
-      el('m-name').textContent=p.name;
-      el('m-desc').textContent=p.desc;
-      el('m-city').textContent="Город: "+p.city;
-      el('m-call').href="tel:"+p.phone;
-      el('pet-modal').style.display="flex";
-    }
-    function closeModal(){el('pet-modal').style.display="none";}
-    el('open-form').onclick=()=>el('form-panel').style.display='block';
-    el('f-save').onclick=()=>{
-      const name=el('f-name').value.trim();
-      const city=el('f-city').value.trim();
-      const desc=el('f-desc').value.trim();
-      const phone=el('f-phone').value.trim();
-      const file=el('f-photo').files[0];
+
+    document.getElementById("f-save").onclick = async ()=>{
+      const name=document.getElementById("f-name").value;
+      const city=document.getElementById("f-city").value;
+      const desc=document.getElementById("f-desc").value;
+      const phone=document.getElementById("f-phone").value;
+      const file=document.getElementById("f-photo").files[0];
       if(!name||!city||!desc||!phone||!file){alert("Заполните все поля");return;}
       const reader=new FileReader();
-      reader.onload=e=>{
-        db.pets.unshift({id:'p'+Date.now(),name,city,desc,phone,photo:e.target.result});
-        localStorage.setItem('pets',JSON.stringify(db.pets));
-        render();
-        el('form-panel').style.display='none';
-        el('f-name').value='';
-        el('f-city').value='';
-        el('f-desc').value='';
-        el('f-phone').value='';
-        el('f-photo').value='';
-                alert("Объявление опубликовано!");
+      reader.onload=async e=>{
+        const pet={name,city,desc,phone,photo:e.target.result};
+        await fetch("pets.php",{method:"POST",body:JSON.stringify(pet)});
+        loadPets();
       };
       reader.readAsDataURL(file);
     };
 
-    el('reset').onclick=()=>{
-      el('q').value='';
-      render();
-    };
-    el('q').oninput=render;
-
-    // init
-    render();
+    loadPets();
   </script>
 </body>
 </html>
-
