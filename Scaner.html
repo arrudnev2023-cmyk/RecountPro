@@ -1,80 +1,61 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PetHub — Питомцы (MVP)</title>
-  <meta name="description" content="Поиск и публикация объявлений о питомцах: фото, описание, город, контакты"/>
+  <title>PetHub — Питомцы</title>
   <style>
     :root {
-      --bg: #0b1020; --card: #151a2e; --text: #eaf2ff; --muted: #9fb0cc; --accent: #17d9ff; --border:#223058;
+      --bg: #fdfdfd;
+      --card: #ffffff;
+      --text: #222;
+      --muted: #666;
+      --accent: #ff914d;
+      --border: #ddd;
     }
     * { box-sizing:border-box; }
-    html, body { margin:0; padding:0; background:var(--bg); color:var(--text); font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    header { position:sticky; top:0; z-index:10; backdrop-filter: blur(8px);
-      background: linear-gradient(180deg, rgba(11,16,32,0.8), rgba(11,16,32,0.4)); border-bottom:1px solid var(--border); }
-    .brand { max-width:1100px; margin:0 auto; display:flex; gap:14px; align-items:center; padding:14px 16px; }
-    .logo { width:38px; height:38px; border-radius:10px; background:
-      radial-gradient(120% 120% at 20% 20%, #0ef 0%, #637cff 45%, #742dff 70%, #0b1020 100%);
-      box-shadow: 0 0 24px rgba(124,240,255,0.35), inset 0 0 24px rgba(99,124,255,0.25);
-    }
-    h1 { margin:0; font-size:18px; letter-spacing:0.3px; }
-    .sub { font-size:12px; color:var(--muted); }
+    body { margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg) url('https://i.ibb.co/7jYkVjM/paw-pattern.png') repeat; 
+      color:var(--text); }
+    header { background: var(--accent); color:#fff; padding:12px; display:flex; align-items:center; gap:12px; }
+    .logo { width:40px; height:40px; background:url('https://i.ibb.co/4m9yQyH/dog-logo.png') center/cover no-repeat; border-radius:50%; }
+    h1 { margin:0; font-size:20px; }
+    .sub { font-size:12px; color:#fff; }
     main { max-width:1100px; margin:0 auto; padding:16px; }
     .toolbar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
     input, select, textarea {
-      width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#0f1530; color:var(--text);
+      width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:#fff; color:var(--text);
     }
-    input:focus, select:focus, textarea:focus { border-color: var(--accent); outline:none; }
-    .btn { padding:10px 14px; border-radius:10px; border:1px solid var(--border); background:#102040; color:var(--text); font-weight:700; cursor:pointer; }
-    .btn.primary { background: linear-gradient(90deg, #17d9ff, #7f77ff); border:0; }
-    .btn.ghost { background: transparent; color: var(--muted); }
-    .grid { display:grid; grid-template-columns: repeat( auto-fill, minmax(260px, 1fr) ); gap:12px; }
-    .card { background: linear-gradient(180deg, rgba(21,26,46,0.9), rgba(21,26,46,0.7)); border:1px solid var(--border);
-      border-radius:14px; padding:12px; box-shadow: 0 12px 30px rgba(0,0,0,0.25); cursor:pointer; }
-    .card img { width:100%; height:180px; object-fit:cover; border-radius:12px; margin-bottom:8px; }
-    .tag { display:inline-block; font-size:12px; color:#ffd36e; margin-bottom:6px; }
+    .btn { padding:10px 14px; border-radius:8px; border:1px solid var(--border); background:var(--accent); color:#fff; font-weight:700; cursor:pointer; }
+    .btn.ghost { background:#fff; color:var(--accent); }
+    .grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1); cursor:pointer; }
+    .card img { width:100%; height:180px; object-fit:cover; border-radius:10px; margin-bottom:8px; }
+    .tag { font-size:12px; color:var(--accent); margin-bottom:6px; }
     .mini { font-size:12px; color:var(--muted); }
-    .section-title { display:flex; align-items:center; justify-content:space-between; margin:8px 0 12px; }
-    .panel { background: var(--card); border:1px solid var(--border); border-radius:14px; padding:12px; }
-    /* Modal */
-    #pet-modal { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:100; }
-    #pet-modal .box { background:#151a2e; border:1px solid var(--border); border-radius:16px; padding:16px; width:min(560px, 92vw); position:relative; }
-    #pet-modal img { width:100%; border-radius:12px; margin-bottom:12px; max-height:60vh; object-fit:cover; }
-    #pet-modal .close { position:absolute; top:10px; right:10px; background:transparent; border:0; color:#fff; font-size:20px; cursor:pointer; }
-    footer { color:var(--muted); font-size:12px; text-align:center; padding:24px; }
-    /* Soft cosmic bg */
-    body::before { content:""; position:fixed; inset:-10%; z-index:-1; background:
-      radial-gradient(1200px 600px at 10% 20%, rgba(23,217,255,0.15), transparent 60%),
-      radial-gradient(800px 800px at 88% 10%, rgba(127,119,255,0.12), transparent 60%),
-      radial-gradient(600px 400px at 70% 80%, rgba(116,45,255,0.16), transparent 60%),
-      linear-gradient(180deg, #070b18, #0b1020 50%, #0e1427);
-      filter:saturate(1.1);
-      animation: float 18s ease-in-out infinite alternate;
-    }
-    @keyframes float { from { transform:translateY(-1%)} to { transform:translateY(1%)} }
+    #pet-modal { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:100; }
+    #pet-modal .box { background:#fff; border-radius:12px; padding:16px; width:min(560px,92vw); position:relative; }
+    #pet-modal img { width:100%; border-radius:12px; margin-bottom:12px; }
+    #pet-modal .close { position:absolute; top:10px; right:10px; background:none; border:0; font-size:20px; cursor:pointer; }
+    footer { text-align:center; color:var(--muted); font-size:12px; padding:20px; }
   </style>
 </head>
 <body>
   <header>
-    <div class="brand">
-      <div class="logo"></div>
-      <div>
-        <h1>PetHub — Питомцы</h1>
-        <div class="sub">Поиск и публикация объявлений о животных</div>
-      </div>
+    <div class="logo"></div>
+    <div>
+      <h1>PetHub — Питомцы</h1>
+      <div class="sub">Поиск и публикация объявлений о животных</div>
     </div>
   </header>
 
   <main>
-    <!-- Toolbar: поиск и фильтры -->
     <div class="toolbar">
-      <input id="q" placeholder="Поиск по имени, породе, описанию, городу…" />
+      <input id="q" placeholder="Поиск по имени, породе, городу…" />
       <select id="type">
         <option value="">Тип: любой</option>
         <option value="dog">Собака</option>
         <option value="cat">Кошка</option>
-        <option value="other">Другое</option>
       </select>
       <select id="age">
         <option value="">Возраст: любой</option>
@@ -83,181 +64,79 @@
         <option value="senior">Пожилой</option>
       </select>
       <button class="btn" id="reset">Сбросить</button>
-      <button class="btn primary" id="open-form">Разместить объявление</button>
+      <button class="btn ghost" id="open-form">Разместить объявление</button>
     </div>
 
-    <!-- Список карточек -->
     <div class="grid" id="list"></div>
 
-    <!-- Форма добавления объявления -->
-    <div id="form-panel" class="panel" style="margin-top:16px; display:none;">
-      <div class="section-title">
-        <h2 style="margin:0;">Новое объявление</h2>
-        <button class="btn ghost" id="close-form">Закрыть</button>
-      </div>
-      <div class="toolbar">
-        <input id="f-name" placeholder="Имя животного"/>
-        <input id="f-breed" placeholder="Порода (необязательно)"/>
-      </div>
-      <div class="toolbar">
-        <input id="f-city" placeholder="Город"/>
-        <select id="f-type">
-          <option value="dog">Собака</option>
-          <option value="cat">Кошка</option>
-          <option value="other">Другое</option>
-        </select>
-        <select id="f-age">
-          <option value="baby">Щенок/котёнок</option>
-          <option value="adult">Взрослый</option>
-          <option value="senior">Пожилой</option>
-        </select>
-      </div>
-      <textarea id="f-desc" rows="4" placeholder="Описание: характер, здоровье, требования к будущему владельцу…"></textarea>
-      <div class="toolbar">
-        <input id="f-phone" placeholder="Контактный телефон (+7...)"/>
-        <input id="f-photo" type="file" accept="image/*"/>
-      </div>
-      <button class="btn primary" id="f-save">Опубликовать</button>
-      <p class="mini" style="margin-top:8px;">Фото и данные сохраняются локально в вашем браузере. Для общего доступа позже подключим сервер.</p>
+    <div id="form-panel" style="display:none; margin-top:16px;">
+      <h3>Новое объявление</h3>
+      <input id="f-name" placeholder="Имя"/>
+      <input id="f-city" placeholder="Город"/>
+      <textarea id="f-desc" placeholder="Описание"></textarea>
+      <input id="f-phone" placeholder="Телефон"/>
+      <input id="f-photo" type="file" accept="image/*"/>
+      <button class="btn" id="f-save">Опубликовать</button>
     </div>
   </main>
 
-  <!-- Модальное окно карточки -->
   <div id="pet-modal">
     <div class="box">
       <button class="close" onclick="closeModal()">✖</button>
-      <img id="m-photo" alt="Фото питомца"/>
-      <h2 id="m-name" style="margin:6px 0;"></h2>
-      <div class="mini" id="m-meta"></div>
-      <p id="m-desc" style="margin:10px 0;"></p>
-      <div class="toolbar" style="margin-top:8px;">
-        <a class="btn" id="m-call" href="#" target="_blank">Позвонить</a>
-        <button class="btn ghost" id="m-share">Поделиться</button>
-      </div>
+      <img id="m-photo"/>
+      <h2 id="m-name"></h2>
+      <p id="m-desc"></p>
+      <p id="m-city" class="mini"></p>
+      <a id="m-call" class="btn" href="#">Позвонить</a>
     </div>
   </div>
 
-  <footer>PetHub • v1.0 • Только поиск и публикация питомцев (локальные данные)</footer>
+  <footer>PetHub • v1.1 • Светлая тема с лапками 🐾</footer>
 
   <script>
-    // --------- Хранилище ---------
-    const el = id => document.getElementById(id);
-    const persist = () => localStorage.setItem('pets', JSON.stringify(db.pets));
-    const load = () => JSON.parse(localStorage.getItem('pets') || '[]');
-
-    let db = { pets: load() };
-    if (db.pets.length === 0) {
-      db.pets = [
-        { id:'p1', name:'Маруся', breed:'', type:'cat', age:'adult', city:'Санкт-Петербург',
-          desc:'Ласковая и спокойная, стерилизована. Ищет заботливую семью.',
-          phone:'+79990000001', photo:'https://placekitten.com/800/500' },
-        { id:'p2', name:'Рекс', breed:'метис', type:'dog', age:'baby', city:'Санкт-Петербург',
-          desc:'Активный щенок, дружелюбный, любит детей. Прививки по возрасту.',
-          phone:'+79990000002', photo:'https://placedog.net/800/500?id=12' },
-        { id:'p3', name:'Сима', breed:'британская', type:'cat', age:'senior', city:'Москва',
-          desc:'Спокойная, любит уют. Идеальна для тихого дома. Нужна забота.',
-          phone:'+74950000003', photo:'https://placekitten.com/801/501' }
-      ];
-      persist();
+    const el=id=>document.getElementById(id);
+    let db={pets:JSON.parse(localStorage.getItem('pets')||'[]')};
+    if(db.pets.length===0){
+      db.pets=[{id:'p1',name:'Рекс',city:'СПб',desc:'Дружелюбный щенок',phone:'+79990000001',photo:'https://placedog.net/400/300?id=2'}];
     }
-
-    // --------- Рендер карточек ---------
-    function render() {
-      const q = el('q').value.trim().toLowerCase();
-      const type = el('type').value;
-      const age = el('age').value;
-
-      const items = db.pets.filter(p => {
-        const text = `${p.name} ${p.breed||''} ${p.city} ${p.desc}`.toLowerCase();
-        const passQ = !q || text.includes(q);
-        const passType = !type || p.type === type;
-        const passAge = !age || p.age === age;
-        return passQ && passType && passAge;
-      });
-
-      el('list').innerHTML = items.map(p => `
+    function render(){
+      const q=el('q').value.toLowerCase();
+      const type=el('type').value, age=el('age').value;
+      el('list').innerHTML=db.pets.filter(p=>{
+        return (!q||p.name.toLowerCase().includes(q)||p.city.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q));
+      }).map(p=>`
         <div class="card" onclick="openModal('${p.id}')">
-          <span class="tag">${p.type==='dog'?'🐶 Собака':p.type==='cat'?'🐱 Кошка':'🐾 Другое'}</span>
-          <img src="${p.photo}" alt="${p.name}">
-          <h3 style="margin:6px 0;">${p.name}${p.breed ? ' • ' + p.breed : ''}</h3>
-          <div class="mini">${p.city} · ${p.age==='baby'?'щенок/котёнок':p.age==='adult'?'взрослый':'пожилой'}</div>
-          <p style="margin:8px 0 0;" class="mini">${p.desc.slice(0,100)}${p.desc.length>100?'…':''}</p>
-        </div>
-      `).join('');
+          <span class="tag">🐾 ${p.city}</span>
+          <img src="${p.photo}" alt="${p.name}"/>
+          <h3>${p.name}</h3>
+          <p class="mini">${p.desc}</p>
+        </div>`).join('');
+      localStorage.setItem('pets',JSON.stringify(db.pets));
     }
-
-    // --------- Модал ---------
-    function openModal(id) {
-      const p = db.pets.find(x => x.id === id);
-      if (!p) return;
-      el('m-photo').src = p.photo;
-      el('m-name').textContent = p.name + (p.breed ? ' • ' + p.breed : '');
-      el('m-meta').textContent = `${p.city} · ${p.age==='baby'?'щенок/котёнок':p.age==='adult'?'взрослый':'пожилой'}`;
-      el('m-desc').textContent = p.desc;
-      el('m-call').href = 'tel:' + p.phone;
-
-      el('m-share').onclick = () => {
-        const text = `Питомец: ${p.name}${p.breed?' • '+p.breed:''}\nГород: ${p.city}\nОписание: ${p.desc}\nТел: ${p.phone}`;
-        if (navigator.share) navigator.share({ text }).catch(()=>{});
-        else {
-          navigator.clipboard?.writeText(text);
-          alert('Скопировано. Отправьте в любой мессенджер.');
-        }
-      };
-
-      el('pet-modal').style.display = 'flex';
+    function openModal(id){
+      const p=db.pets.find(x=>x.id===id);
+      if(!p)return;
+      el('m-photo').src=p.photo;
+      el('m-name').textContent=p.name;
+      el('m-desc').textContent=p.desc;
+      el('m-city').textContent="Город: "+p.city;
+      el('m-call').href="tel:"+p.phone;
+      el('pet-modal').style.display="flex";
     }
-    function closeModal() { el('pet-modal').style.display = 'none'; }
-
-    // --------- Форма ---------
-    el('open-form').addEventListener('click', () => el('form-panel').style.display = 'block');
-    el('close-form').addEventListener('click', () => el('form-panel').style.display = 'none');
-
-    el('f-save').addEventListener('click', () => {
-      const name = el('f-name').value.trim();
-      const breed = el('f-breed').value.trim();
-      const city = el('f-city').value.trim();
-      const type = el('f-type').value;
-      const age = el('f-age').value;
-      const desc = el('f-desc').value.trim();
-      const phone = el('f-phone').value.trim();
-      const file = el('f-photo').files[0];
-
-      if (!name || !city || !desc || !phone || !file) {
-        alert('Заполните имя, город, описание, телефон и добавьте фото.');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = e => {
-        const photo = e.target.result; // DataURL
-        const pet = { id: 'p' + Date.now(), name, breed, city, type, age, desc, phone, photo };
-        db.pets.unshift(pet);
-        persist();
-        clearForm();
-        el('form-panel').style.display = 'none';
-        render();
-        alert('Объявление опубликовано!');
+    function closeModal(){el('pet-modal').style.display="none";}
+    el('open-form').onclick=()=>el('form-panel').style.display='block';
+    el('f-save').onclick=()=>{
+      const name=el('f-name').value, city=el('f-city').value, desc=el('f-desc').value, phone=el('f-phone').value, file=el('f-photo').files[0];
+      if(!name||!city||!desc||!phone||!file){alert("Заполните все поля");return;}
+      const reader=new FileReader();
+      reader.onload=e=>{
+        db.pets.unshift({id:'p'+Date.now(),name,city,desc,phone,photo:e.target.result});
+        render();el('form-panel').style.display='none';
       };
       reader.readAsDataURL(file);
-    });
-
-    function clearForm() {
-      ['f-name','f-breed','f-city','f-desc','f-phone'].forEach(id => el(id).value = '');
-      el('f-type').value = 'dog';
-      el('f-age').value = 'adult';
-      el('f-photo').value = '';
-    }
-
-    // --------- Поиск/сброс ---------
-    el('q').addEventListener('input', render);
-    el('type').addEventListener('change', render);
-    el('age').addEventListener('change', render);
-    el('reset').addEventListener('click', () => {
-      el('q').value = ''; el('type').value = ''; el('age').value = ''; render();
-    });
-
-    // --------- Init ---------
+    };
+    el('reset').onclick=()=>{el('q').value='';el('type').value='';el('age').value='';render();};
+    el('q').oninput=render;
     render();
   </script>
 </body>
