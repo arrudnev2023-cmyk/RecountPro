@@ -14,11 +14,15 @@
       --border: #ddd;
     }
     * { box-sizing:border-box; }
-    body { margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: var(--bg) url('https://i.ibb.co/7jYkVjM/paw-pattern.png') repeat; 
-      color:var(--text); }
+    body {
+      margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color:var(--text);
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='10' cy='10' r='5' fill='%23ddd'/><circle cx='25' cy='10' r='5' fill='%23ddd'/><circle cx='17.5' cy='25' r='5' fill='%23ddd'/><circle cx='17.5' cy='17.5' r='3' fill='%23ddd'/></svg>");
+      background-repeat: repeat;
+    }
     header { background: var(--accent); color:#fff; padding:12px; display:flex; align-items:center; gap:12px; }
-    .logo { width:40px; height:40px; background:url('https://i.ibb.co/4m9yQyH/dog-logo.png') center/cover no-repeat; border-radius:50%; }
+    .logo svg { display:block; }
     h1 { margin:0; font-size:20px; }
     .sub { font-size:12px; color:#fff; }
     main { max-width:1100px; margin:0 auto; padding:16px; }
@@ -42,7 +46,16 @@
 </head>
 <body>
   <header>
-    <div class="logo"></div>
+    <div class="logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40">
+        <circle cx="32" cy="32" r="28" fill="#fff" stroke="#222" stroke-width="2"/>
+        <circle cx="22" cy="28" r="4" fill="#222"/>
+        <circle cx="42" cy="28" r="4" fill="#222"/>
+        <circle cx="32" cy="38" r="3" fill="#222"/>
+        <path d="M12 20 Q8 8 20 12" fill="#fff" stroke="#222" stroke-width="2"/>
+        <path d="M52 20 Q56 8 44 12" fill="#fff" stroke="#222" stroke-width="2"/>
+      </svg>
+    </div>
     <div>
       <h1>PetHub — Питомцы</h1>
       <div class="sub">Поиск и публикация объявлений о животных</div>
@@ -52,17 +65,6 @@
   <main>
     <div class="toolbar">
       <input id="q" placeholder="Поиск по имени, породе, городу…" />
-      <select id="type">
-        <option value="">Тип: любой</option>
-        <option value="dog">Собака</option>
-        <option value="cat">Кошка</option>
-      </select>
-      <select id="age">
-        <option value="">Возраст: любой</option>
-        <option value="baby">Щенок/котёнок</option>
-        <option value="adult">Взрослый</option>
-        <option value="senior">Пожилой</option>
-      </select>
       <button class="btn" id="reset">Сбросить</button>
       <button class="btn ghost" id="open-form">Разместить объявление</button>
     </div>
@@ -91,7 +93,7 @@
     </div>
   </div>
 
-  <footer>PetHub • v1.1 • Светлая тема с лапками 🐾</footer>
+  <footer>PetHub • v1.2 • Светлая тема с лапками 🐾</footer>
 
   <script>
     const el=id=>document.getElementById(id);
@@ -101,7 +103,6 @@
     }
     function render(){
       const q=el('q').value.toLowerCase();
-      const type=el('type').value, age=el('age').value;
       el('list').innerHTML=db.pets.filter(p=>{
         return (!q||p.name.toLowerCase().includes(q)||p.city.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q));
       }).map(p=>`
@@ -126,18 +127,37 @@
     function closeModal(){el('pet-modal').style.display="none";}
     el('open-form').onclick=()=>el('form-panel').style.display='block';
     el('f-save').onclick=()=>{
-      const name=el('f-name').value, city=el('f-city').value, desc=el('f-desc').value, phone=el('f-phone').value, file=el('f-photo').files[0];
+      const name=el('f-name').value.trim();
+      const city=el('f-city').value.trim();
+      const desc=el('f-desc').value.trim();
+      const phone=el('f-phone').value.trim();
+      const file=el('f-photo').files[0];
       if(!name||!city||!desc||!phone||!file){alert("Заполните все поля");return;}
       const reader=new FileReader();
       reader.onload=e=>{
         db.pets.unshift({id:'p'+Date.now(),name,city,desc,phone,photo:e.target.result});
-        render();el('form-panel').style.display='none';
+        localStorage.setItem('pets',JSON.stringify(db.pets));
+        render();
+        el('form-panel').style.display='none';
+        el('f-name').value='';
+        el('f-city').value='';
+        el('f-desc').value='';
+        el('f-phone').value='';
+        el('f-photo').value='';
+                alert("Объявление опубликовано!");
       };
       reader.readAsDataURL(file);
     };
-    el('reset').onclick=()=>{el('q').value='';el('type').value='';el('age').value='';render();};
+
+    el('reset').onclick=()=>{
+      el('q').value='';
+      render();
+    };
     el('q').oninput=render;
+
+    // init
     render();
   </script>
 </body>
 </html>
+
