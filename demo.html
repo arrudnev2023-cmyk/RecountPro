@@ -1447,6 +1447,88 @@ function animate() {
   requestAnimationFrame(animate);
 }
 animate();
+// Голосовой поиск для поля #search
+(function() {
+  const searchInput = document.getElementById('search');
+  const voiceBtn = document.getElementById('voice-search-btn');
+
+  // Поддержка SpeechRecognition (включая префикс webkit)
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition || !voiceBtn) {
+    if (voiceBtn) voiceBtn.style.display = 'none';
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = navigator.language || 'ru-RU';
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+  recognition.continuous = false;
+
+  let isRecording = false;
+
+  function setRecordingState(on) {
+    isRecording = !!on;
+    voiceBtn.setAttribute('aria-pressed', String(isRecording));
+    if (isRecording) {
+      voiceBtn.classList.add('recording');
+      voiceBtn.setAttribute('title', 'Говорите, запись идёт');
+    } else {
+      voiceBtn.classList.remove('recording');
+      voiceBtn.setAttribute('title', 'Голосовой поиск');
+    }
+  }
+
+  voiceBtn.addEventListener('click', () => {
+    if (!isRecording) {
+      try {
+        recognition.start();
+        setRecordingState(true);
+      } catch (err) {
+        console.error('SpeechRecognition start error', err);
+        alert('Не удалось запустить голосовой ввод');
+      }
+    } else {
+      recognition.stop();
+      setRecordingState(false);
+    }
+  });
+
+  recognition.addEventListener('result', (ev) => {
+    let interim = '';
+    let final = '';
+    for (let i = 0; i < ev.results.length; i++) {
+      const res = ev.results[i];
+      if (res.isFinal) final += res[0].transcript;
+      else interim += res[0].transcript;
+    }
+    // Показываем interim, окончательно сохраняем final
+    searchInput.value = (final || interim).trim();
+    // Триггерим существующую логику поиска
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+
+  recognition.addEventListener('end', () => {
+    setRecordingState(false);
+  });
+
+  recognition.addEventListener('error', (e) => {
+    console.error('SpeechRecognition error', e);
+    setRecordingState(false);
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      alert('Доступ к микрофону запрещён. Разрешите доступ в настройках браузера.');
+    } else {
+      alert('Ошибка голосового ввода: ' + (e.error || 'unknown'));
+    }
+  });
+
+  // Быстрый хоткей: Ctrl+Shift+M
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'm') {
+      voiceBtn.click();
+    }
+  });
+})();
 
 
 
