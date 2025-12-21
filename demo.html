@@ -87,6 +87,7 @@
 }
 
 /* Кнопка очистки */
+/* Кнопка очистки (обновлённая позиция, чтобы не мешать микрофону) */
 #clear-search {
   position: absolute;
   right: 0.6rem;
@@ -98,7 +99,36 @@
   color: #aaa;
   cursor: pointer;
   transition: color 0.2s ease;
+  z-index: 2;
 }
+#clear-search:hover { color: #fff; }
+
+}
+    /* Голосовой поиск: индикатор записи */
+#voice-search-btn {
+  position: absolute;
+  right: 2.6rem; /* согласуется с правкой #clear-search */
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  z-index: 2;
+}
+#voice-search-btn[aria-pressed="true"] #voice-icon path {
+  stroke: var(--accent);
+  transition: stroke 0.15s ease;
+}
+#voice-search-btn.recording #voice-icon {
+  animation: pulse 1s infinite;
+}
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: 0.85; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 
 #clear-search:hover {
   color: #fff;
