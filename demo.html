@@ -1495,18 +1495,54 @@ animate();
   });
 
   recognition.addEventListener('result', (ev) => {
-    let interim = '';
-    let final = '';
-    for (let i = 0; i < ev.results.length; i++) {
-      const res = ev.results[i];
-      if (res.isFinal) final += res[0].transcript;
-      else interim += res[0].transcript;
+  let interim = '';
+  let final = '';
+  for (let i = 0; i < ev.results.length; i++) {
+    const res = ev.results[i];
+    if (res.isFinal) final += res[0].transcript;
+    else interim += res[0].transcript;
+  }
+
+  const displayText = (final || interim).trim();
+  searchInput.value = displayText;
+  searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+  // Порог для автоматической замены (0..1). Увеличьте до 0.7–0.8 для более строгой замены.
+  const AUTO_REPLACE_THRESHOLD = 0.65;
+
+  // Если есть финальный результат — пробуем найти лучший матч
+  if (final && final.trim()) {
+    const finalText = final.trim();
+
+    // findClosestMatches и showVoiceSuggestions должны быть определены в коде (как в предыдущем фрагменте)
+    const matches = (typeof findClosestMatches === 'function')
+      ? findClosestMatches(finalText, allItems || [], 6)
+      : [];
+
+    if (matches && matches.length > 0) {
+      const best = matches[0];
+      // best.score — от 0 до 1
+      if (best.score >= AUTO_REPLACE_THRESHOLD) {
+        // Автоматически заменяем распознанный текст на название лучшего совпадения
+        searchInput.value = best.item.name;
+        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+        // Скрываем предложения, если они есть
+        const box = document.getElementById('voice-suggestions');
+        if (box) box.style.display = 'none';
+        // Визуальная подсказка: краткое уведомление (необязательно)
+        // можно заменить на более аккуратный UI-уведомитель
+        console.info(`Voice auto-replaced "${finalText}" → "${best.item.name}" (score ${(best.score*100).toFixed(0)}%)`);
+        return;
+      }
     }
-    // Показываем interim, окончательно сохраняем final
-    searchInput.value = (final || interim).trim();
-    // Триггерим существующую логику поиска
-    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-  });
+
+    // Если автоматической замены не произошло — показываем предложения пользователю
+    if (typeof showVoiceSuggestions === 'function') {
+      showVoiceSuggestions(finalText);
+    }
+  }
+});
+
 
   recognition.addEventListener('end', () => {
     setRecordingState(false);
