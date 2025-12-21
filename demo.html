@@ -1527,79 +1527,6 @@ animate();
     return Math.max(0, 1 - dist / maxLen);
   }
 
-  // ------------------ UI предложений ------------------
-  (function createVoiceSuggestionBox() {
-    if (document.getElementById('voice-suggestions')) return;
-    const box = document.createElement('div');
-    box.id = 'voice-suggestions';
-    box.style.position = 'absolute';
-    box.style.left = '0';
-    box.style.right = '0';
-    box.style.top = '100%';
-    box.style.background = 'var(--panel-bg, #111)';
-    box.style.color = 'var(--text, #fff)';
-    box.style.border = '1px solid rgba(255,255,255,0.06)';
-    box.style.borderRadius = '6px';
-    box.style.marginTop = '6px';
-    box.style.zIndex = '999';
-    box.style.display = 'none';
-    box.style.maxHeight = '220px';
-    box.style.overflow = 'auto';
-    box.style.fontSize = '0.9rem';
-    box.style.boxShadow = '0 6px 18px rgba(0,0,0,0.6)';
-    const wrapper = document.getElementById('search-wrapper') || searchInput.parentElement;
-    wrapper.style.position = wrapper.style.position || 'relative';
-    wrapper.appendChild(box);
-
-    document.addEventListener('click', (e) => {
-      if (!wrapper.contains(e.target)) box.style.display = 'none';
-    });
-  })();
-
-  function renderVoiceSuggestions(matches, originalQuery) {
-    const box = document.getElementById('voice-suggestions');
-    if (!box) return;
-    if (!matches || matches.length === 0) {
-      box.style.display = 'none';
-      return;
-    }
-    box.innerHTML = '';
-    matches.forEach(m => {
-      const row = document.createElement('div');
-      row.style.padding = '8px';
-      row.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
-      row.style.cursor = 'pointer';
-      row.innerHTML = `<strong style="display:block; color:var(--accent);">${m.item.name}</strong>
-                       <span style="font-size:0.8rem; color:rgba(255,255,255,0.7);">Артикул: ${m.item.code} · ${(m.score*100).toFixed(0)}%</span>`;
-      row.addEventListener('click', () => {
-        searchInput.value = m.item.name;
-        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-        box.style.display = 'none';
-      });
-      box.appendChild(row);
-    });
-
-    const useOrig = document.createElement('div');
-    useOrig.style.padding = '8px';
-    useOrig.style.cursor = 'pointer';
-    useOrig.style.background = 'rgba(255,255,255,0.02)';
-    useOrig.innerHTML = `<em>Использовать: «${originalQuery}»</em>`;
-    useOrig.addEventListener('click', () => {
-      searchInput.value = originalQuery;
-      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-      document.getElementById('voice-suggestions').style.display = 'none';
-    });
-    box.appendChild(useOrig);
-
-    box.style.display = 'block';
-  }
-
-  function showVoiceSuggestions(finalText) {
-    if (!finalText) return;
-    const matches = findClosestMatches(finalText, allItems || [], 6);
-    renderVoiceSuggestions(matches, finalText);
-  }
-
   // ------------------ Улучшённый поиск совпадений ------------------
   function findClosestMatches(query, items, limit = 6) {
     const qRaw = preprocessFinalText(query);
@@ -1688,7 +1615,8 @@ animate();
     }
   });
 
-  // Обработчик результатов с предобработкой и авто-заменой
+  // Обработчик результатов: аккуратная авто-замена только при явной уникальности,
+  // иначе оставляем распознанный текст, чтобы показать все совпадения (без подстановки одного названия).
   recognition.addEventListener('result', (ev) => {
     let interim = '';
     let final = '';
@@ -1699,10 +1627,12 @@ animate();
     }
 
     const displayText = (final || interim).trim();
+    // Показываем промежуточный/финальный текст пользователю
     searchInput.value = displayText;
     searchInput.dispatchEvent(new Event('input', { bubbles: true }));
 
     const AUTO_REPLACE_THRESHOLD = 0.60; // порог автозамены
+    const UNIQUENESS_MARGIN = 0.18; // насколько лучший должен опережать второй, чтобы считаться уникальным
 
     if (final && final.trim()) {
       const finalText = final.trim();
@@ -1712,19 +1642,50 @@ animate();
 
       if (matches && matches.length > 0) {
         const best = matches[0];
-        if (best.score >= AUTO_REPLACE_THRESHOLD) {
+
+        // Проверка на явную уникальность:
+        let isUnique = false;
+        if (matches.length === 1) {
+          isUnique = true;
+        } else {
+          const second = matches[1];
+          if ((best.score - (second.score || 0)) >= UNIQUENESS_MARGIN) {
+            isUnique = true;
+          }
+          // если у нескольких совпадений одинаковое нормализованное имя — считаем неоднозначным
+          const bestNameNorm = normForCompare(best.item.name || '');
+          const secondNameNorm = normForCompare(second.item.name || '');
+          if (bestNameNorm === secondNameNorm && matches.length > 1) {
+            isUnique = false;
+          }
+        }
+
+        // Если уникален и достаточно уверен — автозаменяем
+        if (isUnique && best.score >= AUTO_REPLACE_THRESHOLD) {
           searchInput.value = best.item.name;
           searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+          // скрываем suggestions, если есть
           const box = document.getElementById('voice-suggestions');
           if (box) box.style.display = 'none';
           console.info(`Auto-replaced "${finalText}" → "${best.item.name}" (${(best.score*100).toFixed(0)}%)`);
           return;
         } else {
-          showVoiceSuggestions(finalText);
+          // НЕ автозаменяем: оставляем распознанный текст (finalText) и показываем все результаты фильтрации
+          // (не показываем отдельный список предложений и не подставляем одно название)
+          searchInput.value = finalText;
+          searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+          const box = document.getElementById('voice-suggestions');
+          if (box) box.style.display = 'none';
+          console.info(`Ambiguous voice result "${finalText}" — kept query to show all matches.`);
+          return;
         }
       } else {
+        // Нет совпадений в локалке — оставляем распознанный текст
+        searchInput.value = finalText;
+        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
         const box = document.getElementById('voice-suggestions');
         if (box) box.style.display = 'none';
+        return;
       }
     }
   });
@@ -1742,6 +1703,16 @@ animate();
       alert('Ошибка голосового ввода: ' + (e.error || 'unknown'));
     }
   });
+
+  // Быстрый хоткей: Ctrl+Shift+M
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'm') {
+      voiceBtn.click();
+    }
+  });
+
+})();
+
 
   // Быстрый хоткей: Ctrl+Shift+M
   document.addEventListener('keydown', (e) => {
