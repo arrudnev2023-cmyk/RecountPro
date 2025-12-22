@@ -1641,9 +1641,10 @@ recognition.addEventListener('result', (ev) => {
   const exactMatches = items.filter(it => normForCompare(it.name || '') === normQuery);
 
   if (exactMatches.length > 0) {
-    // Есть точное совпадение — оставляем распознанный текст (или можно подставить точное имя)
-    // Подставим оригинальное имя первого точного совпадения (чтобы совпадение было корректным)
+    // Есть точное совпадение — подставим точное имя первого совпадения и пометим флаг,
+    // но не будем автоматически открывать/фокусировать карточку, чтобы показать все варианты при необходимости.
     searchInput.value = exactMatches[0].name;
+    searchInput.removeAttribute('data-voice-base');
     searchInput.dispatchEvent(new Event('input', { bubbles: true }));
     const box = document.getElementById('voice-suggestions');
     if (box) box.style.display = 'none';
@@ -1657,6 +1658,7 @@ recognition.addEventListener('result', (ev) => {
   if (!matches || matches.length === 0) {
     // Ничего похожего не найдено — оставляем распознанный текст
     searchInput.value = finalText;
+    searchInput.removeAttribute('data-voice-base');
     searchInput.dispatchEvent(new Event('input', { bubbles: true }));
     const box = document.getElementById('voice-suggestions');
     if (box) box.style.display = 'none';
@@ -1678,7 +1680,7 @@ recognition.addEventListener('result', (ev) => {
     s = s.split(/[-–—:\/]/)[0];
 
     // Удаляем слова-метки типа "карта", "версия", "выпуск", "часть", "№" и всё после них
-    s = s.replace(/\b(карта|версия|выпуск|часть|часть|номер|№|редакция|издание|версия)\b.*$/i, '');
+    s = s.replace(/\b(карта|версия|выпуск|часть|номер|№|редакция|издание|версия)\b.*$/i, '');
 
     // Удаляем конечные числа/романы (например "3", "III") в конце
     s = s.replace(/\b[0-9ivx]+\s*$/i, '');
@@ -1695,9 +1697,18 @@ recognition.addEventListener('result', (ev) => {
   const AUTO_BASENAME_THRESHOLD = 0.35; // можно поднять до 0.45 при ложных срабатываниях
 
   if (best.score >= AUTO_BASENAME_THRESHOLD && baseName) {
-    // Подставляем базовое имя в поиск — это покажет все варианты/карты по этому названию
+    // Подставляем базовое имя в поиск и ставим флаг data-voice-base,
+    // чтобы фильтр использовал подстрочное совпадение и показал все варианты (0.1, 0.2, 0.5 и т.д.)
     searchInput.value = baseName;
+    searchInput.setAttribute('data-voice-base', '1');
     searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Убираем флаг через короткое время, чтобы дальнейшие ручные правки работали как обычно
+    setTimeout(() => {
+      const el = document.getElementById('search');
+      if (el && el.getAttribute('data-voice-base') === '1') el.removeAttribute('data-voice-base');
+    }, 1500);
+
     const box = document.getElementById('voice-suggestions');
     if (box) box.style.display = 'none';
     console.info(`Fuzzy base-name substitute "${finalText}" → "${baseName}" (best score ${(best.score*100).toFixed(0)}%)`);
@@ -1706,26 +1717,27 @@ recognition.addEventListener('result', (ev) => {
 
   // Если лучший матч слишком слабый — оставляем распознанный текст
   searchInput.value = finalText;
+  searchInput.removeAttribute('data-voice-base');
   searchInput.dispatchEvent(new Event('input', { bubbles: true }));
   const box = document.getElementById('voice-suggestions');
   if (box) box.style.display = 'none';
   console.info(`Fuzzy match too weak for "${finalText}" — kept query.`);
 });
 
+recognition.addEventListener('end', () => {
+  setRecordingState(false);
+});
 
-  recognition.addEventListener('end', () => {
-    setRecordingState(false);
-  });
+recognition.addEventListener('error', (e) => {
+  console.error('SpeechRecognition error', e);
+  setRecordingState(false);
+  if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+    alert('Доступ к микрофону запрещён. Разрешите доступ в настройках браузера.');
+  } else {
+    alert('Ошибка голосового ввода: ' + (e.error || 'unknown'));
+  }
+});
 
-  recognition.addEventListener('error', (e) => {
-    console.error('SpeechRecognition error', e);
-    setRecordingState(false);
-    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-      alert('Доступ к микрофону запрещён. Разрешите доступ в настройках браузера.');
-    } else {
-      alert('Ошибка голосового ввода: ' + (e.error || 'unknown'));
-    }
-  });
 
   // Быстрый хоткей: Ctrl+Shift+M
   document.addEventListener('keydown', (e) => {
