@@ -1533,6 +1533,43 @@ animate();
     if (!qRaw) return [];
     const qTokens = qRaw.split(/\s+/).filter(Boolean);
 
+    // Вспомогательные преобразования для устойчивости к ошибкам ASR
+    function stripVowels(s) {
+      return String(s || '').toLowerCase().replace(/[аеёиоуыэюя]/g, '');
+    }
+    function oToA(s) {
+      return String(s || '').toLowerCase().replace(/о/g, 'а');
+    }
+    // Простая локальная транслитерация латиницы в кириллицу (если нужно)
+    function latinToCyrillicLocal(s) {
+      if (!s) return s;
+      let t = String(s).toLowerCase().trim();
+      if (!/[a-z]/i.test(t)) return t;
+      const map = [
+        ['shch','щ'], ['sch','щ'], ['yo','ё'], ['yu','ю'], ['ya','я'],
+        ['zh','ж'], ['kh','х'], ['ch','ч'], ['sh','ш'], ['ts','ц'],
+        ['ye','е'], ['yi','й'],
+        ['a','а'], ['b','б'], ['c','к'], ['d','д'], ['e','е'], ['f','ф'],
+        ['g','г'], ['h','х'], ['i','и'], ['j','й'], ['k','к'], ['l','л'],
+        ['m','м'], ['n','н'], ['o','о'], ['p','п'], ['q','к'], ['r','р'],
+        ['s','с'], ['t','т'], ['u','у'], ['v','в'], ['w','в'], ['x','кс'],
+        ['y','й'], ['z','з']
+      ];
+      t = t.replace(/[^a-z0-9\s\.\-]/gi, ' ').replace(/\s+/g, ' ').trim();
+      for (const [k, v] of map) {
+        const re = new RegExp(k, 'gi');
+        t = t.replace(re, v);
+      }
+      return t.replace(/\s+/g, ' ').trim();
+    }
+
+    const qLatin = /[a-z]/i.test(qRaw);
+    const qCyrFromLatin = qLatin ? latinToCyrillicLocal(qRaw) : null;
+    const qNoVowels = stripVowels(qRaw);
+    const qOtoA = oToA(qRaw);
+    const qNoVowelsCyr = qCyrFromLatin ? stripVowels(qCyrFromLatin) : null;
+    const qOtoACyr = qCyrFromLatin ? oToA(qCyrFromLatin) : null;
+
     const results = (items || []).map(item => {
       const name = String(item.name || '');
       const code = String(item.code || '');
@@ -1541,37 +1578,53 @@ animate();
 
       const nameTokens = preprocessFinalText(name).split(/\s+/).filter(Boolean);
 
-      // token overlap
+      // token overlap (учитываем и транслит-версию запроса)
       let tokenMatches = 0;
       qTokens.forEach(t => {
         if (nameTokens.some(nt => nt.includes(t) || t.includes(nt))) tokenMatches++;
         if (codeNorm.includes(t) || t.includes(codeNorm)) tokenMatches += 0.8;
       });
+      if (qCyrFromLatin) {
+        const qTokensCyr = qCyrFromLatin.split(/\s+/).filter(Boolean);
+        qTokensCyr.forEach(t => {
+          if (nameTokens.some(nt => nt.includes(t) || t.includes(nt))) tokenMatches += 0.9;
+          if (codeNorm.includes(t) || t.includes(codeNorm)) tokenMatches += 0.6;
+        });
+      }
       const tokenScore = tokenMatches / Math.max(qTokens.length, 1);
 
-      // substring bonus
+      // substring bonus (проверяем и компактную версию и транслит)
       const compactQ = qRaw.replace(/\s+/g, '');
-      const substrBonus = (nameNorm.includes(compactQ) || codeNorm.includes(compactQ)) ? 0.25 : 0;
+      const compactQCyr = qCyrFromLatin ? qCyrFromLatin.replace(/\s+/g, '') : null;
+      const substrBonus = (nameNorm.includes(compactQ) || codeNorm.includes(compactQ) || (compactQCyr && nameNorm.includes(compactQCyr))) ? 0.25 : 0;
 
-      // similarity
-      const simName = similarityScore(qRaw, name);
-      const simCode = similarityScore(qRaw, code);
+      // similarity: обычная + варианты (без гласных, o->a, транслит)
+      const simCandidates = [];
+      simCandidates.push(similarityScore(qRaw, name));
+      if (qCyrFromLatin) simCandidates.push(similarityScore(qCyrFromLatin, name));
+      simCandidates.push(similarityScore(qNoVowels, stripVowels(name)));
+      if (qNoVowelsCyr) simCandidates.push(similarityScore(qNoVowelsCyr, stripVowels(name)));
+      simCandidates.push(similarityScore(qOtoA, oToA(name)));
+      if (qOtoACyr) simCandidates.push(similarityScore(qOtoACyr, oToA(name)));
+      const simName = Math.max(...simCandidates, 0);
+
+      const simCode = Math.max(similarityScore(qRaw, code), qCyrFromLatin ? similarityScore(qCyrFromLatin, code) : 0);
 
       // numeric bonus
       let numBonus = 0;
-      const qNumMatch = qRaw.match(/\b(\d+)\b/);
+      const qNumMatch = (qRaw + (qCyrFromLatin || '')).match(/\b(\d+)\b/);
       if (qNumMatch) {
         const qnum = qNumMatch[1];
         if (String(item.name).includes(qnum) || String(item.code).includes(qnum)) numBonus = 0.35;
       }
 
-      const score = Math.max(simName, simCode) * 0.5 + tokenScore * 0.35 + substrBonus + numBonus;
+      const score = Math.max(simName, simCode) * 0.55 + tokenScore * 0.30 + substrBonus + numBonus;
 
       return { item, score, tokenScore, simName, simCode };
     });
 
     const filtered = results
-      .filter(r => r.score > 0.18)
+      .filter(r => r.score > 0.12)
       .sort((a,b) => b.score - a.score)
       .slice(0, limit)
       .map(r => ({ item: r.item, score: r.score }));
@@ -1641,13 +1694,24 @@ recognition.addEventListener('result', (ev) => {
   const exactMatches = items.filter(it => normForCompare(it.name || '') === normQuery);
 
   if (exactMatches.length > 0) {
-    // Есть точное совпадение — оставляем распознанный текст (или можно подставить точное имя)
-    // Подставим оригинальное имя первого точного совпадения (чтобы совпадение было корректным)
-    searchInput.value = exactMatches[0].name;
+    // Есть точное совпадение — НЕ подставляем полное имя в поле, оставляем то, что сказал пользователь,
+    // но открываем карточку (если есть функция openItem)
+    searchInput.value = finalText;
     searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    try {
+      if (typeof window.openItem === 'function') {
+        window.openItem(exactMatches[0]);
+      } else if (typeof window.openFirstItemIfNeeded === 'function') {
+        window.openFirstItemIfNeeded([exactMatches[0]]);
+      } else if (typeof window.renderItems === 'function') {
+        window.renderItems([exactMatches[0]]);
+      }
+    } catch (e) {
+      console.error('Error opening exact match item', e);
+    }
     const box = document.getElementById('voice-suggestions');
     if (box) box.style.display = 'none';
-    console.info(`Exact match for "${finalText}" → "${exactMatches[0].name}"`);
+    console.info(`Exact match for "${finalText}" → opened "${exactMatches[0].name}"`);
     return;
   }
 
@@ -1664,8 +1728,7 @@ recognition.addEventListener('result', (ev) => {
     return;
   }
 
-  // 3) Если есть похожие — берём лучший и формируем базовое имя,
-  // чтобы показать все варианты (например: "Старая Казань — карта 1" -> "Старая Казань")
+  // 3) Если есть похожие — берём лучший и (НЕ подставляем полное имя) — открываем карточку по лучшему совпадению
   const best = matches[0];
 
   // Вспомогательная функция: извлечь базовое имя (удалить суффиксы/варианты)
@@ -1691,16 +1754,28 @@ recognition.addEventListener('result', (ev) => {
 
   const baseName = extractBaseName(best.item.name || best.item.title || best.item.code || finalText);
 
-  // Порог, при котором считаем, что найденный лучший матч релевантен для подстановки базового имени
+  // Порог, при котором считаем, что найденный лучший матч релевантен
   const AUTO_BASENAME_THRESHOLD = 0.35; // можно поднять до 0.45 при ложных срабатываниях
 
   if (best.score >= AUTO_BASENAME_THRESHOLD && baseName) {
-    // Подставляем базовое имя в поиск — это покажет все варианты/карты по этому названию
-    searchInput.value = baseName;
+    // НЕ подставляем базовое имя в поле — оставляем ровно то, что сказал пользователь,
+    // но открываем карточку/показываем результат по лучшему совпадению
+    searchInput.value = finalText;
     searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    try {
+      if (typeof window.openItem === 'function') {
+        window.openItem(best.item);
+      } else if (typeof window.openFirstItemIfNeeded === 'function') {
+        window.openFirstItemIfNeeded([best.item]);
+      } else if (typeof window.renderItems === 'function') {
+        window.renderItems([best.item]);
+      }
+    } catch (e) {
+      console.error('Error opening best match item', e);
+    }
     const box = document.getElementById('voice-suggestions');
     if (box) box.style.display = 'none';
-    console.info(`Fuzzy base-name substitute "${finalText}" → "${baseName}" (best score ${(best.score*100).toFixed(0)}%)`);
+    console.info(`Fuzzy match for "${finalText}" → opened "${best.item.name}" (score ${(best.score*100).toFixed(0)}%)`);
     return;
   }
 
@@ -1743,6 +1818,7 @@ recognition.addEventListener('result', (ev) => {
       voiceBtn.click();
     }
   });
+
 
 </script>
 </body>
