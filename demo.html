@@ -1449,302 +1449,7 @@ function animate() {
 animate();
 
 
-// Голосовой поиск для поля #search — финальная версия (замените текущий блок целиком)
-(function() {
-  const searchInput = document.getElementById('search');
-  const voiceBtn = document.getElementById('voice-search-btn');
-
-  if (!searchInput) return;
-
-  // Поддержка SpeechRecognition (webkit)
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition || !voiceBtn) {
-    if (voiceBtn) voiceBtn.style.display = 'none';
-    return;
-  }
-
-  // ------------------ Утилиты и предобработка ------------------
-  const NUMBER_WORDS = {
-    "ноль":"0","один":"1","два":"2","три":"3","четыре":"4","пять":"5",
-    "шесть":"6","семь":"7","восемь":"8","девять":"9","десять":"10",
-    "одна":"1","две":"2","третий":"3","первый":"1","второй":"2"
-  };
-
-  // Улучшённая предобработка: "ноль точка один" -> 0.1, "ноль один" -> 0.1, одиночные числительные -> цифры
-  function preprocessFinalText(s) {
-    if (!s) return "";
-    let t = String(s).toLowerCase().trim();
-
-    const smallNums = {
-      "ноль":"0","нуль":"0","нолью":"0",
-      "один":"1","одна":"1","два":"2","две":"2","три":"3","четыре":"4","пять":"5",
-      "шесть":"6","семь":"7","восемь":"8","девять":"9","десять":"10"
-    };
-
-    // 1) "ноль точка один два" -> 0.12
-    t = t.replace(/\bноль\s*(?:точка|точ|dot|point)\s*((?:один|два|две|три|четыре|пять|шесть|семь|восемь|девять|\d)(?:\s+(?:один|два|две|три|четыре|пять|шесть|семь|восемь|девять|\d))*)\b/gi,
-      (m, grp) => {
-        const parts = grp.trim().split(/\s+/).map(w => {
-          const lw = w.toLowerCase();
-          if (smallNums[lw] !== undefined) return smallNums[lw];
-          if (/\d/.test(lw)) return lw;
-          return '';
-        }).filter(Boolean);
-        return parts.length ? '0.' + parts.join('') : '0';
-      });
-
-    // 2) "ноль один" -> 0.1 (частый случай)
-    t = t.replace(/\bноль\s+(один|два|две|три|четыре|пять|шесть|семь|восемь|девять)\b/gi,
-      (m, w) => {
-        const d = smallNums[w.toLowerCase()];
-        return d !== undefined ? '0.' + d : m;
-      });
-
-    // 3) одиночные числительные -> цифры
-    t = t.replace(/\b(ноль|нуль|один|одна|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять)\b/gi,
-      (m) => {
-        const lw = m.toLowerCase();
-        return smallNums[lw] !== undefined ? smallNums[lw] : m;
-      });
-
-    // 4) заменяем "точка" написанную словами на точку (если осталась)
-    t = t.replace(/\b(точка|точ)\b/gi, '.');
-
-    // удаляем служебные слова
-    t = t.replace(/\b(шт|штук|бут|бутылка|бутылки|бутылок|упак|упаковка|литр|л)\b/gi, ' ');
-
-    // оставляем буквы, цифры, точки и дефисы; схлопываем пробелы
-    t = t.replace(/[^0-9a-zа-яё\s\.\-]/gi, ' ').replace(/\s+/g, ' ').trim();
-
-    // нормализуем: если есть "0 ." -> "0."
-    t = t.replace(/\s*\.\s*/g, '.');
-
-    return t;
-  }
-
-  function normForCompare(s) {
-    return String(s || '')
-      .toLowerCase()
-      .replace(/ё/g, 'е')
-      .replace(/[^a-z0-9а-яё]/gi, '')
-      .trim();
-  }
-
-  // Левенштейн
-  function levenshtein(a, b) {
-    a = String(a); b = String(b);
-    if (a === b) return 0;
-    const al = a.length, bl = b.length;
-    if (al === 0) return bl;
-    if (bl === 0) return al;
-    const v0 = new Array(bl + 1), v1 = new Array(bl + 1);
-    for (let j = 0; j <= bl; j++) v0[j] = j;
-    for (let i = 0; i < al; i++) {
-      v1[0] = i + 1;
-      for (let j = 0; j < bl; j++) {
-        const cost = a[i] === b[j] ? 0 : 1;
-        v1[j + 1] = Math.min(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost);
-      }
-      for (let j = 0; j <= bl; j++) v0[j] = v1[j];
-    }
-    return v1[bl];
-  }
-
-  function similarityScore(a, b) {
-    a = String(a || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-z0-9а-яё]/gi, '');
-    b = String(b || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-z0-9а-яё]/gi, '');
-    if (!a || !b) return 0;
-    const dist = levenshtein(a, b);
-    const maxLen = Math.max(a.length, b.length);
-    return Math.max(0, 1 - dist / maxLen);
-  }
-
-  // ------------------ UI предложений (не обязателен, можно скрыть) ------------------
-  (function createVoiceSuggestionBox() {
-    if (document.getElementById('voice-suggestions')) return;
-    const box = document.createElement('div');
-    box.id = 'voice-suggestions';
-    box.style.position = 'absolute';
-    box.style.left = '0';
-    box.style.right = '0';
-    box.style.top = '100%';
-    box.style.background = 'var(--panel-bg, #111)';
-    box.style.color = 'var(--text, #fff)';
-    box.style.border = '1px solid rgba(255,255,255,0.06)';
-    box.style.borderRadius = '6px';
-    box.style.marginTop = '6px';
-    box.style.zIndex = '999';
-    box.style.display = 'none';
-    box.style.maxHeight = '220px';
-    box.style.overflow = 'auto';
-    box.style.fontSize = '0.9rem';
-    box.style.boxShadow = '0 6px 18px rgba(0,0,0,0.6)';
-    const wrapper = document.getElementById('search-wrapper') || searchInput.parentElement;
-    wrapper.style.position = wrapper.style.position || 'relative';
-    wrapper.appendChild(box);
-
-    document.addEventListener('click', (e) => {
-      if (!wrapper.contains(e.target)) box.style.display = 'none';
-    });
-  })();
-
-  function renderVoiceSuggestions(matches, originalQuery) {
-    const box = document.getElementById('voice-suggestions');
-    if (!box) return;
-    if (!matches || matches.length === 0) {
-      box.style.display = 'none';
-      return;
-    }
-    box.innerHTML = '';
-    matches.forEach(m => {
-      const row = document.createElement('div');
-      row.style.padding = '8px';
-      row.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
-      row.style.cursor = 'pointer';
-      row.innerHTML = `<strong style="display:block; color:var(--accent);">${m.item.name}</strong>
-                       <span style="font-size:0.8rem; color:rgba(255,255,255,0.7);">Артикул: ${m.item.code || ''} · ${(m.score*100).toFixed(0)}%</span>`;
-      row.addEventListener('click', () => {
-        searchInput.value = m.item.name;
-        searchInput.removeAttribute('data-voice-base');
-        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-        box.style.display = 'none';
-      });
-      box.appendChild(row);
-    });
-
-    const useOrig = document.createElement('div');
-    useOrig.style.padding = '8px';
-    useOrig.style.cursor = 'pointer';
-    useOrig.style.background = 'rgba(255,255,255,0.02)';
-    useOrig.innerHTML = `<em>Использовать: «${originalQuery}»</em>`;
-    useOrig.addEventListener('click', () => {
-      searchInput.value = originalQuery;
-      searchInput.removeAttribute('data-voice-base');
-      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-      document.getElementById('voice-suggestions').style.display = 'none';
-    });
-    box.appendChild(useOrig);
-
-    box.style.display = 'block';
-  }
-
-  function showVoiceSuggestions(finalText) {
-    if (!finalText) return;
-    const matches = findClosestMatches(finalText, Array.isArray(allItems) ? allItems : [], 6);
-    renderVoiceSuggestions(matches, finalText);
-  }
-
-  // ------------------ Улучшённый поиск совпадений ------------------
-  function findClosestMatches(query, items, limit = 6) {
-    const qRaw = preprocessFinalText(query);
-    if (!qRaw) return [];
-    const qTokens = qRaw.split(/\s+/).filter(Boolean);
-
-    const results = (items || []).map(item => {
-      const name = String(item.name || '');
-      const code = String(item.code || '');
-      const nameNorm = normForCompare(name);
-      const codeNorm = normForCompare(code);
-
-      const nameTokens = preprocessFinalText(name).split(/\s+/).filter(Boolean);
-
-      // token overlap
-      let tokenMatches = 0;
-      qTokens.forEach(t => {
-        if (nameTokens.some(nt => nt.includes(t) || t.includes(nt))) tokenMatches++;
-        if (codeNorm.includes(t) || t.includes(codeNorm)) tokenMatches += 0.8;
-      });
-      const tokenScore = tokenMatches / Math.max(qTokens.length, 1);
-
-      // substring bonus
-      const compactQ = qRaw.replace(/\s+/g, '');
-      const substrBonus = (nameNorm.includes(compactQ) || codeNorm.includes(compactQ)) ? 0.25 : 0;
-
-      // similarity
-      const simName = similarityScore(qRaw, name);
-      const simCode = similarityScore(qRaw, code);
-
-      // numeric bonus
-      let numBonus = 0;
-      const qNumMatch = qRaw.match(/\b(\d+)\b/);
-      if (qNumMatch) {
-        const qnum = qNumMatch[1];
-        if (String(item.name).includes(qnum) || String(item.code).includes(qnum)) numBonus = 0.35;
-      }
-
-      const score = Math.max(simName, simCode) * 0.5 + tokenScore * 0.35 + substrBonus + numBonus;
-
-      return { item, score, tokenScore, simName, simCode };
-    });
-
-    const filtered = results
-      .filter(r => r.score > 0.18)
-      .sort((a,b) => b.score - a.score)
-      .slice(0, limit)
-      .map(r => ({ item: r.item, score: r.score }));
-
-    return filtered;
-  }
-
-  // ------------------ SpeechRecognition setup (используем уникальное имя voiceRecognition) ------------------
-  const voiceRecognition = new SpeechRecognition();
-  voiceRecognition.lang = navigator.language || 'ru-RU';
-  voiceRecognition.interimResults = true;
-  voiceRecognition.maxAlternatives = 1;
-  voiceRecognition.continuous = false;
-
-  let isRecording = false;
-
-  function setRecordingState(on) {
-    isRecording = !!on;
-    voiceBtn.setAttribute('aria-pressed', String(isRecording));
-    if (isRecording) {
-      voiceBtn.classList.add('recording');
-      voiceBtn.setAttribute('title', 'Говорите, запись идёт');
-    } else {
-      voiceBtn.classList.remove('recording');
-      voiceBtn.setAttribute('title', 'Голосовой поиск');
-    }
-  }
-
-  voiceBtn.addEventListener('click', () => {
-    if (!isRecording) {
-      try {
-        voiceRecognition.start();
-        setRecordingState(true);
-      } catch (err) {
-        console.error('SpeechRecognition start error', err);
-        alert('Не удалось запустить голосовой ввод');
-      }
-    } else {
-      voiceRecognition.stop();
-      setRecordingState(false);
-    }
-  });
-
-  // ------------------ Обработчик результатов: умная подстановка базового имени без скрытия вариантов ------------------
-  voiceRecognition.addEventListener('result', (ev) => {
-    let interim = '';
-    let final = '';
-    for (let i = 0; i < ev.results.length; i++) {
-      const res = ev.results[i];
-      if (res.isFinal) final += res[0].transcript;
-      else interim += res[0].transcript;
-    }
-
-    const displayText = (final || interim).trim();
-    searchInput.value = displayText;
-    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-
-    if (!final || !final.trim()) return;
-
-    const finalText = final.trim();
-    const pre = preprocessFinalText(finalText);
-
-    const items = Array.isArray(allItems) ? allItems : [];
-    const normQuery = normForCompare(pre);
-
-    // Голосовой поиск для поля #search — исправленный и очищенный блок
+// Голосовой поиск для поля #search — исправленный и собранный блок
 (function() {
   const searchInput = document.getElementById('search');
   const voiceBtn = document.getElementById('voice-search-btn');
@@ -1945,6 +1650,7 @@ animate();
 
       const nameTokens = preprocessFinalText(name).split(/\s+/).filter(Boolean);
 
+      // token overlap
       let tokenMatches = 0;
       qTokens.forEach(t => {
         if (nameTokens.some(nt => nt.includes(t) || t.includes(nt))) tokenMatches++;
@@ -1952,12 +1658,15 @@ animate();
       });
       const tokenScore = tokenMatches / Math.max(qTokens.length, 1);
 
+      // substring bonus
       const compactQ = qRaw.replace(/\s+/g, '');
       const substrBonus = (nameNorm.includes(compactQ) || codeNorm.includes(compactQ)) ? 0.25 : 0;
 
+      // similarity
       const simName = similarityScore(qRaw, name);
       const simCode = similarityScore(qRaw, code);
 
+      // numeric bonus
       let numBonus = 0;
       const qNumMatch = qRaw.match(/\b(\d+)\b/);
       if (qNumMatch) {
@@ -2184,6 +1893,7 @@ animate();
   }
 
 })();
+
 
 
 </script>
