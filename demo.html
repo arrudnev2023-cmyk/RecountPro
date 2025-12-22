@@ -1615,80 +1615,103 @@ animate();
     }
   });
 
-  // Обработчик результатов: аккуратная авто-замена только при явной уникальности,
-  // иначе оставляем распознанный текст, чтобы показать все совпадения (без подстановки одного названия).
-  recognition.addEventListener('result', (ev) => {
-    let interim = '';
-    let final = '';
-    for (let i = 0; i < ev.results.length; i++) {
-      const res = ev.results[i];
-      if (res.isFinal) final += res[0].transcript;
-      else interim += res[0].transcript;
-    }
+  // Обработчик результатов: умная автозамена с подстановкой базового имени (чтобы не скрывать варианты)
+recognition.addEventListener('result', (ev) => {
+  let interim = '';
+  let final = '';
+  for (let i = 0; i < ev.results.length; i++) {
+    const res = ev.results[i];
+    if (res.isFinal) final += res[0].transcript;
+    else interim += res[0].transcript;
+  }
 
-    const displayText = (final || interim).trim();
-    // Показываем промежуточный/финальный текст пользователю
-    searchInput.value = displayText;
+  const displayText = (final || interim).trim();
+  // Показываем промежуточный/финальный текст пользователю
+  searchInput.value = displayText;
+  searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+  if (!final || !final.trim()) return;
+
+  const finalText = final.trim();
+  const pre = preprocessFinalText(finalText);
+
+  // 1) Проверяем точное совпадение (нормализованное)
+  const items = Array.isArray(allItems) ? allItems : [];
+  const normQuery = normForCompare(pre);
+  const exactMatches = items.filter(it => normForCompare(it.name || '') === normQuery);
+
+  if (exactMatches.length > 0) {
+    // Есть точное совпадение — оставляем распознанный текст (или можно подставить точное имя)
+    // Подставим оригинальное имя первого точного совпадения (чтобы совпадение было корректным)
+    searchInput.value = exactMatches[0].name;
     searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    const box = document.getElementById('voice-suggestions');
+    if (box) box.style.display = 'none';
+    console.info(`Exact match for "${finalText}" → "${exactMatches[0].name}"`);
+    return;
+  }
 
-    const AUTO_REPLACE_THRESHOLD = 0.60; // порог автозамены
-    const UNIQUENESS_MARGIN = 0.18; // насколько лучший должен опережать второй, чтобы считаться уникальным
+  // 2) Нет точного совпадения — ищем ближайшие совпадения
+  const matches = findClosestMatches(pre, items, 8);
 
-    if (final && final.trim()) {
-      const finalText = final.trim();
-      const pre = preprocessFinalText(finalText);
+  if (!matches || matches.length === 0) {
+    // Ничего похожего не найдено — оставляем распознанный текст
+    searchInput.value = finalText;
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    const box = document.getElementById('voice-suggestions');
+    if (box) box.style.display = 'none';
+    console.info(`No fuzzy matches for "${finalText}" — kept query.`);
+    return;
+  }
 
-      const matches = findClosestMatches(pre, allItems || [], 6);
+  // 3) Если есть похожие — берём лучший и формируем базовое имя,
+  // чтобы показать все варианты (например: "Старая Казань — карта 1" -> "Старая Казань")
+  const best = matches[0];
 
-      if (matches && matches.length > 0) {
-        const best = matches[0];
+  // Вспомогательная функция: извлечь базовое имя (удалить суффиксы/варианты)
+  function extractBaseName(name) {
+    if (!name) return name;
+    let s = String(name).trim();
 
-        // Проверка на явную уникальность:
-        let isUnique = false;
-        if (matches.length === 1) {
-          isUnique = true;
-        } else {
-          const second = matches[1];
-          if ((best.score - (second.score || 0)) >= UNIQUENESS_MARGIN) {
-            isUnique = true;
-          }
-          // если у нескольких совпадений одинаковое нормализованное имя — считаем неоднозначным
-          const bestNameNorm = normForCompare(best.item.name || '');
-          const secondNameNorm = normForCompare(second.item.name || '');
-          if (bestNameNorm === secondNameNorm && matches.length > 1) {
-            isUnique = false;
-          }
-        }
+    // Удаляем части в скобках и после тире/двоеточия/слеша
+    s = s.replace(/\(.*?\)/g, ' ');
+    s = s.split(/[-–—:\/]/)[0];
 
-        // Если уникален и достаточно уверен — автозаменяем
-        if (isUnique && best.score >= AUTO_REPLACE_THRESHOLD) {
-          searchInput.value = best.item.name;
-          searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-          // скрываем suggestions, если есть
-          const box = document.getElementById('voice-suggestions');
-          if (box) box.style.display = 'none';
-          console.info(`Auto-replaced "${finalText}" → "${best.item.name}" (${(best.score*100).toFixed(0)}%)`);
-          return;
-        } else {
-          // НЕ автозаменяем: оставляем распознанный текст (finalText) и показываем все результаты фильтрации
-          // (не показываем отдельный список предложений и не подставляем одно название)
-          searchInput.value = finalText;
-          searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-          const box = document.getElementById('voice-suggestions');
-          if (box) box.style.display = 'none';
-          console.info(`Ambiguous voice result "${finalText}" — kept query to show all matches.`);
-          return;
-        }
-      } else {
-        // Нет совпадений в локалке — оставляем распознанный текст
-        searchInput.value = finalText;
-        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-        const box = document.getElementById('voice-suggestions');
-        if (box) box.style.display = 'none';
-        return;
-      }
-    }
-  });
+    // Удаляем слова-метки типа "карта", "версия", "выпуск", "часть", "№" и всё после них
+    s = s.replace(/\b(карта|версия|выпуск|часть|часть|номер|№|редакция|издание|версия)\b.*$/i, '');
+
+    // Удаляем конечные числа/романы (например "3", "III") в конце
+    s = s.replace(/\b[0-9ivx]+\s*$/i, '');
+
+    // Схлопываем пробелы и обрезаем
+    s = s.replace(/\s+/g, ' ').trim();
+
+    return s;
+  }
+
+  const baseName = extractBaseName(best.item.name || best.item.title || best.item.code || finalText);
+
+  // Порог, при котором считаем, что найденный лучший матч релевантен для подстановки базового имени
+  const AUTO_BASENAME_THRESHOLD = 0.35; // можно поднять до 0.45 при ложных срабатываниях
+
+  if (best.score >= AUTO_BASENAME_THRESHOLD && baseName) {
+    // Подставляем базовое имя в поиск — это покажет все варианты/карты по этому названию
+    searchInput.value = baseName;
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    const box = document.getElementById('voice-suggestions');
+    if (box) box.style.display = 'none';
+    console.info(`Fuzzy base-name substitute "${finalText}" → "${baseName}" (best score ${(best.score*100).toFixed(0)}%)`);
+    return;
+  }
+
+  // Если лучший матч слишком слабый — оставляем распознанный текст
+  searchInput.value = finalText;
+  searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+  const box = document.getElementById('voice-suggestions');
+  if (box) box.style.display = 'none';
+  console.info(`Fuzzy match too weak for "${finalText}" — kept query.`);
+});
+
 
   recognition.addEventListener('end', () => {
     setRecordingState(false);
