@@ -1449,7 +1449,7 @@ function animate() {
 animate();
 
 
-// Голосовой поиск для поля #search — полный блок для замены
+// Голосовой поиск для поля #search — финальная версия (замените текущий блок целиком)
 (function() {
   const searchInput = document.getElementById('search');
   const voiceBtn = document.getElementById('voice-search-btn');
@@ -1476,40 +1476,48 @@ animate();
     let t = String(s).toLowerCase().trim();
 
     const smallNums = {
-      "ноль":"0","один":"1","два":"2","три":"3","четыре":"4","пять":"5",
-      "шесть":"6","семь":"7","восемь":"8","девять":"9","десять":"10",
-      "одна":"1","две":"2"
+      "ноль":"0","нуль":"0","нолью":"0",
+      "один":"1","одна":"1","два":"2","две":"2","три":"3","четыре":"4","пять":"5",
+      "шесть":"6","семь":"7","восемь":"8","девять":"9","десять":"10"
     };
 
-    // "ноль точка один два" -> 0.12
-    t = t.replace(/\bноль\s*(?:точка|точ|dot|point)\s*((?:один|два|три|четыре|пять|шесть|семь|восемь|девять|\d)(?:\s+(?:один|два|три|четыре|пять|шесть|семь|восемь|девять|\d))*)\b/gi,
+    // 1) "ноль точка один два" -> 0.12
+    t = t.replace(/\bноль\s*(?:точка|точ|dot|point)\s*((?:один|два|две|три|четыре|пять|шесть|семь|восемь|девять|\d)(?:\s+(?:один|два|две|три|четыре|пять|шесть|семь|восемь|девять|\d))*)\b/gi,
       (m, grp) => {
         const parts = grp.trim().split(/\s+/).map(w => {
           const lw = w.toLowerCase();
-          return smallNums[lw] !== undefined ? smallNums[lw] : (/\d/.test(lw) ? lw : '');
+          if (smallNums[lw] !== undefined) return smallNums[lw];
+          if (/\d/.test(lw)) return lw;
+          return '';
         }).filter(Boolean);
         return parts.length ? '0.' + parts.join('') : '0';
       });
 
-    // "ноль один" -> 0.1
-    t = t.replace(/\bноль\s+(один|два|три|четыре|пять|шесть|семь|восемь|девять)\b/gi,
+    // 2) "ноль один" -> 0.1 (частый случай)
+    t = t.replace(/\bноль\s+(один|два|две|три|четыре|пять|шесть|семь|восемь|девять)\b/gi,
       (m, w) => {
         const d = smallNums[w.toLowerCase()];
         return d !== undefined ? '0.' + d : m;
       });
 
-    // остальные слов‑числительные -> цифры
-    t = t.replace(/\b(ноль|один|два|три|четыре|пять|шесть|семь|восемь|девять|десять|одна|две)\b/gi,
+    // 3) одиночные числительные -> цифры
+    t = t.replace(/\b(ноль|нуль|один|одна|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять)\b/gi,
       (m) => {
         const lw = m.toLowerCase();
         return smallNums[lw] !== undefined ? smallNums[lw] : m;
       });
 
+    // 4) заменяем "точка" написанную словами на точку (если осталась)
+    t = t.replace(/\b(точка|точ)\b/gi, '.');
+
     // удаляем служебные слова
     t = t.replace(/\b(шт|штук|бут|бутылка|бутылки|бутылок|упак|упаковка|литр|л)\b/gi, ' ');
 
-    // оставляем цифры, точки, буквы; схлопываем пробелы
+    // оставляем буквы, цифры, точки и дефисы; схлопываем пробелы
     t = t.replace(/[^0-9a-zа-яё\s\.\-]/gi, ' ').replace(/\s+/g, ' ').trim();
+
+    // нормализуем: если есть "0 ." -> "0."
+    t = t.replace(/\s*\.\s*/g, '.');
 
     return t;
   }
@@ -1743,7 +1751,10 @@ animate();
       // Подставляем точное имя первого совпадения, но не делаем автопереключение
       searchInput.value = exactMatches[0].name;
       searchInput.removeAttribute('data-voice-base');
+      // гарантируем, что автоселект отключён
+      window._voicePreventAutoOpen = true;
       searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+      setTimeout(() => { window._voicePreventAutoOpen = false; }, 1500);
       const box = document.getElementById('voice-suggestions');
       if (box) box.style.display = 'none';
       console.info(`Exact match for "${finalText}" → "${exactMatches[0].name}"`);
@@ -1756,7 +1767,9 @@ animate();
     if (!matches || matches.length === 0) {
       searchInput.value = finalText;
       searchInput.removeAttribute('data-voice-base');
+      window._voicePreventAutoOpen = true;
       searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+      setTimeout(() => { window._voicePreventAutoOpen = false; }, 1500);
       const box = document.getElementById('voice-suggestions');
       if (box) box.style.display = 'none';
       console.info(`No fuzzy matches for "${finalText}" — kept query.`);
@@ -1770,7 +1783,7 @@ animate();
       let s = String(name).trim();
       s = s.replace(/\(.*?\)/g, ' ');
       s = s.split(/[-–—:\/]/)[0];
-      s = s.replace(/\b(карта|версия|выпуск|часть|номер|№|редакция|издание|версия)\b.*$/i, '');
+      s = s.replace(/\b(карта|версия|выпуск|часть|номер|№|редакция|издание)\b.*$/i, '');
       s = s.replace(/\b[0-9ivx]+\s*$/i, '');
       s = s.replace(/\s+/g, ' ').trim();
       return s;
@@ -1784,12 +1797,15 @@ animate();
       // чтобы фильтр использовал подстрочное совпадение и показал все варианты.
       searchInput.value = baseName;
       searchInput.setAttribute('data-voice-base', '1');
+      // предотвращаем автопереключение/автооткрытие карточки
+      window._voicePreventAutoOpen = true;
       searchInput.dispatchEvent(new Event('input', { bubbles: true }));
 
-      // Убираем флаг через короткое время
+      // Убираем флаг и защиту через короткое время
       setTimeout(() => {
         const el = document.getElementById('search');
         if (el && el.getAttribute('data-voice-base') === '1') el.removeAttribute('data-voice-base');
+        window._voicePreventAutoOpen = false;
       }, 1500);
 
       const box = document.getElementById('voice-suggestions');
@@ -1801,7 +1817,9 @@ animate();
     // Если слабый матч — оставляем распознанный текст
     searchInput.value = finalText;
     searchInput.removeAttribute('data-voice-base');
+    window._voicePreventAutoOpen = true;
     searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    setTimeout(() => { window._voicePreventAutoOpen = false; }, 1500);
     const box = document.getElementById('voice-suggestions');
     if (box) box.style.display = 'none';
     console.info(`Fuzzy match too weak for "${finalText}" — kept query.`);
@@ -1820,6 +1838,69 @@ animate();
       alert('Ошибка голосового ввода: ' + (e.error || 'unknown'));
     }
   });
+
+  // Быстрый хоткей: Ctrl+Shift+M
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'm') {
+      voiceBtn.click();
+    }
+  });
+
+  // ------------------ Функция фильтрации/рендера (надёжная) ------------------
+  // Если у вас уже есть своя функция фильтрации/рендера, адаптируйте её под логику ниже.
+  function filterAndRenderItems(query) {
+    const q = String(query || '').trim();
+    const qNorm = normForCompare(q);
+    const isVoiceBase = document.getElementById('search')?.getAttribute('data-voice-base') === '1';
+    const items = Array.isArray(allItems) ? allItems : [];
+
+    const filtered = items.filter(item => {
+      if (!qNorm) return true;
+      const nameNorm = normForCompare(item.name || '');
+      const codeNorm = normForCompare(item.code || '');
+      if (isVoiceBase) {
+        // подстрочное совпадение — покажет все варианты (0.1, 0.2 и т.д.)
+        return nameNorm.includes(qNorm) || codeNorm.includes(qNorm);
+      } else {
+        // обычная логика — подстрока или сильная похожесть
+        return nameNorm.includes(qNorm) || codeNorm.includes(qNorm);
+      }
+    });
+
+    // Рендерим: используем существующую renderItems, если есть
+    if (typeof renderItems === 'function') {
+      renderItems(filtered);
+    } else {
+      // временный вывод в консоль для отладки
+      console.warn('renderItems not defined — filtered count:', filtered.length);
+    }
+
+    // ВАЖНО: не открываем/не фокусируем первую карточку при голосовой подстановке
+    const isVoicePrevent = !!window._voicePreventAutoOpen || isVoiceBase;
+    if (!isVoicePrevent) {
+      if (typeof openFirstItemIfNeeded === 'function') {
+        openFirstItemIfNeeded(filtered);
+      } else if (typeof openItem === 'function') {
+        if (filtered && filtered.length > 0) openItem(filtered[0]);
+      }
+    } else {
+      // при голосовой подстановке — не делать авто-открытие
+    }
+  }
+
+  // Подключаем фильтрацию к событию input, если у вас ещё нет обработчика
+  if (!searchInput._voiceFilterAttached) {
+    searchInput.addEventListener('input', (e) => {
+      filterAndRenderItems(e.target.value);
+    });
+    searchInput._voiceFilterAttached = true;
+  }
+
+  // Инициализация флага
+  window._voicePreventAutoOpen = false;
+
+})();
+
 
   // Быстрый хоткей: Ctrl+Shift+M
   document.addEventListener('keydown', (e) => {
