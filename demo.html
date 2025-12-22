@@ -1527,7 +1527,6 @@ animate();
     return Math.max(0, 1 - dist / maxLen);
   }
 
-  // ------------------ Улучшённый поиск совпадений ------------------
   function findClosestMatches(query, items, limit = 6) {
     const qRaw = preprocessFinalText(query);
     if (!qRaw) return [];
@@ -1540,7 +1539,28 @@ animate();
     function oToA(s) {
       return String(s || '').toLowerCase().replace(/о/g, 'а');
     }
-    // Простая локальная транслитерация латиницы в кириллицу (если нужно)
+    // Фонетическая нормализация: сводим созвучные/озвончённые-приглушённые пары к одной форме
+    function phoneticNormalize(s) {
+      if (!s) return s;
+      let t = String(s).toLowerCase();
+      // Убираем диакритику и лишние символы
+      t = t.replace(/ё/g, 'е');
+      // пары: (в,ф), (б,п), (г,к), (д,т), (з,с), (ж,ш), (ч,щ)
+      t = t.replace(/[ф]/g, 'в');
+      t = t.replace(/[п]/g, 'б');
+      t = t.replace(/[к]/g, 'г');
+      t = t.replace(/[т]/g, 'д');
+      t = t.replace(/[с]/g, 'з');
+      t = t.replace(/[ш]/g, 'ж');
+      t = t.replace(/[щ]/g, 'ч');
+      // иногда путают 'в' и 'ф' в конце слова — уже учтено
+      // схлопываем пробелы и неалфавит
+      t = t.replace(/[^а-я0-9]/g, '');
+      return t;
+    }
+
+    // Простая локальная транслитерация латиницы в кириллицу (только если в запросе латиница)
+    // НЕ выполняем обратную транслитерацию (кириллица -> латиница) нигде
     function latinToCyrillicLocal(s) {
       if (!s) return s;
       let t = String(s).toLowerCase().trim();
@@ -1569,6 +1589,8 @@ animate();
     const qOtoA = oToA(qRaw);
     const qNoVowelsCyr = qCyrFromLatin ? stripVowels(qCyrFromLatin) : null;
     const qOtoACyr = qCyrFromLatin ? oToA(qCyrFromLatin) : null;
+    const qPhonetic = phoneticNormalize(qRaw);
+    const qPhoneticCyr = qCyrFromLatin ? phoneticNormalize(qCyrFromLatin) : null;
 
     const results = (items || []).map(item => {
       const name = String(item.name || '');
@@ -1606,6 +1628,13 @@ animate();
       if (qNoVowelsCyr) simCandidates.push(similarityScore(qNoVowelsCyr, stripVowels(name)));
       simCandidates.push(similarityScore(qOtoA, oToA(name)));
       if (qOtoACyr) simCandidates.push(similarityScore(qOtoACyr, oToA(name)));
+      // добавляем фонетическую похожесть (сводим созвучные буквы)
+      try {
+        simCandidates.push(similarityScore(qPhonetic, phoneticNormalize(name)));
+        if (qPhoneticCyr) simCandidates.push(similarityScore(qPhoneticCyr, phoneticNormalize(name)));
+      } catch (e) {
+        // ignore
+      }
       const simName = Math.max(...simCandidates, 0);
 
       const simCode = Math.max(similarityScore(qRaw, code), qCyrFromLatin ? similarityScore(qCyrFromLatin, code) : 0);
@@ -1634,7 +1663,7 @@ animate();
 
   // ------------------ SpeechRecognition setup ------------------
   const recognition = new SpeechRecognition();
-  recognition.lang = navigator.language || 'ru-RU';
+  recognition.lang = 'ru-RU'; // Жёстко ставим русский язык для распознавания
   recognition.interimResults = true;
   recognition.maxAlternatives = 1;
   recognition.continuous = false;
@@ -1818,6 +1847,7 @@ recognition.addEventListener('result', (ev) => {
       voiceBtn.click();
     }
   });
+
 
 
 </script>
