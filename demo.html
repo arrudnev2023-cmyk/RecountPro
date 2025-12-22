@@ -956,6 +956,16 @@ function exportPDF() {
   tbody.style.pageBreakInside = "avoid";
   let index = 1;
 
+  // Форматирование разницы: пустая ячейка для нуля, +/− для ненулевых
+  function formatDiffCell(diff) {
+    const n = Number(diff);
+    const EPS = 1e-9;
+    if (!isFinite(n) || Math.abs(n) <= EPS) return ''; // пустая ячейка вместо "0"
+    // Сохраняем целочисленный вид, иначе показываем с двумя знаками
+    const s = (Math.abs(n % 1) < EPS) ? String(n) : String(Number(n.toFixed(2)));
+    return (n > 0 ? '+' : '') + s;
+  }
+
   sortedItems.forEach(item => {
     const input = document.querySelector(`input[data-code="${item.code}"]`);
     const raw = input ? input.value.trim() : "";
@@ -974,7 +984,7 @@ function exportPDF() {
     }
 
     const delta = actual - item.docQty;
-    const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
+    const deltaStr = formatDiffCell(delta);
 
     if (delta > 0) totalPlus += delta * item.price;
     else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
@@ -1004,6 +1014,7 @@ function exportPDF() {
     –${totalMinus.toFixed(2)} ₽<br>
     +${totalPlus.toFixed(2)} ₽
   `;
+
 
   // подпись снизу
   const footer = document.createElement("div");
