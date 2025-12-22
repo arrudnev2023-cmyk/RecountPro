@@ -1447,10 +1447,7 @@ function animate() {
   requestAnimationFrame(animate);
 }
 animate();
-// Голосовой поиск для поля #search — финальная версия
-// Поведение: парсинг объёмов (ноль один -> 0.1), поддержка транслита (latin->кириллица),
-// улучшенный фуззи-поиск, автоматическое открытие карточки по лучшему совпадению,
-// НЕ показываем импровизированный список предложений пользователю.
+// Голосовой поиск для поля #search — поведение: не подставлять имя автоматически, показывать варианты
 (function() {
   const searchInput = document.getElementById('search');
   const voiceBtn = document.getElementById('voice-search-btn');
@@ -1463,11 +1460,14 @@ animate();
     return;
   }
 
-  // ------------------ Настройки ------------------
-  const AUTO_OPEN_THRESHOLD = 0.30; // порог для автоматического открытия карточки
   window._voicePreventAutoOpen = false;
 
-  // ------------------ Утилиты ------------------
+  const NUMBER_WORDS = {
+    "ноль":"0","один":"1","два":"2","три":"3","четыре":"4","пять":"5",
+    "шесть":"6","семь":"7","восемь":"8","девять":"9","десять":"10",
+    "одна":"1","две":"2"
+  };
+
   function preprocessFinalText(s) {
     if (!s) return "";
     let t = String(s).toLowerCase().trim();
@@ -1478,7 +1478,6 @@ animate();
       "шесть":"6","семь":"7","восемь":"8","девять":"9","десять":"10"
     };
 
-    // "ноль точка один два" -> 0.12
     t = t.replace(/\bноль\s*(?:точка|точ|dot|point)\s*((?:один|два|две|три|четыре|пять|шесть|семь|восемь|девять|\d)(?:\s+(?:один|два|две|три|четыре|пять|шесть|семь|восемь|девять|\d))*)\b/gi,
       (m, grp) => {
         const parts = grp.trim().split(/\s+/).map(w => {
@@ -1490,30 +1489,21 @@ animate();
         return parts.length ? '0.' + parts.join('') : '0';
       });
 
-    // "ноль один" -> 0.1
     t = t.replace(/\bноль\s+(один|два|две|три|четыре|пять|шесть|семь|восемь|девять)\b/gi,
       (m, w) => {
         const d = smallNums[w.toLowerCase()];
         return d !== undefined ? '0.' + d : m;
       });
 
-    // одиночные числительные -> цифры
     t = t.replace(/\b(ноль|нуль|один|одна|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять)\b/gi,
       (m) => {
         const lw = m.toLowerCase();
         return smallNums[lw] !== undefined ? smallNums[lw] : m;
       });
 
-    // "точка" -> "."
     t = t.replace(/\b(точка|точ)\b/gi, '.');
-
-    // удаляем служебные слова
     t = t.replace(/\b(шт|штук|бут|бутылка|бутылки|бутылок|упак|упаковка|литр|л)\b/gi, ' ');
-
-    // оставляем буквы, цифры, точки и дефисы; схлопываем пробелы
     t = t.replace(/[^0-9a-zа-яё\s\.\-]/gi, ' ').replace(/\s+/g, ' ').trim();
-
-    // нормализуем точки
     t = t.replace(/\s*\.\s*/g, '.');
 
     return t;
@@ -1527,35 +1517,6 @@ animate();
       .trim();
   }
 
-  // Простая транслитерация латиницы в кириллицу
-  function latinToCyrillic(s) {
-    if (!s) return s;
-    let t = String(s).toLowerCase().trim();
-    if (!/[a-z]/i.test(t)) return t;
-
-    const map = [
-      ['shch','щ'], ['sch','щ'], ['yo','ё'], ['yu','ю'], ['ya','я'],
-      ['zh','ж'], ['kh','х'], ['ch','ч'], ['sh','ш'], ['ts','ц'],
-      ['ye','е'], ['yi','й'],
-      ['a','а'], ['b','б'], ['c','к'], ['d','д'], ['e','е'], ['f','ф'],
-      ['g','г'], ['h','х'], ['i','и'], ['j','й'], ['k','к'], ['l','л'],
-      ['m','м'], ['n','н'], ['o','о'], ['p','п'], ['q','к'], ['r','р'],
-      ['s','с'], ['t','т'], ['u','у'], ['v','в'], ['w','в'], ['x','кс'],
-      ['y','й'], ['z','з']
-    ];
-
-    t = t.replace(/[^a-z0-9\s\.\-]/gi, ' ').replace(/\s+/g, ' ').trim();
-
-    for (const [k, v] of map) {
-      const re = new RegExp(k, 'gi');
-      t = t.replace(re, v);
-    }
-
-    t = t.replace(/\s+/g, ' ').trim();
-    return t;
-  }
-
-  // Левенштейн
   function levenshtein(a, b) {
     a = String(a); b = String(b);
     if (a === b) return 0;
@@ -1584,16 +1545,81 @@ animate();
     return Math.max(0, 1 - dist / maxLen);
   }
 
-  // ------------------ Поиск совпадений ------------------
+  // suggestions box
+  (function createVoiceSuggestionBox() {
+    if (document.getElementById('voice-suggestions')) return;
+    const box = document.createElement('div');
+    box.id = 'voice-suggestions';
+    box.style.position = 'absolute';
+    box.style.left = '0';
+    box.style.right = '0';
+    box.style.top = '100%';
+    box.style.background = 'var(--panel-bg, #111)';
+    box.style.color = 'var(--text, #fff)';
+    box.style.border = '1px solid rgba(255,255,255,0.06)';
+    box.style.borderRadius = '6px';
+    box.style.marginTop = '6px';
+    box.style.zIndex = '999';
+    box.style.display = 'none';
+    box.style.maxHeight = '220px';
+    box.style.overflow = 'auto';
+    box.style.fontSize = '0.9rem';
+    box.style.boxShadow = '0 6px 18px rgba(0,0,0,0.6)';
+    const wrapper = document.getElementById('search-wrapper') || searchInput.parentElement;
+    wrapper.style.position = wrapper.style.position || 'relative';
+    wrapper.appendChild(box);
+
+    document.addEventListener('click', (e) => {
+      if (!wrapper.contains(e.target)) box.style.display = 'none';
+    });
+  })();
+
+  function renderVoiceSuggestions(matches, originalQuery) {
+    const box = document.getElementById('voice-suggestions');
+    if (!box) return;
+    if (!matches || matches.length === 0) {
+      box.style.display = 'none';
+      return;
+    }
+    box.innerHTML = '';
+    matches.forEach(m => {
+      const row = document.createElement('div');
+      row.style.padding = '8px';
+      row.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
+      row.style.cursor = 'pointer';
+      row.innerHTML = `<strong style="display:block; color:var(--accent);">${m.item.name}</strong>
+                       <span style="font-size:0.8rem; color:rgba(255,255,255,0.7);">Артикул: ${m.item.code || ''} · ${(m.score*100).toFixed(0)}%</span>`;
+      row.addEventListener('click', () => {
+        // при клике пользователь выбирает вариант — подставляем выбранное имя
+        searchInput.value = m.item.name;
+        searchInput.removeAttribute('data-voice-base');
+        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+        box.style.display = 'none';
+      });
+      box.appendChild(row);
+    });
+
+    const useOrig = document.createElement('div');
+    useOrig.style.padding = '8px';
+    useOrig.style.cursor = 'pointer';
+    useOrig.style.background = 'rgba(255,255,255,0.02)';
+    useOrig.innerHTML = `<em>Оставить: «${originalQuery}»</em>`;
+    useOrig.addEventListener('click', () => {
+      // пользователь оставляет оригинальный запрос — показываем карты по тому, что он сказал
+      searchInput.value = originalQuery;
+      searchInput.removeAttribute('data-voice-base');
+      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+      box.style.display = 'none';
+    });
+    box.appendChild(useOrig);
+
+    box.style.display = 'block';
+  }
+
   function findClosestMatches(query, items, limit = 6) {
     const qRaw = preprocessFinalText(query);
     if (!qRaw) return [];
-
-    const qLatin = /[a-z]/i.test(qRaw);
-    const qCyrFromLatin = qLatin ? latinToCyrillic(qRaw) : null;
-
     const qTokens = qRaw.split(/\s+/).filter(Boolean);
-    const qTokensCyr = qCyrFromLatin ? qCyrFromLatin.split(/\s+/).filter(Boolean) : [];
 
     const results = (items || []).map(item => {
       const name = String(item.name || '');
@@ -1607,41 +1633,33 @@ animate();
         if (nameTokens.some(nt => nt.includes(t) || t.includes(nt))) tokenMatches++;
         if (codeNorm.includes(t) || t.includes(codeNorm)) tokenMatches += 0.8;
       });
-      if (qTokensCyr.length) {
-        qTokensCyr.forEach(t => {
-          if (nameTokens.some(nt => nt.includes(t) || t.includes(nt))) tokenMatches += 0.9;
-          if (codeNorm.includes(t) || t.includes(codeNorm)) tokenMatches += 0.6;
-        });
-      }
-      const tokenScore = tokenMatches / Math.max((qTokens.length + qTokensCyr.length) || 1, 1);
+      const tokenScore = tokenMatches / Math.max(qTokens.length, 1);
 
       const compactQ = qRaw.replace(/\s+/g, '');
-      const compactQCyr = qCyrFromLatin ? qCyrFromLatin.replace(/\s+/g, '') : null;
-      const substrBonus = (nameNorm.includes(compactQ) || codeNorm.includes(compactQ) || (compactQCyr && nameNorm.includes(compactQCyr))) ? 0.25 : 0;
+      const substrBonus = (nameNorm.includes(compactQ) || codeNorm.includes(compactQ)) ? 0.25 : 0;
 
-      const simName = Math.max(similarityScore(qRaw, name), qCyrFromLatin ? similarityScore(qCyrFromLatin, name) : 0);
-      const simCode = Math.max(similarityScore(qRaw, code), qCyrFromLatin ? similarityScore(qCyrFromLatin, code) : 0);
+      const simName = similarityScore(qRaw, name);
+      const simCode = similarityScore(qRaw, code);
 
       let numBonus = 0;
-      const qNumMatch = (qRaw + (qCyrFromLatin || '')).match(/\b(\d+)\b/);
+      const qNumMatch = qRaw.match(/\b(\d+)\b/);
       if (qNumMatch) {
         const qnum = qNumMatch[1];
         if (String(item.name).includes(qnum) || String(item.code).includes(qnum)) numBonus = 0.35;
       }
 
-      const score = Math.max(simName, simCode) * 0.55 + tokenScore * 0.30 + substrBonus + numBonus;
+      const score = Math.max(simName, simCode) * 0.5 + tokenScore * 0.35 + substrBonus + numBonus;
 
       return { item, score, tokenScore, simName, simCode };
     });
 
     return results
-      .filter(r => r.score > 0.12)
+      .filter(r => r.score > 0.18)
       .sort((a,b) => b.score - a.score)
       .slice(0, limit)
       .map(r => ({ item: r.item, score: r.score }));
   }
 
-  // ------------------ SpeechRecognition ------------------
   const voiceRecognition = new SpeechRecognition();
   voiceRecognition.lang = navigator.language || 'ru-RU';
   voiceRecognition.interimResults = true;
@@ -1649,6 +1667,7 @@ animate();
   voiceRecognition.continuous = false;
 
   let isRecording = false;
+
   function setRecordingState(on) {
     isRecording = !!on;
     voiceBtn.setAttribute('aria-pressed', String(isRecording));
@@ -1676,7 +1695,7 @@ animate();
     }
   });
 
-  // ------------------ Обработчик результатов: автоматическое открытие карточки ------------------
+  // Обработчик результатов: НЕ подставляем имя автоматически, показываем предложения
   voiceRecognition.addEventListener('result', (ev) => {
     let interim = '';
     let final = '';
@@ -1696,54 +1715,33 @@ animate();
     const pre = preprocessFinalText(finalText);
     const items = Array.isArray(allItems) ? allItems : [];
 
+    // НЕ заменяем поле на точное имя из items — оставляем то, что сказал пользователь
+    // Показываем предложения (если есть) и даём пользователю выбрать
     const matches = findClosestMatches(pre, items, 8);
 
     if (matches && matches.length > 0) {
-      const best = matches[0];
-
-      if (best.score >= AUTO_OPEN_THRESHOLD) {
-        // Подставляем имя из базы и открываем карточку
-        searchInput.value = best.item.name;
-        searchInput.setAttribute('data-voice-base', '1');
-        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-
-        if (typeof openItem === 'function') {
-          try { openItem(best.item); } catch (e) { /* ignore */ }
-        } else if (typeof openFirstItemIfNeeded === 'function') {
-          try { openFirstItemIfNeeded([best.item]); } catch(e){ /* ignore */ }
-        } else if (typeof renderItems === 'function') {
-          renderItems([best.item]);
-        }
-
-        setTimeout(() => {
-          const el = document.getElementById('search');
-          if (el && el.getAttribute('data-voice-base') === '1') el.removeAttribute('data-voice-base');
-        }, 1200);
-
-        console.info(`Auto-opened "${best.item.name}" (score ${(best.score*100).toFixed(0)}%) for "${finalText}"`);
-        return;
-      }
-
-      // Если матч слабее порога — всё равно открываем лучший вариант (поведение можно отключить)
-      searchInput.value = best.item.name;
-      searchInput.setAttribute('data-voice-base', '1');
+      // Показываем suggestions — пользователь сам выберет вариант или оставит оригинал
+      renderVoiceSuggestions(matches, finalText);
+      // Оставляем в поле именно распознанный текст (чтобы карты/фильтр искали по нему)
+      searchInput.value = finalText;
+      searchInput.removeAttribute('data-voice-base');
+      // предотвращаем автопереключение карточки на короткое время
+      window._voicePreventAutoOpen = true;
       searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-      if (typeof openItem === 'function') {
-        try { openItem(best.item); } catch(e){ /* ignore */ }
-      } else if (typeof openFirstItemIfNeeded === 'function') {
-        try { openFirstItemIfNeeded([best.item]); } catch(e){ /* ignore */ }
-      } else if (typeof renderItems === 'function') {
-        renderItems([best.item]);
-      }
-      console.info(`Opened best match "${best.item.name}" (score ${(best.score*100).toFixed(0)}%) for "${finalText}"`);
+      setTimeout(() => { window._voicePreventAutoOpen = false; }, 1500);
+      console.info(`Voice suggestions shown for "${finalText}" (${matches.length} matches)`);
       return;
     }
 
-    // Нет совпадений — оставляем распознанный текст и выполняем поиск по нему
+    // Если нет похожих — оставляем распознанный текст и выполняем поиск по нему
     searchInput.value = finalText;
     searchInput.removeAttribute('data-voice-base');
+    window._voicePreventAutoOpen = true;
     searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-    console.info(`No matches for "${finalText}" — kept query.`);
+    setTimeout(() => { window._voicePreventAutoOpen = false; }, 1500);
+    const box = document.getElementById('voice-suggestions');
+    if (box) box.style.display = 'none';
+    console.info(`No fuzzy matches for "${finalText}" — kept query.`);
   });
 
   voiceRecognition.addEventListener('end', () => {
@@ -1767,7 +1765,7 @@ animate();
     }
   });
 
-  // ------------------ Фильтрация/рендер ------------------
+  // Фильтрация/рендер (используй свою renderItems)
   function filterAndRenderItems(query) {
     const q = String(query || '').trim();
     const qNorm = normForCompare(q);
@@ -1809,5 +1807,3 @@ animate();
   }
 
 })();
-
-
