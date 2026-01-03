@@ -1398,27 +1398,42 @@ function stopOCR() {
 // OCR цикл
 async function runOCRLoop(video) {
   // Ждём пока камера прогрузится
-  while (video.videoWidth === 0) {
+  while (video.videoWidth === 0 || video.videoHeight === 0) {
     await new Promise(r => setTimeout(r, 100));
   }
 
   console.log("Камера готова");
+
+  // Даем камере стабилизироваться (важно!)
+  await new Promise(r => setTimeout(r, 500));
+
+  let emptyFrames = 0;
 
   while (ocrActive) {
     const text = await recognizeTextFromFrame(video);
 
     console.log("OCR:", text);
 
-    if (text && text.length > 3) {
-      stopOCR();
+    // Если пусто — НЕ закрываем камеру
+    if (!text || text.length < 3) {
+      emptyFrames++;
 
-      // 👉 Твой fuzzy-поиск
-      // findProduct(text);
+      // Если 30 пустых кадров подряд — просто продолжаем, не закрываем
+      if (emptyFrames > 30) emptyFrames = 0;
 
-      break;
+      await new Promise(r => setTimeout(r, 300));
+      continue;
     }
 
-    await new Promise(r => setTimeout(r, 400)); // 2.5 FPS
+    // Если текст найден — закрываем камеру и запускаем поиск
+    stopOCR();
+
+    console.log("Найден текст:", text);
+
+    // 👉 Твой fuzzy-поиск
+    // findProduct(text);
+
+    break;
   }
 }
 
