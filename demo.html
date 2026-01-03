@@ -1351,7 +1351,6 @@ let ocrActive = false;
 // Запуск OCR
 async function startOCR() {
   try {
-    // Запускаем камеру
     ocrStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" }
     });
@@ -1362,20 +1361,19 @@ async function startOCR() {
     const video = document.getElementById("ocr-video");
     video.srcObject = ocrStream;
 
-    // Делаем видео полноэкранным
-    video.style.display = "block";
-    video.style.position = "fixed";
-    video.style.top = "0";
-    video.style.left = "0";
-    video.style.width = "100vw";
-    video.style.height = "100vh";
-    video.style.objectFit = "cover";
-    video.style.zIndex = "9999";
+    // Полноэкранное видео
+    Object.assign(video.style, {
+      display: "block",
+      position: "fixed",
+      top: "0",
+      left: "0",
+      width: "100vw",
+      height: "100vh",
+      objectFit: "cover",
+      zIndex: "9999"
+    });
 
-    // Ждём, пока видео реально запустится
     await video.play();
-
-    // Запускаем OCR-цикл
     runOCRLoop(video);
 
   } catch (err) {
@@ -1383,7 +1381,6 @@ async function startOCR() {
     alert("Не удалось открыть камеру");
   }
 }
-
 
 // Остановка OCR
 function stopOCR() {
@@ -1404,41 +1401,43 @@ async function runOCRLoop(video) {
 
   console.log("Камера готова");
 
-  // Даем камере стабилизироваться (важно!)
-  await new Promise(r => setTimeout(r, 500));
+  await new Promise(r => setTimeout(r, 500)); // стабилизация
 
   let emptyFrames = 0;
 
   while (ocrActive) {
-    const text = await recognizeTextFromFrame(video);
+    const rawText = await recognizeTextFromFrame(video);
+    console.log("OCR RAW:", rawText);
 
-    console.log("OCR:", text);
+    const clean = normalizeOCRText(rawText);
+    console.log("OCR CLEAN:", clean);
 
-    // Если пусто — НЕ закрываем камеру
-    if (!text || text.length < 3) {
+    if (!clean || clean.length < 3) {
       emptyFrames++;
-
-      // Если 30 пустых кадров подряд — просто продолжаем, не закрываем
       if (emptyFrames > 30) emptyFrames = 0;
-
       await new Promise(r => setTimeout(r, 300));
       continue;
     }
 
-    // Если текст найден — закрываем камеру и запускаем поиск
     stopOCR();
 
-    console.log("Найден текст:", text);
+    console.log("Найден текст:", clean);
 
-    // 👉 Твой fuzzy-поиск
-    // findProduct(text);
+    // Генерируем варианты для поиска
+    const variants = generateSearchVariants(clean);
+    console.log("Варианты поиска:", variants);
+
+    // Ищем по каждому варианту
+    for (const v of variants) {
+      console.log("Ищу:", v);
+      findProduct(v); // ← твой поиск
+    }
 
     break;
   }
 }
 
-
-// Реальное OCR
+// OCR
 async function recognizeTextFromFrame(video) {
   const canvas = document.createElement("canvas");
   canvas.width = video.videoWidth;
@@ -1454,6 +1453,45 @@ async function recognizeTextFromFrame(video) {
   });
 
   return text.trim();
+}
+
+// Нормализация текста
+function normalizeOCRText(text) {
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[^a-zа-я0-9\s]/gi, "")
+    .trim();
+}
+
+// Генерация вариантов для поиска
+function generateSearchVariants(text) {
+  const variants = new Set();
+
+  variants.add(text);
+
+  // Разбиваем на строки
+  text.split("\n").forEach(line => {
+    line = line.trim();
+    if (line.length > 2) variants.add(line);
+  });
+
+  // Разбиваем на слова
+  const words = text.split(" ").filter(w => w.length > 2);
+
+  // Перестановки слов
+  if (words.length >= 2) {
+    variants.add(words.join(" "));
+    variants.add(words.reverse().join(" "));
+  }
+
+  // Убираем цифры (например "кетчуп махеев 350г")
+  variants.add(text.replace(/[0-9]/g, "").trim());
+
+  // Убираем короткие слова
+  variants.add(words.filter(w => w.length > 3).join(" "));
+
+  return Array.from(variants).filter(v => v.length > 2);
 }
 
 // Привязка кнопки
