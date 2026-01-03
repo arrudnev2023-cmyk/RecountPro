@@ -7,6 +7,7 @@
   <title>RecountPro — Пересчёт</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     :root {
       --accent: #6d28d9;
@@ -438,7 +439,8 @@ input[data-code] {
     </g>
   </svg>
  </button>
-
+      <!-- 📷 ВОТ СЮДА — ПРАВИЛЬНО -->
+      <video id="ocr-video" autoplay playsinline style="display:none; width:100%;"></video>
 
   <button id="menu-toggle" aria-label="Menu">
     <!-- SVG меню (три полоски) -->
@@ -1330,6 +1332,85 @@ function showSummaryModal() {
   }
 
   document.getElementById("flashlight-btn").addEventListener("click", toggleFlashlight);
+  // 📷 OCR
+let ocrStream = null;
+let ocrTrack = null;
+let ocrActive = false;
+
+// Запуск OCR
+async function startOCR() {
+  try {
+    ocrStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" }
+    });
+
+    ocrTrack = ocrStream.getVideoTracks()[0];
+    ocrActive = true;
+
+    const video = document.getElementById("ocr-video");
+    video.srcObject = ocrStream;
+    video.style.display = "block";
+    await video.play();
+
+    runOCRLoop(video);
+
+  } catch (err) {
+    console.error("Ошибка OCR камеры:", err);
+    alert("Не удалось открыть камеру");
+  }
+}
+
+// Остановка OCR
+function stopOCR() {
+  ocrActive = false;
+
+  if (ocrTrack) ocrTrack.stop();
+  if (ocrStream) ocrStream.getTracks().forEach(t => t.stop());
+
+  document.getElementById("ocr-video").style.display = "none";
+}
+
+// OCR цикл
+async function runOCRLoop(video) {
+  while (ocrActive) {
+    const text = await recognizeTextFromFrame(video);
+
+    if (text && text.length > 3) {
+      stopOCR();
+
+      console.log("OCR TEXT:", text);
+
+      // 👉 ТВОЙ FUZZY ПОИСК
+      // findProduct(text);
+
+      break;
+    }
+
+    await new Promise(r => setTimeout(r, 300)); // 3 FPS
+  }
+}
+
+// Реальное OCR
+async function recognizeTextFromFrame(video) {
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0);
+
+  const { data: { text } } = await Tesseract.recognize(canvas, "rus+eng", {
+    tessedit_char_whitelist:
+      "абвгдеёжзийклмнопрстуфхцчшщьыъэюяABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -_.",
+    logger: () => {}
+  });
+
+  return text.trim();
+}
+
+// Привязка кнопки
+document.getElementById("ocr-btn").addEventListener("click", startOCR);
+
 
 
 // 🌌 Анимация фона (звёзды + кометы + клики)
