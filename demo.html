@@ -272,6 +272,17 @@ input[data-code] {
   align-items: center;
   justify-content: center;
 }
+    #ocr-video {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  z-index: 9999;
+  display: none;
+}
+
 
 
 /* SVG внутри кнопок */
@@ -1340,6 +1351,7 @@ let ocrActive = false;
 // Запуск OCR
 async function startOCR() {
   try {
+    // Запускаем камеру
     ocrStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" }
     });
@@ -1349,9 +1361,21 @@ async function startOCR() {
 
     const video = document.getElementById("ocr-video");
     video.srcObject = ocrStream;
+
+    // Делаем видео полноэкранным
     video.style.display = "block";
+    video.style.position = "fixed";
+    video.style.top = "0";
+    video.style.left = "0";
+    video.style.width = "100vw";
+    video.style.height = "100vh";
+    video.style.objectFit = "cover";
+    video.style.zIndex = "9999";
+
+    // Ждём, пока видео реально запустится
     await video.play();
 
+    // Запускаем OCR-цикл
     runOCRLoop(video);
 
   } catch (err) {
@@ -1359,6 +1383,7 @@ async function startOCR() {
     alert("Не удалось открыть камеру");
   }
 }
+
 
 // Остановка OCR
 function stopOCR() {
@@ -1372,23 +1397,31 @@ function stopOCR() {
 
 // OCR цикл
 async function runOCRLoop(video) {
+  // Ждём пока камера прогрузится
+  while (video.videoWidth === 0) {
+    await new Promise(r => setTimeout(r, 100));
+  }
+
+  console.log("Камера готова");
+
   while (ocrActive) {
     const text = await recognizeTextFromFrame(video);
+
+    console.log("OCR:", text);
 
     if (text && text.length > 3) {
       stopOCR();
 
-      console.log("OCR TEXT:", text);
-
-      // 👉 ТВОЙ FUZZY ПОИСК
+      // 👉 Твой fuzzy-поиск
       // findProduct(text);
 
       break;
     }
 
-    await new Promise(r => setTimeout(r, 300)); // 3 FPS
+    await new Promise(r => setTimeout(r, 400)); // 2.5 FPS
   }
 }
+
 
 // Реальное OCR
 async function recognizeTextFromFrame(video) {
