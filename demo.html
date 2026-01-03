@@ -835,8 +835,48 @@ searchInput.addEventListener("input", () => {
 
 
 
-  
-  function levenshtein(a, b) {
+
+
+  /* ============================================================
+   1. НОРМАЛИЗАЦИЯ (твоя)
+============================================================ */
+function normalize(str) {
+  return String(str || "")
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/№/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/* ============================================================
+   2. ОБЫЧНЫЙ ПОИСК ПО INPUT (твой)
+============================================================ */
+searchInput.addEventListener("input", () => {
+  const q = normalize(searchInput.value);
+
+  document.querySelectorAll("#list .item").forEach(div => {
+    const code = normalize(div.dataset.code);
+    const item = allItems.find(i => i.code === div.dataset.code);
+    if (!item) {
+      div.classList.add("hidden");
+      return;
+    }
+
+    const name = normalize(item.name);
+
+    const match =
+      name.includes(q) ||
+      code.includes(q);
+
+    div.classList.toggle("hidden", !match);
+  });
+});
+
+/* ============================================================
+   3. ЛЕВЕНШТЕЙН — НЕЧЁТКОЕ СРАВНЕНИЕ
+============================================================ */
+function levenshtein(a, b) {
   a = a.toLowerCase();
   b = b.toLowerCase();
 
@@ -868,29 +908,23 @@ function fuzzyMatch(word, target) {
 
   const dist = levenshtein(word, target);
 
-  return dist <= 2; // допускаем 1–2 ошибки
+  return dist <= 2;
 }
 
-  // 🔍 Поиск по OCR
+/* ============================================================
+   4. ПОИСК ПО OCR
+============================================================ */
 function searchByOCR(rawText) {
   const q = normalize(rawText);
-  console.log("RAW:", rawText);
-  console.log("NORMALIZED:", q);
-
-  if (!q || q.length < 2) {
-    console.log("Останов: пустой q");
-    return;
-  }
+  if (!q || q.length < 2) return;
 
   const words = q.split(" ").filter(w => w.length > 2);
-  console.log("WORDS:", words);
 
   document.querySelectorAll("#list .item").forEach(div => {
     const code = normalize(div.dataset.code);
     const item = allItems.find(i => i.code === div.dataset.code);
 
     if (!item) {
-      console.log("Нет item для", div.dataset.code);
       div.classList.add("hidden");
       return;
     }
@@ -900,26 +934,159 @@ function searchByOCR(rawText) {
     let match = false;
 
     for (const w of words) {
-      const fmName = fuzzyMatch(w, name);
-      const fmCode = fuzzyMatch(w, code);
-
-      console.log(`WORD "${w}" → name "${name}" = ${fmName}, code "${code}" = ${fmCode}`);
-
-      if (fmName || fmCode) {
+      if (fuzzyMatch(w, name) || fuzzyMatch(w, code)) {
         match = true;
         break;
       }
     }
 
-    console.log("RESULT:", item.name, "→", match);
-
     div.classList.toggle("hidden", !match);
   });
 }
 
+/* ============================================================
+   5. OCR-КАМЕРА
+============================================================ */
+
+let ocrStream = null;
+let ocrTrack = null;
+let ocrActive = false;
+
+// Запуск OCR
+async function startOCR() {
+  try {
+    ocrStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" }
+    });
+
+    ocrTrack = ocrStream.getVideoTracks()[0];
+    ocrActive = true;
+
+    const video = document.getElementById("ocr-video");
+    video.srcObject = ocrStream;
+
+    Object.assign(video.style, {
+      display: "block",
+      position: "fixed",
+      top: "0",
+      left: "0",
+      width: "100vw",
+      height: "100vh",
+      objectFit: "cover",
+      zIndex: "9999"
+    });
+
+    await video.play();
+    runOCRLoop(video);
+
+  } catch (err) {
+    alert("Не удалось открыть камеру");
+  }
+}
+
+// Остановка OCR
+function stopOCR() {
+  ocrActive = false;
+
+  if (ocrTrack) ocrTrack.stop();
+  if (ocrStream) ocrStream.getTracks().forEach(t => t.stop());
+
+  document.getElementById("ocr-video").style.display = "none";
+}
+
+/* ============================================================
+   6. OCR ЦИКЛ С ВЫВОДОМ НА ЭКРАН
+============================================================ */
+async function runOCRLoop(video) {
+  while (video.videoWidth === 0 || video.videoHeight === 0) {
+    await new Promise(r => setTimeout(r, 100));
+  }
+
+  await new Promise(r => setTimeout(r, 1000));
+
+  let emptyFrames = 0;
+
+  while (ocrActive) {
+    const rawText = await recognizeTextFromFrame(video);
+
+    document.getElementById("ocr-debug").innerText =
+      "RAW:\n" + rawText;
+
+    const clean = normalizeOCRText(rawText);
+
+    document.getElementById("ocr-debug").innerText =
+      "RAW:\n" + rawText + "\n\nCLEAN:\n" + clean;
+
+    if (!clean || clean.length < 3) {
+      emptyFrames++;
+      if (emptyFrames > 30) emptyFrames = 0;
+      await new Promise(r => setTimeout(r, 300));
+      continue;
+    }
+
+    stopOCR();
+
+    document.getElementById("ocr-debug").innerText =
+      "FINAL SEARCH TEXT:\n" + clean;
+
+    searchByOCR(clean);
+
+    break;
+  }
+}
+
+/* ============================================================
+   7. OCR РАСПОЗНАВАНИЕ С ПРЕДОБРАБОТКОЙ
+============================================================ */
+async function recognizeTextFromFrame(video) {
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0);
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+    const contrast = avg > 128 ? 255 : 0;
+    data[i] = data[i + 1] = data[i + 2] = contrast;
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+
+  const { data: { text } } = await Tesseract.recognize(canvas, "rus+eng", {
+    tessedit_char_whitelist:
+      "абвгдеёжзийклмнопрстуфхцчшщьыъэюяABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -_.",
+    logger: () => {}
+  });
+
+  return text.trim();
+}
+
+/* ============================================================
+   8. НОРМАЛИЗАЦИЯ OCR ТЕКСТА
+============================================================ */
+function normalizeOCRText(text) {
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[^a-zа-я0-9\s]/gi, "")
+    .trim();
+}
+
+/* ============================================================
+   9. КНОПКА ЗАПУСКА OCR
+============================================================ */
+document.getElementById("ocr-btn").addEventListener("click", startOCR);
 
 
 
+
+
+  
 // Очистка поиска
 document.getElementById("clear-search").addEventListener("click", () => {
   searchInput.value = '';
@@ -1450,167 +1617,6 @@ function showSummaryModal() {
   }
 
   document.getElementById("flashlight-btn").addEventListener("click", toggleFlashlight);
-  // 📷 OCR
-let ocrStream = null;
-let ocrTrack = null;
-let ocrActive = false;
-
-// Запуск OCR
-async function startOCR() {
-  try {
-    ocrStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" }
-    });
-
-    ocrTrack = ocrStream.getVideoTracks()[0];
-    ocrActive = true;
-
-    const video = document.getElementById("ocr-video");
-    video.srcObject = ocrStream;
-
-    // Полноэкранное видео
-    Object.assign(video.style, {
-      display: "block",
-      position: "fixed",
-      top: "0",
-      left: "0",
-      width: "100vw",
-      height: "100vh",
-      objectFit: "cover",
-      zIndex: "9999"
-    });
-
-    await video.play();
-    runOCRLoop(video);
-
-  } catch (err) {
-    console.error("Ошибка OCR камеры:", err);
-    alert("Не удалось открыть камеру");
-  }
-}
-
-// Остановка OCR
-function stopOCR() {
-  ocrActive = false;
-
-  if (ocrTrack) ocrTrack.stop();
-  if (ocrStream) ocrStream.getTracks().forEach(t => t.stop());
-
-  document.getElementById("ocr-video").style.display = "none";
-}
-
-// OCR цикл
-async function runOCRLoop(video) {
-  while (video.videoWidth === 0 || video.videoHeight === 0) {
-    await new Promise(r => setTimeout(r, 100));
-  }
-
-  console.log("Камера готова");
-
-  await new Promise(r => setTimeout(r, 500));
-
-  let emptyFrames = 0;
-
-  while (ocrActive) {
-    const rawText = await recognizeTextFromFrame(video);
-
-    // 🔥 Показываем на экране, что OCR видит
-    document.getElementById("ocr-debug").innerText = "RAW:\n" + rawText;
-
-    console.log("OCR RAW:", rawText);
-
-    const clean = normalizeOCRText(rawText);
-
-    // 🔥 Показываем нормализованный текст
-    document.getElementById("ocr-debug").innerText =
-      "RAW:\n" + rawText + "\n\nCLEAN:\n" + clean;
-
-    console.log("OCR CLEAN:", clean);
-
-    if (!clean || clean.length < 3) {
-      emptyFrames++;
-      if (emptyFrames > 30) emptyFrames = 0;
-      await new Promise(r => setTimeout(r, 300));
-      continue;
-    }
-
-    stopOCR();
-
-    console.log("Найден текст:", clean);
-
-    // 🔥 Показываем финальный текст перед поиском
-    document.getElementById("ocr-debug").innerText =
-      "FINAL SEARCH TEXT:\n" + clean;
-
-    searchByOCR(clean);
-
-    break;
-  }
-}
-
-
-
-// OCR
-async function recognizeTextFromFrame(video) {
-  const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(video, 0, 0);
-
-  const { data: { text } } = await Tesseract.recognize(canvas, "rus+eng", {
-    tessedit_char_whitelist:
-      "абвгдеёжзийклмнопрстуфхцчшщьыъэюяABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -_.",
-    logger: () => {}
-  });
-
-  return text.trim();
-}
-
-// Нормализация текста
-function normalizeOCRText(text) {
-  return text
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .replace(/[^a-zа-я0-9\s]/gi, "")
-    .trim();
-}
-
-// Генерация вариантов для поиска
-function generateSearchVariants(text) {
-  const variants = new Set();
-
-  variants.add(text);
-
-  // Разбиваем на строки
-  text.split("\n").forEach(line => {
-    line = line.trim();
-    if (line.length > 2) variants.add(line);
-  });
-
-  // Разбиваем на слова
-  const words = text.split(" ").filter(w => w.length > 2);
-
-  // Перестановки слов
-  if (words.length >= 2) {
-    variants.add(words.join(" "));
-    variants.add(words.reverse().join(" "));
-  }
-
-  // Убираем цифры (например "кетчуп махеев 350г")
-  variants.add(text.replace(/[0-9]/g, "").trim());
-
-  // Убираем короткие слова
-  variants.add(words.filter(w => w.length > 3).join(" "));
-
-  return Array.from(variants).filter(v => v.length > 2);
-}
-
-// Привязка кнопки
-document.getElementById("ocr-btn").addEventListener("click", startOCR);
-
-
 
 // 🌌 Анимация фона (звёзды + кометы + клики)
 const canvas = document.getElementById("bg");
