@@ -854,18 +854,23 @@ function fuzzyMatch(word, target) {
   // 🔍 Поиск по OCR
 function searchByOCR(rawText) {
   const q = normalize(rawText);
-  if (!q || q.length < 2) return;
+  console.log("RAW:", rawText);
+  console.log("NORMALIZED:", q);
 
-  console.log("OCR → поиск по:", q);
+  if (!q || q.length < 2) {
+    console.log("Останов: пустой q");
+    return;
+  }
 
-  // Разбиваем на слова
   const words = q.split(" ").filter(w => w.length > 2);
+  console.log("WORDS:", words);
 
   document.querySelectorAll("#list .item").forEach(div => {
     const code = normalize(div.dataset.code);
     const item = allItems.find(i => i.code === div.dataset.code);
 
     if (!item) {
+      console.log("Нет item для", div.dataset.code);
       div.classList.add("hidden");
       return;
     }
@@ -874,17 +879,24 @@ function searchByOCR(rawText) {
 
     let match = false;
 
-    // Ищем по каждому слову отдельно
     for (const w of words) {
-      if (fuzzyMatch(w, name) || fuzzyMatch(w, code)) {
+      const fmName = fuzzyMatch(w, name);
+      const fmCode = fuzzyMatch(w, code);
+
+      console.log(`WORD "${w}" → name "${name}" = ${fmName}, code "${code}" = ${fmCode}`);
+
+      if (fmName || fmCode) {
         match = true;
         break;
       }
     }
 
+    console.log("RESULT:", item.name, "→", match);
+
     div.classList.toggle("hidden", !match);
   });
 }
+
 
 
 
