@@ -812,17 +812,54 @@ searchInput.addEventListener("input", () => {
     div.classList.toggle("hidden", !match);
   });
 });
+
+
+
+  
+  function levenshtein(a, b) {
+  a = a.toLowerCase();
+  b = b.toLowerCase();
+
+  const matrix = Array.from({ length: a.length + 1 }, (_, i) =>
+    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  return matrix[a.length][b.length];
+}
+
+function fuzzyMatch(word, target) {
+  word = normalize(word);
+  target = normalize(target);
+
+  if (!word || !target) return false;
+
+  if (target.includes(word)) return true;
+
+  const dist = levenshtein(word, target);
+
+  return dist <= 2; // допускаем 1–2 ошибки
+}
+
   // 🔍 Поиск по OCR
 function searchByOCR(rawText) {
   const q = normalize(rawText);
-
   if (!q || q.length < 2) return;
 
   console.log("OCR → поиск по:", q);
 
-  const variants = generateOCRVariants(q);
-
-  console.log("Варианты поиска:", variants);
+  // Разбиваем на слова
+  const words = q.split(" ").filter(w => w.length > 2);
 
   document.querySelectorAll("#list .item").forEach(div => {
     const code = normalize(div.dataset.code);
@@ -837,8 +874,9 @@ function searchByOCR(rawText) {
 
     let match = false;
 
-    for (const v of variants) {
-      if (matchesQuery(name, v) || matchesQuery(code, v)) {
+    // Ищем по каждому слову отдельно
+    for (const w of words) {
+      if (fuzzyMatch(w, name) || fuzzyMatch(w, code)) {
         match = true;
         break;
       }
@@ -848,30 +886,6 @@ function searchByOCR(rawText) {
   });
 }
 
-// Генерация вариантов для OCR
-function generateOCRVariants(text) {
-  const variants = new Set();
-
-  variants.add(text);
-
-  text.split("\n").forEach(line => {
-    line = normalize(line);
-    if (line.length > 2) variants.add(line);
-  });
-
-  const words = text.split(" ").filter(w => w.length > 2);
-
-  if (words.length >= 2) {
-    variants.add(words.join(" "));
-    variants.add([...words].reverse().join(" "));
-  }
-
-  variants.add(text.replace(/[0-9]/g, "").trim());
-
-  variants.add(words.filter(w => w.length > 3).join(" "));
-
-  return Array.from(variants).filter(v => v.length > 2);
-}
 
 
 // Очистка поиска
