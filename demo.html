@@ -464,6 +464,26 @@ input[data-code] {
 </div>
 
     </div>
+
+
+
+    <div id="ocr-debug" style="
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0,0,0,0.7);
+  color: #0f0;
+  padding: 10px;
+  font-size: 16px;
+  z-index: 99999;
+  max-width: 90vw;
+  white-space: pre-wrap;
+"></div>
+
+
+
+
+    
     <div id="menu-actions">
       <button onclick="document.getElementById('upload').click()"> Загрузить ЛР</button>
       <button onclick="exportPDF()"> Скачать ЛР</button>
@@ -1481,22 +1501,30 @@ function stopOCR() {
 
 // OCR цикл
 async function runOCRLoop(video) {
-  // Ждём пока камера прогрузится
   while (video.videoWidth === 0 || video.videoHeight === 0) {
     await new Promise(r => setTimeout(r, 100));
   }
 
   console.log("Камера готова");
 
-  await new Promise(r => setTimeout(r, 500)); // стабилизация
+  await new Promise(r => setTimeout(r, 500));
 
   let emptyFrames = 0;
 
   while (ocrActive) {
     const rawText = await recognizeTextFromFrame(video);
+
+    // 🔥 Показываем на экране, что OCR видит
+    document.getElementById("ocr-debug").innerText = "RAW:\n" + rawText;
+
     console.log("OCR RAW:", rawText);
 
     const clean = normalizeOCRText(rawText);
+
+    // 🔥 Показываем нормализованный текст
+    document.getElementById("ocr-debug").innerText =
+      "RAW:\n" + rawText + "\n\nCLEAN:\n" + clean;
+
     console.log("OCR CLEAN:", clean);
 
     if (!clean || clean.length < 3) {
@@ -1510,12 +1538,16 @@ async function runOCRLoop(video) {
 
     console.log("Найден текст:", clean);
 
-    // 👉 Правильный вызов поиска
+    // 🔥 Показываем финальный текст перед поиском
+    document.getElementById("ocr-debug").innerText =
+      "FINAL SEARCH TEXT:\n" + clean;
+
     searchByOCR(clean);
 
     break;
   }
 }
+
 
 
 // OCR
