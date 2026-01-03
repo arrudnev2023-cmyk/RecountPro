@@ -812,6 +812,67 @@ searchInput.addEventListener("input", () => {
     div.classList.toggle("hidden", !match);
   });
 });
+  // 🔍 Поиск по OCR
+function searchByOCR(rawText) {
+  const q = normalize(rawText);
+
+  if (!q || q.length < 2) return;
+
+  console.log("OCR → поиск по:", q);
+
+  const variants = generateOCRVariants(q);
+
+  console.log("Варианты поиска:", variants);
+
+  document.querySelectorAll("#list .item").forEach(div => {
+    const code = normalize(div.dataset.code);
+    const item = allItems.find(i => i.code === div.dataset.code);
+
+    if (!item) {
+      div.classList.add("hidden");
+      return;
+    }
+
+    const name = normalize(item.name);
+
+    let match = false;
+
+    for (const v of variants) {
+      if (matchesQuery(name, v) || matchesQuery(code, v)) {
+        match = true;
+        break;
+      }
+    }
+
+    div.classList.toggle("hidden", !match);
+  });
+}
+
+// Генерация вариантов для OCR
+function generateOCRVariants(text) {
+  const variants = new Set();
+
+  variants.add(text);
+
+  text.split("\n").forEach(line => {
+    line = normalize(line);
+    if (line.length > 2) variants.add(line);
+  });
+
+  const words = text.split(" ").filter(w => w.length > 2);
+
+  if (words.length >= 2) {
+    variants.add(words.join(" "));
+    variants.add([...words].reverse().join(" "));
+  }
+
+  variants.add(text.replace(/[0-9]/g, "").trim());
+
+  variants.add(words.filter(w => w.length > 3).join(" "));
+
+  return Array.from(variants).filter(v => v.length > 2);
+}
+
 
 // Очистка поиска
 document.getElementById("clear-search").addEventListener("click", () => {
@@ -1423,19 +1484,13 @@ async function runOCRLoop(video) {
 
     console.log("Найден текст:", clean);
 
-    // Генерируем варианты для поиска
-    const variants = generateSearchVariants(clean);
-    console.log("Варианты поиска:", variants);
-
-    // Ищем по каждому варианту
-    for (const v of variants) {
-      console.log("Ищу:", v);
-      findProduct(v); // ← твой поиск
-    }
+    // 👉 Правильный вызов поиска
+    searchByOCR(clean);
 
     break;
   }
 }
+
 
 // OCR
 async function recognizeTextFromFrame(video) {
