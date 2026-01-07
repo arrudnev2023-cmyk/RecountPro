@@ -839,8 +839,19 @@ searchInput.addEventListener("input", () => {
 
 
 
-
   
+
+let cvReady = false;
+let cvCheckInterval = setInterval(() => {
+  if (window.cv && cv.imread) {
+    cvReady = true;
+    clearInterval(cvCheckInterval);
+  }
+}, 100);
+
+/* ============================================================
+   1. НОРМАЛИЗАЦИЯ
+============================================================ */
 function normalize(str) {
   return String(str || "")
     .toLowerCase()
@@ -958,6 +969,11 @@ const CROP_SIZE = 400;
 
 // Запуск OCR
 async function startOCR() {
+  if (!cvReady) {
+    alert("OpenCV ещё загружается, подожди секунду");
+    return;
+  }
+
   try {
     ocrStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" }
@@ -981,7 +997,15 @@ async function startOCR() {
     });
 
     video.addEventListener("click", e => {
-      cropPoint = { x: e.clientX, y: e.clientY };
+      const rect = video.getBoundingClientRect();
+
+      const scaleX = video.videoWidth / rect.width;
+      const scaleY = video.videoHeight / rect.height;
+
+      cropPoint = {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
     });
 
     await video.play();
@@ -1065,10 +1089,10 @@ async function recognizeTextFromFrame(video) {
   const src = cv.imread(canvas);
   const roi = src.roi(new cv.Rect(x, y, w, h));
 
-  // Масштабирование
   let dst = new cv.Mat();
-  const scale = 2.0;
-  cv.resize(roi, dst, new cv.Size(roi.cols * scale, roi.rows * scale), 0, 0, cv.INTER_CUBIC);
+
+  // Масштабирование ×2
+  cv.resize(roi, dst, new cv.Size(roi.cols * 2, roi.rows * 2), 0, 0, cv.INTER_CUBIC);
 
   // Градации серого
   cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY);
@@ -1084,7 +1108,7 @@ async function recognizeTextFromFrame(video) {
     31, 10
   );
 
-  // Deskew (простая версия)
+  // Deskew
   let m = cv.moments(dst, true);
   if (Math.abs(m.mu02) > 1e-2) {
     let angle = 0.5 * Math.atan2(2 * m.mu11, m.mu20 - m.mu02);
@@ -1097,12 +1121,12 @@ async function recognizeTextFromFrame(video) {
     dst = rotated;
   }
 
-  cv.imshow("ocr-hidden", dst);
-
-  const processedCanvas = document.getElementById("ocr-hidden");
+  // Вывод в скрытый canvas
+  const hidden = document.getElementById("ocr-hidden");
+  cv.imshow(hidden, dst);
 
   const { data: { text } } = await Tesseract.recognize(
-    processedCanvas,
+    hidden,
     "rus+eng",
     {
       tessedit_char_whitelist:
@@ -1133,6 +1157,7 @@ function normalizeOCRText(text) {
    9. КНОПКА ЗАПУСКА OCR
 ============================================================ */
 document.getElementById("ocr-btn").addEventListener("click", startOCR);
+
 
 
 
