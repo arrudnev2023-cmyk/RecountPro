@@ -273,86 +273,7 @@ input[data-code] {
   align-items: center;
   justify-content: center;
 }
-    #ocr-video {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  object-fit: cover;
-  z-index: 9999;
-  display: none;
-}
-
-
-
-
-
-    #calc-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 99999;
-}
-
-#calc-window {
-  width: 260px;
-  background: #fff;
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-}
-
-#calc-display {
-  height: 50px;
-  background: #f3f3f3;
-  border-radius: 8px;
-  margin-bottom: 10px;
-  padding: 10px;
-  font-size: 22px;
-  text-align: right;
-  overflow: hidden;
-}
-
-#calc-buttons {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-}
-
-#calc-buttons button {
-  padding: 14px 0;
-  font-size: 20px;
-  border: none;
-  background: #e9e9e9;
-  border-radius: 8px;
-}
-
-#calc-actions {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
-}
-
-#calc-actions button {
-  flex: 1;
-  margin: 0 4px;
-  padding: 10px 0;
-  font-size: 18px;
-  border: none;
-  border-radius: 8px;
-  background: #dcdcdc;
-}
-
-
-
-    
-
-
-
+   
 /* SVG внутри кнопок */
 #menu-toggle svg, #flashlight-btn svg {
   display: block;
@@ -901,75 +822,6 @@ searchInput.addEventListener("input", () => {
   });
 });
 
-
-
-
-
-  // Открытие калькулятора
-document.getElementById("calc-btn")?.addEventListener("click", openCalc);
-
-function openCalc() {
-  document.getElementById("calc-overlay").style.display = "flex";
-  calcDisplay.textContent = "";
-}
-
-// Закрытие
-document.getElementById("calc-close").addEventListener("click", () => {
-  document.getElementById("calc-overlay").style.display = "none";
-});
-
-// Вставка результата
-document.getElementById("calc-insert").addEventListener("click", () => {
-  const val = calcDisplay.textContent.trim();
-  if (val) {
-    const qty = document.querySelector("#qty-input");
-    if (qty) qty.value = val;
-  }
-  document.getElementById("calc-overlay").style.display = "none";
-});
-
-// Логика калькулятора
-const calcDisplay = document.getElementById("calc-display");
-const calcButtons = document.getElementById("calc-buttons");
-
-const keys = [
-  "7","8","9","/",
-  "4","5","6","*",
-  "1","2","3","-",
-  "0",".","C","+",
-  "="
-];
-
-keys.forEach(k => {
-  const btn = document.createElement("button");
-  btn.textContent = k;
-  btn.addEventListener("click", () => pressKey(k));
-  calcButtons.appendChild(btn);
-});
-
-function pressKey(k) {
-  if (k === "C") {
-    calcDisplay.textContent = "";
-    return;
-  }
-
-  if (k === "=") {
-    try {
-      calcDisplay.textContent = eval(calcDisplay.textContent);
-    } catch {
-      calcDisplay.textContent = "Ошибка";
-    }
-    return;
-  }
-
-  calcDisplay.textContent += k;
-}
-
-
-
-
-
-  
 
 // Очистка поиска
 document.getElementById("clear-search").addEventListener("click", () => {
@@ -2039,19 +1891,6 @@ recognition.addEventListener('result', (ev) => {
 
 
 </script>
-
-  
-  <div id="calc-overlay" style="display:none;">
-  <div id="calc-window">
-    <div id="calc-display"></div>
-    <div id="calc-buttons"></div>
-    <div id="calc-actions">
-      <button id="calc-insert">Вставить</button>
-      <button id="calc-close">Закрыть</button>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>
 
