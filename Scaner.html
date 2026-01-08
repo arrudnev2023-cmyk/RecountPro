@@ -13,7 +13,7 @@
 <body>
 
 <h2>CSV → JSON конвертер (barcode → name)</h2>
-<p>Загрузи CSV с двумя столбцами: <b>Название, Штрихкод</b> (Numbers/Excel)</p>
+<p>Загрузи CSV с двумя столбцами: <b>Название, Штрихкод</b></p>
 
 <input type="file" id="fileInput" accept=".csv">
 <button class="btn" onclick="convert()">Конвертировать</button>
@@ -22,6 +22,37 @@
 <textarea id="output"></textarea>
 
 <script>
+function parseCSV(text) {
+    const rows = [];
+    let current = "";
+    let insideQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const next = text[i + 1];
+
+        if (char === '"' && next === '"') {
+            current += '"';
+            i++;
+        } else if (char === '"') {
+            insideQuotes = !insideQuotes;
+        } else if ((char === ',' || char === ';') && !insideQuotes) {
+            rows.push(current);
+            current = "";
+        } else if ((char === '\n' || char === '\r') && !insideQuotes) {
+            if (current.trim() !== "") rows.push(current);
+            rows.push("\n");
+            current = "";
+        } else {
+            current += char;
+        }
+    }
+
+    if (current.trim() !== "") rows.push(current);
+
+    return rows;
+}
+
 function convert() {
     const file = document.getElementById('fileInput').files[0];
     if (!file) {
@@ -31,43 +62,20 @@ function convert() {
 
     const reader = new FileReader();
     reader.onload = function(e) {
-        let text = e.target.result;
-        if (!text) {
-            alert("Пустой файл");
-            return;
-        }
-
-        // Убираем BOM и лишние пробелы по краям
-        text = text.replace(/^\uFEFF/, "").trim();
+        const text = e.target.result.replace(/^\uFEFF/, "");
 
         const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
-        if (lines.length === 0) {
-            alert("Нет строк в файле");
-            return;
-        }
-
-        // Определяем разделитель: , или ;
-        let delimiter = ",";
-        const firstLine = lines[0];
-        const commaCount = (firstLine.match(/,/g) || []).length;
-        const semicolonCount = (firstLine.match(/;/g) || []).length;
-        if (semicolonCount > commaCount) {
-            delimiter = ";";
-        }
-
         const result = {};
 
-        for (let rawLine of lines) {
-            const line = rawLine.trim();
-            if (!line) continue;
+        for (let line of lines) {
+            const parsed = parseCSV(line);
 
-            const idx = line.lastIndexOf(delimiter);
-            if (idx === -1) continue;
+            if (parsed.length < 2) continue;
 
-            const name = line.slice(0, idx).trim();
-            const barcode = line.slice(idx + 1).trim();
+            const barcode = parsed[parsed.length - 1].trim();
+            const name = parsed.slice(0, -1).join(" ").trim();
 
-            if (name && barcode) {
+            if (barcode && name) {
                 result[barcode] = name;
             }
         }
