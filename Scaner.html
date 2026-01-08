@@ -1,173 +1,58 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>EAN Parser</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
-
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #111;
-      color: #eee;
-      margin: 0;
-      padding: 20px;
-    }
-    h1 { font-size: 20px; margin-bottom: 10px; }
-    .btn {
-      background: #1e88e5;
-      color: #fff;
-      padding: 10px 14px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-bottom: 12px;
-    }
-    #log {
-      font-size: 13px;
-      white-space: pre-wrap;
-      background: #222;
-      padding: 10px;
-      border-radius: 6px;
-      margin-top: 10px;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    td, th {
-      border: 1px solid #333;
-      padding: 6px;
-      font-size: 13px;
-    }
-    input {
-      width: 100%;
-      background: #1a1a1a;
-      color: #fff;
-      border: 1px solid #444;
-      padding: 6px;
-      border-radius: 4px;
-    }
-    #export {
-      width: 100%;
-      height: 150px;
-      margin-top: 10px;
-      background: #1a1a1a;
-      color: #fff;
-      border: 1px solid #444;
-      padding: 10px;
-      border-radius: 6px;
-      font-family: monospace;
-      white-space: pre;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>CSV → JSON (barcode → name)</title>
+<style>
+    body { font-family: sans-serif; padding: 40px; max-width: 700px; margin: auto; }
+    textarea { width: 100%; height: 300px; margin-top: 20px; }
+    .btn { padding: 10px 20px; background: #007aff; color: white; border: none; cursor: pointer; border-radius: 6px; }
+    .btn:hover { background: #005fcc; }
+</style>
 </head>
-
 <body>
-  <h1>EAN Parser (Автоматическая обработка скринов)</h1>
 
-  <input type="file" id="files" multiple accept="image/*" class="btn" />
-  <button id="exportBtn" class="btn">Экспортировать JSON</button>
+<h2>CSV → JSON конвертер (barcode → name)</h2>
+<p>Загрузи CSV с двумя столбцами: <b>Название, Штрихкод</b></p>
 
-  <div id="log"></div>
+<input type="file" id="fileInput" accept=".csv">
+<button class="btn" onclick="convert()">Конвертировать</button>
 
-  <table id="resultTable">
-    <thead>
-      <tr>
-        <th>Название</th>
-        <th>EAN</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
-  <textarea id="export" readonly></textarea>
+<h3>Результат JSON:</h3>
+<textarea id="output"></textarea>
 
 <script>
-const log = msg => {
-  document.getElementById("log").textContent += msg + "\n";
-};
-
-const parseLine = line => {
-  line = line.trim();
-  if (!line) return null;
-
-  // Ищем штрихкод — последовательность 8–14 цифр
-  const match = line.match(/(\d{8,14})/);
-  if (!match) return null;
-
-  const ean = match[1];
-  const name = line.replace(ean, "").trim();
-
-  if (!name) return null;
-
-  return { name, ean };
-};
-
-document.getElementById("files").addEventListener("change", async e => {
-  const files = [...e.target.files];
-  const tbody = document.querySelector("#resultTable tbody");
-  tbody.innerHTML = "";
-  log("Начинаю обработку...");
-
-  const results = [];
-
-  for (const file of files) {
-    log("Обрабатываю: " + file.name);
-
-    const text = await Tesseract.recognize(file, "rus+eng", {
-      logger: m => {}
-    }).then(r => r.data.text);
-
-    const lines = text.split("\n").map(l => l.trim()).filter(l => l);
-
-    for (const line of lines) {
-      const parsed = parseLine(line);
-      if (parsed) {
-        results.push(parsed);
-
-        const tr = document.createElement("tr");
-
-        const tdName = document.createElement("td");
-        const tdEAN = document.createElement("td");
-
-        const inputName = document.createElement("input");
-        const inputEAN = document.createElement("input");
-
-        inputName.value = parsed.name;
-        inputEAN.value = parsed.ean;
-
-        tdName.appendChild(inputName);
-        tdEAN.appendChild(inputEAN);
-
-        tr.appendChild(tdName);
-        tr.appendChild(tdEAN);
-
-        tbody.appendChild(tr);
-      }
+function convert() {
+    const file = document.getElementById('fileInput').files[0];
+    if (!file) {
+        alert("Выбери CSV файл");
+        return;
     }
-  }
 
-  log("Готово. Найдено записей: " + results.length);
-});
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result.trim();
+        const lines = text.split(/\r?\n/);
 
-document.getElementById("exportBtn").addEventListener("click", () => {
-  const rows = [...document.querySelectorAll("#resultTable tbody tr")];
-  const data = rows.map(row => {
-    const name = row.children[0].querySelector("input").value.trim();
-    const ean = row.children[1].querySelector("input").value.trim();
-    return { name, ean };
-  });
+        const result = {};
 
-  const json = JSON.stringify(data, null, 2);
-  document.getElementById("export").value = json;
+        for (let line of lines) {
+            const parts = line.split(",");
+            if (parts.length < 2) continue;
 
-  navigator.clipboard.writeText(json);
-});
+            const name = parts[0].trim();
+            const barcode = parts[1].trim();
+
+            if (name && barcode) {
+                result[barcode] = name;
+            }
+        }
+
+        document.getElementById('output').value = JSON.stringify(result, null, 2);
+    };
+
+    reader.readAsText(file, "UTF-8");
+}
 </script>
 
 </body>
