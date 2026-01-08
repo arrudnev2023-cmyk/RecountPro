@@ -13,7 +13,7 @@
 <body>
 
 <h2>CSV → JSON конвертер (barcode → name)</h2>
-<p>Загрузи CSV с двумя столбцами: <b>Название, Штрихкод</b></p>
+<p>Загрузи CSV с двумя столбцами: <b>Название, Штрихкод</b> (Numbers/Excel)</p>
 
 <input type="file" id="fileInput" accept=".csv">
 <button class="btn" onclick="convert()">Конвертировать</button>
@@ -31,17 +31,41 @@ function convert() {
 
     const reader = new FileReader();
     reader.onload = function(e) {
-        const text = e.target.result.trim();
-        const lines = text.split(/\r?\n/);
+        let text = e.target.result;
+        if (!text) {
+            alert("Пустой файл");
+            return;
+        }
+
+        // Убираем BOM и лишние пробелы по краям
+        text = text.replace(/^\uFEFF/, "").trim();
+
+        const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
+        if (lines.length === 0) {
+            alert("Нет строк в файле");
+            return;
+        }
+
+        // Определяем разделитель: , или ;
+        let delimiter = ",";
+        const firstLine = lines[0];
+        const commaCount = (firstLine.match(/,/g) || []).length;
+        const semicolonCount = (firstLine.match(/;/g) || []).length;
+        if (semicolonCount > commaCount) {
+            delimiter = ";";
+        }
 
         const result = {};
 
-        for (let line of lines) {
-            const parts = line.split(",");
-            if (parts.length < 2) continue;
+        for (let rawLine of lines) {
+            const line = rawLine.trim();
+            if (!line) continue;
 
-            const name = parts[0].trim();
-            const barcode = parts[1].trim();
+            const idx = line.lastIndexOf(delimiter);
+            if (idx === -1) continue;
+
+            const name = line.slice(0, idx).trim();
+            const barcode = line.slice(idx + 1).trim();
 
             if (name && barcode) {
                 result[barcode] = name;
