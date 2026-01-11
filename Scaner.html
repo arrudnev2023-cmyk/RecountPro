@@ -36,12 +36,16 @@
   const videoEl = document.getElementById("video");
   let base = {};
 
-  // Загружаем базу
-  fetch("base.json")
+  // Загружаем базу с GitHub
+  fetch("https://arrudnev2023-cmyk.github.io/RecountPro/css/base.json")
     .then(res => res.json())
     .then(data => {
       base = data;
       startScanner();
+    })
+    .catch(err => {
+      resultEl.textContent = "❌ Ошибка загрузки базы";
+      console.error(err);
     });
 
   function startScanner() {
