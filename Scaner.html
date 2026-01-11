@@ -1,65 +1,118 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Сканер штрихкодов</title>
-  <script src="https://unpkg.com/@zxing/browser@latest"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-      max-width: 600px;
-      margin: auto;
-    }
-    video {
-      width: 100%;
-      border: 1px solid #ccc;
-      margin-bottom: 10px;
-    }
-    #result {
-      font-size: 18px;
-      margin-top: 10px;
-      padding: 10px;
-      background: #f0f0f0;
-      border-radius: 6px;
-    }
-  </style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini True Skate</title>
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #222;
+    touch-action: none;
+  }
+  canvas {
+    display: block;
+    background: #333;
+  }
+</style>
 </head>
 <body>
 
-<h2>📷 Сканер штрихкодов</h2>
-<video id="video" autoplay muted playsinline></video>
-<div id="result">Ожидание сканирования…</div>
+<canvas id="game"></canvas>
 
 <script>
-  const resultEl = document.getElementById("result");
-  const videoEl = document.getElementById("video");
-  let base = {};
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-  // Загружаем базу с GitHub RAW
-  fetch("https://raw.githubusercontent.com/arrudnev2023-cmyk/RecountPro/main/css/base.json")
-    .then(res => res.json())
-    .then(data => {
-      base = data;
-      startScanner();
-    })
-    .catch(err => {
-      resultEl.textContent = "❌ Ошибка загрузки базы";
-      console.error(err);
-    });
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.onresize = resize;
 
-  function startScanner() {
-    const codeReader = new ZXing.BrowserMultiFormatReader();
-    codeReader.decodeFromVideoDevice(null, videoEl, (result, err) => {
-      if (result) {
-        const code = result.getText();
-        const name = base[code];
-        resultEl.textContent = name
-          ? `✅ ${name}`
-          : `❌ Не найден: ${code}`;
-      }
-    });
-  }
+// ----------------------
+// ПАРАМЕТРЫ ДОСКИ
+// ----------------------
+let board = {
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  vx: 0,
+  vy: 0,
+  angle: 0,
+  width: 140,
+  height: 40
+};
+
+let friction = 0.98;
+
+// ----------------------
+// СВАЙП-УПРАВЛЕНИЕ
+// ----------------------
+let touchStart = null;
+
+canvas.addEventListener("touchstart", e => {
+  const t = e.touches[0];
+  touchStart = { x: t.clientX, y: t.clientY };
+});
+
+canvas.addEventListener("touchend", e => {
+  if (!touchStart) return;
+
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStart.x;
+  const dy = t.clientY - touchStart.y;
+
+  // сила свайпа
+  board.vx += dx * 0.05;
+  board.vy += dy * 0.05;
+
+  touchStart = null;
+});
+
+// ----------------------
+// ОБНОВЛЕНИЕ ФИЗИКИ
+// ----------------------
+function update() {
+  board.x += board.vx;
+  board.y += board.vy;
+
+  board.vx *= friction;
+  board.vy *= friction;
+
+  // границы
+  if (board.x < 0) board.x = 0;
+  if (board.y < 0) board.y = 0;
+  if (board.x > canvas.width) board.x = canvas.width;
+  if (board.y > canvas.height) board.y = canvas.height;
+}
+
+// ----------------------
+// РЕНДЕР
+// ----------------------
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.translate(board.x, board.y);
+  ctx.rotate(board.angle);
+
+  ctx.fillStyle = "#ffaa00";
+  ctx.fillRect(-board.width/2, -board.height/2, board.width, board.height);
+
+  ctx.restore();
+}
+
+// ----------------------
+// ГЛАВНЫЙ ЦИКЛ
+// ----------------------
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
 </script>
 
 </body>
