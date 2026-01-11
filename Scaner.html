@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>True Skate Web++</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>True Skate Web — v1</title>
 <style>
-  body, html {
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html, body {
     margin: 0;
     padding: 0;
     overflow: hidden;
     background: #111;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     touch-action: none;
   }
   canvas {
@@ -22,210 +28,445 @@
 <canvas id="game"></canvas>
 
 <script>
+// ============================
+//  ГЛОБАЛЬНОЕ СОСТОЯНИЕ
+// ============================
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-resize();
-window.addEventListener("resize", resize);
+let W = window.innerWidth;
+let H = window.innerHeight;
 
-// ----------------------
-// ПАРАМЕТРЫ СКЕЙТА
-// ----------------------
-let board = {
-  x: canvas.width / 2,
-  y: canvas.height * 0.7,
+function resizeCanvas() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W;
+  canvas.height = H;
+}
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+
+// ============================
+//  УТИЛИТЫ
+// ============================
+function clamp(v, min, max) {
+  return v < min ? min : v > max ? max : v;
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+// ============================
+//  ИГРОВОЙ МИР
+// ============================
+const world = {
+  gravity: 0.7,
+  frictionGround: 0.96,
+  frictionAir: 0.99,
+  maxSpeed: 40,
+  timeScale: 1
+};
+
+// ============================
+//  СКЕЙТ
+// ============================
+const board = {
+  x: 0,
+  y: 0,
+  z: 0,   // высота
   vx: 0,
   vy: 0,
-  vz: 0,        // вертикальный прыжок
-  z: 0,         // высота над землей
-  angle: 0,     // вращение по вертикали
-  flip: 0,      // вращение для флипов
-  width: 160,
-  height: 40,
-  tilt: 0
+  vz: 0,
+  angle: 0,     // вращение по флипам
+  yaw: 0,       // поворот по направлению (как поворот доски)
+  tilt: 0,      // наклон при повороте
+  width: 1.6,   // в мировых единицах (метрах условно)
+  height: 0.4,
+  onGround: true,
+  wasOnGround: true
 };
 
-let friction = 0.96;
-let gravity = 0.6;
+// Позиционируем стартовую точку
+board.x = 0;
+board.y = 0;
+board.z = 0;
 
-// ----------------------
-// РАМПА
-// ----------------------
-let ramp = {
-  x: canvas.width * 0.15,
-  y: canvas.height * 0.75,
-  width: canvas.width * 0.7,
-  height: 120
+// ============================
+//  КАМЕРА
+// ============================
+const camera = {
+  x: 0,
+  y: -3,
+  z: 4,
+  targetX: 0,
+  targetY: 0,
+  targetZ: 0,
+  pitch: -0.6,
+  yaw: 0,
+  distance: 6
 };
 
-// ----------------------
-// СВАЙПЫ
-// ----------------------
-let touchStart = null;
+// ============================
+//  ВХОД (ТАЧИ / СВАЙПЫ)
+// ============================
+const input = {
+  touching: false,
+  startX: 0,
+  startY: 0,
+  endX: 0,
+  endY: 0,
+  dx: 0,
+  dy: 0,
+  lastTapTime: 0
+};
 
 canvas.addEventListener("touchstart", e => {
+  e.preventDefault();
   const t = e.touches[0];
-  touchStart = { x: t.clientX, y: t.clientY };
+  input.touching = true;
+  input.startX = t.clientX;
+  input.startY = t.clientY;
+  input.endX = t.clientX;
+  input.endY = t.clientY;
+});
+
+canvas.addEventListener("touchmove", e => {
+  e.preventDefault();
+  if (!input.touching) return;
+  const t = e.touches[0];
+  input.endX = t.clientX;
+  input.endY = t.clientY;
+  input.dx = input.endX - input.startX;
+  input.dy = input.endY - input.startY;
 });
 
 canvas.addEventListener("touchend", e => {
-  if (!touchStart) return;
+  e.preventDefault();
+  if (!input.touching) return;
+  input.touching = false;
 
-  const t = e.changedTouches[0];
-  const dx = t.clientX - touchStart.x;
-  const dy = t.clientY - touchStart.y;
+  const dx = input.endX - input.startX;
+  const dy = input.endY - input.startY;
 
-  // ----------------------
-  // ТРЮКИ
-  // ----------------------
+  const mag = Math.hypot(dx, dy);
+  if (mag < 10) return; // игнор маленьких движений
 
-  // ОЛЛИ (сильный свайп вверх)
-  if (dy < -40 && Math.abs(dx) < 40) {
-    board.vz = 12;
-  }
+  // Свайп вперёд/назад — разгон / торможение
+  // В конфигурации камеры ось "вперёд" — это -Y на экране
+  const forwardStrength = -dy * 0.12;
+  const sideStrength = dx * 0.04;
 
-  // КИКФЛИП (вправо + вверх)
-  if (dy < -40 && dx > 40) {
-    board.vz = 10;
-    board.flip = 0.25;
-  }
+  // Обновляем скорость доски в системе координат камеры
+  // В этой первой версии доска едет вдоль "дороги" (по world.y)
+  board.vy += clamp(forwardStrength, -world.maxSpeed, world.maxSpeed) * 0.03;
+  board.vx += sideStrength * 0.03;
 
-  // ХИЛФЛИП (влево + вверх)
-  if (dy < -40 && dx < -40) {
-    board.vz = 10;
-    board.flip = -0.25;
-  }
-
-  // Обычное движение
-  board.vx += dx * 0.05;
-  board.vy += dy * 0.02;
-
-  // Наклон доски
-  board.tilt = dx * 0.002;
-
-  touchStart = null;
+  // Лёгкий наклон
+  board.tilt = clamp(dx * 0.004, -0.4, 0.4);
 });
 
-// ----------------------
-// ФИЗИКА
-// ----------------------
-function update() {
-  // Горизонтальное движение
-  board.x += board.vx;
+// ============================
+//  ПРОЕКЦИЯ (ПСЕВДО-3D НА 2D)
+// ============================
+// Условная перспектива: ось Z вверх, ось Y вдаль, X влево/вправо
+function project3D(x, y, z) {
+  // Позиция относительно камеры
+  const cx = x - camera.x;
+  const cy = y - camera.y;
+  const cz = z - camera.z;
+
+  // Поворот по yaw камеры
+  const cosYaw = Math.cos(camera.yaw);
+  const sinYaw = Math.sin(camera.yaw);
+  const rx = cx * cosYaw - cy * sinYaw;
+  const ry = cx * sinYaw + cy * cosYaw;
+  const rz = cz;
+
+  // Поворот по pitch
+  const cosPitch = Math.cos(camera.pitch);
+  const sinPitch = Math.sin(camera.pitch);
+  const rry = ry * cosPitch - rz * sinPitch;
+  const rrz = ry * sinPitch + rz * cosPitch;
+
+  // Простая перспектива
+  const fov = 500;
+  const scale = fov / (fov + rry); // чем дальше по Y, тем меньше
+  const sx = W / 2 + rx * scale * 60;
+  const sy = H * 0.6 + rrz * scale * 60;
+
+  return { x: sx, y: sy, scale };
+}
+
+// ============================
+//  ОБНОВЛЕНИЕ ФИЗИКИ
+// ============================
+function updatePhysics(dt) {
+  // Ограничиваем dt для стабильности
+  dt = Math.min(dt, 1 / 30);
+
+  const onGroundBefore = board.onGround;
+
+  // Гравитация
+  if (!board.onGround) {
+    board.vz -= world.gravity * dt * 60;
+  }
+
+  // Горизонтальные скорости
+  const friction = board.onGround ? world.frictionGround : world.frictionAir;
   board.vx *= friction;
+  board.vy *= friction;
 
-  // Вертикальная позиция (вперед-назад)
-  board.y = canvas.height * 0.7;
+  // Ограничение скорости
+  const speed = Math.hypot(board.vx, board.vy);
+  if (speed > world.maxSpeed) {
+    const k = world.maxSpeed / speed;
+    board.vx *= k;
+    board.vy *= k;
+  }
 
-  // Прыжок
-  board.z += board.vz;
-  board.vz -= gravity;
+  // Обновление позиции
+  board.x += board.vx * dt * 60;
+  board.y += board.vy * dt * 60;
+  board.z += board.vz * dt * 60;
 
-  // Приземление
-  if (board.z < 0) {
+  // Пол
+  if (board.z <= 0) {
     board.z = 0;
     board.vz = 0;
-    board.flip = 0;
+    board.onGround = true;
+  } else {
+    board.onGround = false;
   }
 
-  // Вращение доски в воздухе
-  if (board.z > 0) {
-    board.angle += board.flip;
-  }
+  // Плавное возвращение наклона
+  board.tilt = lerp(board.tilt, 0, 0.1);
 
-  // Наклон возвращается
-  board.tilt *= 0.9;
+  // Камера следует за доской
+  camera.targetX = board.x;
+  camera.targetY = board.y - 4; // чуть вперёд
+  camera.targetZ = board.z + 3; // выше доски
 
-  // Границы
-  const margin = 40;
-  if (board.x < margin) board.x = margin;
-  if (board.x > canvas.width - margin) board.x = canvas.width - margin;
+  camera.x = lerp(camera.x, camera.targetX, 0.1);
+  camera.y = lerp(camera.y, camera.targetY, 0.08);
+  camera.z = lerp(camera.z, camera.targetZ, 0.1);
 
-  // ----------------------
-  // РАМПА — подъём
-  // ----------------------
-  if (board.x > ramp.x && board.x < ramp.x + ramp.width) {
-    let t = (board.x - ramp.x) / ramp.width;
-    let rampHeight = Math.sin(t * Math.PI) * ramp.height;
+  // Камера смотрит на доску (yaw не трогаем пока, фиксированный)
+}
 
-    if (board.z === 0) {
-      board.y = canvas.height * 0.7 - rampHeight;
+// ============================
+//  ОТРИСОВКА ДОРОГИ / ФОНА
+// ============================
+function drawBackground() {
+  ctx.fillStyle = "#0b0b0b";
+  ctx.fillRect(0, 0, W, H);
+
+  // Простое небо
+  const g = ctx.createLinearGradient(0, 0, 0, H * 0.5);
+  g.addColorStop(0, "#222");
+  g.addColorStop(1, "#111");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H * 0.5);
+}
+
+// Псевдо-дорога как полосы по миру
+function drawRoad() {
+  // Рисуем несколько полос по оси Y (вдаль)
+  const laneWidthWorld = 6;
+  const laneHalf = laneWidthWorld / 2;
+
+  // Асфальт — большая полоса
+  const segments = 40;
+  ctx.beginPath();
+  let started = false;
+  for (let i = 0; i <= segments; i++) {
+    const y = board.y - 5 + i * 0.8;
+    const left = project3D(-laneHalf, y, 0);
+    const right = project3D(laneHalf, y, 0);
+    if (!started) {
+      ctx.moveTo(left.x, left.y);
+      ctx.lineTo(right.x, right.y);
+      started = true;
+    } else {
+      ctx.lineTo(right.x, right.y);
+      ctx.lineTo(left.x, left.y);
     }
   }
-}
-
-// ----------------------
-// ОТРИСОВКА РАМПЫ
-// ----------------------
-function drawRamp() {
-  ctx.fillStyle = "#222";
-  ctx.beginPath();
-  ctx.moveTo(ramp.x, ramp.y);
-  ctx.quadraticCurveTo(
-    ramp.x + ramp.width / 2,
-    ramp.y - ramp.height,
-    ramp.x + ramp.width,
-    ramp.y
-  );
-  ctx.lineTo(ramp.x + ramp.width, canvas.height);
-  ctx.lineTo(ramp.x, canvas.height);
   ctx.closePath();
+  const g = ctx.createLinearGradient(0, H * 0.3, 0, H);
+  g.addColorStop(0, "#2a2a2a");
+  g.addColorStop(1, "#181818");
+  ctx.fillStyle = g;
   ctx.fill();
+
+  // Боковые линии
+  ctx.strokeStyle = "#ffb100";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i <= segments; i++) {
+    const y = board.y - 5 + i * 0.8;
+    const left = project3D(-laneHalf, y, 0);
+    if (i === 0) ctx.moveTo(left.x, left.y);
+    else ctx.lineTo(left.x, left.y);
+  }
+  ctx.stroke();
+
+  ctx.beginPath();
+  for (let i = 0; i <= segments; i++) {
+    const y = board.y - 5 + i * 0.8;
+    const right = project3D(laneHalf, y, 0);
+    if (i === 0) ctx.moveTo(right.x, right.y);
+    else ctx.lineTo(right.x, right.y);
+  }
+  ctx.stroke();
+
+  // Центральная пунктирная
+  ctx.strokeStyle = "#f5f5f5";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < segments; i++) {
+    if (i % 2 === 0) continue;
+    const y1 = board.y - 5 + i * 0.8;
+    const y2 = board.y - 5 + (i + 1) * 0.8;
+    const p1 = project3D(0, y1, 0.01);
+    const p2 = project3D(0, y2, 0.01);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+  }
 }
 
-// ----------------------
-// ОТРИСОВКА СКЕЙТА
-// ----------------------
+// ============================
+//  ОТРИСОВКА СКЕЙТА
+// ============================
 function drawBoard() {
+  // Центр доски
+  const center = project3D(board.x, board.y, board.z);
+
   ctx.save();
-  ctx.translate(board.x, board.y - board.z);
+  ctx.translate(center.x, center.y);
+  ctx.scale(center.scale, center.scale);
   ctx.rotate(board.tilt + board.angle);
 
+  const pxWidth = board.width * 60;
+  const pxHeight = board.height * 60;
+  const r = pxHeight / 2;
+  const len = pxWidth - pxHeight;
+
   // Тень
-  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  ctx.save();
+  ctx.translate(0, r + 14);
+  ctx.scale(1.2, 0.6);
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
   ctx.beginPath();
-  ctx.ellipse(0, 20, board.width * 0.5, 12, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, pxWidth * 0.5, pxHeight * 0.8, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
 
   // Дека
-  const r = board.height / 2;
-  const len = board.width - board.height;
-
   ctx.fillStyle = "#f5a623";
   ctx.beginPath();
-  ctx.moveTo(-len/2, -r);
-  ctx.lineTo(len/2, -r);
-  ctx.arc(len/2, 0, r, -Math.PI/2, Math.PI/2);
-  ctx.lineTo(-len/2, r);
-  ctx.arc(-len/2, 0, r, Math.PI/2, -Math.PI/2);
+  ctx.moveTo(-len / 2, -r);
+  ctx.lineTo(len / 2, -r);
+  ctx.arc(len / 2, 0, r, -Math.PI / 2, Math.PI / 2);
+  ctx.lineTo(-len / 2, r);
+  ctx.arc(-len / 2, 0, r, Math.PI / 2, -Math.PI / 2);
   ctx.closePath();
   ctx.fill();
 
   ctx.strokeStyle = "#b36b00";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 4;
   ctx.stroke();
+
+  // Графика
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-len / 2 + 14, 0);
+  ctx.lineTo(len / 2 - 14, 0);
+  ctx.stroke();
+
+  // Траки и колёса
+  const truckOffsetX = pxWidth * 0.25;
+  const truckY = 6;
+  const wheelRadius = 9;
+  const wheelSpin = (Math.abs(board.vy) + Math.abs(board.vx)) * 0.1;
+
+  function drawTruck(x) {
+    ctx.strokeStyle = "#444";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x - 18, truckY);
+    ctx.lineTo(x + 18, truckY);
+    ctx.stroke();
+
+    // Левое колесо
+    ctx.save();
+    ctx.translate(x - 20, truckY + 10);
+    ctx.rotate(wheelSpin);
+    ctx.fillStyle = "#111";
+    ctx.beginPath();
+    ctx.arc(0, 0, wheelRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#666";
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Правое колесо
+    ctx.save();
+    ctx.translate(x + 20, truckY + 10);
+    ctx.rotate(wheelSpin);
+    ctx.fillStyle = "#111";
+    ctx.beginPath();
+    ctx.arc(0, 0, wheelRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#666";
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  drawTruck(-truckOffsetX);
+  drawTruck(truckOffsetX);
 
   ctx.restore();
 }
 
-// ----------------------
-// ГЛАВНЫЙ ЦИКЛ
-// ----------------------
-function loop() {
-  update();
+// ============================
+//  HUD (минимальный)
+// ============================
+function drawHUD() {
+  const speed = Math.hypot(board.vx, board.vy);
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  ctx.fillRect(10, 10, 150, 40);
+  ctx.fillStyle = "#fff";
+  ctx.font = "14px system-ui";
+  ctx.fillText("Speed: " + speed.toFixed(1), 20, 35);
+}
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+// ============================
+//  ГЛАВНЫЙ ЦИКЛ
+// ============================
+let lastTime = performance.now();
 
-  drawRamp();
+function loop(now) {
+  const dt = (now - lastTime) / 1000 * world.timeScale;
+  lastTime = now;
+
+  updatePhysics(dt);
+
+  drawBackground();
+  drawRoad();
   drawBoard();
+  drawHUD();
 
   requestAnimationFrame(loop);
 }
-loop();
+
+requestAnimationFrame(loop);
 </script>
 
 </body>
