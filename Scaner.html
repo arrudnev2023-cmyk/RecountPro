@@ -1,644 +1,119 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Парсер УПД с камеры</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <!-- Tesseract.js с CDN -->
-  <script src="https://unpkg.com/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
-  <style>
-    :root {
-      color-scheme: light dark;
-      --bg: #05070a;
-      --fg: #f5f5f5;
-      --accent: #3b82f6;
-      --accent-soft: rgba(59,130,246,0.15);
-      --danger: #ef4444;
-      --muted: #9ca3af;
-      --card: #0b0f16;
-      --border: #1f2933;
-    }
-
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-
+<meta charset="UTF-8">
+<title>Парсер накладных (OCR)</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
     body {
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-      background: radial-gradient(circle at top, #111827 0, #020617 45%, #000 100%);
-      color: var(--fg);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: #f5f5f5;
     }
-
-    .app {
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-      padding: 12px;
-      gap: 10px;
+    .container {
+        max-width: 600px;
+        margin: auto;
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-
-    .header {
-      padding: 4px 4px 0;
+    button {
+        padding: 12px 18px;
+        margin: 5px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
     }
-
-    .title {
-      font-size: 20px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
+    #preview {
+        width: 100%;
+        margin-top: 15px;
+        border-radius: 8px;
     }
-
-    .subtitle {
-      font-size: 13px;
-      color: var(--muted);
-      margin-top: 2px;
+    #result {
+        margin-top: 20px;
+        white-space: pre-wrap;
+        background: #eee;
+        padding: 15px;
+        border-radius: 8px;
     }
-
-    .card {
-      background: linear-gradient(145deg, rgba(15,23,42,0.96), rgba(15,23,42,0.85));
-      border-radius: 16px;
-      border: 1px solid rgba(148,163,184,0.18);
-      box-shadow:
-        0 18px 45px rgba(15,23,42,0.9),
-        0 0 0 1px rgba(15,23,42,0.9);
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .camera-wrapper {
-      position: relative;
-      border-radius: 14px;
-      overflow: hidden;
-      background: #020617;
-      border: 1px solid rgba(148,163,184,0.25);
-      aspect-ratio: 3 / 4;
-      max-height: 60vh;
-    }
-
-    video, canvas {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .camera-overlay {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .frame {
-      width: 86%;
-      height: 70%;
-      border-radius: 12px;
-      border: 2px solid rgba(248,250,252,0.85);
-      box-shadow:
-        0 0 0 9999px rgba(15,23,42,0.55),
-        0 0 25px rgba(15,23,42,0.9);
-      backdrop-filter: blur(1px);
-    }
-
-    .hint {
-      position: absolute;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(15,23,42,0.85);
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      color: var(--muted);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 999px;
-      background: #22c55e;
-      box-shadow: 0 0 8px rgba(34,197,94,0.9);
-    }
-
-    .controls {
-      display: flex;
-      gap: 8px;
-      margin-top: 4px;
-    }
-
-    .btn {
-      flex: 1;
-      border-radius: 999px;
-      border: none;
-      padding: 10px 14px;
-      font-size: 14px;
-      font-weight: 500;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      color: #e5e7eb;
-      background: radial-gradient(circle at top, #1d4ed8, #1e40af);
-      box-shadow:
-        0 10px 25px rgba(37,99,235,0.55),
-        0 0 0 1px rgba(59,130,246,0.5);
-      cursor: pointer;
-      transition: transform 0.08s ease, box-shadow 0.08s ease, opacity 0.08s ease;
-    }
-
-    .btn:active {
-      transform: scale(0.97) translateY(1px);
-      box-shadow:
-        0 4px 14px rgba(37,99,235,0.6),
-        0 0 0 1px rgba(59,130,246,0.7);
-    }
-
-    .btn.secondary {
-      flex: 0 0 auto;
-      min-width: 44px;
-      padding-inline: 10px;
-      background: rgba(15,23,42,0.9);
-      border-radius: 999px;
-      box-shadow:
-        0 8px 18px rgba(15,23,42,0.9),
-        0 0 0 1px rgba(75,85,99,0.9);
-      color: var(--muted);
-    }
-
-    .btn.secondary:active {
-      transform: scale(0.96) translateY(1px);
-    }
-
-    .btn-icon {
-      font-size: 16px;
-    }
-
-    .status {
-      font-size: 12px;
-      color: var(--muted);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: 2px;
-    }
-
-    .status-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 999px;
-      background: #6b7280;
-    }
-
-    .status-dot.active {
-      background: #22c55e;
-      box-shadow: 0 0 8px rgba(34,197,94,0.9);
-    }
-
-    .status-dot.busy {
-      background: #f97316;
-      box-shadow: 0 0 8px rgba(249,115,22,0.9);
-    }
-
-    .status-dot.error {
-      background: #ef4444;
-      box-shadow: 0 0 8px rgba(239,68,68,0.9);
-    }
-
-    .results-card {
-      margin-top: 4px;
-      padding: 10px;
-      border-radius: 14px;
-      background: radial-gradient(circle at top left, rgba(30,64,175,0.35), rgba(15,23,42,0.98));
-      border: 1px solid rgba(148,163,184,0.25);
-      max-height: 40vh;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .results-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .results-title {
-      font-size: 14px;
-      font-weight: 500;
-    }
-
-    .results-meta {
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    .results-body {
-      overflow: auto;
-      border-radius: 10px;
-      border: 1px solid rgba(31,41,55,0.9);
-      background: rgba(15,23,42,0.95);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 11px;
-      color: #e5e7eb;
-    }
-
-    thead {
-      background: rgba(15,23,42,0.98);
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
-
-    th, td {
-      padding: 6px 6px;
-      border-bottom: 1px solid rgba(31,41,55,0.9);
-      text-align: left;
-      white-space: nowrap;
-    }
-
-    th {
-      font-weight: 500;
-      color: #9ca3af;
-    }
-
-    tbody tr:nth-child(even) {
-      background: rgba(15,23,42,0.9);
-    }
-
-    .col-name {
-      max-width: 180px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .badge {
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 999px;
-      background: rgba(34,197,94,0.12);
-      color: #bbf7d0;
-      border: 1px solid rgba(34,197,94,0.4);
-    }
-
-    .badge-error {
-      background: rgba(239,68,68,0.12);
-      color: #fecaca;
-      border-color: rgba(239,68,68,0.5);
-    }
-
-    .raw-text {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 10px;
-      line-height: 1.4;
-      white-space: pre-wrap;
-      padding: 6px;
-      color: #9ca3af;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    input[type="file"] {
-      display: none;
-    }
-
-    .file-label {
-      font-size: 11px;
-      color: var(--muted);
-      text-decoration: underline;
-      text-underline-offset: 2px;
-    }
-
-    @media (min-width: 768px) {
-      .app {
-        max-width: 480px;
-        margin: 0 auto;
-      }
-    }
-  </style>
+</style>
 </head>
 <body>
-  <div class="app">
-    <div class="header">
-      <div class="title">Тест парсера УПД с камеры</div>
-      <div class="subtitle">Сфотографируй документ — получишь сырую таблицу с товарами</div>
-    </div>
 
-    <div class="card">
-      <div class="camera-wrapper">
-        <video id="video" autoplay playsinline></video>
-        <canvas id="canvas" class="hidden"></canvas>
-        <div class="camera-overlay">
-          <div class="frame"></div>
-          <div class="hint">
-            <div class="dot"></div>
-            <span>Выравнивай лист в рамке, держи телефон ровно</span>
-          </div>
-        </div>
-      </div>
+<div class="container">
+    <h2>Парсер накладных (HTML + OCR)</h2>
 
-      <div class="controls">
-        <button id="captureBtn" class="btn">
-          <span class="btn-icon">📸</span>
-          <span>Сделать снимок и распознать</span>
-        </button>
-        <button id="toggleSourceBtn" class="btn secondary" title="Переключить камеру / загрузить файл">
-          <span class="btn-icon">🔁</span>
-        </button>
-      </div>
+    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none">
 
-      <div class="status">
-        <div id="statusDot" class="status-dot"></div>
-        <span id="statusText">Инициализация камеры…</span>
-      </div>
+    <button onclick="document.getElementById('fileInput').click()" style="background:#007bff;color:white;">
+        Сфоткать или выбрать фото
+    </button>
 
-      <input type="file" id="fileInput" accept="image/*" />
-      <div style="margin-top:4px;font-size:11px;color:var(--muted);">
-        Если камера не работает — <label for="fileInput" class="file-label">загрузи фото документа</label>
-      </div>
-    </div>
+    <img id="preview" src="" alt="">
 
-    <div id="resultsCard" class="results-card hidden">
-      <div class="results-header">
-        <div>
-          <div class="results-title">Результат парсинга</div>
-          <div id="resultsMeta" class="results-meta"></div>
-        </div>
-        <div id="resultsBadge" class="badge">OK</div>
-      </div>
-      <div class="results-body">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Наименование</th>
-              <th>Ед.</th>
-              <th>Кол-во</th>
-              <th>Цена</th>
-              <th>Сумма</th>
-            </tr>
-          </thead>
-          <tbody id="resultsTableBody"></tbody>
-        </table>
-      </div>
-      <details style="margin-top:4px;">
-        <summary style="font-size:11px;color:var(--muted);cursor:pointer;">Показать сырой текст OCR</summary>
-        <div id="rawText" class="raw-text"></div>
-      </details>
-    </div>
-  </div>
+    <div id="status"></div>
 
-  <script>
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const captureBtn = document.getElementById('captureBtn');
-    const toggleSourceBtn = document.getElementById('toggleSourceBtn');
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
-    const resultsCard = document.getElementById('resultsCard');
-    const resultsMeta = document.getElementById('resultsMeta');
-    const resultsBadge = document.getElementById('resultsBadge');
-    const resultsTableBody = document.getElementById('resultsTableBody');
-    const rawTextEl = document.getElementById('rawText');
-    const fileInput = document.getElementById('fileInput');
+    <h3>Результат:</h3>
+    <div id="result"></div>
+</div>
 
-    let usingCamera = true;
-    let currentStream = null;
+<script>
+document.getElementById("fileInput").addEventListener("change", async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
 
-    function setStatus(state, text) {
-      statusDot.className = 'status-dot';
-      if (state === 'active') statusDot.classList.add('active');
-      if (state === 'busy') statusDot.classList.add('busy');
-      if (state === 'error') statusDot.classList.add('error');
-      statusText.textContent = text;
-    }
+    const img = document.getElementById("preview");
+    img.src = URL.createObjectURL(file);
 
-    async function initCamera() {
-      try {
-        if (currentStream) {
-          currentStream.getTracks().forEach(t => t.stop());
-          currentStream = null;
+    document.getElementById("status").innerText = "Распознаю текст...";
+
+    const { data: { text } } = await Tesseract.recognize(
+        file,
+        'rus+eng',
+        { logger: m => console.log(m) }
+    );
+
+    document.getElementById("status").innerText = "Парсю строки...";
+
+    const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+
+    const parsed = lines.map(line => parseLine(line));
+
+    document.getElementById("result").innerText = JSON.stringify(parsed, null, 2);
+
+    document.getElementById("status").innerText = "Готово!";
+});
+
+function parseLine(line) {
+    const parts = line.split(/\s+/);
+
+    let nameParts = [];
+    let numbers = [];
+
+    for (let p of parts) {
+        if (p.match(/^[0-9]+([.,][0-9]+)?$/)) {
+            numbers.push(p);
+        } else {
+            nameParts.push(p);
         }
-
-        const constraints = {
-          audio: false,
-          video: {
-            facingMode: 'environment',
-            width: { ideal: 1920 },
-            height: { ideal: 2560 },
-            focusMode: 'continuous'
-          }
-        };
-
-        setStatus('busy', 'Запрашиваем доступ к камере…');
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        currentStream = stream;
-        video.srcObject = stream;
-        usingCamera = true;
-        setStatus('active', 'Камера готова. Наведи на документ и жми кнопку.');
-      } catch (err) {
-        console.error(err);
-        usingCamera = false;
-        setStatus('error', 'Камера недоступна. Используй загрузку файла.');
-      }
     }
 
-    function captureFrame() {
-      const videoEl = video;
-      if (!videoEl.videoWidth || !videoEl.videoHeight) {
-        throw new Error('Видео ещё не готово');
-      }
+    let name = nameParts.join(" ");
+    let qty = numbers[0] || null;
+    let price = numbers.length >= 2 ? numbers[numbers.length - 2] : null;
+    let amount = numbers.length >= 1 ? numbers[numbers.length - 1] : null;
 
-      const targetRatio = 3 / 4;
-      const vw = videoEl.videoWidth;
-      const vh = videoEl.videoHeight;
-      const vr = vw / vh;
+    return {
+        raw: line,
+        name,
+        qty,
+        price,
+        amount
+    };
+}
+</script>
 
-      let sw, sh, sx, sy;
-      if (vr > targetRatio) {
-        sh = vh * 0.8;
-        sw = sh * targetRatio;
-      } else {
-        sw = vw * 0.8;
-        sh = sw / targetRatio;
-      }
-      sx = (vw - sw) / 2;
-      sy = (vh - sh) / 2;
-
-      canvas.width = sw;
-      canvas.height = sh;
-      const ctx = canvas.getContext('2d');
-
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-
-      ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, sw, sh);
-
-      return canvas.toDataURL('image/jpeg', 0.9);
-    }
-
-    function parseItemsFromText(text) {
-      const lines = text
-        .split(/\r?\n/)
-        .map(l => l.trim())
-        .filter(l => l.length > 0);
-
-      const items = [];
-      const rowRegex = /^(.+?)\s+([а-яА-Яa-zA-Z0-9%]+)\s+(\d+(?:[.,]\d+)?)\s+(\d+(?:[.,]\d+)?)\s+(\d+(?:[.,]\d+)?)(?:\s+(\d+%)\s+(\d+(?:[.,]\d+)?)\s+(\d+(?:[.,]\d+)?))?$/u;
-
-      for (const line of lines) {
-        const m = line.match(rowRegex);
-        if (!m) continue;
-
-        const name = m[1].trim();
-        const unit = m[2].trim();
-        const qty = m[3].replace(',', '.');
-        const price = m[4].replace(',', '.');
-        const total = m[5].replace(',', '.');
-
-        items.push({
-          name,
-          unit,
-          qty,
-          price,
-          total
-        });
-      }
-
-      return items;
-    }
-
-    function renderResults(items, text, durationMs) {
-      resultsTableBody.innerHTML = '';
-      if (!items.length) {
-        resultsBadge.textContent = 'Нет строк';
-        resultsBadge.className = 'badge badge-error';
-      } else {
-        resultsBadge.textContent = `Строк: ${items.length}`;
-        resultsBadge.className = 'badge';
-      }
-
-      items.forEach((item, idx) => {
-        const tr = document.createElement('tr');
-
-        const tdIdx = document.createElement('td');
-        tdIdx.textContent = String(idx + 1);
-
-        const tdName = document.createElement('td');
-        tdName.textContent = item.name;
-        tdName.className = 'col-name';
-
-        const tdUnit = document.createElement('td');
-        tdUnit.textContent = item.unit;
-
-        const tdQty = document.createElement('td');
-        tdQty.textContent = item.qty;
-
-        const tdPrice = document.createElement('td');
-        tdPrice.textContent = item.price;
-
-        const tdTotal = document.createElement('td');
-        tdTotal.textContent = item.total;
-
-        tr.appendChild(tdIdx);
-        tr.appendChild(tdName);
-        tr.appendChild(tdUnit);
-        tr.appendChild(tdQty);
-        tr.appendChild(tdPrice);
-        tr.appendChild(tdTotal);
-
-        resultsTableBody.appendChild(tr);
-      });
-
-      resultsMeta.textContent = `OCR: ${(durationMs / 1000).toFixed(1)} c · ${items.length ? 'найдены строки, похожие на товары' : 'ничего похожего на строки товаров не найдено'}`;
-      rawTextEl.textContent = text;
-      resultsCard.classList.remove('hidden');
-    }
-
-    async function runOcrOnDataUrl(dataUrl) {
-      setStatus('busy', 'Распознаём текст… это может занять несколько секунд');
-      const start = performance.now();
-      try {
-        const { data } = await Tesseract.recognize(dataUrl, 'rus+eng', {
-          tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
-          tessedit_char_whitelist: '0123456789.,-%/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZабвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ ',
-        });
-
-        const duration = performance.now() - start;
-        const text = data.text || '';
-        const items = parseItemsFromText(text);
-        renderResults(items, text, duration);
-        setStatus('active', 'Готово. Можешь сделать ещё один снимок.');
-      } catch (err) {
-        console.error(err);
-        setStatus('error', 'Ошибка OCR. Попробуй ещё раз или сделай фото чётче.');
-      }
-    }
-
-    captureBtn.addEventListener('click', async () => {
-      if (!usingCamera) {
-        setStatus('error', 'Камера отключена. Загрузите файл.');
-        return;
-      }
-      try {
-        const dataUrl = captureFrame();
-        await runOcrOnDataUrl(dataUrl);
-      } catch (err) {
-        console.error(err);
-        setStatus('error', 'Не удалось сделать снимок. Подожди секунду и попробуй снова.');
-      }
-    });
-
-    toggleSourceBtn.addEventListener('click', () => {
-      if (usingCamera) {
-        usingCamera = false;
-        if (currentStream) {
-          currentStream.getTracks().forEach(t => t.stop());
-          currentStream = null;
-        }
-        setStatus('active', 'Камера выключена. Используй загрузку файла.');
-      } else {
-        initCamera();
-      }
-    });
-
-    fileInput.addEventListener('change', async (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        const dataUrl = ev.target.result;
-        await runOcrOnDataUrl(dataUrl);
-      };
-      reader.readAsDataURL(file);
-    });
-
-    window.addEventListener('load', () => {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        initCamera();
-      } else {
-        setStatus('error', 'Камера не поддерживается. Используй загрузку файла.');
-      }
-    });
-  </script>
 </body>
 </html>
