@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Table Extractor (Mobile, Lines)</title>
+  <title>Table Extractor (Mobile, Loading)</title>
 
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
@@ -11,17 +11,61 @@
     #preview { max-width: 100%; margin-top: 20px; display: block; }
     table { border-collapse: collapse; margin-top: 20px; width: 100%; }
     td, th { border: 1px solid #ccc; padding: 4px; font-size: 12px; }
+
+    /* Загрузка */
+    #loader {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(255,255,255,0.9);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      font-size: 22px;
+      font-weight: bold;
+      z-index: 9999;
+    }
+
+    .spinner {
+      border: 6px solid #ddd;
+      border-top: 6px solid #3498db;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
 
-<h2>📄 Table Extractor (Mobile, Lines)</h2>
+<div id="loader">
+  <div style="text-align:center;">
+    <div class="spinner"></div>
+    Обработка изображения...
+  </div>
+</div>
+
+<h2>📄 Table Extractor (Mobile)</h2>
 
 <input type="file" id="fileInput" accept="image/*">
 <img id="preview">
 <div id="result"></div>
 
 <script>
+function showLoader() {
+  document.getElementById("loader").style.display = "flex";
+}
+
+function hideLoader() {
+  document.getElementById("loader").style.display = "none";
+}
+
 document.getElementById("fileInput").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -30,8 +74,9 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
   img.src = URL.createObjectURL(file);
 
   img.onload = async () => {
-    document.getElementById("result").innerHTML = "Обработка...";
+    showLoader();
     const table = await processImage(img);
+    hideLoader();
     renderTable(table);
   };
 });
@@ -40,7 +85,6 @@ async function processImage(img) {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
 
-  // уменьшаем, чтобы не убить телефон
   const maxWidth = 1200;
   const scale = img.width > maxWidth ? maxWidth / img.width : 1;
 
@@ -50,7 +94,6 @@ async function processImage(img) {
 
   const { width, height } = canvas;
 
-  // 1) получаем ч/б картинку
   const imgData = ctx.getImageData(0, 0, width, height);
   const gray = new Uint8ClampedArray(width * height);
 
@@ -62,14 +105,12 @@ async function processImage(img) {
     gray[i / 4] = v;
   }
 
-  // 2) бинаризация
   const bin = new Uint8ClampedArray(width * height);
   const threshold = 200;
   for (let i = 0; i < gray.length; i++) {
     bin[i] = gray[i] < threshold ? 1 : 0;
   }
 
-  // 3) поиск горизонтальных линий
   const horizontalLines = [];
   for (let y = 0; y < height; y++) {
     let blackCount = 0;
@@ -79,7 +120,6 @@ async function processImage(img) {
     if (blackCount > width * 0.5) horizontalLines.push(y);
   }
 
-  // 4) поиск вертикальных линий
   const verticalLines = [];
   for (let x = 0; x < width; x++) {
     let blackCount = 0;
@@ -89,7 +129,6 @@ async function processImage(img) {
     if (blackCount > height * 0.5) verticalLines.push(x);
   }
 
-  // 5) чистим линии (слипающиеся пиксели → одна линия)
   const cleanLines = (lines, minGap) => {
     if (!lines.length) return [];
     lines.sort((a, b) => a - b);
@@ -106,11 +145,9 @@ async function processImage(img) {
   const vLines = cleanLines(verticalLines, 5);
 
   if (hLines.length < 2 || vLines.length < 2) {
-    console.log("Линий мало:", hLines.length, vLines.length);
     return [];
   }
 
-  // 6) строим ячейки по пересечениям линий
   const cells = [];
   for (let r = 0; r < hLines.length - 1; r++) {
     for (let c = 0; c < vLines.length - 1; c++) {
@@ -119,13 +156,12 @@ async function processImage(img) {
       const w = vLines[c + 1] - vLines[c];
       const h = hLines[r + 1] - hLines[r];
 
-      if (w < 20 || h < 15) continue; // отсекаем мелочь
+      if (w < 20 || h < 15) continue;
 
       cells.push({ row: r, col: c, x, y, w, h });
     }
   }
 
-  // 7) OCR по ячейкам
   const table = [];
   for (let r = 0; r < hLines.length - 1; r++) {
     table[r] = [];
