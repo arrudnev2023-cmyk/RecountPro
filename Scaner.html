@@ -2,279 +2,84 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Table Extractor (Mobile Stable)</title>
+  <title>Table Extractor (Tesseract only)</title>
 
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
   <style>
     body { font-family: sans-serif; padding: 20px; }
-    #preview { max-width: 100%; margin-top: 20px; display: block; }
+    #preview { max-width: 100%; margin-top: 10px; display: block; }
     table { border-collapse: collapse; margin-top: 20px; width: 100%; }
     td, th { border: 1px solid #ccc; padding: 4px; font-size: 12px; }
-
-    #loader {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(255,255,255,0.9);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      font-size: 18px;
-      font-weight: 500;
-      z-index: 9999;
-    }
-
-    .spinner {
-      border: 6px solid #ddd;
-      border-top: 6px solid #3498db;
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 16px;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    #log {
-      margin-top: 10px;
-      font-size: 12px;
-      color: #555;
-      white-space: pre-line;
-    }
+    #loader { margin-top: 10px; font-size: 14px; color: #555; }
   </style>
 </head>
 <body>
 
-<div id="loader">
-  <div style="text-align:center;">
-    <div class="spinner"></div>
-    <div id="loaderText">Обработка изображения...</div>
-  </div>
-</div>
-
-<h2>📄 Table Extractor (Mobile Stable)</h2>
+<h2>📄 Table Extractor (без сервера)</h2>
 
 <input type="file" id="fileInput" accept="image/*">
+<div id="loader"></div>
 <img id="preview">
 <div id="result"></div>
-<div id="log"></div>
 
 <script>
-const logEl = document.getElementById("log");
+const fileInput = document.getElementById("fileInput");
 const loader = document.getElementById("loader");
-const loaderText = document.getElementById("loaderText");
+const preview = document.getElementById("preview");
+const result = document.getElementById("result");
 
-function log(msg) {
-  console.log(msg);
-  logEl.textContent += msg + "\n";
-}
-
-function showLoader(text) {
-  loaderText.textContent = text || "Обработка...";
-  loader.style.display = "flex";
-}
-
-function hideLoader() {
-  loader.style.display = "none";
-}
-
-document.getElementById("fileInput").addEventListener("change", async (e) => {
+fileInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  logEl.textContent = "";
-  document.getElementById("result").innerHTML = "";
+  result.innerHTML = "";
+  loader.textContent = "Загружаю фото...";
 
-  const img = document.getElementById("preview");
-  img.src = URL.createObjectURL(file);
+  preview.src = URL.createObjectURL(file);
 
-  img.onload = async () => {
+  preview.onload = async () => {
+    loader.textContent = "Распознаю текст...";
     try {
-      showLoader("Подготовка изображения...");
-      const table = await processImage(img);
-      hideLoader();
-      renderTable(table);
+      const { data } = await Tesseract.recognize(preview, "rus+eng", {
+        tessedit_pageseg_mode: 6
+      });
+      loader.textContent = "";
+      const rows = buildTableFromLines(data);
+      renderTable(rows);
     } catch (err) {
-      hideLoader();
-      log("Ошибка: " + err.message);
-      document.getElementById("result").innerHTML = "Ошибка обработки";
+      console.error(err);
+      loader.textContent = "Ошибка распознавания";
     }
   };
 });
 
-async function processImage(img) {
-  log("Старт обработки");
+function buildTableFromLines(data) {
+  if (!data || !data.lines) return [];
 
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
+  // Берём только строки, где есть хоть какой‑то текст
+  const lines = data.lines.filter(l => l.text && l.text.trim().length > 0);
 
-  const maxWidth = 1200;
-  const scale = img.width > maxWidth ? maxWidth / img.width : 1;
-
-  canvas.width = img.width * scale;
-  canvas.height = img.height * scale;
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-  const { width, height } = canvas;
-  log(`Размер после масштабирования: ${width}x${height}`);
-
-  showLoader("Анализ изображения...");
-
-  const imgData = ctx.getImageData(0, 0, width, height);
-  const gray = new Uint8ClampedArray(width * height);
-
-  for (let i = 0; i < imgData.data.length; i += 4) {
-    const r = imgData.data[i];
-    const g = imgData.data[i + 1];
-    const b = imgData.data[i + 2];
-    const v = 0.299 * r + 0.587 * g + 0.114 * b;
-    gray[i / 4] = v;
-  }
-
-  const bin = new Uint8ClampedArray(width * height);
-  const threshold = 200;
-  for (let i = 0; i < gray.length; i++) {
-    bin[i] = gray[i] < threshold ? 1 : 0;
-  }
-
-  const horizontalLines = [];
-  for (let y = 0; y < height; y++) {
-    let blackCount = 0;
-    for (let x = 0; x < width; x++) {
-      if (bin[y * width + x]) blackCount++;
-    }
-    if (blackCount > width * 0.5) horizontalLines.push(y);
-  }
-
-  const verticalLines = [];
-  for (let x = 0; x < width; x++) {
-    let blackCount = 0;
-    for (let y = 0; y < height; y++) {
-      if (bin[y * width + x]) blackCount++;
-    }
-    if (blackCount > height * 0.5) verticalLines.push(x);
-  }
-
-  const cleanLines = (lines, minGap) => {
-    if (!lines.length) return [];
-    lines.sort((a, b) => a - b);
-    const res = [lines[0]];
-    for (let i = 1; i < lines.length; i++) {
-      if (lines[i] - res[res.length - 1] > minGap) {
-        res.push(lines[i]);
-      }
-    }
-    return res;
-  };
-
-  const hLines = cleanLines(horizontalLines, 5);
-  const vLines = cleanLines(verticalLines, 5);
-
-  log(`Горизонтальных линий: ${hLines.length}, вертикальных: ${vLines.length}`);
-
-  if (hLines.length < 2 || vLines.length < 2) {
-    log("Недостаточно линий для таблицы");
-    return [];
-  }
-
-  const cells = [];
-  for (let r = 0; r < hLines.length - 1; r++) {
-    for (let c = 0; c < vLines.length - 1; c++) {
-      const x = vLines[c];
-      const y = hLines[r];
-      const w = vLines[c + 1] - vLines[c];
-      const h = hLines[r + 1] - hLines[r];
-
-      if (w < 30 || h < 20) continue;
-
-      cells.push({ row: r, col: c, x, y, w, h });
-    }
-  }
-
-  log(`Ячеек для OCR: ${cells.length}`);
-
-  if (!cells.length) {
-    log("Ячеек не найдено");
-    return [];
-  }
-
-  const table = [];
-  for (let r = 0; r < hLines.length - 1; r++) {
-    table[r] = [];
-  }
-
-  let processed = 0;
-  for (let cell of cells) {
-    processed++;
-    if (processed % 3 === 0) {
-      showLoader(`Распознаю ячейки... ${processed}/${cells.length}`);
-    }
-
-    const cellCanvas = document.createElement("canvas");
-    const cellCtx = cellCanvas.getContext("2d");
-    cellCanvas.width = cell.w;
-    cellCanvas.height = cell.h;
-
-    cellCtx.drawImage(
-      canvas,
-      cell.x,
-      cell.y,
-      cell.w,
-      cell.h,
-      0,
-      0,
-      cell.w,
-      cell.h
-    );
-
-    const text = await ocrCell(cellCanvas);
-    table[cell.row][cell.col] = text;
-  }
-
-  log("Обработка завершена");
-  return table;
-}
-
-async function ocrCell(canvas) {
-  return new Promise((resolve) => {
-    let done = false;
-
-    Tesseract.recognize(canvas, "rus+eng", {
-      tessedit_pageseg_mode: 6
-    })
-      .then(({ data: { text } }) => {
-        if (done) return;
-        done = true;
-        resolve(text.trim());
-      })
-      .catch(() => {
-        if (done) return;
-        done = true;
-        resolve("");
-      });
-
-    setTimeout(() => {
-      if (done) return;
-      done = true;
-      resolve("");
-    }, 8000);
+  const rows = lines.map(line => {
+    // Разбиваем строку на слова — это будут ячейки
+    const words = line.text
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ");
+    return words;
   });
+
+  return rows;
 }
 
 function renderTable(rows) {
   if (!rows.length) {
-    document.getElementById("result").innerHTML = "Таблица не найдена";
+    result.innerHTML = "Таблица не найдена";
     return;
   }
 
   let html = "<table>";
   rows.forEach(row => {
-    if (!row) return;
     html += "<tr>";
     row.forEach(cell => {
       html += `<td contenteditable="true">${cell || ""}</td>`;
@@ -283,7 +88,7 @@ function renderTable(rows) {
   });
   html += "</table>";
 
-  document.getElementById("result").innerHTML = html;
+  result.innerHTML = html;
 }
 </script>
 
