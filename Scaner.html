@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Table Extractor (Mobile, Loading)</title>
+  <title>Table Extractor (Mobile Stable)</title>
 
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
@@ -12,7 +12,6 @@
     table { border-collapse: collapse; margin-top: 20px; width: 100%; }
     td, th { border: 1px solid #ccc; padding: 4px; font-size: 12px; }
 
-    /* Загрузка */
     #loader {
       position: fixed;
       top: 0; left: 0;
@@ -21,8 +20,8 @@
       display: none;
       justify-content: center;
       align-items: center;
-      font-size: 22px;
-      font-weight: bold;
+      font-size: 18px;
+      font-weight: 500;
       z-index: 9999;
     }
 
@@ -30,15 +29,22 @@
       border: 6px solid #ddd;
       border-top: 6px solid #3498db;
       border-radius: 50%;
-      width: 60px;
-      height: 60px;
+      width: 50px;
+      height: 50px;
       animation: spin 1s linear infinite;
-      margin-bottom: 20px;
+      margin: 0 auto 16px;
     }
 
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
+    }
+
+    #log {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #555;
+      white-space: pre-line;
     }
   </style>
 </head>
@@ -47,41 +53,63 @@
 <div id="loader">
   <div style="text-align:center;">
     <div class="spinner"></div>
-    Обработка изображения...
+    <div id="loaderText">Обработка изображения...</div>
   </div>
 </div>
 
-<h2>📄 Table Extractor (Mobile)</h2>
+<h2>📄 Table Extractor (Mobile Stable)</h2>
 
 <input type="file" id="fileInput" accept="image/*">
 <img id="preview">
 <div id="result"></div>
+<div id="log"></div>
 
 <script>
-function showLoader() {
-  document.getElementById("loader").style.display = "flex";
+const logEl = document.getElementById("log");
+const loader = document.getElementById("loader");
+const loaderText = document.getElementById("loaderText");
+
+function log(msg) {
+  console.log(msg);
+  logEl.textContent += msg + "\n";
+}
+
+function showLoader(text) {
+  loaderText.textContent = text || "Обработка...";
+  loader.style.display = "flex";
 }
 
 function hideLoader() {
-  document.getElementById("loader").style.display = "none";
+  loader.style.display = "none";
 }
 
 document.getElementById("fileInput").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
+  logEl.textContent = "";
+  document.getElementById("result").innerHTML = "";
+
   const img = document.getElementById("preview");
   img.src = URL.createObjectURL(file);
 
   img.onload = async () => {
-    showLoader();
-    const table = await processImage(img);
-    hideLoader();
-    renderTable(table);
+    try {
+      showLoader("Подготовка изображения...");
+      const table = await processImage(img);
+      hideLoader();
+      renderTable(table);
+    } catch (err) {
+      hideLoader();
+      log("Ошибка: " + err.message);
+      document.getElementById("result").innerHTML = "Ошибка обработки";
+    }
   };
 });
 
 async function processImage(img) {
+  log("Старт обработки");
+
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
 
@@ -93,6 +121,9 @@ async function processImage(img) {
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
   const { width, height } = canvas;
+  log(`Размер после масштабирования: ${width}x${height}`);
+
+  showLoader("Анализ изображения...");
 
   const imgData = ctx.getImageData(0, 0, width, height);
   const gray = new Uint8ClampedArray(width * height);
@@ -144,7 +175,10 @@ async function processImage(img) {
   const hLines = cleanLines(horizontalLines, 5);
   const vLines = cleanLines(verticalLines, 5);
 
+  log(`Горизонтальных линий: ${hLines.length}, вертикальных: ${vLines.length}`);
+
   if (hLines.length < 2 || vLines.length < 2) {
+    log("Недостаточно линий для таблицы");
     return [];
   }
 
@@ -156,10 +190,17 @@ async function processImage(img) {
       const w = vLines[c + 1] - vLines[c];
       const h = hLines[r + 1] - hLines[r];
 
-      if (w < 20 || h < 15) continue;
+      if (w < 30 || h < 20) continue;
 
       cells.push({ row: r, col: c, x, y, w, h });
     }
+  }
+
+  log(`Ячеек для OCR: ${cells.length}`);
+
+  if (!cells.length) {
+    log("Ячеек не найдено");
+    return [];
   }
 
   const table = [];
@@ -167,7 +208,13 @@ async function processImage(img) {
     table[r] = [];
   }
 
+  let processed = 0;
   for (let cell of cells) {
+    processed++;
+    if (processed % 3 === 0) {
+      showLoader(`Распознаю ячейки... ${processed}/${cells.length}`);
+    }
+
     const cellCanvas = document.createElement("canvas");
     const cellCtx = cellCanvas.getContext("2d");
     cellCanvas.width = cell.w;
@@ -189,14 +236,34 @@ async function processImage(img) {
     table[cell.row][cell.col] = text;
   }
 
+  log("Обработка завершена");
   return table;
 }
 
 async function ocrCell(canvas) {
-  const { data: { text } } = await Tesseract.recognize(canvas, "rus+eng", {
-    tessedit_pageseg_mode: 6
+  return new Promise((resolve) => {
+    let done = false;
+
+    Tesseract.recognize(canvas, "rus+eng", {
+      tessedit_pageseg_mode: 6
+    })
+      .then(({ data: { text } }) => {
+        if (done) return;
+        done = true;
+        resolve(text.trim());
+      })
+      .catch(() => {
+        if (done) return;
+        done = true;
+        resolve("");
+      });
+
+    setTimeout(() => {
+      if (done) return;
+      done = true;
+      resolve("");
+    }, 8000);
   });
-  return text.trim();
 }
 
 function renderTable(rows) {
