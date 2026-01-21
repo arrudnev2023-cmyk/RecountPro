@@ -1,117 +1,155 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Парсер накладных (OCR)</title>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        padding: 20px;
-        background: #f5f5f5;
-    }
-    .container {
-        max-width: 600px;
-        margin: auto;
-        background: white;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    button {
-        padding: 12px 18px;
-        margin: 5px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 16px;
-    }
-    #preview {
-        width: 100%;
-        margin-top: 15px;
-        border-radius: 8px;
-    }
-    #result {
-        margin-top: 20px;
-        white-space: pre-wrap;
-        background: #eee;
-        padding: 15px;
-        border-radius: 8px;
-    }
-</style>
+  <meta charset="UTF-8">
+  <title>Table Extractor</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script async src="https://docs.opencv.org/4.x/opencv.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    #preview { max-width: 400px; margin-top: 20px; }
+    table { border-collapse: collapse; margin-top: 20px; }
+    td, th { border: 1px solid #ccc; padding: 6px 10px; }
+  </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Парсер накладных (HTML + OCR)</h2>
+<h2>📄 Table Extractor</h2>
 
-    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none">
+<input type="file" id="fileInput" accept="image/*">
 
-    <button onclick="document.getElementById('fileInput').click()" style="background:#007bff;color:white;">
-        Сфоткать или выбрать фото
-    </button>
+<img id="preview">
 
-    <img id="preview" src="" alt="">
-
-    <div id="status"></div>
-
-    <h3>Результат:</h3>
-    <div id="result"></div>
-</div>
+<div id="result"></div>
 
 <script>
-document.getElementById("fileInput").addEventListener("change", async function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+let cvReady = false;
+document.addEventListener("opencvready", () => cvReady = true);
 
-    const img = document.getElementById("preview");
-    img.src = URL.createObjectURL(file);
+document.getElementById("fileInput").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
 
-    document.getElementById("status").innerText = "Распознаю текст...";
+  const img = document.getElementById("preview");
+  img.src = URL.createObjectURL(file);
 
-    const { data: { text } } = await Tesseract.recognize(
-        file,
-        'rus+eng',
-        { logger: m => console.log(m) }
-    );
-
-    document.getElementById("status").innerText = "Парсю строки...";
-
-    const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-
-    const parsed = lines.map(line => parseLine(line));
-
-    document.getElementById("result").innerText = JSON.stringify(parsed, null, 2);
-
-    document.getElementById("status").innerText = "Готово!";
-});
-
-function parseLine(line) {
-    const parts = line.split(/\s+/);
-
-    let nameParts = [];
-    let numbers = [];
-
-    for (let p of parts) {
-        if (p.match(/^[0-9]+([.,][0-9]+)?$/)) {
-            numbers.push(p);
-        } else {
-            nameParts.push(p);
-        }
+  img.onload = async () => {
+    if (!cvReady) {
+      alert("OpenCV загружается, подожди секунду");
+      return;
     }
 
-    let name = nameParts.join(" ");
-    let qty = numbers[0] || null;
-    let price = numbers.length >= 2 ? numbers[numbers.length - 2] : null;
-    let amount = numbers.length >= 1 ? numbers[numbers.length - 1] : null;
+    const table = await extractTable(img);
+    renderTable(table);
+  };
+});
 
-    return {
-        raw: line,
-        name,
-        qty,
-        price,
-        amount
-    };
+async function extractTable(img) {
+  // 1. Загружаем изображение в OpenCV
+  let src = cv.imread(img);
+  let gray = new cv.Mat();
+  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+  // 2. Бинаризация
+  let thresh = new cv.Mat();
+  cv.adaptiveThreshold(gray, thresh, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 15, 10);
+
+  // 3. Находим горизонтальные линии
+  let horizontal = thresh.clone();
+  let horizontalsize = Math.floor(horizontal.cols / 20);
+  let horizontalStructure = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(horizontalsize, 1));
+  cv.erode(horizontal, horizontal, horizontalStructure);
+  cv.dilate(horizontal, horizontal, horizontalStructure);
+
+  // 4. Находим вертикальные линии
+  let vertical = thresh.clone();
+  let verticalsize = Math.floor(vertical.rows / 20);
+  let verticalStructure = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(1, verticalsize));
+  cv.erode(vertical, vertical, verticalStructure);
+  cv.dilate(vertical, vertical, verticalStructure);
+
+  // 5. Пересечения → сетка
+  let mask = new cv.Mat();
+  cv.bitwise_and(horizontal, vertical, mask);
+
+  // 6. Контуры ячеек
+  let contours = new cv.MatVector();
+  let hierarchy = new cv.Mat();
+  cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+  let cells = [];
+
+  for (let i = 0; i < contours.size(); i++) {
+    let rect = cv.boundingRect(contours.get(i));
+    if (rect.width < 40 || rect.height < 20) continue;
+
+    let cellMat = src.roi(rect);
+    let text = await ocrCell(cellMat);
+
+    cells.push({
+      x: rect.x,
+      y: rect.y,
+      w: rect.width,
+      h: rect.height,
+      text
+    });
+
+    cellMat.delete();
+  }
+
+  src.delete(); gray.delete(); thresh.delete();
+  horizontal.delete(); vertical.delete(); mask.delete();
+  contours.delete(); hierarchy.delete();
+
+  // 7. Сортировка ячеек по строкам/колонкам
+  cells.sort((a, b) => a.y - b.y || a.x - b.x);
+
+  return buildTableStructure(cells);
+}
+
+async function ocrCell(mat) {
+  let canvas = document.createElement("canvas");
+  cv.imshow(canvas, mat);
+
+  const { data: { text } } = await Tesseract.recognize(canvas, "rus+eng", {
+    tessedit_pageseg_mode: 6
+  });
+
+  return text.trim();
+}
+
+function buildTableStructure(cells) {
+  let rows = [];
+  let currentRow = [];
+  let lastY = cells[0]?.y || 0;
+
+  for (let cell of cells) {
+    if (Math.abs(cell.y - lastY) > 20) {
+      rows.push(currentRow);
+      currentRow = [];
+      lastY = cell.y;
+    }
+    currentRow.push(cell);
+  }
+  rows.push(currentRow);
+
+  return rows;
+}
+
+function renderTable(rows) {
+  let html = "<table>";
+
+  for (let row of rows) {
+    html += "<tr>";
+    for (let cell of row) {
+      html += `<td contenteditable="true">${cell.text}</td>`;
+    }
+    html += "</tr>";
+  }
+
+  html += "</table>";
+
+  document.getElementById("result").innerHTML = html;
 }
 </script>
 
