@@ -3,11 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <title>Table Extractor</title>
+
+  <!-- 1. Сначала объявляем Module для OpenCV -->
+  <script>
+    let cvReady = false;
+
+    // OpenCV вызовет это, когда полностью загрузится
+    var Module = {
+      onRuntimeInitialized() {
+        cvReady = true;
+        console.log("✅ OpenCV готов");
+      }
+    };
+  </script>
+
+  <!-- 2. Подключаем OpenCV (без async/defer) -->
+  <script src="https://docs.opencv.org/4.x/opencv.js"></script>
+
+  <!-- 3. Подключаем Tesseract -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script async src="https://docs.opencv.org/4.x/opencv.js"></script>
+
   <style>
     body { font-family: sans-serif; padding: 20px; }
-    #preview { max-width: 400px; margin-top: 20px; }
+    #preview { max-width: 400px; margin-top: 20px; display: block; }
     table { border-collapse: collapse; margin-top: 20px; }
     td, th { border: 1px solid #ccc; padding: 6px 10px; }
   </style>
@@ -21,27 +39,27 @@
 <div id="result"></div>
 
 <script>
-let cvReady = false;
-
 function waitForCV() {
-  return new Promise((resolve) => {
-    if (cvReady) return resolve();
-    if (typeof cv !== "undefined" && cv['onRuntimeInitialized']) {
-      cv['onRuntimeInitialized'] = () => {
-        cvReady = true;
-        resolve();
-      };
-    } else {
-      const interval = setInterval(() => {
-        if (typeof cv !== "undefined" && cv['onRuntimeInitialized']) {
-          clearInterval(interval);
-          cv['onRuntimeInitialized'] = () => {
-            cvReady = true;
-            resolve();
-          };
-        }
-      }, 100);
+  return new Promise((resolve, reject) => {
+    if (cvReady) {
+      console.log("⚙️ OpenCV уже готов");
+      return resolve();
     }
+
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (cvReady) {
+        clearInterval(interval);
+        console.log("⚙️ OpenCV стал готов (по таймеру)");
+        resolve();
+      }
+      if (attempts > 100) {
+        clearInterval(interval);
+        console.error("❌ OpenCV так и не загрузился");
+        reject(new Error("OpenCV не загрузился"));
+      }
+    }, 100);
   });
 }
 
@@ -53,13 +71,21 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
   img.src = URL.createObjectURL(file);
 
   img.onload = async () => {
-    await waitForCV();
-    const table = await extractTable(img);
-    renderTable(table);
+    document.getElementById("result").innerHTML = "Обработка...";
+    try {
+      await waitForCV();
+      const table = await extractTable(img);
+      renderTable(table);
+    } catch (err) {
+      document.getElementById("result").innerHTML = "Ошибка инициализации OpenCV";
+      console.error(err);
+    }
   };
 });
 
 async function extractTable(img) {
+  console.log("▶️ Начинаем обработку изображения");
+
   let src = cv.imread(img);
   let gray = new cv.Mat();
   cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
@@ -86,6 +112,8 @@ async function extractTable(img) {
   let hierarchy = new cv.Mat();
   cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
+  console.log("🔎 Найдено контуров:", contours.size());
+
   let cells = [];
 
   for (let i = 0; i < contours.size(); i++) {
@@ -102,6 +130,8 @@ async function extractTable(img) {
   src.delete(); gray.delete(); thresh.delete();
   horizontal.delete(); vertical.delete(); mask.delete();
   contours.delete(); hierarchy.delete();
+
+  console.log("📦 Ячеек после фильтрации:", cells.length);
 
   cells.sort((a, b) => a.y - b.y || a.x - b.x);
   return buildTableStructure(cells);
@@ -131,6 +161,7 @@ function buildTableStructure(cells) {
     currentRow.push(cell);
   }
   rows.push(currentRow);
+  console.log("📊 Строк в таблице:", rows.length);
   return rows;
 }
 
@@ -149,6 +180,7 @@ function renderTable(rows) {
     html += "</tr>";
   }
   html += "</table>";
+
   document.getElementById("result").innerHTML = html;
 }
 </script>
