@@ -2,67 +2,26 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Table Extractor</title>
+  <title>Table Extractor (Mobile)</title>
 
-  <!-- 1. Сначала объявляем Module для OpenCV -->
-  <script>
-    let cvReady = false;
-
-    // OpenCV вызовет это, когда полностью загрузится
-    var Module = {
-      onRuntimeInitialized() {
-        cvReady = true;
-        console.log("✅ OpenCV готов");
-      }
-    };
-  </script>
-
-  <!-- 2. Подключаем OpenCV (без async/defer) -->
-  <script src="https://docs.opencv.org/4.x/opencv.js"></script>
-
-  <!-- 3. Подключаем Tesseract -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
   <style>
     body { font-family: sans-serif; padding: 20px; }
-    #preview { max-width: 400px; margin-top: 20px; display: block; }
-    table { border-collapse: collapse; margin-top: 20px; }
-    td, th { border: 1px solid #ccc; padding: 6px 10px; }
+    #preview { max-width: 100%; margin-top: 20px; display: block; }
+    table { border-collapse: collapse; margin-top: 20px; width: 100%; }
+    td { border: 1px solid #ccc; padding: 6px; font-size: 14px; }
   </style>
 </head>
 <body>
 
-<h2>📄 Table Extractor</h2>
+<h2>📄 Table Extractor (Mobile)</h2>
 
 <input type="file" id="fileInput" accept="image/*">
 <img id="preview">
 <div id="result"></div>
 
 <script>
-function waitForCV() {
-  return new Promise((resolve, reject) => {
-    if (cvReady) {
-      console.log("⚙️ OpenCV уже готов");
-      return resolve();
-    }
-
-    let attempts = 0;
-    const interval = setInterval(() => {
-      attempts++;
-      if (cvReady) {
-        clearInterval(interval);
-        console.log("⚙️ OpenCV стал готов (по таймеру)");
-        resolve();
-      }
-      if (attempts > 100) {
-        clearInterval(interval);
-        console.error("❌ OpenCV так и не загрузился");
-        reject(new Error("OpenCV не загрузился"));
-      }
-    }, 100);
-  });
-}
-
 document.getElementById("fileInput").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -72,115 +31,77 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
 
   img.onload = async () => {
     document.getElementById("result").innerHTML = "Обработка...";
-    try {
-      await waitForCV();
-      const table = await extractTable(img);
-      renderTable(table);
-    } catch (err) {
-      document.getElementById("result").innerHTML = "Ошибка инициализации OpenCV";
-      console.error(err);
-    }
+    const table = await extractTable(img);
+    renderTable(table);
   };
 });
 
 async function extractTable(img) {
-  console.log("▶️ Начинаем обработку изображения");
+  const rowsCount = 12;   // количество строк
+  const colsCount = 6;    // количество колонок
 
-  let src = cv.imread(img);
-  let gray = new cv.Mat();
-  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
 
-  let thresh = new cv.Mat();
-  cv.adaptiveThreshold(gray, thresh, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 15, 10);
+  canvas.width = img.width;
+  canvas.height = img.height;
 
-  let horizontal = thresh.clone();
-  let horizontalsize = Math.floor(horizontal.cols / 20);
-  let horizontalStructure = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(horizontalsize, 1));
-  cv.erode(horizontal, horizontal, horizontalStructure);
-  cv.dilate(horizontal, horizontal, horizontalStructure);
+  ctx.drawImage(img, 0, 0);
 
-  let vertical = thresh.clone();
-  let verticalsize = Math.floor(vertical.rows / 20);
-  let verticalStructure = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(1, verticalsize));
-  cv.erode(vertical, vertical, verticalStructure);
-  cv.dilate(vertical, vertical, verticalStructure);
+  const cellWidth = canvas.width / colsCount;
+  const cellHeight = canvas.height / rowsCount;
 
-  let mask = new cv.Mat();
-  cv.bitwise_and(horizontal, vertical, mask);
+  let table = [];
 
-  let contours = new cv.MatVector();
-  let hierarchy = new cv.Mat();
-  cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+  for (let r = 0; r < rowsCount; r++) {
+    let row = [];
+    for (let c = 0; c < colsCount; c++) {
+      const cellCanvas = document.createElement("canvas");
+      const cellCtx = cellCanvas.getContext("2d");
 
-  console.log("🔎 Найдено контуров:", contours.size());
+      cellCanvas.width = cellWidth;
+      cellCanvas.height = cellHeight;
 
-  let cells = [];
+      cellCtx.drawImage(
+        canvas,
+        c * cellWidth,
+        r * cellHeight,
+        cellWidth,
+        cellHeight,
+        0,
+        0,
+        cellWidth,
+        cellHeight
+      );
 
-  for (let i = 0; i < contours.size(); i++) {
-    let rect = cv.boundingRect(contours.get(i));
-    if (rect.width < 40 || rect.height < 20) continue;
-
-    let cellMat = src.roi(rect);
-    let text = await ocrCell(cellMat);
-
-    cells.push({ x: rect.x, y: rect.y, w: rect.width, h: rect.height, text });
-    cellMat.delete();
+      const text = await ocrCell(cellCanvas);
+      row.push(text);
+    }
+    table.push(row);
   }
 
-  src.delete(); gray.delete(); thresh.delete();
-  horizontal.delete(); vertical.delete(); mask.delete();
-  contours.delete(); hierarchy.delete();
-
-  console.log("📦 Ячеек после фильтрации:", cells.length);
-
-  cells.sort((a, b) => a.y - b.y || a.x - b.x);
-  return buildTableStructure(cells);
+  return table;
 }
 
-async function ocrCell(mat) {
-  let canvas = document.createElement("canvas");
-  cv.imshow(canvas, mat);
+async function ocrCell(canvas) {
   const { data: { text } } = await Tesseract.recognize(canvas, "rus+eng", {
     tessedit_pageseg_mode: 6
   });
   return text.trim();
 }
 
-function buildTableStructure(cells) {
-  if (!cells.length) return [];
-  let rows = [];
-  let currentRow = [];
-  let lastY = cells[0].y;
-
-  for (let cell of cells) {
-    if (Math.abs(cell.y - lastY) > 20) {
-      rows.push(currentRow);
-      currentRow = [];
-      lastY = cell.y;
-    }
-    currentRow.push(cell);
-  }
-  rows.push(currentRow);
-  console.log("📊 Строк в таблице:", rows.length);
-  return rows;
-}
-
 function renderTable(rows) {
-  if (!rows.length) {
-    document.getElementById("result").innerHTML = "Таблица не найдена";
-    return;
-  }
-
   let html = "<table>";
-  for (let row of rows) {
-    html += "<tr>";
-    for (let cell of row) {
-      html += `<td contenteditable="true">${cell.text}</td>`;
-    }
-    html += "</tr>";
-  }
-  html += "</table>";
 
+  rows.forEach(row => {
+    html += "<tr>";
+    row.forEach(cell => {
+      html += `<td contenteditable="true">${cell}</td>`;
+    });
+    html += "</tr>";
+  });
+
+  html += "</table>";
   document.getElementById("result").innerHTML = html;
 }
 </script>
