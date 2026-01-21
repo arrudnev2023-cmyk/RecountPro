@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Table Extractor (Mobile)</title>
+  <title>Table Extractor (Mobile, Lines)</title>
 
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
@@ -10,12 +10,12 @@
     body { font-family: sans-serif; padding: 20px; }
     #preview { max-width: 100%; margin-top: 20px; display: block; }
     table { border-collapse: collapse; margin-top: 20px; width: 100%; }
-    td { border: 1px solid #ccc; padding: 6px; font-size: 14px; }
+    td, th { border: 1px solid #ccc; padding: 4px; font-size: 12px; }
   </style>
 </head>
 <body>
 
-<h2>📄 Table Extractor (Mobile)</h2>
+<h2>📄 Table Extractor (Mobile, Lines)</h2>
 
 <input type="file" id="fileInput" accept="image/*">
 <img id="preview">
@@ -31,53 +31,126 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
 
   img.onload = async () => {
     document.getElementById("result").innerHTML = "Обработка...";
-    const table = await extractTable(img);
+    const table = await processImage(img);
     renderTable(table);
   };
 });
 
-async function extractTable(img) {
-  const rowsCount = 12;   // количество строк
-  const colsCount = 6;    // количество колонок
-
+async function processImage(img) {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
 
-  canvas.width = img.width;
-  canvas.height = img.height;
+  // уменьшаем, чтобы не убить телефон
+  const maxWidth = 1200;
+  const scale = img.width > maxWidth ? maxWidth / img.width : 1;
 
-  ctx.drawImage(img, 0, 0);
+  canvas.width = img.width * scale;
+  canvas.height = img.height * scale;
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-  const cellWidth = canvas.width / colsCount;
-  const cellHeight = canvas.height / rowsCount;
+  const { width, height } = canvas;
 
-  let table = [];
+  // 1) получаем ч/б картинку
+  const imgData = ctx.getImageData(0, 0, width, height);
+  const gray = new Uint8ClampedArray(width * height);
 
-  for (let r = 0; r < rowsCount; r++) {
-    let row = [];
-    for (let c = 0; c < colsCount; c++) {
-      const cellCanvas = document.createElement("canvas");
-      const cellCtx = cellCanvas.getContext("2d");
+  for (let i = 0; i < imgData.data.length; i += 4) {
+    const r = imgData.data[i];
+    const g = imgData.data[i + 1];
+    const b = imgData.data[i + 2];
+    const v = 0.299 * r + 0.587 * g + 0.114 * b;
+    gray[i / 4] = v;
+  }
 
-      cellCanvas.width = cellWidth;
-      cellCanvas.height = cellHeight;
+  // 2) бинаризация
+  const bin = new Uint8ClampedArray(width * height);
+  const threshold = 200;
+  for (let i = 0; i < gray.length; i++) {
+    bin[i] = gray[i] < threshold ? 1 : 0;
+  }
 
-      cellCtx.drawImage(
-        canvas,
-        c * cellWidth,
-        r * cellHeight,
-        cellWidth,
-        cellHeight,
-        0,
-        0,
-        cellWidth,
-        cellHeight
-      );
-
-      const text = await ocrCell(cellCanvas);
-      row.push(text);
+  // 3) поиск горизонтальных линий
+  const horizontalLines = [];
+  for (let y = 0; y < height; y++) {
+    let blackCount = 0;
+    for (let x = 0; x < width; x++) {
+      if (bin[y * width + x]) blackCount++;
     }
-    table.push(row);
+    if (blackCount > width * 0.5) horizontalLines.push(y);
+  }
+
+  // 4) поиск вертикальных линий
+  const verticalLines = [];
+  for (let x = 0; x < width; x++) {
+    let blackCount = 0;
+    for (let y = 0; y < height; y++) {
+      if (bin[y * width + x]) blackCount++;
+    }
+    if (blackCount > height * 0.5) verticalLines.push(x);
+  }
+
+  // 5) чистим линии (слипающиеся пиксели → одна линия)
+  const cleanLines = (lines, minGap) => {
+    if (!lines.length) return [];
+    lines.sort((a, b) => a - b);
+    const res = [lines[0]];
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i] - res[res.length - 1] > minGap) {
+        res.push(lines[i]);
+      }
+    }
+    return res;
+  };
+
+  const hLines = cleanLines(horizontalLines, 5);
+  const vLines = cleanLines(verticalLines, 5);
+
+  if (hLines.length < 2 || vLines.length < 2) {
+    console.log("Линий мало:", hLines.length, vLines.length);
+    return [];
+  }
+
+  // 6) строим ячейки по пересечениям линий
+  const cells = [];
+  for (let r = 0; r < hLines.length - 1; r++) {
+    for (let c = 0; c < vLines.length - 1; c++) {
+      const x = vLines[c];
+      const y = hLines[r];
+      const w = vLines[c + 1] - vLines[c];
+      const h = hLines[r + 1] - hLines[r];
+
+      if (w < 20 || h < 15) continue; // отсекаем мелочь
+
+      cells.push({ row: r, col: c, x, y, w, h });
+    }
+  }
+
+  // 7) OCR по ячейкам
+  const table = [];
+  for (let r = 0; r < hLines.length - 1; r++) {
+    table[r] = [];
+  }
+
+  for (let cell of cells) {
+    const cellCanvas = document.createElement("canvas");
+    const cellCtx = cellCanvas.getContext("2d");
+    cellCanvas.width = cell.w;
+    cellCanvas.height = cell.h;
+
+    cellCtx.drawImage(
+      canvas,
+      cell.x,
+      cell.y,
+      cell.w,
+      cell.h,
+      0,
+      0,
+      cell.w,
+      cell.h
+    );
+
+    const text = await ocrCell(cellCanvas);
+    table[cell.row][cell.col] = text;
   }
 
   return table;
@@ -91,17 +164,22 @@ async function ocrCell(canvas) {
 }
 
 function renderTable(rows) {
-  let html = "<table>";
+  if (!rows.length) {
+    document.getElementById("result").innerHTML = "Таблица не найдена";
+    return;
+  }
 
+  let html = "<table>";
   rows.forEach(row => {
+    if (!row) return;
     html += "<tr>";
     row.forEach(cell => {
-      html += `<td contenteditable="true">${cell}</td>`;
+      html += `<td contenteditable="true">${cell || ""}</td>`;
     });
     html += "</tr>";
   });
-
   html += "</table>";
+
   document.getElementById("result").innerHTML = html;
 }
 </script>
