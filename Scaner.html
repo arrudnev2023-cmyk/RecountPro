@@ -17,14 +17,33 @@
 <h2>📄 Table Extractor</h2>
 
 <input type="file" id="fileInput" accept="image/*">
-
 <img id="preview">
-
 <div id="result"></div>
 
 <script>
 let cvReady = false;
-document.addEventListener("opencvready", () => cvReady = true);
+
+function waitForCV() {
+  return new Promise((resolve) => {
+    if (cvReady) return resolve();
+    if (typeof cv !== "undefined" && cv['onRuntimeInitialized']) {
+      cv['onRuntimeInitialized'] = () => {
+        cvReady = true;
+        resolve();
+      };
+    } else {
+      const interval = setInterval(() => {
+        if (typeof cv !== "undefined" && cv['onRuntimeInitialized']) {
+          clearInterval(interval);
+          cv['onRuntimeInitialized'] = () => {
+            cvReady = true;
+            resolve();
+          };
+        }
+      }, 100);
+    }
+  });
+}
 
 document.getElementById("fileInput").addEventListener("change", async (e) => {
   const file = e.target.files[0];
@@ -34,45 +53,35 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
   img.src = URL.createObjectURL(file);
 
   img.onload = async () => {
-    if (!cvReady) {
-      alert("OpenCV загружается, подожди секунду");
-      return;
-    }
-
+    await waitForCV();
     const table = await extractTable(img);
     renderTable(table);
   };
 });
 
 async function extractTable(img) {
-  // 1. Загружаем изображение в OpenCV
   let src = cv.imread(img);
   let gray = new cv.Mat();
   cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
-  // 2. Бинаризация
   let thresh = new cv.Mat();
   cv.adaptiveThreshold(gray, thresh, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 15, 10);
 
-  // 3. Находим горизонтальные линии
   let horizontal = thresh.clone();
   let horizontalsize = Math.floor(horizontal.cols / 20);
   let horizontalStructure = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(horizontalsize, 1));
   cv.erode(horizontal, horizontal, horizontalStructure);
   cv.dilate(horizontal, horizontal, horizontalStructure);
 
-  // 4. Находим вертикальные линии
   let vertical = thresh.clone();
   let verticalsize = Math.floor(vertical.rows / 20);
   let verticalStructure = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(1, verticalsize));
   cv.erode(vertical, vertical, verticalStructure);
   cv.dilate(vertical, vertical, verticalStructure);
 
-  // 5. Пересечения → сетка
   let mask = new cv.Mat();
   cv.bitwise_and(horizontal, vertical, mask);
 
-  // 6. Контуры ячеек
   let contours = new cv.MatVector();
   let hierarchy = new cv.Mat();
   cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
@@ -86,14 +95,7 @@ async function extractTable(img) {
     let cellMat = src.roi(rect);
     let text = await ocrCell(cellMat);
 
-    cells.push({
-      x: rect.x,
-      y: rect.y,
-      w: rect.width,
-      h: rect.height,
-      text
-    });
-
+    cells.push({ x: rect.x, y: rect.y, w: rect.width, h: rect.height, text });
     cellMat.delete();
   }
 
@@ -101,27 +103,24 @@ async function extractTable(img) {
   horizontal.delete(); vertical.delete(); mask.delete();
   contours.delete(); hierarchy.delete();
 
-  // 7. Сортировка ячеек по строкам/колонкам
   cells.sort((a, b) => a.y - b.y || a.x - b.x);
-
   return buildTableStructure(cells);
 }
 
 async function ocrCell(mat) {
   let canvas = document.createElement("canvas");
   cv.imshow(canvas, mat);
-
   const { data: { text } } = await Tesseract.recognize(canvas, "rus+eng", {
     tessedit_pageseg_mode: 6
   });
-
   return text.trim();
 }
 
 function buildTableStructure(cells) {
+  if (!cells.length) return [];
   let rows = [];
   let currentRow = [];
-  let lastY = cells[0]?.y || 0;
+  let lastY = cells[0].y;
 
   for (let cell of cells) {
     if (Math.abs(cell.y - lastY) > 20) {
@@ -132,13 +131,16 @@ function buildTableStructure(cells) {
     currentRow.push(cell);
   }
   rows.push(currentRow);
-
   return rows;
 }
 
 function renderTable(rows) {
-  let html = "<table>";
+  if (!rows.length) {
+    document.getElementById("result").innerHTML = "Таблица не найдена";
+    return;
+  }
 
+  let html = "<table>";
   for (let row of rows) {
     html += "<tr>";
     for (let cell of row) {
@@ -146,9 +148,7 @@ function renderTable(rows) {
     }
     html += "</tr>";
   }
-
   html += "</table>";
-
   document.getElementById("result").innerHTML = html;
 }
 </script>
