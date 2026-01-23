@@ -1,182 +1,307 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Table Scanner Pro v2.0</title>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
-    <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 1200px; }
-        .upload-zone { border: 3px dashed var(--accent); background: var(--card); border-radius: 15px; padding: 30px; text-align: center; cursor: pointer; margin-bottom: 20px; }
-        .preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .card { background: var(--card); padding: 15px; border-radius: 10px; overflow: hidden; }
-        canvas { width: 100%; height: auto; border: 1px solid #444; background: #000; }
-        .result-container { background: white; color: #333; padding: 10px; border-radius: 8px; overflow-x: auto; min-height: 400px; }
-        table { border-collapse: collapse; width: 100%; font-size: 12px; }
-        td { border: 1px solid #999; padding: 8px; min-width: 50px; outline: none; }
-        td:focus { background: #e0f2fe; border: 2px solid var(--accent); }
-        .status-bar { margin: 15px 0; padding: 10px; border-radius: 5px; background: rgba(56, 189, 248, 0.1); border-left: 5px solid var(--accent); }
-        .loader { display: none; width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin: 10px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .controls { margin-top: 10px; display: flex; gap: 10px; }
-        button { background: var(--accent); color: var(--bg); border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; }
-        @media (max-width: 768px) { .preview-grid { grid-template-columns: 1fr; } }
-    </style>
+  <meta charset="UTF-8" />
+  <title>RecountPro — Инвентаризация без ТСД на собственном ПО</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    /* ——— БАЗОВЫЕ ПЕРЕМЕННЫЕ ——— */
+    :root {
+      --primary: #1f6feb;
+      --accent: #00c781;
+      --bg: #020617;
+      --text: #f5f5f7;
+      --muted: #a0a4b8;
+      --danger: #ff4b5c;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .page {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px 16px 64px;
+    }
+
+    /* ——— АНИМАЦИИ ——— */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeIn 0.8s ease-out forwards;
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .pulse {
+      animation: pulse 2.4s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.85; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .card-hover:hover {
+      transform: translateY(-4px);
+      transition: 0.25s ease;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+    }
+
+    /* ——— КНОПКИ ——— */
+    .btn {
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #fff;
+    }
+
+    .btn-outline {
+      border: 1px solid rgba(255,255,255,0.3);
+      color: var(--muted);
+    }
+
+    /* ——— ШАПКА ——— */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0 24px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #38bdf8, #1f6feb);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 18px;
+    }
+
+    /* ——— HERO ——— */
+    .hero {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 32px;
+      align-items: center;
+      margin-top: 20px;
+    }
+
+    .hero-title {
+      font-size: 34px;
+      font-weight: 750;
+    }
+
+    .hero-title span {
+      background: linear-gradient(120deg, #38bdf8, #22c55e, #eab308);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .hero-subtitle {
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 520px;
+    }
+
+    .hero-card {
+      background: rgba(15,23,42,0.9);
+      border: 1px solid rgba(148,163,184,0.4);
+      border-radius: 20px;
+      padding: 18px;
+    }
+
+    .metric {
+      background: rgba(15,23,42,0.9);
+      border: 1px solid rgba(30,64,175,0.7);
+      padding: 10px;
+      border-radius: 14px;
+    }
+
+    .metric-value span.good { color: #22c55e; }
+
+    /* ——— СЕКЦИИ ——— */
+    section { margin-top: 40px; }
+
+    h2 { font-size: 24px; margin-bottom: 10px; }
+    h3 { margin-bottom: 8px; }
+
+    ul, ol { padding-left: 18px; }
+  </style>
 </head>
+
 <body>
+<div class="page">
 
-<div class="container">
-    <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
-        <h2>📸 Сфотографировать или выбрать таблицу</h2>
-        <input type="file" id="fileInput" hidden accept="image/*">
-        <p>Для лучшего результата держите телефон ровно над листом</p>
+<!-- ——— HEADER ——— -->
+<header class="fade-in">
+  <div class="logo">
+    <div class="logo-mark">R</div>
+    <div>
+      <strong>RecountPro</strong><br>
+      <small style="color:var(--muted)">Инвентаризация без ТСД на собственном ПО</small>
+    </div>
+  </div>
+
+  <a href="tel:+79990000000" class="btn btn-primary pulse">📞 Позвонить</a>
+</header>
+
+<!-- ——— HERO ——— -->
+<section class="hero fade-in">
+  <div>
+    <h1 class="hero-title">
+      Инвентаризация нового поколения<br>
+      <span>без ТСД — на собственном ПО RecountPro</span>
+    </h1>
+
+    <p class="hero-subtitle">
+      Пока конкуренты считают товар на устаревших ТСД, мы работаем на <strong>современной цифровой платформе</strong>,
+      которая фиксирует каждое действие, исключает человеческий фактор и даёт вам <strong>прозрачный отчёт</strong>
+      уже в день ревизии.
+    </p>
+
+    <p class="hero-subtitle">
+      RecountPro — это не просто пересчёт. Это <strong>управляемая ревизия</strong> с онлайн‑контролем, аналитикой,
+      фото‑фиксацией и готовыми файлами для 1С.
+    </p>
+
+    <div style="margin-top:12px;display:flex;gap:10px;">
+      <a href="tel:+79990000000" class="btn btn-primary">📞 Заказать ревизию</a>
+      <a href="#how" class="btn btn-outline">👁️ Как мы работаем</a>
+    </div>
+  </div>
+
+  <div class="hero-card card-hover">
+    <h3 style="color:var(--muted);font-size:13px;margin:0 0 10px;">Пример отчёта RecountPro</h3>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+      <div class="metric">
+        <div class="metric-label">Сеть</div>
+        <div class="metric-value">12 точек</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Точность</div>
+        <div class="metric-value"><span class="good">99,7%</span></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Потери</div>
+        <div class="metric-value"><span class="good">−38%</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ——— ABOUT ——— -->
+<section id="about" class="fade-in">
+  <h2>RecountPro — команда ревизоров с собственным ПО</h2>
+  <p style="color:var(--muted);max-width:600px;">
+    Мы заменили устаревшие ТСД на собственную цифровую платформу. Поэтому процесс быстрый, прозрачный и полностью управляемый.
+  </p>
+
+  <ul style="color:var(--muted);line-height:1.7;">
+    <li>Полная инвентаризация магазинов, складов, зоомагазинов.</li>
+    <li>Работаем на собственном ПО RecountPro — без ТСД.</li>
+    <li>Интеграция с 1С, выгрузка остатков, сверка.</li>
+    <li>Фото‑фиксация каждой спорной позиции.</li>
+    <li>Готовые файлы для 1С и Excel.</li>
+  </ul>
+</section>
+
+<!-- ——— HOW ——— -->
+<section id="how" class="fade-in">
+  <h2>Как проходит ревизия с RecountPro</h2>
+  <p style="color:var(--muted);max-width:600px;">
+    Мы заменили устаревшие ТСД на собственную цифровую платформу. Поэтому процесс быстрый, прозрачный и полностью управляемый.
+  </p>
+
+  <ol style="line-height:1.8;color:var(--muted);margin-top:16px;">
+    <li><strong>Бриф.</strong> Понимаем ваш формат учёта, выгружаем остатки из 1С.</li>
+    <li><strong>Настройка проекта.</strong> Создаём структуру залов, категорий, SKU в RecountPro.</li>
+    <li><strong>Выезд.</strong> Ревизоры работают на нашем ПО — без ТСД, без ошибок.</li>
+    <li><strong>Онлайн‑контроль.</strong> Вы видите прогресс в реальном времени.</li>
+    <li><strong>Отчёт.</strong> Готовые файлы для 1С + аналитика по расхождениям.</li>
+  </ol>
+</section>
+
+<!-- ——— WHY TSD IS BAD ——— -->
+<section class="fade-in">
+  <h2>Почему ревизия на ТСД — это прошлый век</h2>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;color:var(--muted);margin-top:16px;">
+    <div style="background:rgba(15,23,42,0.9);padding:18px;border-radius:16px;">
+      <h3 style="color:#f87171;">Проблемы ревизоров с ТСД</h3>
+      <ul style="line-height:1.7;">
+        <li>Устаревшие терминалы, медленный ввод данных.</li>
+        <li>Ошибки из‑за ручного ввода.</li>
+        <li>Нет онлайн‑контроля.</li>
+        <li>Данные выгружаются «пачкой» — ошибки поздно видны.</li>
+        <li>Нет фото‑фиксации спорных позиций.</li>
+      </ul>
     </div>
 
-    <div id="status" class="status-bar">Статус: Ожидание файла...</div>
-    <div id="loader" class="loader"></div>
-
-    <div class="preview-grid">
-        <div class="card">
-            <h3>Обработка (Computer Vision)</h3>
-            <canvas id="canvas"></canvas>
-        </div>
-        <div class="card">
-            <h3>Электронная версия (Редактируемая)</h3>
-            <div id="resultContainer" class="result-container"></div>
-            <div class="controls">
-                <button onclick="exportCSV()">Сохранить в Excel/CSV</button>
-            </div>
-        </div>
+    <div style="background:rgba(15,23,42,0.9);padding:18px;border-radius:16px;">
+      <h3 style="color:#4ade80;">Преимущества RecountPro</h3>
+      <ul style="line-height:1.7;">
+        <li>Работаем на собственном ПО — без ТСД.</li>
+        <li>Каждое действие фиксируется автоматически.</li>
+        <li>Онлайн‑доступ к ревизии в реальном времени.</li>
+        <li>Фото‑фиксация каждой спорной позиции.</li>
+        <li>Готовые файлы для 1С и Excel сразу после ревизии.</li>
+      </ul>
     </div>
+  </div>
+</section>
+
+<!-- ——— CTA ——— -->
+<section id="contact" class="fade-in">
+  <h2>Хотите ревизию без ошибок и устаревших ТСД?</h2>
+  <p style="color:var(--muted);max-width:520px;">
+    Позвоните — предложим формат ревизии под ваш объект, рассчитаем стоимость и покажем демо RecountPro.
+  </p>
+
+  <div style="margin-top:16px;display:flex;gap:10px;">
+    <a href="tel:+79990000000" class="btn btn-primary pulse">📞 Позвонить сейчас</a>
+    <a href="mailto:info@recountpro.ru" class="btn btn-outline">✉️ Написать</a>
+  </div>
+</section>
+
+<!-- ——— FOOTER ——— -->
+<footer style="margin-top:40px;color:var(--muted);font-size:13px;">
+  © RecountPro <span id="year"></span>. Инвентаризация без ТСД на собственном ПО.
+</footer>
+
 </div>
 
 <script>
-    const fileInput = document.getElementById('fileInput');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const status = document.getElementById('status');
-    const loader = document.getElementById('loader');
-
-    fileInput.onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const img = new Image();
-            img.onload = () => {
-                const maxDim = 1500; // Ограничиваем размер для скорости
-                let w = img.width, h = img.height;
-                if (w > maxDim || h > maxDim) {
-                    const ratio = Math.min(maxDim/w, maxDim/h);
-                    w *= ratio; h *= ratio;
-                }
-                canvas.width = w; canvas.height = h;
-                ctx.drawImage(img, 0, 0, w, h);
-                preprocessImage(); 
-                startOCR();
-            };
-            img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
-    };
-
-    // Улучшение картинки перед распознаванием
-    function preprocessImage() {
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
-        for (let i = 0; i < data.length; i += 4) {
-            const avg = (data[i] + data[i+1] + data[i+2]) / 3;
-            // Порог бинаризации (убираем серые тени стола)
-            const threshold = 140; 
-            const val = avg > threshold ? 255 : 0;
-            data[i] = data[i+1] = data[i+2] = val;
-        }
-        ctx.putImageData(imageData, 0, 0);
-        status.innerText = "Статус: Изображение очищено. Запуск ИИ...";
-    }
-
-    async function startOCR() {
-        loader.style.display = "block";
-        try {
-            const worker = await Tesseract.createWorker('rus+eng');
-            // Настраиваем Tesseract на поиск блоков (таблиц)
-            await worker.setParameters({
-                tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT,
-            });
-            
-            const { data } = await worker.recognize(canvas);
-            buildSmartTable(data.words);
-            
-            await worker.terminate();
-            status.innerText = "Статус: Готово! Вы можете редактировать текст в ячейках.";
-        } catch (err) {
-            status.innerText = "Ошибка: " + err.message;
-        } finally {
-            loader.style.display = "none";
-        }
-    }
-
-    function buildSmartTable(words) {
-        const container = document.getElementById('resultContainer');
-        container.innerHTML = "";
-        
-        // Группируем слова в строки по Y координате
-        const rowThreshold = 15; 
-        let lines = [];
-        
-        words.forEach(w => {
-            let found = false;
-            for (let line of lines) {
-                if (Math.abs(w.bbox.y0 - line.y) < rowThreshold) {
-                    line.words.push(w);
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) lines.push({ y: w.bbox.y0, words: [w] });
-        });
-
-        lines.sort((a, b) => a.y - b.y);
-
-        const table = document.createElement('table');
-        lines.forEach(line => {
-            const tr = document.createElement('tr');
-            // Сортируем слова в строке по X
-            line.words.sort((a, b) => a.bbox.x0 - b.bbox.x0);
-            
-            // Пытаемся понять, когда начинается новая ячейка (большой пробел)
-            let currentCellText = [];
-            line.words.forEach((w, i) => {
-                currentCellText.push(w.text);
-                const nextW = line.words[i+1];
-                if (!nextW || (nextW.bbox.x0 - w.bbox.x1) > 20) {
-                    const td = document.createElement('td');
-                    td.contentEditable = true;
-                    td.innerText = currentCellText.join(" ");
-                    tr.appendChild(td);
-                    currentCellText = [];
-                }
-            });
-            table.appendChild(tr);
-        });
-        container.appendChild(table);
-    }
-
-    function exportCSV() {
-        let csv = "";
-        document.querySelectorAll("table tr").forEach(tr => {
-            let row = [];
-            tr.querySelectorAll("td").forEach(td => row.push(`"${td.innerText.replace(/"/g, '""')}"`));
-            csv += row.join(",") + "\n";
-        });
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "table_export.csv";
-        link.click();
-    }
+  document.getElementById("year").textContent = new Date().getFullYear();
 </script>
 
 </body>
