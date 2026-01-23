@@ -1,95 +1,264 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Table Extractor (Tesseract only)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Table Scanner Pro 2026</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --text: #f1f5f9;
+        }
 
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
 
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    #preview { max-width: 100%; margin-top: 10px; display: block; }
-    table { border-collapse: collapse; margin-top: 20px; width: 100%; }
-    td, th { border: 1px solid #ccc; padding: 4px; font-size: 12px; }
-    #loader { margin-top: 10px; font-size: 14px; color: #555; }
-  </style>
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            padding: 40px 0;
+        }
+
+        .scanner-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--accent);
+            background: var(--card);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-bottom: 30px;
+        }
+
+        .upload-zone:hover {
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        .preview-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        canvas, img {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-table-container {
+            background: white;
+            color: black;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            min-height: 300px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        td, th {
+            border: 1px solid #ddd;
+            padding: 12px;
+            min-width: 100px;
+            text-align: left;
+        }
+
+        .status {
+            font-weight: bold;
+            color: var(--accent);
+            margin: 10px 0;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: var(--bg);
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .loader {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Адаптивность для мобилок */
+        @media (max-width: 768px) {
+            .preview-container { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
 <body>
 
-<h2>📄 Table Extractor (без сервера)</h2>
+<div class="container">
+    <div class="scanner-header">
+        <h1>AI Table OCR Scanner</h1>
+        <p>Загрузите фото таблицы, и нейросеть превратит её в электронный вид</p>
+    </div>
 
-<input type="file" id="fileInput" accept="image/*">
-<div id="loader"></div>
-<img id="preview">
-<div id="result"></div>
+    <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+        <p>Нажмите, чтобы сделать фото или выбрать файл</p>
+        <input type="file" id="fileInput" hidden accept="image/*">
+        <div id="status" class="status">Готов к работе</div>
+        <div id="loader" class="loader"></div>
+    </div>
+
+    <div class="preview-container">
+        <div class="card">
+            <h3>Оригинал / Обработка</h3>
+            <canvas id="canvas"></canvas>
+        </div>
+        <div class="card">
+            <h3>Результат (Электронная таблица)</h3>
+            <div id="resultContainer" class="result-table-container">
+                <p style="color: #666;">Здесь появится таблица после сканирования...</p>
+            </div>
+            <button class="btn" onclick="exportToExcel()">Скачать в CSV</button>
+        </div>
+    </div>
+</div>
 
 <script>
-const fileInput = document.getElementById("fileInput");
-const loader = document.getElementById("loader");
-const preview = document.getElementById("preview");
-const result = document.getElementById("result");
+    const fileInput = document.getElementById('fileInput');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const status = document.getElementById('status');
+    const loader = document.getElementById('loader');
 
-fileInput.addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+    fileInput.onchange = function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
 
-  result.innerHTML = "";
-  loader.textContent = "Загружаю фото...";
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                // Подгоняем размер холста под изображение
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                processImage();
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
 
-  preview.src = URL.createObjectURL(file);
+    async function processImage() {
+        status.innerText = "Распознаю текст и структуру...";
+        loader.style.display = "block";
 
-  preview.onload = async () => {
-    loader.textContent = "Распознаю текст...";
-    try {
-      const { data } = await Tesseract.recognize(preview, "rus+eng", {
-        tessedit_pageseg_mode: 6
-      });
-      loader.textContent = "";
-      const rows = buildTableFromLines(data);
-      renderTable(rows);
-    } catch (err) {
-      console.error(err);
-      loader.textContent = "Ошибка распознавания";
+        try {
+            // Инициализация Tesseract
+            const worker = await Tesseract.createWorker('rus+eng');
+            
+            // Получаем данные с координатами слов
+            const result = await worker.recognize(canvas);
+            console.log(result.data);
+
+            generateTable(result.data.lines);
+
+            await worker.terminate();
+            status.innerText = "Готово!";
+        } catch (error) {
+            console.error(error);
+            status.innerText = "Ошибка при распознавании.";
+        } finally {
+            loader.style.display = "none";
+        }
     }
-  };
-});
 
-function buildTableFromLines(data) {
-  if (!data || !data.lines) return [];
+    function generateTable(lines) {
+        const container = document.getElementById('resultContainer');
+        container.innerHTML = ""; // Очистка
 
-  // Берём только строки, где есть хоть какой‑то текст
-  const lines = data.lines.filter(l => l.text && l.text.trim().length > 0);
+        const table = document.createElement('table');
+        
+        // Логика группировки строк по Y-координате
+        // Это упрощенный алгоритм для воссоздания структуры
+        let rows = [];
+        let currentRow = [];
+        let lastY = -1;
 
-  const rows = lines.map(line => {
-    // Разбиваем строку на слова — это будут ячейки
-    const words = line.text
-      .replace(/\s+/g, " ")
-      .trim()
-      .split(" ");
-    return words;
-  });
+        lines.forEach(line => {
+            const y = line.bbox.y0;
+            // Если разница по высоте небольшая, считаем это одной строкой
+            if (lastY !== -1 && Math.abs(y - lastY) > 30) {
+                rows.push(currentRow);
+                currentRow = [];
+            }
+            currentRow.push(line.text);
+            lastY = y;
+        });
+        rows.push(currentRow);
 
-  return rows;
-}
+        rows.forEach(rowData => {
+            const tr = document.createElement('tr');
+            rowData.forEach(cellText => {
+                const td = document.createElement('td');
+                td.contentEditable = true; // Можно править текст вручную
+                td.innerText = cellText;
+                tr.appendChild(td);
+            });
+            table.appendChild(tr);
+        });
 
-function renderTable(rows) {
-  if (!rows.length) {
-    result.innerHTML = "Таблица не найдена";
-    return;
-  }
+        container.appendChild(table);
+    }
 
-  let html = "<table>";
-  rows.forEach(row => {
-    html += "<tr>";
-    row.forEach(cell => {
-      html += `<td contenteditable="true">${cell || ""}</td>`;
-    });
-    html += "</tr>";
-  });
-  html += "</table>";
+    function exportToExcel() {
+        let csv = [];
+        const rows = document.querySelectorAll("table tr");
+        
+        for (const row of rows) {
+            const cols = row.querySelectorAll("td, th");
+            const rowData = [];
+            for (const col of cols) rowData.push('"' + col.innerText + '"');
+            csv.push(rowData.join(","));
+        }
 
-  result.innerHTML = html;
-}
+        const csvContent = "data:text/csv;charset=utf-8," + csv.join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "scanned_table.csv");
+        document.body.appendChild(link);
+        link.click();
+    }
 </script>
 
 </body>
