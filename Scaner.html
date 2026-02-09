@@ -87,6 +87,13 @@
         max-width: 400px;
         margin: auto;
     }
+
+    .found {
+        font-size: 18px;
+        margin-top: 10px;
+        font-weight: bold;
+        color: #1e88e5;
+    }
 </style>
 </head>
 <body>
@@ -144,10 +151,10 @@
 </div>
 
 <script src="https://unpkg.com/quagga2@1.2.6/dist/quagga.js"></script>
+
 <script>
 let db = JSON.parse(localStorage.getItem("barcodeDB") || "{}");
-let devices = [];
-let currentDeviceId = null;
+let currentFacing = "environment";
 let stream = null;
 
 function saveDB() {
@@ -192,19 +199,13 @@ function scanCodeManual() {
         db[code] ? `${code} → ${db[code]}` : (code ? "Товар не найден" : "");
 }
 
-// ------------------ SNAPSHOT SCANNER ------------------
+// ------------------ CAMERA ------------------
 
 async function startCamera() {
     stopCamera();
 
-    devices = await navigator.mediaDevices.enumerateDevices();
-    devices = devices.filter(d => d.kind === "videoinput");
-
-    const back = devices.find(d => /back|environment/gi.test(d.label));
-    currentDeviceId = back ? back.deviceId : devices[0].deviceId;
-
     stream = await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: currentDeviceId }
+        video: { facingMode: currentFacing }
     });
 
     const preview = document.getElementById("preview");
@@ -212,15 +213,9 @@ async function startCamera() {
     preview.play();
 }
 
-async function switchCamera() {
-    if (!devices.length) return;
-
-    const index = devices.findIndex(d => d.deviceId === currentDeviceId);
-    const next = (index + 1) % devices.length;
-
-    currentDeviceId = devices[next].deviceId;
-
-    await startCamera();
+function switchCamera() {
+    currentFacing = currentFacing === "environment" ? "user" : "environment";
+    startCamera();
 }
 
 function takeSnapshot() {
