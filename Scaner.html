@@ -102,7 +102,7 @@
         margin-top: 10px;
     }
 
-    /* Рамка под линейный штрих-код (горизонтальная) */
+    /* Рамка под линейный штрих-код */
     #frame {
         position: absolute;
         border: 3px solid #ff5252;
@@ -131,7 +131,9 @@
     <!-- Сканер -->
     <div class="card">
         <h2>Сканирование камерой</h2>
+
         <button onclick="startScanner()">📷 Запустить сканер</button>
+        <button onclick="switchCamera()" style="background:#6a1b9a;margin-top:10px;">🔄 Сменить камеру</button>
         <button onclick="stopScanner()" style="background:#e53935;margin-top:10px;">⛔ Остановить</button>
 
         <div class="scanner-wrapper">
@@ -181,8 +183,20 @@
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 <script>
 let db = JSON.parse(localStorage.getItem("barcodeDB") || "{}");
-let codeReader = null;
-let currentStream = null;
+let codeReader = new ZXing.BrowserMultiFormatReader();
+let currentDeviceId = null;
+let devices = [];
+
+// Разрешённые форматы (только штрих-коды)
+const allowedFormats = [
+    ZXing.BarcodeFormat.EAN_13,
+    ZXing.BarcodeFormat.EAN_8,
+    ZXing.BarcodeFormat.UPC_A,
+    ZXing.BarcodeFormat.UPC_E,
+    ZXing.BarcodeFormat.CODE_128,
+    ZXing.BarcodeFormat.CODE_39,
+    ZXing.BarcodeFormat.ITF
+];
 
 function saveDB() {
     localStorage.setItem("barcodeDB", JSON.stringify(db));
@@ -226,76 +240,49 @@ function scanCodeManual() {
         db[code] ? `${code} → ${db[code]}` : (code ? "Товар не найден" : "");
 }
 
-// Список допустимых форматов (только линейные штрих-коды)
-const allowedFormats = [
-    ZXing.BarcodeFormat.EAN_13,
-    ZXing.BarcodeFormat.EAN_8,
-    ZXing.BarcodeFormat.UPC_A,
-    ZXing.BarcodeFormat.UPC_E,
-    ZXing.BarcodeFormat.CODE_128,
-    ZXing.BarcodeFormat.CODE_39,
-    ZXing.BarcodeFormat.ITF
-];
+async function startScanner() {
+    stopScanner();
 
-function startScanner() {
-    if (codeReader) return;
+    devices = await codeReader.listVideoInputDevices();
 
-    codeReader = new ZXing.BrowserMultiFormatReader();
-    const preview = document.getElementById('preview');
+    // выбираем заднюю камеру по умолчанию
+    const back = devices.find(d => /back|environment/gi.test(d.label));
+    currentDeviceId = back ? back.deviceId : devices[0].deviceId;
 
-    codeReader.listVideoInputDevices().then(devices => {
-        // всегда пытаемся взять заднюю камеру
-        let deviceId = null;
-        const back = devices.find(d => /back|environment/gi.test(d.label));
-        if (back) {
-            deviceId = back.deviceId;
-        } else if (devices.length > 0) {
-            deviceId = devices[devices.length - 1].deviceId; // часто задняя последняя
+    decode();
+}
+
+function switchCamera() {
+    if (!devices.length) return;
+
+    const index = devices.findIndex(d => d.deviceId === currentDeviceId);
+    const next = (index + 1) % devices.length;
+
+    currentDeviceId = devices[next].deviceId;
+
+    decode();
+}
+
+function decode() {
+    const preview = document.getElementById("preview");
+
+    codeReader.decodeFromVideoDevice(currentDeviceId, preview, (result, err) => {
+        if (result) {
+            if (!allowedFormats.includes(result.barcodeFormat)) return;
+
+            const code = result.text;
+            const name = db[code] || "Товар не найден";
+            document.getElementById("scanResult").innerText = `${code} → ${name}`;
         }
-
-        if (!deviceId) {
-            alert("Камера не найдена");
-            return;
-        }
-
-        codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
-            if (result) {
-                // фильтруем: только штрих-коды, не QR
-                if (!allowedFormats.includes(result.barcodeFormat)) {
-                    return;
-                }
-                const code = result.text;
-                const name = db[code] || "Товар не найден";
-                document.getElementById("scanResult").innerText = `${code} → ${name}`;
-            }
-        });
-
-        // пробуем включить автофокус
-        setTimeout(() => {
-            try {
-                const track = preview.srcObject && preview.srcObject.getVideoTracks()[0];
-                if (track && track.applyConstraints) {
-                    track.applyConstraints({
-                        advanced: [
-                            { focusMode: "continuous" }
-                        ]
-                    }).catch(() => {});
-                }
-            } catch(e) {}
-        }, 1000);
-    }).catch(err => {
-        console.error(err);
-        alert("Не удалось получить доступ к камере");
     });
 }
 
 function stopScanner() {
-    if (codeReader) {
-        codeReader.reset();
-        codeReader = null;
-    }
-    const preview = document.getElementById('preview');
-    if (preview && preview.srcObject) {
+    const preview = document.getElementById("preview");
+
+    if (codeReader) codeReader.reset();
+
+    if (preview.srcObject) {
         preview.srcObject.getTracks().forEach(t => t.stop());
         preview.srcObject = null;
     }
