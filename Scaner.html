@@ -69,13 +69,13 @@
         width: 100%;
         border-collapse: collapse;
         margin-top: 10px;
-        table-layout: fixed; /* фиксированная сетка */
+        table-layout: fixed;
     }
 
     th, td {
         border-bottom: 1px solid #ddd;
         padding: 10px;
-        word-break: break-word; /* перенос длинных слов */
+        word-break: break-word;
         vertical-align: top;
     }
 
@@ -84,7 +84,6 @@
         font-weight: bold;
     }
 
-    /* фиксируем ширину колонки штрих-кода */
     th:first-child, td:first-child {
         width: 120px;
     }
@@ -103,16 +102,17 @@
         margin-top: 10px;
     }
 
+    /* Рамка под линейный штрих-код (горизонтальная) */
     #frame {
         position: absolute;
         border: 3px solid #ff5252;
-        width: 200px;
-        height: 200px;
+        width: 80%;
+        height: 80px;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
         pointer-events: none;
-        border-radius: 10px;
+        border-radius: 8px;
     }
 
     .scanner-wrapper {
@@ -120,7 +120,6 @@
         max-width: 400px;
         margin: auto;
     }
-
 </style>
 </head>
 <body>
@@ -183,6 +182,7 @@
 <script>
 let db = JSON.parse(localStorage.getItem("barcodeDB") || "{}");
 let codeReader = null;
+let currentStream = null;
 
 function saveDB() {
     localStorage.setItem("barcodeDB", JSON.stringify(db));
@@ -223,8 +223,19 @@ function bulkImport() {
 function scanCodeManual() {
     const code = document.getElementById("scanInput").value.trim();
     document.getElementById("manualResult").innerText =
-        db[code] ? `${code} → ${db[code]}` : "Товар не найден";
+        db[code] ? `${code} → ${db[code]}` : (code ? "Товар не найден" : "");
 }
+
+// Список допустимых форматов (только линейные штрих-коды)
+const allowedFormats = [
+    ZXing.BarcodeFormat.EAN_13,
+    ZXing.BarcodeFormat.EAN_8,
+    ZXing.BarcodeFormat.UPC_A,
+    ZXing.BarcodeFormat.UPC_E,
+    ZXing.BarcodeFormat.CODE_128,
+    ZXing.BarcodeFormat.CODE_39,
+    ZXing.BarcodeFormat.ITF
+];
 
 function startScanner() {
     if (codeReader) return;
@@ -233,17 +244,48 @@ function startScanner() {
     const preview = document.getElementById('preview');
 
     codeReader.listVideoInputDevices().then(devices => {
-        let deviceId = devices[0].deviceId;
+        // всегда пытаемся взять заднюю камеру
+        let deviceId = null;
         const back = devices.find(d => /back|environment/gi.test(d.label));
-        if (back) deviceId = back.deviceId;
+        if (back) {
+            deviceId = back.deviceId;
+        } else if (devices.length > 0) {
+            deviceId = devices[devices.length - 1].deviceId; // часто задняя последняя
+        }
+
+        if (!deviceId) {
+            alert("Камера не найдена");
+            return;
+        }
 
         codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
             if (result) {
+                // фильтруем: только штрих-коды, не QR
+                if (!allowedFormats.includes(result.barcodeFormat)) {
+                    return;
+                }
                 const code = result.text;
                 const name = db[code] || "Товар не найден";
                 document.getElementById("scanResult").innerText = `${code} → ${name}`;
             }
         });
+
+        // пробуем включить автофокус
+        setTimeout(() => {
+            try {
+                const track = preview.srcObject && preview.srcObject.getVideoTracks()[0];
+                if (track && track.applyConstraints) {
+                    track.applyConstraints({
+                        advanced: [
+                            { focusMode: "continuous" }
+                        ]
+                    }).catch(() => {});
+                }
+            } catch(e) {}
+        }, 1000);
+    }).catch(err => {
+        console.error(err);
+        alert("Не удалось получить доступ к камере");
     });
 }
 
@@ -253,7 +295,7 @@ function stopScanner() {
         codeReader = null;
     }
     const preview = document.getElementById('preview');
-    if (preview.srcObject) {
+    if (preview && preview.srcObject) {
         preview.srcObject.getTracks().forEach(t => t.stop());
         preview.srcObject = null;
     }
