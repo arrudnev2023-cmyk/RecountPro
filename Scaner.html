@@ -64,7 +64,6 @@
         background: #1565c0;
     }
 
-    /* Таблица */
     table {
         width: 100%;
         border-collapse: collapse;
@@ -95,7 +94,6 @@
         color: #1e88e5;
     }
 
-    /* Сканер */
     #preview {
         width: 100%;
         border-radius: 12px;
@@ -182,9 +180,6 @@ let devices = [];
 let stream = null;
 let usingBarcodeDetector = false;
 
-const allowedFormats = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf"];
-
-// ---------- БАЗА ----------
 function saveDB() {
     localStorage.setItem("barcodeDB", JSON.stringify(db));
     renderTable();
@@ -227,7 +222,7 @@ function scanCodeManual() {
         db[code] ? `${code} → ${db[code]}` : (code ? "Товар не найден" : "");
 }
 
-// ---------- СКАНЕР ----------
+// ------------------ СКАНЕР ------------------
 
 async function startScanner() {
     stopScanner();
@@ -258,7 +253,12 @@ async function startStream() {
     stream = await navigator.mediaDevices.getUserMedia({
         video: {
             deviceId: currentDeviceId,
-            focusMode: "continuous"
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            advanced: [
+                { zoom: 3 },
+                { focusMode: "continuous" }
+            ]
         }
     });
 
@@ -286,7 +286,27 @@ async function runBarcodeDetector() {
         if (!usingBarcodeDetector) return;
 
         try {
-            const barcodes = await detector.detect(preview);
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+
+            const w = preview.videoWidth;
+            const h = preview.videoHeight;
+
+            canvas.width = w;
+            canvas.height = h;
+
+            ctx.drawImage(preview, 0, 0, w, h);
+
+            const roi = {
+                x: w * 0.1,
+                y: h * 0.45,
+                width: w * 0.8,
+                height: h * 0.1
+            };
+
+            const imageData = ctx.getImageData(roi.x, roi.y, roi.width, roi.height);
+
+            const barcodes = await detector.detect(imageData);
 
             if (barcodes.length > 0) {
                 const code = barcodes[0].rawValue;
