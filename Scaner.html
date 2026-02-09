@@ -64,36 +64,6 @@
         background: #1565c0;
     }
 
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-        table-layout: fixed;
-    }
-
-    th, td {
-        border-bottom: 1px solid #ddd;
-        padding: 10px;
-        word-break: break-word;
-        vertical-align: top;
-    }
-
-    th {
-        background: #f0f0f0;
-        font-weight: bold;
-    }
-
-    th:first-child, td:first-child {
-        width: 120px;
-    }
-
-    .found {
-        font-size: 18px;
-        margin-top: 10px;
-        font-weight: bold;
-        color: #1e88e5;
-    }
-
     #preview {
         width: 100%;
         border-radius: 12px;
@@ -128,9 +98,10 @@
     <div class="card">
         <h2>Сканирование камерой</h2>
 
-        <button onclick="startScanner()">📷 Запустить сканер</button>
+        <button onclick="startCamera()">📷 Включить камеру</button>
         <button onclick="switchCamera()" style="background:#6a1b9a;margin-top:10px;">🔄 Сменить камеру</button>
-        <button onclick="stopScanner()" style="background:#e53935;margin-top:10px;">⛔ Остановить</button>
+        <button onclick="takeSnapshot()" style="background:#00897b;margin-top:10px;">📸 Сканировать</button>
+        <button onclick="stopCamera()" style="background:#e53935;margin-top:10px;">⛔ Остановить</button>
 
         <div class="scanner-wrapper">
             <video id="preview" playsinline></video>
@@ -172,13 +143,12 @@
 
 </div>
 
-<script src="https://unpkg.com/@zxing/library@latest"></script>
+<script src="https://unpkg.com/quagga2@1.2.6/dist/quagga.js"></script>
 <script>
 let db = JSON.parse(localStorage.getItem("barcodeDB") || "{}");
-let currentDeviceId = null;
 let devices = [];
+let currentDeviceId = null;
 let stream = null;
-let usingBarcodeDetector = false;
 
 function saveDB() {
     localStorage.setItem("barcodeDB", JSON.stringify(db));
@@ -222,10 +192,10 @@ function scanCodeManual() {
         db[code] ? `${code} → ${db[code]}` : (code ? "Товар не найден" : "");
 }
 
-// ------------------ СКАНЕР ------------------
+// ------------------ SNAPSHOT SCANNER ------------------
 
-async function startScanner() {
-    stopScanner();
+async function startCamera() {
+    stopCamera();
 
     devices = await navigator.mediaDevices.enumerateDevices();
     devices = devices.filter(d => d.kind === "videoinput");
@@ -233,7 +203,13 @@ async function startScanner() {
     const back = devices.find(d => /back|environment/gi.test(d.label));
     currentDeviceId = back ? back.deviceId : devices[0].deviceId;
 
-    await startStream();
+    stream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: currentDeviceId }
+    });
+
+    const preview = document.getElementById("preview");
+    preview.srcObject = stream;
+    preview.play();
 }
 
 async function switchCamera() {
@@ -244,99 +220,53 @@ async function switchCamera() {
 
     currentDeviceId = devices[next].deviceId;
 
-    await startStream();
+    await startCamera();
 }
 
-async function startStream() {
-    stopScanner();
+function takeSnapshot() {
+    const video = document.getElementById("preview");
 
-    stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-            deviceId: currentDeviceId,
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-            advanced: [
-                { zoom: 3 },
-                { focusMode: "continuous" }
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0);
+
+    const data = canvas.toDataURL("image/png");
+
+    Quagga.decodeSingle({
+        src: data,
+        numOfWorkers: 0,
+        inputStream: { size: 800 },
+        decoder: {
+            readers: [
+                "ean_reader",
+                "ean_8_reader",
+                "code_128_reader",
+                "code_39_reader",
+                "upc_reader",
+                "upc_e_reader",
+                "i2of5_reader"
             ]
+        },
+        locate: true,
+        locator: {
+            patchSize: "medium",
+            halfSample: false
         }
-    });
-
-    const preview = document.getElementById("preview");
-    preview.srcObject = stream;
-    preview.play();
-
-    if ("BarcodeDetector" in window) {
-        usingBarcodeDetector = true;
-        runBarcodeDetector();
-    } else {
-        usingBarcodeDetector = false;
-        runZXing();
-    }
-}
-
-async function runBarcodeDetector() {
-    const detector = new BarcodeDetector({
-        formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "itf"]
-    });
-
-    const preview = document.getElementById("preview");
-
-    async function scan() {
-        if (!usingBarcodeDetector) return;
-
-        try {
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
-
-            const w = preview.videoWidth;
-            const h = preview.videoHeight;
-
-            canvas.width = w;
-            canvas.height = h;
-
-            ctx.drawImage(preview, 0, 0, w, h);
-
-            const roi = {
-                x: w * 0.1,
-                y: h * 0.45,
-                width: w * 0.8,
-                height: h * 0.1
-            };
-
-            const imageData = ctx.getImageData(roi.x, roi.y, roi.width, roi.height);
-
-            const barcodes = await detector.detect(imageData);
-
-            if (barcodes.length > 0) {
-                const code = barcodes[0].rawValue;
-                const name = db[code] || "Товар не найден";
-                document.getElementById("scanResult").innerText = `${code} → ${name}`;
-            }
-        } catch {}
-
-        requestAnimationFrame(scan);
-    }
-
-    scan();
-}
-
-function runZXing() {
-    const preview = document.getElementById("preview");
-    const reader = new ZXing.BrowserMultiFormatReader();
-
-    reader.decodeFromVideoDevice(currentDeviceId, preview, (result, err) => {
-        if (result) {
-            const code = result.text;
+    }, function(result) {
+        if (result && result.codeResult) {
+            const code = result.codeResult.code;
             const name = db[code] || "Товар не найден";
             document.getElementById("scanResult").innerText = `${code} → ${name}`;
+        } else {
+            document.getElementById("scanResult").innerText = "Не удалось распознать";
         }
     });
 }
 
-function stopScanner() {
-    usingBarcodeDetector = false;
-
+function stopCamera() {
     const preview = document.getElementById("preview");
 
     if (preview.srcObject) {
