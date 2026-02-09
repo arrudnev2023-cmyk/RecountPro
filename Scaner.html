@@ -2,99 +2,178 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>База штрих‑кодов + сканер</title>
+<title>База штрих‑кодов</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
-    body { font-family: Arial, sans-serif; margin: 20px; max-width: 900px; }
-    h2 { margin-top: 25px; }
-    input, textarea, button { padding: 8px; margin: 5px 0; }
-    input, textarea { width: 100%; box-sizing: border-box; }
-    button { cursor: pointer; }
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-    th, td { border: 1px solid #ccc; padding: 6px 8px; font-size: 14px; }
-    th { background: #f2f2f2; }
-    .found { font-size: 18px; margin-top: 10px; font-weight: bold; }
-    #preview { width: 100%; max-width: 400px; border: 3px solid #00aaff; border-radius: 10px; }
+    body {
+        margin: 0;
+        background: #f4f6f8;
+        font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    }
+
+    header {
+        background: #1e88e5;
+        color: white;
+        padding: 15px;
+        font-size: 22px;
+        text-align: center;
+        font-weight: bold;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    .container {
+        padding: 15px;
+        max-width: 900px;
+        margin: auto;
+    }
+
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    h2 {
+        margin-top: 0;
+        font-size: 20px;
+        color: #333;
+    }
+
+    input, textarea, button {
+        width: 100%;
+        padding: 12px;
+        margin-top: 8px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        font-size: 16px;
+        box-sizing: border-box;
+    }
+
+    button {
+        background: #1e88e5;
+        color: white;
+        border: none;
+        font-weight: bold;
+        transition: 0.2s;
+    }
+
+    button:hover {
+        background: #1565c0;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 14px;
+    }
+
+    th, td {
+        border-bottom: 1px solid #ddd;
+        padding: 10px;
+    }
+
+    th {
+        background: #f0f0f0;
+    }
+
+    .found {
+        font-size: 18px;
+        margin-top: 10px;
+        font-weight: bold;
+        color: #1e88e5;
+    }
+
+    /* Сканер */
+    #preview {
+        width: 100%;
+        border-radius: 12px;
+        margin-top: 10px;
+    }
+
     #frame {
         position: absolute;
-        border: 3px solid red;
+        border: 3px solid #ff5252;
         width: 200px;
         height: 200px;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
         pointer-events: none;
+        border-radius: 10px;
     }
-    .scanner-wrapper { position: relative; margin-top: 20px; max-width: 400px; }
-    .top-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .top-bar button { flex: 1; min-width: 150px; }
+
+    .scanner-wrapper {
+        position: relative;
+        max-width: 400px;
+        margin: auto;
+    }
+
 </style>
 </head>
 <body>
 
-<h1>База штрих‑кодов</h1>
+<header>База штрих‑кодов</header>
 
-<div class="top-bar">
-    <button onclick="startScanner()">📷 Сканировать камерой</button>
-    <button onclick="stopScanner()">⏹ Остановить сканер</button>
+<div class="container">
+
+    <!-- Сканер -->
+    <div class="card">
+        <h2>Сканирование камерой</h2>
+        <button onclick="startScanner()">📷 Запустить сканер</button>
+        <button onclick="stopScanner()" style="background:#e53935;margin-top:10px;">⛔ Остановить</button>
+
+        <div class="scanner-wrapper">
+            <video id="preview" playsinline></video>
+            <div id="frame"></div>
+        </div>
+
+        <div id="scanResult" class="found"></div>
+    </div>
+
+    <!-- Ручной ввод -->
+    <div class="card">
+        <h2>Добавить товар вручную</h2>
+        <input id="code" placeholder="Штрих‑код">
+        <input id="name" placeholder="Название товара">
+        <button onclick="addItem()">Добавить</button>
+    </div>
+
+    <!-- Поиск -->
+    <div class="card">
+        <h2>Поиск по штрих‑коду</h2>
+        <input id="scanInput" placeholder="Введите код" oninput="scanCodeManual()">
+        <div id="manualResult" class="found"></div>
+    </div>
+
+    <!-- Массовый импорт -->
+    <div class="card">
+        <h2>Массовый импорт</h2>
+        <textarea id="bulk" rows="6" placeholder='"4600605026533": "Молоко"
+"4810268035258": "Сыр российский"'></textarea>
+        <button onclick="bulkImport()">Импортировать</button>
+    </div>
+
+    <!-- Таблица -->
+    <div class="card">
+        <h2>База товаров</h2>
+        <table id="table">
+            <thead>
+                <tr><th>Штрих‑код</th><th>Название</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
 </div>
 
-<!-- Блок сканера -->
-<h2>Сканирование штрих‑кода</h2>
-<div class="scanner-wrapper">
-    <video id="preview" playsinline></video>
-    <div id="frame"></div>
-</div>
-<div id="scanResult" class="found"></div>
-
-<hr>
-
-<!-- Ручное добавление -->
-<h2>Добавить штрих‑код вручную</h2>
-<input id="code" placeholder="Штрих‑код">
-<input id="name" placeholder="Название товара">
-<button onclick="addItem()">Добавить</button>
-
-<!-- Поле для проверки/поиска без камеры -->
-<h2>Проверка / поиск по коду</h2>
-<input id="scanInput" placeholder="Введите или сканируйте штрих‑код" oninput="scanCodeManual()">
-<div id="manualResult" class="found"></div>
-
-<!-- Массовый импорт -->
-<h2>Массовый импорт</h2>
-<textarea id="bulk" rows="6" placeholder='"4600605026533": "Молоко простоквашино"
-"4810268035258": "Сыр российский"
-"4810268035265": "Сыр Брест-Литовск Российский 50% 200гр*10 /Беларусь"'></textarea>
-<button onclick="bulkImport()">Импортировать</button>
-
-<!-- Таблица базы -->
-<h2>База товаров</h2>
-<table id="table">
-    <thead>
-        <tr><th>Штрих‑код</th><th>Название</th></tr>
-    </thead>
-    <tbody></tbody>
-</table>
-
-<!-- ZXing -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 <script>
 let db = JSON.parse(localStorage.getItem("barcodeDB") || "{}");
 let codeReader = null;
-let currentStream = null;
-
-// Инициализация тестовой базы (можешь убрать, если не нужно)
-if (Object.keys(db).length === 0) {
-    db = {
-        "4600605026533": "Молоко простоквашино",
-        "4810268035258": "Сыр российский",
-        "4810268035265": "Сыр Брест-Литовск Российский 50% 200гр*10 /Беларусь",
-        "4630111539289": "Снегокат Тимка спорт 6",
-        "4600721001445": "Пиво Стелла Артуа ст. 05°20 /КЛИН",
-        "4607082170018": "Мин. вода газ. Кургазак Янгантау 15*6",
-        "7400000067424": "Дисконтные карты 250 шт в 1 блоке (250шт20)"
-    };
-    saveDB();
-}
 
 function saveDB() {
     localStorage.setItem("barcodeDB", JSON.stringify(db));
@@ -114,10 +193,7 @@ function renderTable() {
 function addItem() {
     const code = document.getElementById("code").value.trim();
     const name = document.getElementById("name").value.trim();
-    if (!code || !name) {
-        alert("Введите код и название");
-        return;
-    }
+    if (!code || !name) return alert("Введите код и название");
     db[code] = name;
     saveDB();
     document.getElementById("code").value = "";
@@ -126,16 +202,10 @@ function addItem() {
 
 function bulkImport() {
     const text = document.getElementById("bulk").value.trim();
-    if (!text) {
-        alert("Вставьте данные для импорта");
-        return;
-    }
     const lines = text.split("\n");
     lines.forEach(line => {
         const match = line.match(/"(\d+)":\s*"(.+?)"/);
-        if (match) {
-            db[match[1]] = match[2];
-        }
+        if (match) db[match[1]] = match[2];
     });
     saveDB();
     alert("Импорт завершён");
@@ -143,43 +213,29 @@ function bulkImport() {
 
 function scanCodeManual() {
     const code = document.getElementById("scanInput").value.trim();
-    const name = db[code];
-    document.getElementById("manualResult").innerText = code
-        ? (name ? code + " → " + name : "Товар не найден")
-        : "";
+    document.getElementById("manualResult").innerText =
+        db[code] ? `${code} → ${db[code]}` : "Товар не найден";
 }
 
-// Сканер камеры
 function startScanner() {
-    if (codeReader) {
-        // уже запущен
-        return;
-    }
+    if (codeReader) return;
+
     codeReader = new ZXing.BrowserMultiFormatReader();
     const preview = document.getElementById('preview');
 
-    codeReader
-        .listVideoInputDevices()
-        .then(videoInputDevices => {
-            // пытаемся выбрать заднюю камеру, если есть
-            let deviceId = videoInputDevices[0].deviceId;
-            const backCam = videoInputDevices.find(d => /back|environment/gi.test(d.label));
-            if (backCam) deviceId = backCam.deviceId;
+    codeReader.listVideoInputDevices().then(devices => {
+        let deviceId = devices[0].deviceId;
+        const back = devices.find(d => /back|environment/gi.test(d.label));
+        if (back) deviceId = back.deviceId;
 
-            codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
-                if (result) {
-                    const code = result.text;
-                    const name = db[code] || "Товар не найден";
-                    document.getElementById("scanResult").innerText = code + " → " + name;
-                    // можно очистить, если нужно одноразовое считывание:
-                    // stopScanner();
-                }
-            });
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Не удалось получить доступ к камере");
+        codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
+            if (result) {
+                const code = result.text;
+                const name = db[code] || "Товар не найден";
+                document.getElementById("scanResult").innerText = `${code} → ${name}`;
+            }
         });
+    });
 }
 
 function stopScanner() {
@@ -188,8 +244,8 @@ function stopScanner() {
         codeReader = null;
     }
     const preview = document.getElementById('preview');
-    if (preview && preview.srcObject) {
-        preview.srcObject.getTracks().forEach(track => track.stop());
+    if (preview.srcObject) {
+        preview.srcObject.getTracks().forEach(t => t.stop());
         preview.srcObject = null;
     }
 }
