@@ -245,6 +245,11 @@ async function startScanner() {
 
     devices = await codeReader.listVideoInputDevices();
 
+    if (!devices.length) {
+        alert("Камеры не найдены");
+        return;
+    }
+
     // выбираем заднюю камеру по умолчанию
     const back = devices.find(d => /back|environment/gi.test(d.label));
     currentDeviceId = back ? back.deviceId : devices[0].deviceId;
@@ -266,6 +271,8 @@ function switchCamera() {
 function decode() {
     const preview = document.getElementById("preview");
 
+    stopScanner();
+
     codeReader.decodeFromVideoDevice(currentDeviceId, preview, (result, err) => {
         if (result) {
             if (!allowedFormats.includes(result.barcodeFormat)) return;
@@ -280,7 +287,9 @@ function decode() {
 function stopScanner() {
     const preview = document.getElementById("preview");
 
-    if (codeReader) codeReader.reset();
+    try {
+        codeReader.reset();
+    } catch {}
 
     if (preview.srcObject) {
         preview.srcObject.getTracks().forEach(t => t.stop());
