@@ -102,7 +102,6 @@
         margin-top: 10px;
     }
 
-    /* Рамка под линейный штрих-код */
     #frame {
         position: absolute;
         border: 3px solid #ff5252;
@@ -128,7 +127,6 @@
 
 <div class="container">
 
-    <!-- Сканер -->
     <div class="card">
         <h2>Сканирование камерой</h2>
 
@@ -144,7 +142,6 @@
         <div id="scanResult" class="found"></div>
     </div>
 
-    <!-- Ручной ввод -->
     <div class="card">
         <h2>Добавить товар вручную</h2>
         <input id="code" placeholder="Штрих‑код">
@@ -152,14 +149,12 @@
         <button onclick="addItem()">Добавить</button>
     </div>
 
-    <!-- Поиск -->
     <div class="card">
         <h2>Поиск по штрих‑коду</h2>
         <input id="scanInput" placeholder="Введите код" oninput="scanCodeManual()">
         <div id="manualResult" class="found"></div>
     </div>
 
-    <!-- Массовый импорт -->
     <div class="card">
         <h2>Массовый импорт</h2>
         <textarea id="bulk" rows="6" placeholder='"4600605026533": "Молоко"
@@ -167,7 +162,6 @@
         <button onclick="bulkImport()">Импортировать</button>
     </div>
 
-    <!-- Таблица -->
     <div class="card">
         <h2>База товаров</h2>
         <table id="table">
@@ -183,21 +177,14 @@
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 <script>
 let db = JSON.parse(localStorage.getItem("barcodeDB") || "{}");
-let codeReader = new ZXing.BrowserMultiFormatReader();
 let currentDeviceId = null;
 let devices = [];
+let stream = null;
+let usingBarcodeDetector = false;
 
-// Разрешённые форматы (только штрих-коды)
-const allowedFormats = [
-    ZXing.BarcodeFormat.EAN_13,
-    ZXing.BarcodeFormat.EAN_8,
-    ZXing.BarcodeFormat.UPC_A,
-    ZXing.BarcodeFormat.UPC_E,
-    ZXing.BarcodeFormat.CODE_128,
-    ZXing.BarcodeFormat.CODE_39,
-    ZXing.BarcodeFormat.ITF
-];
+const allowedFormats = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf"];
 
+// ---------- БАЗА ----------
 function saveDB() {
     localStorage.setItem("barcodeDB", JSON.stringify(db));
     renderTable();
@@ -240,24 +227,21 @@ function scanCodeManual() {
         db[code] ? `${code} → ${db[code]}` : (code ? "Товар не найден" : "");
 }
 
+// ---------- СКАНЕР ----------
+
 async function startScanner() {
     stopScanner();
 
-    devices = await codeReader.listVideoInputDevices();
+    devices = await navigator.mediaDevices.enumerateDevices();
+    devices = devices.filter(d => d.kind === "videoinput");
 
-    if (!devices.length) {
-        alert("Камеры не найдены");
-        return;
-    }
-
-    // выбираем заднюю камеру по умолчанию
     const back = devices.find(d => /back|environment/gi.test(d.label));
     currentDeviceId = back ? back.deviceId : devices[0].deviceId;
 
-    decode();
+    await startStream();
 }
 
-function switchCamera() {
+async function switchCamera() {
     if (!devices.length) return;
 
     const index = devices.findIndex(d => d.deviceId === currentDeviceId);
@@ -265,18 +249,64 @@ function switchCamera() {
 
     currentDeviceId = devices[next].deviceId;
 
-    decode();
+    await startStream();
 }
 
-function decode() {
-    const preview = document.getElementById("preview");
-
+async function startStream() {
     stopScanner();
 
-    codeReader.decodeFromVideoDevice(currentDeviceId, preview, (result, err) => {
-        if (result) {
-            if (!allowedFormats.includes(result.barcodeFormat)) return;
+    stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+            deviceId: currentDeviceId,
+            focusMode: "continuous"
+        }
+    });
 
+    const preview = document.getElementById("preview");
+    preview.srcObject = stream;
+    preview.play();
+
+    if ("BarcodeDetector" in window) {
+        usingBarcodeDetector = true;
+        runBarcodeDetector();
+    } else {
+        usingBarcodeDetector = false;
+        runZXing();
+    }
+}
+
+async function runBarcodeDetector() {
+    const detector = new BarcodeDetector({
+        formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "itf"]
+    });
+
+    const preview = document.getElementById("preview");
+
+    async function scan() {
+        if (!usingBarcodeDetector) return;
+
+        try {
+            const barcodes = await detector.detect(preview);
+
+            if (barcodes.length > 0) {
+                const code = barcodes[0].rawValue;
+                const name = db[code] || "Товар не найден";
+                document.getElementById("scanResult").innerText = `${code} → ${name}`;
+            }
+        } catch {}
+
+        requestAnimationFrame(scan);
+    }
+
+    scan();
+}
+
+function runZXing() {
+    const preview = document.getElementById("preview");
+    const reader = new ZXing.BrowserMultiFormatReader();
+
+    reader.decodeFromVideoDevice(currentDeviceId, preview, (result, err) => {
+        if (result) {
             const code = result.text;
             const name = db[code] || "Товар не найден";
             document.getElementById("scanResult").innerText = `${code} → ${name}`;
@@ -285,11 +315,9 @@ function decode() {
 }
 
 function stopScanner() {
-    const preview = document.getElementById("preview");
+    usingBarcodeDetector = false;
 
-    try {
-        codeReader.reset();
-    } catch {}
+    const preview = document.getElementById("preview");
 
     if (preview.srcObject) {
         preview.srcObject.getTracks().forEach(t => t.stop());
