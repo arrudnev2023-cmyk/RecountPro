@@ -35,11 +35,53 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    h1 {
+    /* 🔥 ЛОГОТИП + МИКРО-СВЕЧЕНИЕ */
+    .logo {
+      width: 90px;
+      height: 90px;
+      margin: 0 auto 0.8rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      animation: logoFade 0.8s ease forwards;
+      opacity: 0;
+    }
+
+    @keyframes logoFade {
+      from { opacity: 0; transform: scale(0.85); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .logo svg {
+      width: 90px;
+      height: 90px;
+      filter: drop-shadow(0 0 12px rgba(106,17,203,0.6));
+      animation: glowPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes glowPulse {
+      0% { filter: drop-shadow(0 0 10px rgba(106,17,203,0.4)); }
+      50% { filter: drop-shadow(0 0 18px rgba(106,17,203,0.9)); }
+      100% { filter: drop-shadow(0 0 10px rgba(106,17,203,0.4)); }
+    }
+
+    /* 🔥 ЭФФЕКТ ПЕЧАТИ */
+    .title {
       text-align: center;
       margin-bottom: 1rem;
       font-size: 1.4rem;
       font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      width: 0;
+      margin-left: auto;
+      margin-right: auto;
+      animation: typing 1.8s steps(20) forwards;
+    }
+
+    @keyframes typing {
+      from { width: 0; }
+      to { width: 160px; }
     }
 
     .field {
@@ -153,7 +195,17 @@
 <body>
 
   <div class="auth-card">
-    <h1>RecountPro</h1>
+
+    <!-- 🔥 ЛОГОТИП -->
+    <div class="logo">
+      <svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="42" stroke="#6a11cb" stroke-width="6" fill="none"/>
+        <path d="M30 55 L45 70 L75 35" stroke="#a78bfa" stroke-width="7" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- 🔥 ЭФФЕКТ ПЕЧАТИ -->
+    <div class="title">RecountPro</div>
 
     <div class="field">
       <label>Логин</label>
@@ -176,7 +228,6 @@
       <br>
 
       <a class="tg-btn" href="https://t.me/Artem_Rudnev1" target="_blank">
-        <!-- Иконка Telegram -->
         <svg viewBox="0 0 24 24">
           <path d="M9.999 15.17 9.91 18.26c.29 0 .42-.12.57-.26l2.73-2.61 5.66 4.14c1.04.57 1.78.27 2.05-.96l3.72-17.45.01-.01c.33-1.53-.55-2.13-1.56-1.76L1.43 9.18c-1.49.58-1.47 1.41-.27 1.78l5.8 1.81L19.3 5.24c.61-.37 1.17-.17.71.2"/>
         </svg>
@@ -235,6 +286,7 @@
 
 </body>
 </html>
+
 
 
 
