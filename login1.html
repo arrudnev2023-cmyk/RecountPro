@@ -35,10 +35,10 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* 🔥 ЛОГОТИП + МИКРО-СВЕЧЕНИЕ */
+    /* 🔥 ВРАЩАЮЩАЯСЯ КОРОБКА */
     .logo {
-      width: 90px;
-      height: 90px;
+      width: 100px;
+      height: 100px;
       margin: 0 auto 0.8rem;
       display: flex;
       justify-content: center;
@@ -53,16 +53,15 @@
     }
 
     .logo svg {
-      width: 90px;
-      height: 90px;
-      filter: drop-shadow(0 0 12px rgba(106,17,203,0.6));
-      animation: glowPulse 3s ease-in-out infinite;
+      width: 100px;
+      height: 100px;
+      animation: spin 6s linear infinite;
+      filter: drop-shadow(0 0 12px rgba(106,17,203,0.7));
     }
 
-    @keyframes glowPulse {
-      0% { filter: drop-shadow(0 0 10px rgba(106,17,203,0.4)); }
-      50% { filter: drop-shadow(0 0 18px rgba(106,17,203,0.9)); }
-      100% { filter: drop-shadow(0 0 10px rgba(106,17,203,0.4)); }
+    @keyframes spin {
+      from { transform: rotateY(0deg); }
+      to { transform: rotateY(360deg); }
     }
 
     /* 🔥 ЭФФЕКТ ПЕЧАТИ */
@@ -196,11 +195,15 @@
 
   <div class="auth-card">
 
-    <!-- 🔥 ЛОГОТИП -->
+    <!-- 🔥 ВРАЩАЮЩАЯСЯ КОРОБКА -->
     <div class="logo">
       <svg viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="42" stroke="#6a11cb" stroke-width="6" fill="none"/>
-        <path d="M30 55 L45 70 L75 35" stroke="#a78bfa" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <!-- Коробка -->
+        <rect x="20" y="25" width="60" height="50" rx="6" ry="6"
+              stroke="#6a11cb" stroke-width="5" fill="rgba(106,17,203,0.15)"/>
+        <!-- Крышка -->
+        <rect x="18" y="20" width="64" height="12" rx="4" ry="4"
+              stroke="#a78bfa" stroke-width="4" fill="rgba(167,139,250,0.25)"/>
       </svg>
     </div>
 
@@ -286,7 +289,6 @@
 
 </body>
 </html>
-
 
 
 
