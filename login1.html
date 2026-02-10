@@ -122,9 +122,23 @@
   </div>
 
   <script>
+    // 10 логинов и паролей
+    const USERS = [
+      { login: "user1", password: "pass1" },
+      { login: "user2", password: "pass2" },
+      { login: "user3", password: "pass3" },
+      { login: "user4", password: "pass4" },
+      { login: "user5", password: "pass5" },
+      { login: "user6", password: "pass6" },
+      { login: "user7", password: "pass7" },
+      { login: "user8", password: "pass8" },
+      { login: "user9", password: "pass9" },
+      { login: "user10", password: "pass10" }
+    ];
+
     const statusBox = document.getElementById("status");
 
-    document.getElementById("login-btn").addEventListener("click", async () => {
+    document.getElementById("login-btn").addEventListener("click", () => {
       const login = document.getElementById("login").value.trim();
       const password = document.getElementById("password").value.trim();
 
@@ -133,37 +147,22 @@
         return;
       }
 
-      const deviceId = localStorage.getItem("deviceId") || crypto.randomUUID();
-      localStorage.setItem("deviceId", deviceId);
+      const found = USERS.find(u => u.login === login && u.password === password);
 
-      try {
-        const res = await fetch("https://ТВОЙ_СЕРВЕР/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ login, password, deviceId })
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          statusBox.textContent = data.error || "Ошибка входа";
-          return;
-        }
-
-        statusBox.textContent = "Успешный вход!";
-        statusBox.classList.add("success");
-
-        localStorage.setItem("token", data.token);
-
-        setTimeout(() => {
-          window.location.href = "demo.html";
-        }, 600);
-
-      } catch (e) {
-        statusBox.textContent = "Нет соединения с сервером";
+      if (!found) {
+        statusBox.textContent = "Неверный логин или пароль";
+        return;
       }
+
+      statusBox.textContent = "Успешный вход!";
+      statusBox.classList.add("success");
+
+      setTimeout(() => {
+        window.location.href = "demo.html";
+      }, 600);
     });
   </script>
 
 </body>
 </html>
+
