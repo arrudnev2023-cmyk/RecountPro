@@ -5,6 +5,36 @@
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>RecountPro — Пересчёт</title>
+
+  <!-- 🔥 Проверка авторизации и таймера -->
+  <script>
+    // Проверяем, авторизован ли пользователь
+    const isLoggedIn = localStorage.getItem("isLoggedIn");
+    const loginTime = localStorage.getItem("loginTime");
+
+    // Если нет данных — отправляем на логин
+    if (!isLoggedIn || !loginTime) {
+      window.location.href = "login1.html";
+    }
+
+    // Проверяем, прошло ли больше 2 часов (7200000 мс)
+    const now = Date.now();
+    const diff = now - Number(loginTime);
+
+    if (diff > 7200000) {
+      // Удаляем данные авторизации
+      localStorage.removeItem("isLoggedIn");
+      localStorage.removeItem("loginTime");
+
+      // Отправляем на логин
+      window.location.href = "login1.html";
+    }
+
+    // Обновляем время активности
+    localStorage.setItem("loginTime", Date.now());
+  </script>
+  <!-- 🔥 Конец проверки -->
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -17,6 +47,7 @@
       --border: #d1d5db;
     }
     body {
+
       font-family: "Segoe UI", system-ui, sans-serif;
       margin: 0;
       color: var(--text);
