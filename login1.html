@@ -100,28 +100,53 @@
       color: #4ade80;
     }
 
-    /* 🔥 Стиль плашки */
+    /* 🔥 Плашка */
     .info-box {
       margin-top: 1.2rem;
-      padding: 0.8rem;
-      border-radius: 12px;
+      padding: 1rem;
+      border-radius: 14px;
       background: rgba(255,255,255,0.06);
       border: 1px solid rgba(255,255,255,0.08);
       text-align: center;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: #cbd5e1;
       line-height: 1.45;
       backdrop-filter: blur(10px);
+      opacity: 0;
+      animation: fadeInBox 0.8s ease forwards;
+      animation-delay: 0.4s;
     }
 
-    .info-box a {
-      color: #a78bfa;
+    @keyframes fadeInBox {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .tg-btn {
+      margin-top: 0.7rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0.55rem 1rem;
+      border-radius: 10px;
+      background: rgba(37,117,252,0.25);
+      border: 1px solid rgba(37,117,252,0.4);
+      color: #dbeafe;
+      font-size: 0.9rem;
       font-weight: 600;
       text-decoration: none;
+      transition: background 0.2s ease, transform 0.15s ease;
     }
 
-    .info-box a:hover {
-      text-decoration: underline;
+    .tg-btn:hover {
+      background: rgba(37,117,252,0.45);
+      transform: translateY(-2px);
+    }
+
+    .tg-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: #dbeafe;
     }
   </style>
 </head>
@@ -142,12 +167,21 @@
 
     <button class="btn" id="login-btn">Войти</button>
 
-    <!-- 🔥 Красивая плашка -->
+    <!-- 🔥 Премиальная плашка -->
     <div class="info-box">
       Для получения личного логина и пароля  
-      напишите в Telegram:  
-      <a href="https://t.me/Artem_Rudnev1" target="_blank">@Artem_Rudnev1</a><br>
-      Стоимость доступа — 1000 ₽ в месяц
+      напишите в Telegram.  
+      Стоимость доступа — <b>1000 ₽ / месяц</b>
+
+      <br>
+
+      <a class="tg-btn" href="https://t.me/Artem_Rudnev1" target="_blank">
+        <!-- Иконка Telegram -->
+        <svg viewBox="0 0 24 24">
+          <path d="M9.999 15.17 9.91 18.26c.29 0 .42-.12.57-.26l2.73-2.61 5.66 4.14c1.04.57 1.78.27 2.05-.96l3.72-17.45.01-.01c.33-1.53-.55-2.13-1.56-1.76L1.43 9.18c-1.49.58-1.47 1.41-.27 1.78l5.8 1.81L19.3 5.24c.61-.37 1.17-.17.71.2"/>
+        </svg>
+        @Artem_Rudnev1
+      </a>
     </div>
 
     <div class="status" id="status"></div>
@@ -201,6 +235,7 @@
 
 </body>
 </html>
+
 
 
 
