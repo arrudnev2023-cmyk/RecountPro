@@ -99,6 +99,30 @@
     .status.success {
       color: #4ade80;
     }
+
+    /* 🔥 Стиль плашки */
+    .info-box {
+      margin-top: 1.2rem;
+      padding: 0.8rem;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      text-align: center;
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      line-height: 1.45;
+      backdrop-filter: blur(10px);
+    }
+
+    .info-box a {
+      color: #a78bfa;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .info-box a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -118,11 +142,19 @@
 
     <button class="btn" id="login-btn">Войти</button>
 
+    <!-- 🔥 Красивая плашка -->
+    <div class="info-box">
+      Для получения личного логина и пароля  
+      напишите в Telegram:  
+      <a href="https://t.me/Artem_Rudnev1" target="_blank">@Artem_Rudnev1</a><br>
+      Стоимость доступа — 1000 ₽ в месяц
+    </div>
+
     <div class="status" id="status"></div>
   </div>
 
   <script>
-    // 10 логинов и паролей (слегка усложнённые)
+    // 10 логинов и паролей
     const USERS = [
       { login: "alpha12", password: "pA55word1" },
       { login: "beta24", password: "pA55word2" },
@@ -155,20 +187,20 @@
       }
 
       statusBox.textContent = "Успешный вход!";
-statusBox.classList.add("success");
+      statusBox.classList.add("success");
 
-// сохраняем авторизацию
-localStorage.setItem("loginTime", Date.now());
-localStorage.setItem("isLoggedIn", "true");
+      // сохраняем авторизацию
+      localStorage.setItem("loginTime", Date.now());
+      localStorage.setItem("isLoggedIn", "true");
 
-setTimeout(() => {
-  window.location.href = "demo.html";
-}, 600);
-
+      setTimeout(() => {
+        window.location.href = "demo.html";
+      }, 600);
     });
   </script>
 
 </body>
 </html>
+
 
 
