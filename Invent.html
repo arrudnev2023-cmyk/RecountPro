@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Инвентаризация — Dark Light Neon</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fbfbfd;
+  --panel:#ffffff;
+  --muted:#6b7280;
+  --neon1:#7b3be6;
+  --neon2:#c86cff;
+  --accent:linear-gradient(90deg,var(--neon1),var(--neon2));
+  --radius:12px;
+  --card-border: rgba(124,58,237,0.12);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,#f6f7fb,#f0f2f8);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#0b1020}
+.container{max-width:920px;margin:18px auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:48px;height:48px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
+.title{font-size:20px;font-weight:700}
+.subtitle{font-size:13px;color:var(--muted)}
+.card{background:var(--panel);border-radius:12px;padding:12px;border:1px solid var(--card-border);box-shadow:0 6px 20px rgba(16,24,40,0.04)}
+.row{display:flex;gap:10px;align-items:center}
+.controls{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;background:#111827;color:#fff}
+.btn.ghost{background:transparent;border:1px solid rgba(11,16,32,0.06);color:var(--muted)}
+.btn.neon{background:var(--accent);color:#fff;box-shadow:0 10px 30px rgba(124,58,237,0.12)}
+.input{padding:10px 12px;border-radius:10px;border:1px solid rgba(11,16,32,0.06);background:#fff;outline:none;flex:1}
+.preview-wrap{border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(11,16,32,0.06)}
+.preview-wrap.camera-1-3{height:33vh;min-height:140px;max-height:300px}
+video#preview{width:100%;height:100%;object-fit:cover;display:block}
+.search-area{display:flex;gap:8px;align-items:center;margin-top:10px}
+.results{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.card-item{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:10px;border:1px solid rgba(11,16,32,0.04);background:linear-gradient(180deg,#fff,#fbfbff)}
+.item-left{display:flex;gap:12px;align-items:center;min-width:0}
+.item-meta{display:flex;flex-direction:column;min-width:0}
+.item-code{font-weight:700;color:#0b1020;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-name{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qty-controls{display:flex;gap:8px;align-items:center}
+.qty-input{width:110px;padding:8px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);text-align:right;font-weight:700}
+.plus-btn{padding:8px 10px;border-radius:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));color:#fff;border:none;cursor:pointer}
+.summary-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:16px;box-shadow:0 20px 60px rgba(11,16,32,0.2);max-width:90%;max-height:80%;overflow:auto;z-index:9999}
+.overlay{position:fixed;inset:0;background:rgba(11,16,32,0.35);z-index:9998}
+.small{font-size:13px;color:var(--muted)}
+.footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.note{font-size:13px;color:var(--muted)}
+.clear-btn{background:transparent;border:1px dashed rgba(11,16,32,0.08);padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
+@media (max-width:720px){
+  .container{padding:12px}
+  .qty-input{width:90px}
+}
+</style>
+</head>
+<body>
+<div class="container" role="main" aria-label="Инвентаризация">
+  <header class="header">
+    <div class="brand">
+      <div class="logo">INV</div>
+      <div>
+        <div class="title">Инвентаризация</div>
+        <div class="subtitle">Поиск по названию и сканирование штрихкодов</div>
+      </div>
+    </div>
+    <div class="row">
+      <button id="openSummaryBtn" class="btn ghost" title="Итог">Итог</button>
+      <button id="clearRecountBtn" class="clear-btn" title="Очистить пересчёт">Очистить пересчёт</button>
+    </div>
+  </header>
+
+  <!-- Scanner block -->
+  <section class="card" aria-labelledby="scannerTitle">
+    <h3 id="scannerTitle" style="margin:0 0 8px 0">Сканер</h3>
+    <div class="preview-wrap camera-1-3" id="previewWrap">
+      <video id="preview" playsinline muted></video>
+    </div>
+
+    <div class="search-area">
+      <input id="searchInput" class="input" type="text" placeholder="Поиск по названию или коду (часть слова, любой порядок)" aria-label="Поиск">
+      <div class="controls">
+        <button id="startScannerBtn" class="btn neon">▶ Включить сканер</button>
+        <button id="stopScannerBtn" class="btn ghost">⛔ Остановить</button>
+        <select id="deviceSelect" class="btn ghost" aria-label="Выбор камеры"></select>
+      </div>
+    </div>
+
+    <div id="scanResult" class="small" style="margin-top:8px"></div>
+  </section>
+
+  <!-- Results / Cards -->
+  <section class="card" aria-labelledby="resultsTitle">
+    <h3 id="resultsTitle" style="margin:0 0 8px 0">Найденные товары</h3>
+    <div id="results" class="results" aria-live="polite"></div>
+
+    <div class="footer">
+      <div class="note">Если штрихкод не найден — сканер предложит создать товар и сохранить в базе.</div>
+      <div style="display:flex;gap:8px">
+        <button id="addManualBtn" class="btn ghost">Добавить вручную</button>
+        <button id="summaryBtn" class="btn neon">Показать итог</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Summary modal -->
+<div id="overlay" class="overlay" style="display:none"></div>
+<div id="summaryModal" class="summary-modal" style="display:none" role="dialog" aria-modal="true">
+  <h3 style="margin-top:0">Итог инвентаризации</h3>
+  <div id="summaryList" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
+  <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+    <button id="closeSummary" class="btn ghost">Закрыть</button>
+  </div>
+</div>
+
+<!-- ZXing fallback -->
+<script src="https://unpkg.com/@zxing/library@latest"></script>
+
+<script>
+/* ===== State & storage keys ===== */
+const STORAGE_DB = 'barcodeDB';
+const STORAGE_INV = 'inventoryItems';
+
+let barcodeDB = JSON.parse(localStorage.getItem(STORAGE_DB) || '{}');
+let inventoryItems = JSON.parse(localStorage.getItem(STORAGE_INV) || '[]');
+
+let stream = null;
+let currentDeviceId = null;
+let scanning = false;
+let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
+let reader = null;
+let lastDetected = {code:null, ts:0};
+const DEBOUNCE_MS = 900;
+
+/* ===== Elements ===== */
+const preview = document.getElementById('preview');
+const deviceSelect = document.getElementById('deviceSelect');
+const startScannerBtn = document.getElementById('startScannerBtn');
+const stopScannerBtn = document.getElementById('stopScannerBtn');
+const searchInput = document.getElementById('searchInput');
+const resultsEl = document.getElementById('results');
+const scanResult = document.getElementById('scanResult');
+const addManualBtn = document.getElementById('addManualBtn');
+const summaryBtn = document.getElementById('summaryBtn');
+const openSummaryBtn = document.getElementById('openSummaryBtn');
+const clearRecountBtn = document.getElementById('clearRecountBtn');
+
+const overlay = document.getElementById('overlay');
+const summaryModal = document.getElementById('summaryModal');
+const summaryList = document.getElementById('summaryList');
+const closeSummary = document.getElementById('closeSummary');
+
+/* ===== Utilities ===== */
+function saveDB(){ localStorage.setItem(STORAGE_DB, JSON.stringify(barcodeDB)); }
+function saveInventory(){ localStorage.setItem(STORAGE_INV, JSON.stringify(inventoryItems)); }
+function showToast(text, ms=1400){ scanResult.textContent = text; setTimeout(()=>{ if(scanResult.textContent===text) scanResult.textContent=''; }, ms); }
+function beep(){ try{ navigator.vibrate?.(40); }catch(e){} }
+
+/* ===== Search helpers ===== */
+function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
+
+function searchItems(query){
+  const q = normalize(query);
+  if(!q) return Object.keys(barcodeDB).map(code => ({ code, name: barcodeDB[code] }));
+  const tokens = q.split(/\s+/).filter(Boolean);
+  const results = [];
+  for(const code of Object.keys(barcodeDB)){
+    const name = normalize(barcodeDB[code]);
+    const hay = (code + ' ' + name);
+    const ok = tokens.every(t => hay.indexOf(t) !== -1);
+    if(ok) results.push({ code, name: barcodeDB[code] });
+  }
+  results.sort((a,b)=> a.name.length - b.name.length);
+  return results;
+}
+
+/* ===== Render results and attach persistent handlers ===== */
+function renderResults(list){
+  resultsEl.innerHTML = '';
+  if(!list.length){
+    resultsEl.innerHTML = '<div class="small">Ничего не найдено</div>';
+    return;
+  }
+  list.forEach(item=>{
+    const existingInv = inventoryItems.find(it => it.code === item.code);
+    const qtyVal = existingInv ? existingInv.qty : 0;
+
+    const card = document.createElement('div');
+    card.className = 'card-item';
+    card.innerHTML = `
+      <div class="item-left">
+        <div style="width:56px;height:56px;border-radius:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">${item.code.slice(-4)}</div>
+        <div class="item-meta">
+          <div class="item-code">${item.code}</div>
+          <div class="item-name">${item.name}</div>
+        </div>
+      </div>
+      <div class="qty-controls">
+        <input inputmode="numeric" pattern="[0-9]*" class="qty-input" type="number" min="0" value="${qtyVal}" aria-label="Количество для ${item.name}">
+        <button class="plus-btn" title="Добавить">+</button>
+      </div>
+    `;
+    const qtyInput = card.querySelector('.qty-input');
+    const plusBtn = card.querySelector('.plus-btn');
+
+    // Save on any change (immediate persistence)
+    qtyInput.addEventListener('input', ()=>{
+      const v = Math.max(0, parseInt(qtyInput.value || '0', 10));
+      upsertInventory(item.code, item.name, v);
+    });
+    qtyInput.addEventListener('blur', ()=>{
+      const v = Math.max(0, parseInt(qtyInput.value || '0', 10));
+      upsertInventory(item.code, item.name, v);
+    });
+
+    plusBtn.addEventListener('click', ()=>{
+      const add = Math.max(1, parseInt(qtyInput.value || '1', 10));
+      const existing = inventoryItems.find(it => it.code === item.code);
+      if(existing){
+        existing.qty = (existing.qty || 0) + add;
+      } else {
+        inventoryItems.unshift({ code: item.code, name: item.name, qty: add });
+      }
+      saveInventory();
+      qtyInput.value = (inventoryItems.find(it=>it.code===item.code).qty || 0);
+      showToast('Добавлено');
+    });
+
+    resultsEl.appendChild(card);
+  });
+}
+
+/* Upsert inventory and persist immediately */
+function upsertInventory(code, name, qty){
+  qty = Math.max(0, parseInt(qty || '0', 10));
+  const idx = inventoryItems.findIndex(it => it.code === code);
+  if(idx >= 0){
+    inventoryItems[idx].qty = qty;
+    inventoryItems[idx].name = name || inventoryItems[idx].name;
+  } else {
+    inventoryItems.unshift({ code, name, qty });
+  }
+  saveInventory();
+}
+
+/* ===== Scanner implementation ===== */
+async function enumerateCameras(){
+  try{
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d => d.kind === 'videoinput');
+    deviceSelect.innerHTML = '';
+    cams.forEach((c, idx)=>{
+      const opt = document.createElement('option');
+      opt.value = c.deviceId;
+      opt.text = c.label || `Камера ${idx+1}`;
+      deviceSelect.appendChild(opt);
+    });
+    if(cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
+    if(currentDeviceId) deviceSelect.value = currentDeviceId;
+  }catch(e){}
+}
+
+async function startCamera(){
+  if(scanning) return;
+  stopCamera();
+  scanning = true;
+  await enumerateCameras();
+  const constraints = {
+    audio:false,
+    video:{
+      deviceId: deviceSelect.value || currentDeviceId || undefined,
+      facingMode: { ideal: "environment" },
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    }
+  };
+  try{
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    preview.srcObject = stream;
+    await preview.play();
+    currentDeviceId = stream.getVideoTracks()[0].getSettings().deviceId || currentDeviceId;
+    deviceSelect.value = currentDeviceId || deviceSelect.value;
+    if(!reader) reader = new ZXing.BrowserMultiFormatReader();
+    requestAnimationFrame(scanLoop);
+    showToast('Сканер включён');
+  }catch(err){
+    console.error(err);
+    showToast('Ошибка доступа к камере');
+    scanning = false;
+  }
+}
+
+function stopCamera(){
+  scanning = false;
+  if(preview.srcObject){
+    preview.srcObject.getTracks().forEach(t=>t.stop());
+    preview.srcObject = null;
+  }
+  if(reader){
+    try{ reader.reset(); }catch(e){}
+  }
+  showToast('Сканер остановлен');
+}
+
+function createCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+
+async function tryDecodeCanvas(canvas){
+  if(detector){
+    try{
+      const imageData = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+      const res = await detector.detect(imageData);
+      if(res && res.length) return res[0].rawValue;
+    }catch(e){}
+  }
+  try{
+    const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+    const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+    if(result && result.text) return result.text;
+  }catch(e){}
+  const w = canvas.width, h = canvas.height;
+  const temp = createCanvas(w,h);
+  const tctx = temp.getContext('2d');
+  for(const angle of [90,180,270]){
+    tctx.clearRect(0,0,w,h);
+    tctx.save();
+    tctx.translate(w/2,h/2);
+    tctx.rotate(angle*Math.PI/180);
+    tctx.drawImage(canvas, -w/2, -h/2);
+    tctx.restore();
+    try{
+      const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(temp);
+      const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+      const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+      if(result && result.text) return result.text;
+    }catch(e){}
+  }
+  return null;
+}
+
+let canvasPool = [];
+function getCanvas(w,h){
+  for(const c of canvasPool) if(c.width===w && c.height===h) return c;
+  const c = createCanvas(w,h); canvasPool.push(c); return c;
+}
+
+let scanLoopRunning = false;
+async function scanLoop(){
+  if(!scanning) { scanLoopRunning = false; return; }
+  if(scanLoopRunning) return;
+  scanLoopRunning = true;
+  try{
+    while(scanning){
+      const w = preview.videoWidth;
+      const h = preview.videoHeight;
+      if(w===0 || h===0){ await new Promise(r=>requestAnimationFrame(r)); continue; }
+      const canvas = getCanvas(w,h);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(preview, 0, 0, w, h);
+      const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
+      const sw = Math.floor(w/scale);
+      const sh = Math.floor(h/scale);
+      const small = getCanvas(sw,sh);
+      const sctx = small.getContext('2d');
+      sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
+      try{
+        const code = await tryDecodeCanvas(small);
+        if(code) {
+          handleDetected(code);
+          await new Promise(r=>setTimeout(r, 300));
+        }
+      }catch(e){}
+      await new Promise(r=>requestAnimationFrame(r));
+    }
+  }finally{ scanLoopRunning = false; }
+}
+
+/* Handle detected code: populate search, create if missing, add to inventory if user agrees */
+function handleDetected(code){
+  const now = Date.now();
+  if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+  lastDetected = {code, ts: now};
+  beep();
+  searchInput.value = code;
+  const found = barcodeDB[code];
+  if(found){
+    showToast('Найден товар в базе');
+    performSearch();
+  } else {
+    const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить в пересчёт?`);
+    if(create){
+      const name = prompt('Введите название товара для нового кода', '') || '';
+      if(name.trim()){
+        barcodeDB[code] = name.trim();
+        saveDB();
+        // add to inventory with qty 1 and persist immediately
+        upsertInventory(code, barcodeDB[code], 1);
+        performSearch();
+        showToast('Товар добавлен и учтён');
+      } else {
+        showToast('Название не введено');
+      }
+    } else {
+      showToast('Код не найден');
+    }
+  }
+}
+
+/* ===== Search and UI wiring ===== */
+function performSearch(){
+  const q = searchInput.value.trim();
+  const results = searchItems(q);
+  renderResults(results);
+}
+
+searchInput.addEventListener('input', performSearch);
+
+/* Manual add */
+addManualBtn.addEventListener('click', ()=>{
+  const code = prompt('Введите штрихкод', '')?.trim();
+  if(!code) return;
+  const name = prompt('Название товара', '')?.trim() || code;
+  barcodeDB[code] = name;
+  saveDB();
+  upsertInventory(code, name, 0);
+  performSearch();
+  showToast('Добавлено вручную');
+});
+
+/* Summary modal */
+function openSummary(){
+  overlay.style.display = 'block';
+  summaryModal.style.display = 'block';
+  summaryList.innerHTML = '';
+  if(!inventoryItems.length){
+    summaryList.innerHTML = '<div class="small">Нет добавленных позиций</div>';
+    return;
+  }
+  const agg = {};
+  for(const it of inventoryItems){
+    if(!agg[it.code]) agg[it.code] = { name: it.name, qty: 0 };
+    agg[it.code].qty += Number(it.qty || 0);
+  }
+  for(const code of Object.keys(agg)){
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.justifyContent = 'space-between';
+    row.style.padding = '8px 0';
+    row.innerHTML = `<div><strong>${agg[code].name || '—'}</strong><div class="small">${code}</div></div><div style="font-weight:700">${agg[code].qty}</div>`;
+    summaryList.appendChild(row);
+  }
+}
+function closeSummaryModal(){
+  overlay.style.display = 'none';
+  summaryModal.style.display = 'none';
+}
+
+/* Clear recount (only inventoryItems on this screen) */
+function clearRecount(){
+  if(!confirm('Очистить все текущие пересчёты на этом экране? Это не удалит базу штрих-кодов.')) return;
+  inventoryItems = [];
+  saveInventory();
+  performSearch();
+  showToast('Пересчёт очищен');
+}
+
+/* ===== Events wiring ===== */
+startScannerBtn.addEventListener('click', startCamera);
+stopScannerBtn.addEventListener('click', stopCamera);
+deviceSelect.addEventListener('change', async ()=>{ currentDeviceId = deviceSelect.value; await startCamera(); });
+summaryBtn.addEventListener('click', openSummary);
+openSummaryBtn.addEventListener('click', openSummary);
+closeSummary.addEventListener('click', closeSummaryModal);
+overlay.addEventListener('click', closeSummaryModal);
+clearRecountBtn.addEventListener('click', clearRecount);
+
+/* ===== Init ===== */
+performSearch(); // initial render
+enumerateCameras();
+navigator.mediaDevices.getUserMedia({video:true}).then(s=>{ s.getTracks().forEach(t=>t.stop()); enumerateCameras(); }).catch(()=>{});
+</script>
+</body>
+</html>
