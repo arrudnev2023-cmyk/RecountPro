@@ -1,214 +1,211 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>База штрих кодов — Universal Scan</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>База штрих‑кодов — Мобильная</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
 <style>
 :root{
-  --bg:#07040a;
-  --card:#0f0b16;
+  --bg-1:#07040a;
+  --bg-2:#0f0b16;
   --muted:#9aa0b4;
   --neon1:#8a2be2;
   --neon2:#c86cff;
   --accent:linear-gradient(90deg,var(--neon1),var(--neon2));
-  --radius:12px;
+  --card-radius:14px;
+  --btn-radius:12px;
 }
 *{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0;
-  font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  background: radial-gradient(800px 400px at 10% 10%, rgba(138,43,226,0.08), transparent),
-              radial-gradient(600px 300px at 90% 90%, rgba(200,108,255,0.06), transparent),
-              var(--bg);
-  color:#e9e9f2;
-  padding:18px;
+html,body{height:100%;margin:0;padding:0;background:
+  radial-gradient(800px 400px at 10% 10%, rgba(138,43,226,0.06), transparent),
+  radial-gradient(600px 300px at 90% 90%, rgba(200,108,255,0.04), transparent),
+  linear-gradient(180deg,var(--bg-1),var(--bg-2));
+  font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;
+  color:#eef0ff;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
+  padding:12px;
+}
+
+/* Layout */
+.container{
+  max-width:480px;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
 }
 
 /* Header */
 .header{
-  max-width:1100px;
-  margin:0 auto 18px;
-  padding:14px 18px;
-  border-radius:14px;
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:12px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border:1px solid rgba(255,255,255,0.03);
-  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+}
+.brand{
+  display:flex;
+  gap:12px;
+  align-items:center;
 }
 .logo{
-  width:44px;
-  height:44px;
-  border-radius:10px;
-  background:linear-gradient(90deg,var(--neon1),var(--neon2));
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:800;
-  color:white;
+  width:44px;height:44px;border-radius:10px;
+  background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;
+  box-shadow:0 10px 30px rgba(138,43,226,0.12);
 }
-.header h1{margin:0;font-size:18px}
-.header .small{font-size:13px;color:var(--muted)}
-
-/* Layout */
-.container{
-  max-width:1100px;
-  margin:0 auto;
-  display:grid;
-  grid-template-columns: 1fr 380px;
-  gap:16px;
+.title{
+  font-size:18px;font-weight:700;
 }
-@media (max-width:980px){ .container{grid-template-columns:1fr} }
+.subtitle{font-size:13px;color:var(--muted)}
 
 /* Card */
 .card{
   background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border-radius:var(--radius);
-  padding:14px;
+  border-radius:var(--card-radius);
+  padding:12px;
   border:1px solid rgba(255,255,255,0.03);
-  box-shadow: 0 8px 30px rgba(2,2,8,0.6);
+  box-shadow:0 10px 30px rgba(0,0,0,0.6);
 }
 
-/* Controls */
-.controls{display:flex;gap:8px;flex-wrap:wrap}
-.btn{
-  background:transparent;
-  border:1px solid rgba(255,255,255,0.06);
-  color:var(--neon2);
-  padding:10px 12px;
-  border-radius:10px;
-  cursor:pointer;
-  font-weight:600;
-  display:inline-flex;
-  gap:8px;
-  align-items:center;
-  transition:all .14s ease;
-}
-.btn.primary{
-  background:linear-gradient(90deg,var(--neon1),var(--neon2));
-  color:#07040a;
-  border:none;
-  box-shadow: 0 8px 30px rgba(138,43,226,0.14);
-}
-.select,input,textarea{background:transparent;border:1px solid rgba(255,255,255,0.04);color:inherit;padding:10px;border-radius:10px;outline:none}
-.select{min-width:160px}
-
-/* Video area */
+/* Camera area: max 1/3 viewport height */
 .preview-wrap{
   position:relative;
-  width:100%;
   border-radius:12px;
   overflow:hidden;
   background:#000;
-  min-height:220px;
+}
+.preview-wrap.camera-1-3{
+  height:33vh;
+  min-height:140px;
+  max-height:300px;
 }
 video#preview{
   width:100%;
   height:100%;
-  display:block;
   object-fit:cover;
-  transform-origin:center;
-  -webkit-transform-origin:center;
+  display:block;
 }
 
-/* Results and table */
-.found{font-size:15px;color:var(--neon2);font-weight:700;margin-top:10px}
-.table-wrap{overflow:auto;max-height:320px}
+/* Controls */
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.btn{
+  padding:10px 12px;border-radius:var(--btn-radius);border:none;cursor:pointer;font-weight:700;
+  background:var(--accent);color:#07040a;box-shadow:0 10px 30px rgba(138,43,226,0.12);
+}
+.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);box-shadow:none}
+.select{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+
+/* Inputs */
+.field{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+label{font-size:13px;color:var(--muted)}
+input,textarea{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;font-size:15px}
+textarea{resize:vertical}
+
+/* Results */
+.found{font-size:15px;color:var(--neon2);font-weight:700;margin-top:8px}
+
+/* Table */
+.table-wrap{overflow:auto;max-height:260px;margin-top:8px;border-radius:10px}
 table{width:100%;border-collapse:collapse;font-size:14px;color:#dfe6ff}
 thead th{text-align:left;padding:10px;font-weight:700;color:var(--muted);border-bottom:1px solid rgba(255,255,255,0.03)}
 tbody td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.02)}
 
-/* small */
+/* Footer small */
 .small{font-size:13px;color:var(--muted)}
-.footer-note{font-size:12px;color:rgba(255,255,255,0.35);margin-top:8px}
+
+/* Responsive tweaks */
+@media (min-width:520px){
+  .container{max-width:520px}
+}
 </style>
 </head>
 <body>
 
-<header class="header">
-  <div style="display:flex;gap:12px;align-items:center">
-    <div class="logo">US</div>
-    <div>
-      <h1>База штрих кодов</h1>
-      <div class="small">Сканирование под любым углом • Без рамки</div>
-    </div>
-  </div>
-  <div style="display:flex;gap:8px;align-items:center">
-    <button class="btn" id="exportBtn">Экспорт JSON</button>
-    <button class="btn" id="importBtn">Импорт JSON</button>
-  </div>
-</header>
-
-<main class="container">
-
-  <section class="card">
-    <h2>Сканирование камерой</h2>
-
-    <div class="controls" style="margin-bottom:10px">
-      <button class="btn primary" id="startBtn">📷 Включить сканер</button>
-      <button class="btn" id="stopBtn">⛔ Остановить</button>
-      <select id="deviceSelect" class="select"></select>
-      <button class="btn" id="switchBtn">🔄 Сменить камеру</button>
-      <button class="btn" id="torchBtn">🔦 Torch</button>
+<div class="container" role="main" aria-label="База штрих-кодов мобильная">
+  <header class="header">
+    <div class="brand">
+      <div class="logo">BC</div>
+      <div>
+        <div class="title">База штрих‑кодов</div>
+        <div class="subtitle">Сканер занимает треть экрана — мобильная версия</div>
+      </div>
     </div>
 
-    <div class="preview-wrap" aria-hidden="false">
+    <div style="display:flex;gap:8px;align-items:center">
+      <button id="exportBtn" class="btn ghost" aria-label="Экспорт базы">Экспорт</button>
+      <button id="importBtn" class="btn ghost" aria-label="Импорт базы">Импорт</button>
+    </div>
+  </header>
+
+  <!-- Camera card -->
+  <section class="card" aria-labelledby="cameraTitle">
+    <h3 id="cameraTitle" style="margin:0 0 8px 0">Сканер</h3>
+
+    <div class="preview-wrap camera-1-3" aria-hidden="false">
       <video id="preview" playsinline muted></video>
     </div>
 
+    <div class="controls" style="margin-top:10px">
+      <select id="deviceSelect" class="select" aria-label="Выбор камеры"></select>
+      <button id="switchBtn" class="btn ghost" aria-label="Сменить камеру">🔄</button>
+      <button id="torchBtn" class="btn ghost" aria-label="Фонарик">🔦</button>
+      <button id="stopBtn" class="btn ghost" aria-label="Остановить">⛔</button>
+    </div>
+
     <div id="scanResult" class="found" aria-live="polite"></div>
-    <div class="footer-note">Поднеси штрихкод под любым углом. Система автоматически обрабатывает повороты и наклоны.</div>
+    <div class="small" style="margin-top:8px">Поднесите штрих‑код — распознавание по всему кадру, под любым углом.</div>
   </section>
 
-  <aside>
-    <div class="card">
-      <h2>Добавить товар вручную</h2>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <input id="code" placeholder="Штрих код">
-        <input id="name" placeholder="Название товара">
-        <div style="display:flex;gap:8px">
-          <button class="btn primary" id="addBtn">Добавить</button>
-          <button class="btn" id="deleteBtn">Удалить код</button>
-        </div>
-      </div>
+  <!-- Manual add / quick edit -->
+  <section class="card" aria-labelledby="manualTitle">
+    <h3 id="manualTitle" style="margin:0 0 8px 0">Добавить / Редактировать запись</h3>
+
+    <div class="field">
+      <label for="codeInput">Штрих‑код</label>
+      <input id="codeInput" type="text" placeholder="Сканируйте или введите код вручную" autocomplete="off" />
     </div>
 
-    <div class="card" style="margin-top:12px">
-      <h2>Поиск по штрих коду</h2>
-      <input id="scanInput" placeholder="Введите код" oninput="scanCodeManual()">
-      <div id="manualResult" class="found"></div>
+    <div class="field">
+      <label for="nameInput">Название</label>
+      <input id="nameInput" type="text" placeholder="Название товара" autocomplete="off" />
     </div>
 
-    <div class="card" style="margin-top:12px">
-      <h2>Массовый импорт</h2>
-      <textarea id="bulk" rows="6" placeholder='"4600605026533": "Молоко"
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button id="saveBtn" class="btn" style="flex:1">Сохранить в базу</button>
+      <button id="deleteBtn" class="btn ghost" style="width:120px">Удалить</button>
+    </div>
+
+    <div class="small" style="margin-top:8px">Сохранённые записи хранятся в localStorage под ключом <strong>barcodeDB</strong>.</div>
+  </section>
+
+  <!-- Bulk import -->
+  <section class="card" aria-labelledby="bulkTitle">
+    <h3 id="bulkTitle" style="margin:0 0 8px 0">Массовый импорт</h3>
+    <label for="bulk">Формат: "4600605026533": "Молоко"</label>
+    <textarea id="bulk" rows="4" placeholder='"4600605026533": "Молоко"
 "4810268035258": "Сыр российский"'></textarea>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="btn primary" id="bulkImportBtn">Импортировать</button>
-        <button class="btn" id="clearBtn">Очистить базу</button>
-      </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button id="bulkImportBtn" class="btn" style="flex:1">Импортировать</button>
+      <button id="clearAllBtn" class="btn ghost" style="width:120px">Очистить</button>
     </div>
-  </aside>
+  </section>
 
-  <section class="card" style="grid-column:1 / -1">
-    <h2>База товаров</h2>
-    <div class="table-wrap">
-      <table id="table">
-        <thead><tr><th>Штрих код</th><th>Название</th></tr></thead>
+  <!-- Table -->
+  <section class="card" aria-labelledby="tableTitle">
+    <h3 id="tableTitle" style="margin:0 0 8px 0">База товаров</h3>
+    <div class="table-wrap" role="region" aria-label="Список штрих-кодов">
+      <table id="table" aria-live="polite">
+        <thead><tr><th>Штрих‑код</th><th>Название</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
   </section>
+</div>
 
-</main>
-
+<!-- ZXing fallback -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 
 <script>
@@ -220,44 +217,47 @@ let scanning = false;
 let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
 let reader = null;
 let lastDetected = {code:null, ts:0};
-const DEBOUNCE_MS = 1200;
+const DEBOUNCE_MS = 900;
 
 /* ===== Elements ===== */
 const preview = document.getElementById('preview');
 const deviceSelect = document.getElementById('deviceSelect');
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
 const switchBtn = document.getElementById('switchBtn');
 const torchBtn = document.getElementById('torchBtn');
+const stopBtn = document.getElementById('stopBtn');
 const scanResult = document.getElementById('scanResult');
+
+const codeInput = document.getElementById('codeInput');
+const nameInput = document.getElementById('nameInput');
+const saveBtn = document.getElementById('saveBtn');
+const deleteBtn = document.getElementById('deleteBtn');
+
+const bulk = document.getElementById('bulk');
+const bulkImportBtn = document.getElementById('bulkImportBtn');
+const clearAllBtn = document.getElementById('clearAllBtn');
+
+const tableBody = document.querySelector('#table tbody');
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
 
 /* ===== Utilities ===== */
 function saveDB(){ localStorage.setItem('barcodeDB', JSON.stringify(db)); renderTable(); }
 function renderTable(){
-  const tbody = document.querySelector('#table tbody');
-  tbody.innerHTML = '';
-  Object.keys(db).forEach(code=>{
+  tableBody.innerHTML = '';
+  const keys = Object.keys(db);
+  if(!keys.length){
+    tableBody.innerHTML = '<tr><td colspan="2" class="small" style="padding:12px;color:var(--muted)">База пуста</td></tr>';
+    return;
+  }
+  keys.forEach(code=>{
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${code}</td><td>${db[code]}</td>`;
-    tbody.appendChild(tr);
+    tableBody.appendChild(tr);
   });
 }
-function beep(){
-  try{
-    navigator.vibrate?.(60);
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = 'sine';
-    o.frequency.value = 880;
-    g.gain.value = 0.02;
-    o.connect(g); g.connect(ctx.destination);
-    o.start();
-    setTimeout(()=>{ o.stop(); ctx.close(); }, 120);
-  }catch(e){}
-}
+function beep(){ try{ navigator.vibrate?.(60); }catch(e){} }
 
-/* ===== Camera enumeration ===== */
+/* ===== Camera & devices ===== */
 async function enumerateCameras(){
   try{
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -274,7 +274,6 @@ async function enumerateCameras(){
   }catch(e){}
 }
 
-/* ===== Start / Stop camera ===== */
 async function startCamera(){
   stopCamera();
   scanning = true;
@@ -296,11 +295,12 @@ async function startCamera(){
     await preview.play();
     currentDeviceId = stream.getVideoTracks()[0].getSettings().deviceId || currentDeviceId;
     deviceSelect.value = currentDeviceId || deviceSelect.value;
+
     reader = new ZXing.BrowserMultiFormatReader();
     requestAnimationFrame(scanLoop);
   }catch(err){
     console.error('camera error', err);
-    alert('Не удалось получить доступ к камере. Проверьте разрешения.');
+    scanResult.innerText = 'Ошибка доступа к камере';
     scanning = false;
   }
 }
@@ -317,7 +317,7 @@ function stopCamera(){
   }
 }
 
-/* ===== Torch ===== */
+/* Torch */
 let torchOn = false;
 async function toggleTorch(){
   if(!stream) return alert('Сначала включите камеру');
@@ -325,61 +325,32 @@ async function toggleTorch(){
   try{
     await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
     torchOn = !torchOn;
-    torchBtn.textContent = torchOn ? '🔦 Torch ON' : '🔦 Torch';
+    torchBtn.textContent = torchOn ? '🔦 ON' : '🔦';
   }catch(e){
-    alert('Torch не поддерживается на этом устройстве или в этом браузере.');
+    alert('Torch не поддерживается на этом устройстве/браузере.');
   }
 }
 
-/* ===== Image preprocessing helpers ===== */
-function createCanvas(w,h){
-  const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  return c;
-}
-function toGrayscale(ctx, w, h){
-  const img = ctx.getImageData(0,0,w,h);
-  const d = img.data;
-  for(let i=0;i<d.length;i+=4){
-    const r=d[i], g=d[i+1], b=d[i+2];
-    const v = (r*0.299 + g*0.587 + b*0.114)|0;
-    d[i]=d[i+1]=d[i+2]=v;
-  }
-  ctx.putImageData(img,0,0);
-}
-function increaseContrast(ctx,w,h,contrast=1.2){
-  const img = ctx.getImageData(0,0,w,h);
-  const d = img.data;
-  const factor = (259*(contrast+255))/(255*(259-contrast));
-  for(let i=0;i<d.length;i+=4){
-    for(let c=0;c<3;c++){
-      let col = d[i+c];
-      col = factor*(col-128)+128;
-      d[i+c] = Math.max(0,Math.min(255,col));
-    }
-  }
-  ctx.putImageData(img,0,0);
-}
+/* ===== Decoding helpers ===== */
+function createCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
 
-/* ===== Multi-angle decode attempts ===== */
-async function tryDecodeFromCanvas(canvas){
-  // First try BarcodeDetector if available
+async function tryDecodeCanvas(canvas){
+  // BarcodeDetector
   if(detector){
     try{
-      const bitmap = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
-      const results = await detector.detect(bitmap);
-      if(results && results.length) return results[0].rawValue;
+      const imageData = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+      const res = await detector.detect(imageData);
+      if(res && res.length) return res[0].rawValue;
     }catch(e){}
   }
-  // ZXing fallback: try decode directly and with rotations
+  // ZXing direct
   try{
     const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
     const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
     const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
     if(result && result.text) return result.text;
   }catch(e){}
-  // try rotated versions
-  const ctx = canvas.getContext('2d');
+  // rotated attempts
   const w = canvas.width, h = canvas.height;
   const temp = createCanvas(w,h);
   const tctx = temp.getContext('2d');
@@ -400,13 +371,11 @@ async function tryDecodeFromCanvas(canvas){
   return null;
 }
 
-/* ===== Main scanning loop ===== */
+/* Main scanning loop (full frame) */
 let canvasPool = [];
 function getCanvas(w,h){
   for(let c of canvasPool) if(c.width===w && c.height===h) return c;
-  const c = createCanvas(w,h);
-  canvasPool.push(c);
-  return c;
+  const c = createCanvas(w,h); canvasPool.push(c); return c;
 }
 
 async function scanLoop(){
@@ -416,25 +385,20 @@ async function scanLoop(){
     const h = preview.videoHeight;
     if(w===0 || h===0){ requestAnimationFrame(scanLoop); return; }
 
-    // Use full frame to allow arbitrary angles
     const canvas = getCanvas(w,h);
     const ctx = canvas.getContext('2d');
     ctx.drawImage(preview, 0, 0, w, h);
 
-    // Preprocess: downscale for speed, grayscale and contrast
-    const scale = Math.max(1, Math.floor(Math.max(w,h)/800));
+    // downscale for speed
+    const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
     const sw = Math.floor(w/scale);
     const sh = Math.floor(h/scale);
     const small = getCanvas(sw,sh);
     const sctx = small.getContext('2d');
     sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
-    toGrayscale(sctx, sw, sh);
-    increaseContrast(sctx, sw, sh, 30);
 
-    // Try decode on small canvas
-    const code = await tryDecodeFromCanvas(small);
+    const code = await tryDecodeCanvas(small);
     if(code) handleDetected(code);
-
   }catch(e){
     // ignore
   } finally {
@@ -442,47 +406,55 @@ async function scanLoop(){
   }
 }
 
-/* ===== Handle detection ===== */
+/* Handle detection */
 function handleDetected(code){
   const now = Date.now();
   if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
   lastDetected = {code, ts: now};
-  const name = db[code] || 'Товар не найден';
-  scanResult.innerText = `${code} → ${name}`;
   beep();
-  if(!db[code]){
-    const add = confirm(`Код ${code} не найден. Добавить товар?`);
-    if(add){
-      const title = prompt('Название товара', '');
-      if(title){ db[code] = title; saveDB(); }
-    }
-  }
+  scanResult.innerText = `${code} → ${db[code] || 'Товар не найден'}`;
+  // populate inputs for quick save/edit
+  codeInput.value = code;
+  if(db[code]) nameInput.value = db[code];
+  else nameInput.value = '';
 }
 
-/* ===== Manual UI ===== */
-function scanCodeManual(){
-  const code = document.getElementById('scanInput')?.value.trim();
-  document.getElementById('manualResult').innerText = db[code] ? `${code} → ${db[code]}` : (code ? 'Товар не найден' : '');
-}
+/* ===== UI actions ===== */
+deviceSelect.addEventListener('change', async ()=>{
+  currentDeviceId = deviceSelect.value;
+  await startCamera();
+});
+switchBtn.addEventListener('click', async ()=>{
+  // cycle devices
+  const opts = Array.from(deviceSelect.options);
+  if(!opts.length) return;
+  const idx = opts.findIndex(o=>o.value === deviceSelect.value);
+  const next = opts[(idx+1) % opts.length];
+  deviceSelect.value = next.value;
+  currentDeviceId = next.value;
+  await startCamera();
+});
+torchBtn.addEventListener('click', toggleTorch);
+stopBtn.addEventListener('click', stopCamera);
 
-document.getElementById('addBtn').addEventListener('click', ()=>{
-  const code = document.getElementById('code').value.trim();
-  const name = document.getElementById('name').value.trim();
-  if(!code || !name) return alert('Введите код и название');
+saveBtn.addEventListener('click', ()=>{
+  const code = (codeInput.value || '').trim();
+  const name = (nameInput.value || '').trim();
+  if(!code) return alert('Введите или отсканируйте штрих-код');
+  if(!name) return alert('Введите название товара');
   db[code] = name;
   saveDB();
-  document.getElementById('code').value = '';
-  document.getElementById('name').value = '';
+  scanResult.innerText = `Сохранено: ${code} → ${name}`;
 });
 
-document.getElementById('deleteBtn').addEventListener('click', ()=>{
-  const code = document.getElementById('code').value.trim();
+deleteBtn.addEventListener('click', ()=>{
+  const code = (codeInput.value || '').trim();
   if(!code) return alert('Введите код для удаления');
   if(db[code]){ delete db[code]; saveDB(); alert('Удалено'); } else alert('Код не найден');
 });
 
-document.getElementById('bulkImportBtn').addEventListener('click', ()=>{
-  const text = document.getElementById('bulk').value.trim();
+bulkImportBtn.addEventListener('click', ()=>{
+  const text = bulk.value.trim();
   const lines = text.split('\n');
   let count = 0;
   lines.forEach(line=>{
@@ -493,11 +465,12 @@ document.getElementById('bulkImportBtn').addEventListener('click', ()=>{
   alert(`Импортировано ${count} записей`);
 });
 
-document.getElementById('clearBtn').addEventListener('click', ()=>{
-  if(confirm('Очистить всю базу?')){ db = {}; saveDB(); }
+clearAllBtn.addEventListener('click', ()=>{
+  if(confirm('Очистить всю базу штрих-кодов?')){ db = {}; saveDB(); }
 });
 
-document.getElementById('exportBtn').addEventListener('click', ()=>{
+/* Export / Import JSON */
+exportBtn.addEventListener('click', ()=>{
   const data = JSON.stringify(db, null, 2);
   const blob = new Blob([data], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -506,15 +479,15 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
   URL.revokeObjectURL(url);
 });
 
-document.getElementById('importBtn').addEventListener('click', ()=>{
+importBtn.addEventListener('click', ()=>{
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'application/json';
   input.onchange = e=>{
     const file = e.target.files[0];
     if(!file) return;
-    const reader = new FileReader();
-    reader.onload = ev=>{
+    const readerFile = new FileReader();
+    readerFile.onload = ev=>{
       try{
         const obj = JSON.parse(ev.target.result);
         db = Object.assign({}, db, obj);
@@ -522,28 +495,10 @@ document.getElementById('importBtn').addEventListener('click', ()=>{
         alert('Импорт завершён');
       }catch(err){ alert('Ошибка парсинга JSON'); }
     };
-    reader.readAsText(file);
+    readerFile.readAsText(file);
   };
   input.click();
 });
-
-/* Camera controls */
-startBtn.addEventListener('click', ()=>startCamera());
-stopBtn.addEventListener('click', ()=>stopCamera());
-switchBtn.addEventListener('click', async ()=>{
-  const opts = Array.from(deviceSelect.options);
-  if(!opts.length) return;
-  const idx = opts.findIndex(o=>o.value === deviceSelect.value);
-  const next = opts[(idx+1) % opts.length];
-  deviceSelect.value = next.value;
-  currentDeviceId = next.value;
-  await startCamera();
-});
-deviceSelect.addEventListener('change', async ()=>{
-  currentDeviceId = deviceSelect.value;
-  await startCamera();
-});
-torchBtn.addEventListener('click', toggleTorch);
 
 /* Init */
 renderTable();
@@ -553,6 +508,11 @@ navigator.mediaDevices.getUserMedia({video:true}).then(s=>{
   enumerateCameras();
 }).catch(()=>{ /* ignore */ });
 
+/* Stop camera when leaving page */
+window.addEventListener('pagehide', ()=>{ stopCamera(); });
+window.addEventListener('beforeunload', ()=>{ stopCamera(); });
+
 </script>
 </body>
 </html>
+
