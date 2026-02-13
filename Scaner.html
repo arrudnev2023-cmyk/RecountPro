@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>База штрих‑кодов — Тетрадка</title>
+<title>База штрих‑кодов — Тетрадка (мобильная)</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
@@ -15,34 +15,50 @@
   --muted:#6b6b6b;
   --card-radius:12px;
   --btn-radius:10px;
+  --rule-color: rgba(107,59,214,0.06);
+  --grid-size:28px;
 }
 
-/* Page background: lined/graph paper look */
+/* Page background: realistic notebook sheet with grid/lines and left margin */
 html,body{height:100%;margin:0;font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 body{
-  /* subtle paper texture via repeating-linear-gradient for horizontal lines and vertical faint grid */
-  background-image:
-    linear-gradient(to bottom, rgba(107,59,214,0.06) 1px, transparent 1px),
-    linear-gradient(to right, rgba(107,59,214,0.02) 1px, transparent 1px);
-  background-size: 28px 28px, 28px 28px;
   padding:18px;
   display:flex;
   justify-content:center;
+  background-image:
+    linear-gradient(to bottom, rgba(107,59,214,0.06) 1px, transparent 1px),
+    linear-gradient(to right, rgba(107,59,214,0.02) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size), var(--grid-size) var(--grid-size);
 }
 
-/* Notebook container */
+/* Notebook container: looks like an open page with margin and subtle shadow */
 .container{
   width:100%;
-  max-width:520px;
+  max-width:540px;
   background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,250,0.98));
-  border: 1px solid rgba(27,27,27,0.06);
   border-radius:14px;
-  box-shadow: 0 10px 30px rgba(27,27,27,0.08);
+  box-shadow: 0 18px 40px rgba(27,27,27,0.06);
   padding:14px;
   box-sizing:border-box;
+  border-left: 6px solid rgba(200,40,40,0.12); /* left margin like notebook */
+  position:relative;
+  overflow:hidden;
 }
 
-/* Header: like notebook margin and title */
+/* top spiral / header hint */
+.container::before{
+  content:"";
+  position:absolute;
+  left:12px;
+  top:-10px;
+  width:calc(100% - 24px);
+  height:18px;
+  background: repeating-linear-gradient(90deg, rgba(0,0,0,0.04) 0 6px, transparent 6px 12px);
+  border-radius:6px;
+  opacity:0.06;
+}
+
+/* Header */
 .header{
   display:flex;
   align-items:center;
@@ -50,7 +66,7 @@ body{
   gap:12px;
   margin-bottom:10px;
 }
-.title{
+.brand{
   display:flex;
   gap:12px;
   align-items:center;
@@ -63,7 +79,7 @@ body{
   box-shadow: inset 0 -6px 12px rgba(107,59,214,0.02);
   font-size:18px;
 }
-.h1{
+.title{
   font-size:18px;font-weight:700;color:var(--ink);
 }
 .hint{font-size:13px;color:var(--muted)}
@@ -74,7 +90,15 @@ body{
   border-radius:10px;
   padding:10px 8px 14px 8px;
   margin-bottom:12px;
-  border-left:4px solid rgba(107,59,214,0.12);
+  border-left:4px solid rgba(107,59,214,0.06);
+  position:relative;
+}
+
+/* small ruled header line */
+.card h3{
+  margin:0 0 8px 6px;
+  font-weight:700;
+  color:var(--ink);
 }
 
 /* Camera area: occupies ~1/3 of viewport height */
@@ -92,7 +116,7 @@ body{
 }
 video#preview{width:100%;height:100%;object-fit:cover;display:block}
 
-/* Controls: buttons look like stickers/labels */
+/* Controls: buttons look like paper stickers */
 .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .btn{
   padding:10px 12px;border-radius:var(--btn-radius);border:none;cursor:pointer;font-weight:700;
@@ -104,7 +128,7 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
 }
 .btn.ghost{background:transparent;border:1px solid rgba(27,27,27,0.06);color:var(--muted);box-shadow:none}
 
-/* Notebook input style: ruled lines inside inputs */
+/* Notebook input style: lined inputs with left margin like ruled paper */
 .field{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 label{font-size:13px;color:var(--muted);margin-left:6px}
 input,textarea{
@@ -116,6 +140,13 @@ input,textarea{
   font-size:15px;color:var(--ink);
   outline:none;
   box-shadow: inset 0 -6px 12px rgba(0,0,0,0.02);
+  position:relative;
+}
+/* add faint ruled lines inside inputs */
+input, textarea {
+  background-image:
+    linear-gradient(to bottom, rgba(107,59,214,0.03) 1px, transparent 1px);
+  background-size: 100% 18px;
 }
 input::placeholder{color:rgba(27,27,27,0.35)}
 textarea{min-height:80px;resize:vertical}
@@ -132,7 +163,7 @@ tbody td{padding:10px;border-bottom:1px dashed rgba(27,27,27,0.04)}
   position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:rgba(27,27,27,0.9);color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:9999;
 }
 
-/* mobile tweaks */
+/* responsive tweaks */
 @media (max-width:420px){
   .container{padding:10px}
   .h1{font-size:16px}
@@ -144,11 +175,11 @@ tbody td{padding:10px;border-bottom:1px dashed rgba(27,27,27,0.04)}
 
 <div class="container" role="main" aria-label="Мобильная база штрих-кодов в стиле тетрадки">
   <header class="header">
-    <div class="title">
+    <div class="brand">
       <div class="logo">BC</div>
       <div>
-        <div class="h1">База штрих‑кодов</div>
-        <div class="hint">Стиль: школьная тетрадка в клетку</div>
+        <div class="title">База штрих‑кодов</div>
+        <div class="hint">Открытая тетрадка — мобильная версия</div>
       </div>
     </div>
 
@@ -160,7 +191,7 @@ tbody td{padding:10px;border-bottom:1px dashed rgba(27,27,27,0.04)}
 
   <!-- Camera card -->
   <section class="card" aria-labelledby="cameraTitle">
-    <h3 id="cameraTitle" style="margin:0 0 8px 6px;font-weight:700">Сканер</h3>
+    <h3 id="cameraTitle">Сканер</h3>
 
     <div class="preview-wrap camera-1-3" aria-hidden="false">
       <video id="preview" playsinline muted></video>
@@ -179,7 +210,7 @@ tbody td{padding:10px;border-bottom:1px dashed rgba(27,27,27,0.04)}
 
   <!-- Manual add / quick edit -->
   <section class="card" aria-labelledby="manualTitle">
-    <h3 id="manualTitle" style="margin:0 0 8px 6px;font-weight:700">Добавить / Редактировать запись</h3>
+    <h3 id="manualTitle">Добавить / Редактировать запись</h3>
 
     <div class="field">
       <label for="codeInput">Штрих‑код</label>
@@ -201,8 +232,8 @@ tbody td{padding:10px;border-bottom:1px dashed rgba(27,27,27,0.04)}
 
   <!-- Bulk import -->
   <section class="card" aria-labelledby="bulkTitle">
-    <h3 id="bulkTitle" style="margin:0 0 8px 6px;font-weight:700">Массовый импорт</h3>
-    <label for="bulk" style="margin-left:6px" class="small">Формат: "4600605026533": "Молоко"</label>
+    <h3 id="bulkTitle">Массовый импорт</h3>
+    <label for="bulk" class="small" style="margin-left:6px">Формат: "4600605026533": "Молоко"</label>
     <textarea id="bulk" rows="4" placeholder='"4600605026533": "Молоко"
 "4810268035258": "Сыр российский"'></textarea>
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -213,7 +244,7 @@ tbody td{padding:10px;border-bottom:1px dashed rgba(27,27,27,0.04)}
 
   <!-- Table -->
   <section class="card" aria-labelledby="tableTitle">
-    <h3 id="tableTitle" style="margin:0 0 8px 6px;font-weight:700">База товаров</h3>
+    <h3 id="tableTitle">База товаров</h3>
     <div class="table-wrap" role="region" aria-label="Список штрих-кодов">
       <table id="table" aria-live="polite">
         <thead><tr><th>Штрих‑код</th><th>Название</th></tr></thead>
@@ -546,5 +577,6 @@ window.addEventListener('beforeunload', ()=>{ stopCamera(); });
 </script>
 </body>
 </html>
+
 
 
