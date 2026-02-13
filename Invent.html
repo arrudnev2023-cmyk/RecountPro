@@ -197,18 +197,38 @@ function searchItems(query){
   return results;
 }
 
+/* Build display list: inventory items always shown; if search present, append search results not already in inventory */
+function getDisplayList(){
+  const q = searchInput.value.trim();
+  const display = [];
+  // show all inventory items first (persisted scanned/added items)
+  for(const it of inventoryItems){
+    display.push({ code: it.code, name: it.name, expr: it.expr || String(it.qty || 0), qty: it.qty || 0, fromInventory: true });
+  }
+  // if search query present, append matching DB items not already in inventory
+  if(q){
+    const search = searchItems(q);
+    const invCodes = new Set(inventoryItems.map(i=>i.code));
+    for(const s of search){
+      if(!invCodes.has(s.code)){
+        display.push({ code: s.code, name: s.name, expr: '0', qty: 0, fromInventory: false });
+      }
+    }
+  }
+  return display;
+}
+
 /* ===== Render results (cards) ===== */
-function renderResults(list){
+function renderResults(){
+  const list = getDisplayList();
   resultsEl.innerHTML = '';
-  if(!list || !list.length){
+  if(!list.length){
     emptyHint.style.display = 'block';
     return;
   }
   emptyHint.style.display = 'none';
-  list.forEach(item=>{
-    const existingInv = inventoryItems.find(it => it.code === item.code);
-    const qtyVal = existingInv ? existingInv.qty : 0;
-    const exprVal = existingInv ? (existingInv.expr || String(qtyVal)) : String(qtyVal);
+  for(const item of list){
+    const exprVal = item.expr || String(item.qty || 0);
 
     const card = document.createElement('div');
     card.className = 'card-item';
@@ -225,44 +245,51 @@ function renderResults(list){
 
       <div class="qty-row">
         <input inputmode="numeric" pattern="[0-9+ ]*" class="qty-input" type="text" value="${escapeHtml(exprVal)}" aria-label="Выражение для ${item.name}">
-        <button class="plus-btn" title="Добавить">+</button>
+        <button class="plus-btn" title="Плюс">+</button>
       </div>
     `;
     const qtyInput = card.querySelector('.qty-input');
     const plusBtn = card.querySelector('.plus-btn');
 
-    // When user types expression manually, compute total and persist
+    // Save expression on input (immediate persistence)
     qtyInput.addEventListener('input', ()=>{
-      // keep expression as-is, but compute total and save
-      const expr = qtyInput.value.trim();
+      const expr = qtyInput.value;
       const total = evaluateExpression(expr);
       upsertInventoryExpr(item.code, item.name, expr, total);
     });
 
     qtyInput.addEventListener('blur', ()=>{
-      const expr = qtyInput.value.trim();
+      const expr = qtyInput.value;
       const total = evaluateExpression(expr);
       upsertInventoryExpr(item.code, item.name, expr, total);
-      // normalize expression to show spaced pluses
       qtyInput.value = normalizeExpression(expr);
     });
 
-    // Plus button: append "+ <current number in input or 1>" to expression and sum
+    // Plus button: append " + " to expression (do not auto-add numbers)
     plusBtn.addEventListener('click', ()=>{
-      // determine number to add: if input contains a trailing number, use it; else use 1
-      const currentExpr = qtyInput.value.trim();
-      const lastNumber = extractLastNumber(currentExpr);
-      const add = Math.max(1, lastNumber || 1);
-      // append to expression
-      const newExpr = (currentExpr ? currentExpr + ' + ' + add : String(add));
-      const total = evaluateExpression(newExpr);
-      upsertInventoryExpr(item.code, item.name, newExpr, total);
-      qtyInput.value = normalizeExpression(newExpr);
-      showToast('Добавлено');
+      let expr = qtyInput.value || '';
+      expr = expr.trim();
+      // If last char is plus, do nothing but keep focus
+      if(/\+\s*$/.test(expr)){
+        qtyInput.focus();
+        return;
+      }
+      // If empty, start with "0 + " to allow adding next numbers
+      if(expr === ''){
+        expr = '0 + ';
+      } else {
+        expr = expr + ' + ';
+      }
+      const total = evaluateExpression(expr);
+      upsertInventoryExpr(item.code, item.name, expr, total);
+      qtyInput.value = normalizeExpression(expr);
+      qtyInput.focus();
+      // place caret at end
+      setTimeout(()=>{ qtyInput.selectionStart = qtyInput.selectionEnd = qtyInput.value.length; }, 0);
     });
 
     resultsEl.appendChild(card);
-  });
+  }
 }
 
 /* Escape HTML for safe insertion into value attribute */
@@ -270,26 +297,20 @@ function escapeHtml(s){
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-/* Normalize expression: remove extra spaces, ensure "a + b + c" format */
+/* Normalize expression: keep digits and pluses, format with spaces */
 function normalizeExpression(expr){
   if(!expr) return '';
-  // keep only digits and plus signs and spaces
-  const cleaned = expr.replace(/[^\d+]/g, ' ');
-  const parts = cleaned.split('+').map(p=>p.trim()).filter(Boolean);
-  return parts.join(' + ');
-}
-
-/* Extract last number from expression (if any) */
-function extractLastNumber(expr){
-  if(!expr) return null;
-  const m = expr.match(/(\d+)\s*$/);
-  return m ? parseInt(m[1],10) : null;
+  // extract numbers
+  const parts = (expr.match(/\d+/g) || []);
+  // if expression ends with plus (no trailing number), preserve trailing plus
+  const trailingPlus = /\+\s*$/.test(expr);
+  const joined = parts.join(' + ');
+  return trailingPlus ? (joined ? joined + ' + ' : ' + ') : joined;
 }
 
 /* Evaluate expression like "5 + 3 + 7" -> 15. Non-numeric tokens ignored. */
 function evaluateExpression(expr){
   if(!expr) return 0;
-  // extract numbers
   const nums = (expr.match(/\d+/g) || []).map(n=>parseInt(n,10) || 0);
   return nums.reduce((s,v)=>s+v, 0);
 }
@@ -305,6 +326,8 @@ function upsertInventoryExpr(code, name, expr, total){
     inventoryItems.unshift({ code, name, qty: total, expr });
   }
   saveInventory();
+  // re-render to ensure card list stays updated
+  renderResults();
 }
 
 /* ===== Scanner logic (hidden by default) ===== */
@@ -453,9 +476,12 @@ function handleDetected(code){
   const found = barcodeDB[code];
   if(found){
     showToast('Найден товар в базе');
-    // ensure item is present in results and not removed after counting
-    performSearch();
-    // keep item visible (do not remove)
+    // ensure item is present in inventory (if not, add with qty 0)
+    const idx = inventoryItems.findIndex(it=>it.code===code);
+    if(idx === -1){
+      upsertInventoryExpr(code, found, '0', 0);
+    }
+    performSearchAndRender();
   } else {
     const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить 1 шт.?`);
     if(create){
@@ -464,7 +490,7 @@ function handleDetected(code){
         barcodeDB[code] = name.trim();
         saveDB();
         upsertInventoryExpr(code, barcodeDB[code], '1', 1); // add 1
-        performSearch();
+        performSearchAndRender();
         showToast('Товар добавлен и учтён');
       } else {
         showToast('Название не введено');
@@ -475,16 +501,19 @@ function handleDetected(code){
   }
 }
 
-/* ===== Search and UI wiring ===== */
-function performSearch(){
-  const q = searchInput.value.trim();
-  const results = searchItems(q);
-  renderResults(results);
+/* Combined search + render helper */
+function performSearchAndRender(){
+  // keep search input as-is (code or query)
+  renderResults();
 }
-searchInput.addEventListener('input', performSearch);
+
+/* ===== Search and UI wiring ===== */
+searchInput.addEventListener('input', ()=>{
+  renderResults();
+});
 clearSearch.addEventListener('click', ()=>{
   searchInput.value = '';
-  performSearch();
+  renderResults();
   searchInput.focus();
 });
 
@@ -496,7 +525,7 @@ addManualBtn.addEventListener('click', ()=>{
   barcodeDB[code] = name;
   saveDB();
   upsertInventoryExpr(code, name, '0', 0);
-  performSearch();
+  renderResults();
   showToast('Добавлено вручную');
 });
 
@@ -530,7 +559,7 @@ function clearRecount(){
   if(!confirm('Очистить все текущие пересчёты на этом экране? Это не удалит базу штрих-кодов.')) return;
   inventoryItems = [];
   saveInventory();
-  performSearch();
+  renderResults();
   showToast('Пересчёт очищен');
 }
 
@@ -557,11 +586,12 @@ overlay.addEventListener('click', closeSummaryModal);
 clearRecountBtn.addEventListener('click', clearRecount);
 
 /* Init: screen empty by default */
-performSearch();
+renderResults();
 enumerateCameras();
 navigator.mediaDevices.getUserMedia({video:true}).then(s=>{ s.getTracks().forEach(t=>t.stop()); enumerateCameras(); }).catch(()=>{});
 </script>
 </body>
 </html>
+
 
 
