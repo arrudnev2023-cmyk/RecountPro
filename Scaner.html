@@ -3,117 +3,81 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>База штрих кодов — Neon</title>
-
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-
+<title>База штрих кодов — Universal Scan</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0b0710;
+  --bg:#07040a;
   --card:#0f0b16;
   --muted:#9aa0b4;
   --neon1:#8a2be2;
   --neon2:#c86cff;
   --accent:linear-gradient(90deg,var(--neon1),var(--neon2));
-  --glass: rgba(255,255,255,0.03);
-  --radius:14px;
-  --glass-2: rgba(255,255,255,0.02);
+  --radius:12px;
 }
-
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
   margin:0;
   font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  background: radial-gradient(1200px 600px at 10% 10%, rgba(138,43,226,0.12), transparent),
-              radial-gradient(900px 400px at 90% 90%, rgba(200,108,255,0.08), transparent),
+  background: radial-gradient(800px 400px at 10% 10%, rgba(138,43,226,0.08), transparent),
+              radial-gradient(600px 300px at 90% 90%, rgba(200,108,255,0.06), transparent),
               var(--bg);
   color:#e9e9f2;
+  padding:18px;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
-  padding:20px;
 }
 
 /* Header */
-header{
+.header{
   max-width:1100px;
   margin:0 auto 18px;
-  padding:18px 22px;
-  border-radius:18px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-  box-shadow: 0 6px 30px rgba(0,0,0,0.6), 0 0 40px rgba(138,43,226,0.06) inset;
+  padding:14px 18px;
+  border-radius:14px;
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
   border:1px solid rgba(255,255,255,0.03);
-}
-.header-title{
-  display:flex;
-  gap:12px;
-  align-items:center;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
 }
 .logo{
   width:44px;
   height:44px;
   border-radius:10px;
-  background:var(--accent);
-  box-shadow: 0 6px 30px rgba(138,43,226,0.18);
+  background:linear-gradient(90deg,var(--neon1),var(--neon2));
   display:flex;
   align-items:center;
   justify-content:center;
   font-weight:800;
   color:white;
-  font-size:18px;
 }
-.header-title h1{
-  margin:0;
-  font-size:18px;
-  letter-spacing:0.2px;
-}
-.header-actions{
-  display:flex;
-  gap:10px;
-  align-items:center;
-}
+.header h1{margin:0;font-size:18px}
+.header .small{font-size:13px;color:var(--muted)}
 
-/* Container */
+/* Layout */
 .container{
   max-width:1100px;
   margin:0 auto;
   display:grid;
-  grid-template-columns: 1fr 420px;
-  gap:18px;
+  grid-template-columns: 1fr 380px;
+  gap:16px;
 }
+@media (max-width:980px){ .container{grid-template-columns:1fr} }
 
 /* Card */
 .card{
   background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
   border-radius:var(--radius);
-  padding:16px;
+  padding:14px;
   border:1px solid rgba(255,255,255,0.03);
   box-shadow: 0 8px 30px rgba(2,2,8,0.6);
 }
 
-/* Left column full width on small screens */
-@media (max-width:980px){
-  .container{grid-template-columns:1fr; padding:0 6px}
-}
-
-/* Titles */
-h2{
-  margin:0 0 10px 0;
-  font-size:16px;
-  color:#f3f2ff;
-}
-
 /* Controls */
-.controls{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-}
+.controls{display:flex;gap:8px;flex-wrap:wrap}
 .btn{
   background:transparent;
   border:1px solid rgba(255,255,255,0.06);
@@ -125,45 +89,25 @@ h2{
   display:inline-flex;
   gap:8px;
   align-items:center;
-  transition:all .18s ease;
+  transition:all .14s ease;
 }
 .btn.primary{
-  background:var(--accent);
-  color:#0b0710;
-  box-shadow: 0 8px 30px rgba(138,43,226,0.18);
-  border: none;
+  background:linear-gradient(90deg,var(--neon1),var(--neon2));
+  color:#07040a;
+  border:none;
+  box-shadow: 0 8px 30px rgba(138,43,226,0.14);
 }
-.btn.ghost{
-  background:transparent;
-  color:var(--muted);
-  border:1px dashed rgba(255,255,255,0.03);
-}
-.btn:active{transform:translateY(1px)}
-.select, input, textarea{
-  background:transparent;
-  border:1px solid rgba(255,255,255,0.04);
-  color:inherit;
-  padding:10px;
-  border-radius:10px;
-  outline:none;
-}
+.select,input,textarea{background:transparent;border:1px solid rgba(255,255,255,0.04);color:inherit;padding:10px;border-radius:10px;outline:none}
 .select{min-width:160px}
 
-/* Scanner area */
-.scanner-card{
-  display:flex;
-  gap:14px;
-  align-items:flex-start;
-  flex-direction:column;
-}
+/* Video area */
 .preview-wrap{
   position:relative;
   width:100%;
-  max-width:720px;
   border-radius:12px;
   overflow:hidden;
-  background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border:1px solid rgba(255,255,255,0.03);
+  background:#000;
+  min-height:220px;
 }
 video#preview{
   width:100%;
@@ -173,114 +117,41 @@ video#preview{
   transform-origin:center;
   -webkit-transform-origin:center;
 }
-.overlay-frame{
-  position:absolute;
-  left:50%;
-  top:50%;
-  transform:translate(-50%,-50%);
-  width:86%;
-  max-width:640px;
-  height:96px;
-  border-radius:12px;
-  pointer-events:none;
-  box-shadow: 0 0 40px rgba(200,108,255,0.12), 0 0 8px rgba(138,43,226,0.18) inset;
-  border:2px solid rgba(200,108,255,0.28);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  backdrop-filter: blur(6px);
-}
-
-/* corners */
-.overlay-frame::before,
-.overlay-frame::after{
-  content:"";
-  position:absolute;
-  width:18px;
-  height:18px;
-  border:3px solid var(--neon2);
-  border-radius:6px;
-  box-shadow: 0 6px 20px rgba(200,108,255,0.12);
-}
-.overlay-frame::before{left:-10px; top:-10px; border-right:none; border-bottom:none}
-.overlay-frame::after{right:-10px; bottom:-10px; border-left:none; border-top:none}
-
-/* scan line */
-.scan-line{
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
-  width:84%;
-  height:2px;
-  background:linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
-  animation:scan 2s linear infinite;
-  top:calc(50% - 44px);
-  mix-blend-mode:screen;
-}
-@keyframes scan{
-  0%{top:calc(50% - 44px); opacity:0}
-  10%{opacity:1}
-  50%{top:calc(50% + 44px); opacity:1}
-  90%{opacity:1}
-  100%{top:calc(50% - 44px); opacity:0}
-}
 
 /* Results and table */
-.found{
-  font-size:15px;
-  color:var(--neon2);
-  font-weight:700;
-  margin-top:8px;
-}
-.table-wrap{overflow:auto; max-height:320px}
-table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:14px;
-  color:#dfe6ff;
-}
-thead th{
-  text-align:left;
-  padding:10px;
-  font-weight:700;
-  color:var(--muted);
-  border-bottom:1px solid rgba(255,255,255,0.03);
-}
-tbody td{
-  padding:10px;
-  border-bottom:1px dashed rgba(255,255,255,0.02);
-}
+.found{font-size:15px;color:var(--neon2);font-weight:700;margin-top:10px}
+.table-wrap{overflow:auto;max-height:320px}
+table{width:100%;border-collapse:collapse;font-size:14px;color:#dfe6ff}
+thead th{text-align:left;padding:10px;font-weight:700;color:var(--muted);border-bottom:1px solid rgba(255,255,255,0.03)}
+tbody td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.02)}
 
-/* small helpers */
-.row{display:flex; gap:10px; align-items:center}
-.right{margin-left:auto}
-.small{font-size:13px; color:var(--muted)}
-.footer-note{font-size:12px; color:rgba(255,255,255,0.35); margin-top:8px}
+/* small */
+.small{font-size:13px;color:var(--muted)}
+.footer-note{font-size:12px;color:rgba(255,255,255,0.35);margin-top:8px}
 </style>
 </head>
 <body>
 
-<header>
-  <div class="header-title">
-    <div class="logo">BC</div>
+<header class="header">
+  <div style="display:flex;gap:12px;align-items:center">
+    <div class="logo">US</div>
     <div>
       <h1>База штрих кодов</h1>
-      <div class="small">Надёжное сканирование • Neon UI</div>
+      <div class="small">Сканирование под любым углом • Без рамки</div>
     </div>
   </div>
-
-  <div class="header-actions">
-    <button class="btn ghost" id="exportBtn">Экспорт JSON</button>
-    <button class="btn ghost" id="importBtn">Импорт JSON</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="btn" id="exportBtn">Экспорт JSON</button>
+    <button class="btn" id="importBtn">Импорт JSON</button>
   </div>
 </header>
 
 <main class="container">
 
-  <section class="card scanner-card">
+  <section class="card">
     <h2>Сканирование камерой</h2>
 
-    <div class="row controls">
+    <div class="controls" style="margin-bottom:10px">
       <button class="btn primary" id="startBtn">📷 Включить сканер</button>
       <button class="btn" id="stopBtn">⛔ Остановить</button>
       <select id="deviceSelect" class="select"></select>
@@ -288,15 +159,12 @@ tbody td{
       <button class="btn" id="torchBtn">🔦 Torch</button>
     </div>
 
-    <div class="preview-wrap" style="margin-top:12px;">
+    <div class="preview-wrap" aria-hidden="false">
       <video id="preview" playsinline muted></video>
-      <div class="overlay-frame" aria-hidden="true">
-        <div class="scan-line"></div>
-      </div>
     </div>
 
     <div id="scanResult" class="found" aria-live="polite"></div>
-    <div class="footer-note">Рамка показывает область сканирования. Поднесите штрихкод в рамку и держите стабильно.</div>
+    <div class="footer-note">Поднеси штрихкод под любым углом. Система автоматически обрабатывает повороты и наклоны.</div>
   </section>
 
   <aside>
@@ -341,22 +209,20 @@ tbody td{
 
 </main>
 
-<!-- ZXing fallback -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 
 <script>
-/* ======= State and DB ======= */
-let db = JSON.parse(localStorage.getItem("barcodeDB") || "{}");
-let currentDeviceId = null;
+/* ===== State ===== */
+let db = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
 let stream = null;
-let reader = null;
-let detectorAvailable = ('BarcodeDetector' in window);
-let detector = null;
+let currentDeviceId = null;
 let scanning = false;
-let lastDetected = { code: null, ts: 0 };
-const DEBOUNCE_MS = 1200; // минимальный интервал между срабатываниями
+let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
+let reader = null;
+let lastDetected = {code:null, ts:0};
+const DEBOUNCE_MS = 1200;
 
-/* ======= Elements ======= */
+/* ===== Elements ===== */
 const preview = document.getElementById('preview');
 const deviceSelect = document.getElementById('deviceSelect');
 const startBtn = document.getElementById('startBtn');
@@ -364,14 +230,8 @@ const stopBtn = document.getElementById('stopBtn');
 const switchBtn = document.getElementById('switchBtn');
 const torchBtn = document.getElementById('torchBtn');
 const scanResult = document.getElementById('scanResult');
-const addBtn = document.getElementById('addBtn');
-const deleteBtn = document.getElementById('deleteBtn');
-const bulkImportBtn = document.getElementById('bulkImportBtn');
-const clearBtn = document.getElementById('clearBtn');
-const exportBtn = document.getElementById('exportBtn');
-const importBtn = document.getElementById('importBtn');
 
-/* ======= Utilities ======= */
+/* ===== Utilities ===== */
 function saveDB(){ localStorage.setItem('barcodeDB', JSON.stringify(db)); renderTable(); }
 function renderTable(){
   const tbody = document.querySelector('#table tbody');
@@ -397,7 +257,7 @@ function beep(){
   }catch(e){}
 }
 
-/* ======= Camera and devices ======= */
+/* ===== Camera enumeration ===== */
 async function enumerateCameras(){
   try{
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -414,14 +274,15 @@ async function enumerateCameras(){
   }catch(e){}
 }
 
+/* ===== Start / Stop camera ===== */
 async function startCamera(){
   stopCamera();
   scanning = true;
   await enumerateCameras();
 
   const constraints = {
-    audio: false,
-    video: {
+    audio:false,
+    video:{
       deviceId: deviceSelect.value || currentDeviceId || undefined,
       facingMode: { ideal: "environment" },
       width: { ideal: 1280 },
@@ -435,21 +296,10 @@ async function startCamera(){
     await preview.play();
     currentDeviceId = stream.getVideoTracks()[0].getSettings().deviceId || currentDeviceId;
     deviceSelect.value = currentDeviceId || deviceSelect.value;
-
-    // prepare BarcodeDetector if available
-    if(detectorAvailable){
-      try{
-        detector = new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]});
-      }catch(e){ detector = null; }
-    }
-
-    // ZXing fallback reader
     reader = new ZXing.BrowserMultiFormatReader();
-
-    // Start scanning loop
     requestAnimationFrame(scanLoop);
   }catch(err){
-    console.error('Camera error', err);
+    console.error('camera error', err);
     alert('Не удалось получить доступ к камере. Проверьте разрешения.');
     scanning = false;
   }
@@ -465,124 +315,153 @@ function stopCamera(){
     try{ reader.reset(); }catch(e){}
     reader = null;
   }
-  detector = null;
 }
 
-/* ======= Torch control ======= */
+/* ===== Torch ===== */
 let torchOn = false;
 async function toggleTorch(){
   if(!stream) return alert('Сначала включите камеру');
   const track = stream.getVideoTracks()[0];
-  const imageCapture = ('ImageCapture' in window) ? new ImageCapture(track) : null;
   try{
-    if(imageCapture && 'getPhotoCapabilities' in imageCapture){
-      const cap = await imageCapture.getPhotoCapabilities();
-      if(cap.fillLightMode && cap.fillLightMode.length){
-        // Some devices support fillLightMode
-      }
-    }
-    // Try applyConstraints
     await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
     torchOn = !torchOn;
     torchBtn.textContent = torchOn ? '🔦 Torch ON' : '🔦 Torch';
   }catch(e){
-    // fallback: inform user
     alert('Torch не поддерживается на этом устройстве или в этом браузере.');
   }
 }
 
-/* ======= Scanning logic ======= */
+/* ===== Image preprocessing helpers ===== */
+function createCanvas(w,h){
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  return c;
+}
+function toGrayscale(ctx, w, h){
+  const img = ctx.getImageData(0,0,w,h);
+  const d = img.data;
+  for(let i=0;i<d.length;i+=4){
+    const r=d[i], g=d[i+1], b=d[i+2];
+    const v = (r*0.299 + g*0.587 + b*0.114)|0;
+    d[i]=d[i+1]=d[i+2]=v;
+  }
+  ctx.putImageData(img,0,0);
+}
+function increaseContrast(ctx,w,h,contrast=1.2){
+  const img = ctx.getImageData(0,0,w,h);
+  const d = img.data;
+  const factor = (259*(contrast+255))/(255*(259-contrast));
+  for(let i=0;i<d.length;i+=4){
+    for(let c=0;c<3;c++){
+      let col = d[i+c];
+      col = factor*(col-128)+128;
+      d[i+c] = Math.max(0,Math.min(255,col));
+    }
+  }
+  ctx.putImageData(img,0,0);
+}
+
+/* ===== Multi-angle decode attempts ===== */
+async function tryDecodeFromCanvas(canvas){
+  // First try BarcodeDetector if available
+  if(detector){
+    try{
+      const bitmap = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+      const results = await detector.detect(bitmap);
+      if(results && results.length) return results[0].rawValue;
+    }catch(e){}
+  }
+  // ZXing fallback: try decode directly and with rotations
+  try{
+    const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+    const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+    if(result && result.text) return result.text;
+  }catch(e){}
+  // try rotated versions
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  const temp = createCanvas(w,h);
+  const tctx = temp.getContext('2d');
+  for(let angle of [90,180,270]){
+    tctx.clearRect(0,0,w,h);
+    tctx.save();
+    tctx.translate(w/2,h/2);
+    tctx.rotate(angle*Math.PI/180);
+    tctx.drawImage(canvas, -w/2, -h/2);
+    tctx.restore();
+    try{
+      const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(temp);
+      const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+      const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+      if(result && result.text) return result.text;
+    }catch(e){}
+  }
+  return null;
+}
+
+/* ===== Main scanning loop ===== */
+let canvasPool = [];
+function getCanvas(w,h){
+  for(let c of canvasPool) if(c.width===w && c.height===h) return c;
+  const c = createCanvas(w,h);
+  canvasPool.push(c);
+  return c;
+}
+
 async function scanLoop(){
   if(!scanning) return;
   try{
-    const now = Date.now();
-
-    // compute ROI from video size
     const w = preview.videoWidth;
     const h = preview.videoHeight;
-    if(w === 0 || h === 0){
-      requestAnimationFrame(scanLoop);
-      return;
-    }
+    if(w===0 || h===0){ requestAnimationFrame(scanLoop); return; }
 
-    // Use BarcodeDetector if available and initialized
-    if(detector){
-      try{
-        // draw ROI to canvas and pass ImageData to detector for better perf
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const roi = {
-          x: Math.floor(w * 0.07),
-          y: Math.floor(h * 0.45),
-          width: Math.floor(w * 0.86),
-          height: Math.floor(h * 0.12)
-        };
-        canvas.width = roi.width;
-        canvas.height = roi.height;
-        ctx.drawImage(preview, roi.x, roi.y, roi.width, roi.height, 0, 0, roi.width, roi.height);
-        const imageData = ctx.getImageData(0,0,roi.width,roi.height);
-        const barcodes = await detector.detect(imageData);
-        if(barcodes && barcodes.length){
-          handleDetected(barcodes[0].rawValue);
-        }
-      }catch(e){
-        // if detector fails, fallback to zxing
-        // console.warn('detector error', e);
-      }
-    }
+    // Use full frame to allow arbitrary angles
+    const canvas = getCanvas(w,h);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(preview, 0, 0, w, h);
 
-    // ZXing fallback decode from canvas
-    if(reader){
-      try{
-        // ZXing has decodeFromVideoDevice helper but we prefer decodeFromCanvas for ROI control
-        const canvas2 = document.createElement('canvas');
-        const ctx2 = canvas2.getContext('2d');
-        const roi2 = {
-          x: Math.floor(w * 0.07),
-          y: Math.floor(h * 0.45),
-          width: Math.floor(w * 0.86),
-          height: Math.floor(h * 0.12)
-        };
-        canvas2.width = roi2.width;
-        canvas2.height = roi2.height;
-        ctx2.drawImage(preview, roi2.x, roi2.y, roi2.width, roi2.height, 0, 0, roi2.width, roi2.height);
-        const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas2);
-        const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-        const result = reader.decode(binaryBitmap);
-        if(result && result.text) handleDetected(result.text);
-      }catch(e){
-        // ignore decode errors
-      }
-    }
+    // Preprocess: downscale for speed, grayscale and contrast
+    const scale = Math.max(1, Math.floor(Math.max(w,h)/800));
+    const sw = Math.floor(w/scale);
+    const sh = Math.floor(h/scale);
+    const small = getCanvas(sw,sh);
+    const sctx = small.getContext('2d');
+    sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
+    toGrayscale(sctx, sw, sh);
+    increaseContrast(sctx, sw, sh, 30);
+
+    // Try decode on small canvas
+    const code = await tryDecodeFromCanvas(small);
+    if(code) handleDetected(code);
 
   }catch(e){
-    // general safety
+    // ignore
   } finally {
     requestAnimationFrame(scanLoop);
   }
 }
 
+/* ===== Handle detection ===== */
 function handleDetected(code){
   const now = Date.now();
   if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
-  lastDetected = { code, ts: now };
+  lastDetected = {code, ts: now};
   const name = db[code] || 'Товар не найден';
   scanResult.innerText = `${code} → ${name}`;
   beep();
-  // auto add to DB prompt if not found
   if(!db[code]){
-    // show quick add UI
     const add = confirm(`Код ${code} не найден. Добавить товар?`);
     if(add){
       const title = prompt('Название товара', '');
-      if(title) { db[code] = title; saveDB(); }
+      if(title){ db[code] = title; saveDB(); }
     }
   }
 }
 
-/* ======= Manual UI actions ======= */
+/* ===== Manual UI ===== */
 function scanCodeManual(){
-  const code = document.getElementById('scanInput').value.trim();
+  const code = document.getElementById('scanInput')?.value.trim();
   document.getElementById('manualResult').innerText = db[code] ? `${code} → ${db[code]}` : (code ? 'Товар не найден' : '');
 }
 
@@ -602,7 +481,7 @@ document.getElementById('deleteBtn').addEventListener('click', ()=>{
   if(db[code]){ delete db[code]; saveDB(); alert('Удалено'); } else alert('Код не найден');
 });
 
-bulkImportBtn.addEventListener('click', ()=>{
+document.getElementById('bulkImportBtn').addEventListener('click', ()=>{
   const text = document.getElementById('bulk').value.trim();
   const lines = text.split('\n');
   let count = 0;
@@ -614,11 +493,11 @@ bulkImportBtn.addEventListener('click', ()=>{
   alert(`Импортировано ${count} записей`);
 });
 
-clearBtn.addEventListener('click', ()=>{
+document.getElementById('clearBtn').addEventListener('click', ()=>{
   if(confirm('Очистить всю базу?')){ db = {}; saveDB(); }
 });
 
-exportBtn.addEventListener('click', ()=>{
+document.getElementById('exportBtn').addEventListener('click', ()=>{
   const data = JSON.stringify(db, null, 2);
   const blob = new Blob([data], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -627,7 +506,7 @@ exportBtn.addEventListener('click', ()=>{
   URL.revokeObjectURL(url);
 });
 
-importBtn.addEventListener('click', ()=>{
+document.getElementById('importBtn').addEventListener('click', ()=>{
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'application/json';
@@ -648,11 +527,10 @@ importBtn.addEventListener('click', ()=>{
   input.click();
 });
 
-/* ======= Camera controls events ======= */
-startBtn.addEventListener('click', ()=>{ startCamera(); });
-stopBtn.addEventListener('click', ()=>{ stopCamera(); });
+/* Camera controls */
+startBtn.addEventListener('click', ()=>startCamera());
+stopBtn.addEventListener('click', ()=>stopCamera());
 switchBtn.addEventListener('click', async ()=>{
-  // cycle through device list
   const opts = Array.from(deviceSelect.options);
   if(!opts.length) return;
   const idx = opts.findIndex(o=>o.value === deviceSelect.value);
@@ -667,11 +545,9 @@ deviceSelect.addEventListener('change', async ()=>{
 });
 torchBtn.addEventListener('click', toggleTorch);
 
-/* ======= Init ======= */
+/* Init */
 renderTable();
 enumerateCameras();
-
-// Try to warm up permissions to show labels on devices
 navigator.mediaDevices.getUserMedia({video:true}).then(s=>{
   s.getTracks().forEach(t=>t.stop());
   enumerateCameras();
