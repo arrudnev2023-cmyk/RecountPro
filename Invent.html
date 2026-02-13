@@ -2,8 +2,8 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Инвентаризация — Dark Light Neon</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Инвентаризация — Mobile</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -14,27 +14,25 @@
   --neon2:#c86cff;
   --accent:linear-gradient(90deg,var(--neon1),var(--neon2));
   --radius:12px;
-  --card-border: rgba(124,58,237,0.12);
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:linear-gradient(180deg,#f6f7fb,#f0f2f8);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#0b1020}
-.container{max-width:920px;margin:18px auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.container{max-width:420px;margin:12px auto;padding:12px;display:flex;flex-direction:column;gap:12px}
 .header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.brand{display:flex;gap:12px;align-items:center}
-.logo{width:48px;height:48px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
-.title{font-size:20px;font-weight:700}
+.brand{display:flex;gap:10px;align-items:center}
+.logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,var(--neon1),var(--neon2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
+.title{font-size:18px;font-weight:700}
 .subtitle{font-size:13px;color:var(--muted)}
-.card{background:var(--panel);border-radius:12px;padding:12px;border:1px solid var(--card-border);box-shadow:0 6px 20px rgba(16,24,40,0.04)}
-.row{display:flex;gap:10px;align-items:center}
-.controls{display:flex;gap:8px;flex-wrap:wrap}
-.btn{padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;background:#111827;color:#fff}
-.btn.ghost{background:transparent;border:1px solid rgba(11,16,32,0.06);color:var(--muted)}
-.btn.neon{background:var(--accent);color:#fff;box-shadow:0 10px 30px rgba(124,58,237,0.12)}
-.input{padding:10px 12px;border-radius:10px;border:1px solid rgba(11,16,32,0.06);background:#fff;outline:none;flex:1}
+.card{background:var(--panel);border-radius:12px;padding:12px;border:1px solid rgba(124,58,237,0.08);box-shadow:0 8px 24px rgba(16,24,40,0.04)}
 .preview-wrap{border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(11,16,32,0.06)}
 .preview-wrap.camera-1-3{height:33vh;min-height:140px;max-height:300px}
 video#preview{width:100%;height:100%;object-fit:cover;display:block}
 .search-area{display:flex;gap:8px;align-items:center;margin-top:10px}
+.input{flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(11,16,32,0.06);background:#fff;outline:none}
+.controls{display:flex;gap:8px;align-items:center}
+.btn{padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;background:#111827;color:#fff}
+.btn.ghost{background:transparent;border:1px solid rgba(11,16,32,0.06);color:var(--muted)}
+.btn.neon{background:var(--accent);color:#fff;box-shadow:0 10px 30px rgba(124,58,237,0.12)}
 .results{display:flex;flex-direction:column;gap:10px;margin-top:10px}
 .card-item{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:10px;border:1px solid rgba(11,16,32,0.04);background:linear-gradient(180deg,#fff,#fbfbff)}
 .item-left{display:flex;gap:12px;align-items:center;min-width:0}
@@ -42,18 +40,14 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
 .item-code{font-weight:700;color:#0b1020;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item-name{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .qty-controls{display:flex;gap:8px;align-items:center}
-.qty-input{width:110px;padding:8px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);text-align:right;font-weight:700}
+.qty-input{width:100px;padding:8px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);text-align:right;font-weight:700}
 .plus-btn{padding:8px 10px;border-radius:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));color:#fff;border:none;cursor:pointer}
-.summary-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:16px;box-shadow:0 20px 60px rgba(11,16,32,0.2);max-width:90%;max-height:80%;overflow:auto;z-index:9999}
-.overlay{position:fixed;inset:0;background:rgba(11,16,32,0.35);z-index:9998}
-.small{font-size:13px;color:var(--muted)}
 .footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
-.note{font-size:13px;color:var(--muted)}
 .clear-btn{background:transparent;border:1px dashed rgba(11,16,32,0.08);padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
-@media (max-width:720px){
-  .container{padding:12px}
-  .qty-input{width:90px}
-}
+.small{font-size:13px;color:var(--muted)}
+.overlay{position:fixed;inset:0;background:rgba(11,16,32,0.35);z-index:9998;display:none}
+.summary-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:14px;box-shadow:0 20px 60px rgba(11,16,32,0.2);max-width:92%;max-height:80%;overflow:auto;z-index:9999;display:none}
+@media (max-width:420px){ .container{padding:10px} .qty-input{width:84px} }
 </style>
 </head>
 <body>
@@ -63,52 +57,53 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
       <div class="logo">INV</div>
       <div>
         <div class="title">Инвентаризация</div>
-        <div class="subtitle">Поиск по названию и сканирование штрихкодов</div>
+        <div class="subtitle">Сканируй, считай, сохраняй</div>
       </div>
     </div>
-    <div class="row">
-      <button id="openSummaryBtn" class="btn ghost" title="Итог">Итог</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button id="summaryBtn" class="btn ghost" title="Итог">Итог</button>
       <button id="clearRecountBtn" class="clear-btn" title="Очистить пересчёт">Очистить пересчёт</button>
     </div>
   </header>
 
-  <!-- Scanner block -->
+  <!-- Scanner -->
   <section class="card" aria-labelledby="scannerTitle">
     <h3 id="scannerTitle" style="margin:0 0 8px 0">Сканер</h3>
-    <div class="preview-wrap camera-1-3" id="previewWrap">
+    <div class="preview-wrap camera-1-3">
       <video id="preview" playsinline muted></video>
     </div>
 
     <div class="search-area">
-      <input id="searchInput" class="input" type="text" placeholder="Поиск по названию или коду (часть слова, любой порядок)" aria-label="Поиск">
+      <input id="searchInput" class="input" type="text" placeholder="Поиск по названию или коду (часть слова)" aria-label="Поиск">
       <div class="controls">
-        <button id="startScannerBtn" class="btn neon">▶ Включить сканер</button>
+        <button id="startScannerBtn" class="btn neon">▶ Включить</button>
         <button id="stopScannerBtn" class="btn ghost">⛔ Остановить</button>
-        <select id="deviceSelect" class="btn ghost" aria-label="Выбор камеры"></select>
+        <select id="deviceSelect" class="btn ghost" aria-label="Камера" style="min-width:80px"></select>
       </div>
     </div>
 
     <div id="scanResult" class="small" style="margin-top:8px"></div>
   </section>
 
-  <!-- Results / Cards -->
+  <!-- Results (изначально пусто) -->
   <section class="card" aria-labelledby="resultsTitle">
     <h3 id="resultsTitle" style="margin:0 0 8px 0">Найденные товары</h3>
-    <div id="results" class="results" aria-live="polite"></div>
+    <div id="results" class="results" aria-live="polite">
+      <!-- Изначально пусто: товары добавляются только при сканировании или ручном добавлении -->
+      <div id="emptyHint" class="small">Пока нет позиций. Сканируйте штрихкод или добавьте вручную.</div>
+    </div>
 
     <div class="footer">
-      <div class="note">Если штрихкод не найден — сканер предложит создать товар и сохранить в базе.</div>
+      <div class="small">Если код не в базе — сканер предложит создать товар.</div>
       <div style="display:flex;gap:8px">
         <button id="addManualBtn" class="btn ghost">Добавить вручную</button>
-        <button id="summaryBtn" class="btn neon">Показать итог</button>
       </div>
     </div>
   </section>
 </div>
 
-<!-- Summary modal -->
-<div id="overlay" class="overlay" style="display:none"></div>
-<div id="summaryModal" class="summary-modal" style="display:none" role="dialog" aria-modal="true">
+<div id="overlay" class="overlay"></div>
+<div id="summaryModal" class="summary-modal" role="dialog" aria-modal="true">
   <h3 style="margin-top:0">Итог инвентаризации</h3>
   <div id="summaryList" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
   <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
@@ -116,21 +111,19 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
   </div>
 </div>
 
-<!-- ZXing fallback -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
-
 <script>
-/* ===== State & storage keys ===== */
+/* ===== Storage keys ===== */
 const STORAGE_DB = 'barcodeDB';
 const STORAGE_INV = 'inventoryItems';
 
-let barcodeDB = JSON.parse(localStorage.getItem(STORAGE_DB) || '{}');
-let inventoryItems = JSON.parse(localStorage.getItem(STORAGE_INV) || '[]');
-
+/* ===== State ===== */
+let barcodeDB = JSON.parse(localStorage.getItem(STORAGE_DB) || '{}'); // база штрихкодов
+let inventoryItems = JSON.parse(localStorage.getItem(STORAGE_INV) || '[]'); // текущие пересчёты (сохраняются)
 let stream = null;
 let currentDeviceId = null;
 let scanning = false;
-let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
+let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
 let reader = null;
 let lastDetected = {code:null, ts:0};
 const DEBOUNCE_MS = 900;
@@ -142,10 +135,10 @@ const startScannerBtn = document.getElementById('startScannerBtn');
 const stopScannerBtn = document.getElementById('stopScannerBtn');
 const searchInput = document.getElementById('searchInput');
 const resultsEl = document.getElementById('results');
+const emptyHint = document.getElementById('emptyHint');
 const scanResult = document.getElementById('scanResult');
 const addManualBtn = document.getElementById('addManualBtn');
 const summaryBtn = document.getElementById('summaryBtn');
-const openSummaryBtn = document.getElementById('openSummaryBtn');
 const clearRecountBtn = document.getElementById('clearRecountBtn');
 
 const overlay = document.getElementById('overlay');
@@ -158,13 +151,12 @@ function saveDB(){ localStorage.setItem(STORAGE_DB, JSON.stringify(barcodeDB)); 
 function saveInventory(){ localStorage.setItem(STORAGE_INV, JSON.stringify(inventoryItems)); }
 function showToast(text, ms=1400){ scanResult.textContent = text; setTimeout(()=>{ if(scanResult.textContent===text) scanResult.textContent=''; }, ms); }
 function beep(){ try{ navigator.vibrate?.(40); }catch(e){} }
-
-/* ===== Search helpers ===== */
 function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
 
+/* ===== Search (partial, any order) ===== */
 function searchItems(query){
   const q = normalize(query);
-  if(!q) return Object.keys(barcodeDB).map(code => ({ code, name: barcodeDB[code] }));
+  if(!q) return []; // **важно**: при пустом поиске возвращаем пустой список (экран изначально пуст)
   const tokens = q.split(/\s+/).filter(Boolean);
   const results = [];
   for(const code of Object.keys(barcodeDB)){
@@ -177,13 +169,14 @@ function searchItems(query){
   return results;
 }
 
-/* ===== Render results and attach persistent handlers ===== */
+/* ===== Render results (cards) ===== */
 function renderResults(list){
   resultsEl.innerHTML = '';
-  if(!list.length){
-    resultsEl.innerHTML = '<div class="small">Ничего не найдено</div>';
+  if(!list || !list.length){
+    emptyHint.style.display = 'block';
     return;
   }
+  emptyHint.style.display = 'none';
   list.forEach(item=>{
     const existingInv = inventoryItems.find(it => it.code === item.code);
     const qtyVal = existingInv ? existingInv.qty : 0;
@@ -206,7 +199,7 @@ function renderResults(list){
     const qtyInput = card.querySelector('.qty-input');
     const plusBtn = card.querySelector('.plus-btn');
 
-    // Save on any change (immediate persistence)
+    // Сохраняем при любом изменении (мгновенная персистенция)
     qtyInput.addEventListener('input', ()=>{
       const v = Math.max(0, parseInt(qtyInput.value || '0', 10));
       upsertInventory(item.code, item.name, v);
@@ -216,6 +209,7 @@ function renderResults(list){
       upsertInventory(item.code, item.name, v);
     });
 
+    // Плюс — добавляет текущее значение поля к уже сохранённому (сложение)
     plusBtn.addEventListener('click', ()=>{
       const add = Math.max(1, parseInt(qtyInput.value || '1', 10));
       const existing = inventoryItems.find(it => it.code === item.code);
@@ -233,7 +227,7 @@ function renderResults(list){
   });
 }
 
-/* Upsert inventory and persist immediately */
+/* Upsert inventory and persist */
 function upsertInventory(code, name, qty){
   qty = Math.max(0, parseInt(qty || '0', 10));
   const idx = inventoryItems.findIndex(it => it.code === code);
@@ -246,7 +240,7 @@ function upsertInventory(code, name, qty){
   saveInventory();
 }
 
-/* ===== Scanner implementation ===== */
+/* ===== Scanner (start/stop + decode) ===== */
 async function enumerateCameras(){
   try{
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -378,7 +372,7 @@ async function scanLoop(){
   }finally{ scanLoopRunning = false; }
 }
 
-/* Handle detected code: populate search, create if missing, add to inventory if user agrees */
+/* Handle detected code */
 function handleDetected(code){
   const now = Date.now();
   if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
@@ -390,14 +384,13 @@ function handleDetected(code){
     showToast('Найден товар в базе');
     performSearch();
   } else {
-    const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить в пересчёт?`);
+    const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить 1 шт.?`);
     if(create){
       const name = prompt('Введите название товара для нового кода', '') || '';
       if(name.trim()){
         barcodeDB[code] = name.trim();
         saveDB();
-        // add to inventory with qty 1 and persist immediately
-        upsertInventory(code, barcodeDB[code], 1);
+        upsertInventory(code, barcodeDB[code], 1); // сразу добавляем 1 шт.
         performSearch();
         showToast('Товар добавлен и учтён');
       } else {
@@ -415,7 +408,6 @@ function performSearch(){
   const results = searchItems(q);
   renderResults(results);
 }
-
 searchInput.addEventListener('input', performSearch);
 
 /* Manual add */
@@ -453,12 +445,9 @@ function openSummary(){
     summaryList.appendChild(row);
   }
 }
-function closeSummaryModal(){
-  overlay.style.display = 'none';
-  summaryModal.style.display = 'none';
-}
+function closeSummaryModal(){ overlay.style.display = 'none'; summaryModal.style.display = 'none'; }
 
-/* Clear recount (only inventoryItems on this screen) */
+/* Clear recount */
 function clearRecount(){
   if(!confirm('Очистить все текущие пересчёты на этом экране? Это не удалит базу штрих-кодов.')) return;
   inventoryItems = [];
@@ -467,18 +456,17 @@ function clearRecount(){
   showToast('Пересчёт очищен');
 }
 
-/* ===== Events wiring ===== */
+/* Events wiring */
 startScannerBtn.addEventListener('click', startCamera);
 stopScannerBtn.addEventListener('click', stopCamera);
 deviceSelect.addEventListener('change', async ()=>{ currentDeviceId = deviceSelect.value; await startCamera(); });
 summaryBtn.addEventListener('click', openSummary);
-openSummaryBtn.addEventListener('click', openSummary);
 closeSummary.addEventListener('click', closeSummaryModal);
 overlay.addEventListener('click', closeSummaryModal);
 clearRecountBtn.addEventListener('click', clearRecount);
 
-/* ===== Init ===== */
-performSearch(); // initial render
+/* Init: экран изначально пустой — не показываем базу */
+performSearch(); // пустой поиск => пустой экран
 enumerateCameras();
 navigator.mediaDevices.getUserMedia({video:true}).then(s=>{ s.getTracks().forEach(t=>t.stop()); enumerateCameras(); }).catch(()=>{});
 </script>
