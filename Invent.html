@@ -162,6 +162,9 @@ const summaryModal = document.getElementById('summaryModal');
 const summaryList = document.getElementById('summaryList');
 const closeSummary = document.getElementById('closeSummary');
 
+/* Map of rendered cards to avoid full re-render */
+const renderedCards = new Map();
+
 /* ===== Utilities ===== */
 function saveDB(){ localStorage.setItem(STORAGE_DB, JSON.stringify(barcodeDB)); }
 function saveInventory(){ localStorage.setItem(STORAGE_INV, JSON.stringify(inventoryItems)); }
@@ -218,24 +221,43 @@ function getDisplayList(){
   return display;
 }
 
-/* ===== Render results (cards) ===== */
+/* ===== Render results (incremental, preserve inputs) ===== */
 function renderResults(){
   const list = getDisplayList();
-  resultsEl.innerHTML = '';
+  // if empty
   if(!list.length){
+    resultsEl.innerHTML = '';
     emptyHint.style.display = 'block';
+    renderedCards.clear();
     return;
   }
   emptyHint.style.display = 'none';
-  for(const item of list){
-    const exprVal = item.expr || String(item.qty || 0);
 
+  // For each item in list, ensure a DOM card exists; if not — create and append.
+  for(const item of list){
+    if(renderedCards.has(item.code)){
+      // update name/expr if changed, but do not recreate element (preserve focus)
+      const el = renderedCards.get(item.code);
+      const nameEl = el.querySelector('.item-name');
+      const codeEl = el.querySelector('.item-code');
+      const inputEl = el.querySelector('.qty-input');
+      if(nameEl && nameEl.textContent !== item.name) nameEl.textContent = item.name;
+      if(codeEl && codeEl.textContent !== item.code) codeEl.textContent = item.code;
+      // update expression only if input is not focused (to avoid stealing caret)
+      if(document.activeElement !== inputEl){
+        const exprVal = item.expr || String(item.qty || 0);
+        inputEl.value = exprVal;
+      }
+      continue;
+    }
+
+    // create new card
     const card = document.createElement('div');
     card.className = 'card-item';
     card.innerHTML = `
       <div class="item-top">
         <div class="item-left">
-          <div style="width:56px;height:56px;border-radius:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">${item.code.slice(-4)}</div>
+          <div class="avatar" style="width:56px;height:56px;border-radius:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">${item.code.slice(-4)}</div>
           <div class="item-meta">
             <div class="item-code">${item.code}</div>
             <div class="item-name">${item.name}</div>
@@ -244,51 +266,49 @@ function renderResults(){
       </div>
 
       <div class="qty-row">
-        <input inputmode="numeric" pattern="[0-9+ ]*" class="qty-input" type="text" value="${escapeHtml(exprVal)}" aria-label="Выражение для ${item.name}">
+        <input inputmode="numeric" pattern="[0-9+ ]*" class="qty-input" type="text" value="${escapeHtml(item.expr || String(item.qty || 0))}" aria-label="Выражение для ${item.name}">
         <button class="plus-btn" title="Плюс">+</button>
       </div>
     `;
+    // attach handlers (closure captures code & name)
     const qtyInput = card.querySelector('.qty-input');
     const plusBtn = card.querySelector('.plus-btn');
 
-    // Save expression on input (immediate persistence)
+    // input: immediate save, but do not re-render whole list
     qtyInput.addEventListener('input', ()=>{
       const expr = qtyInput.value;
       const total = evaluateExpression(expr);
-      upsertInventoryExpr(item.code, item.name, expr, total);
+      upsertInventoryExpr(item.code, item.name, expr, total, /*dontRerender*/ true);
     });
 
     qtyInput.addEventListener('blur', ()=>{
       const expr = qtyInput.value;
       const total = evaluateExpression(expr);
-      upsertInventoryExpr(item.code, item.name, expr, total);
+      upsertInventoryExpr(item.code, item.name, expr, total, /*dontRerender*/ true);
       qtyInput.value = normalizeExpression(expr);
     });
 
-    // Plus button: append " + " to expression (do not auto-add numbers)
+    // plus: append " + " to expression (do not auto-add numbers)
     plusBtn.addEventListener('click', ()=>{
       let expr = qtyInput.value || '';
       expr = expr.trim();
-      // If last char is plus, do nothing but keep focus
       if(/\+\s*$/.test(expr)){
+        // already ends with plus — keep focus
         qtyInput.focus();
         return;
       }
-      // If empty, start with "0 + " to allow adding next numbers
-      if(expr === ''){
-        expr = '0 + ';
-      } else {
-        expr = expr + ' + ';
-      }
+      expr = expr === '' ? '0 + ' : expr + ' + ';
       const total = evaluateExpression(expr);
-      upsertInventoryExpr(item.code, item.name, expr, total);
+      upsertInventoryExpr(item.code, item.name, expr, total, /*dontRerender*/ true);
       qtyInput.value = normalizeExpression(expr);
       qtyInput.focus();
-      // place caret at end
+      // caret to end
       setTimeout(()=>{ qtyInput.selectionStart = qtyInput.selectionEnd = qtyInput.value.length; }, 0);
     });
 
+    // append card and store reference
     resultsEl.appendChild(card);
+    renderedCards.set(item.code, card);
   }
 }
 
@@ -300,10 +320,9 @@ function escapeHtml(s){
 /* Normalize expression: keep digits and pluses, format with spaces */
 function normalizeExpression(expr){
   if(!expr) return '';
-  // extract numbers
-  const parts = (expr.match(/\d+/g) || []);
-  // if expression ends with plus (no trailing number), preserve trailing plus
+  // detect trailing plus
   const trailingPlus = /\+\s*$/.test(expr);
+  const parts = (expr.match(/\d+/g) || []);
   const joined = parts.join(' + ');
   return trailingPlus ? (joined ? joined + ' + ' : ' + ') : joined;
 }
@@ -315,8 +334,9 @@ function evaluateExpression(expr){
   return nums.reduce((s,v)=>s+v, 0);
 }
 
-/* Upsert inventory with expression and computed total */
-function upsertInventoryExpr(code, name, expr, total){
+/* Upsert inventory with expression and computed total
+   dontRerender: если true — не перерисовываем весь список, только обновляем data и DOM input если нужно */
+function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
   const idx = inventoryItems.findIndex(it => it.code === code);
   if(idx >= 0){
     inventoryItems[idx].qty = total;
@@ -326,8 +346,17 @@ function upsertInventoryExpr(code, name, expr, total){
     inventoryItems.unshift({ code, name, qty: total, expr });
   }
   saveInventory();
-  // re-render to ensure card list stays updated
-  renderResults();
+  // update DOM input for this card only if exists and not focused
+  const card = renderedCards.get(code);
+  if(card){
+    const inputEl = card.querySelector('.qty-input');
+    if(document.activeElement !== inputEl){
+      inputEl.value = expr;
+    }
+  }
+  if(!dontRerender){
+    renderResults();
+  }
 }
 
 /* ===== Scanner logic (hidden by default) ===== */
@@ -479,9 +508,9 @@ function handleDetected(code){
     // ensure item is present in inventory (if not, add with qty 0)
     const idx = inventoryItems.findIndex(it=>it.code===code);
     if(idx === -1){
-      upsertInventoryExpr(code, found, '0', 0);
+      upsertInventoryExpr(code, found, '0', 0, /*dontRerender*/ true);
     }
-    performSearchAndRender();
+    renderResults();
   } else {
     const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить 1 шт.?`);
     if(create){
@@ -489,8 +518,8 @@ function handleDetected(code){
       if(name.trim()){
         barcodeDB[code] = name.trim();
         saveDB();
-        upsertInventoryExpr(code, barcodeDB[code], '1', 1); // add 1
-        performSearchAndRender();
+        upsertInventoryExpr(code, barcodeDB[code], '1', 1, /*dontRerender*/ true); // add 1
+        renderResults();
         showToast('Товар добавлен и учтён');
       } else {
         showToast('Название не введено');
@@ -499,12 +528,6 @@ function handleDetected(code){
       showToast('Код не найден');
     }
   }
-}
-
-/* Combined search + render helper */
-function performSearchAndRender(){
-  // keep search input as-is (code or query)
-  renderResults();
 }
 
 /* ===== Search and UI wiring ===== */
@@ -524,7 +547,7 @@ addManualBtn.addEventListener('click', ()=>{
   const name = prompt('Название товара', '')?.trim() || code;
   barcodeDB[code] = name;
   saveDB();
-  upsertInventoryExpr(code, name, '0', 0);
+  upsertInventoryExpr(code, name, '0', 0, /*dontRerender*/ true);
   renderResults();
   showToast('Добавлено вручную');
 });
@@ -559,6 +582,7 @@ function clearRecount(){
   if(!confirm('Очистить все текущие пересчёты на этом экране? Это не удалит базу штрих-кодов.')) return;
   inventoryItems = [];
   saveInventory();
+  renderedCards.clear();
   renderResults();
   showToast('Пересчёт очищен');
 }
