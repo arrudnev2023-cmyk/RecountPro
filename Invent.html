@@ -161,7 +161,7 @@ const closeSummary = document.getElementById('closeSummary');
 
 /* Map of rendered cards to avoid full re-render */
 const renderedCards = new Map();
-/* Track which input (by code) currently has focus — when set, we avoid DOM updates that would steal focus */
+/* Track which input (by code) currently has focus */
 let focusedInputCode = null;
 
 /* ===== Utilities ===== */
@@ -203,11 +203,9 @@ function searchItems(query){
 function getDisplayList(){
   const q = searchInput.value.trim();
   const display = [];
-  // show all inventory items first (persisted scanned/added items)
   for(const it of inventoryItems){
     display.push({ code: it.code, name: it.name, expr: it.expr || String(it.qty || 0), qty: it.qty || 0, fromInventory: true });
   }
-  // if search query present, append matching DB items not already in inventory
   if(q){
     const search = searchItems(q);
     const invCodes = new Set(inventoryItems.map(i=>i.code));
@@ -223,8 +221,6 @@ function getDisplayList(){
 /* ===== Render results (incremental, preserve inputs & focus) ===== */
 function renderResults(){
   const list = getDisplayList();
-
-  // clear if empty
   if(!list.length){
     resultsEl.innerHTML = '';
     emptyHint.style.display = 'block';
@@ -233,9 +229,7 @@ function renderResults(){
   }
   emptyHint.style.display = 'none';
 
-  // create or update cards incrementally
   for(const item of list){
-    // if card exists, update name/code and expression only if input not focused
     if(renderedCards.has(item.code)){
       const el = renderedCards.get(item.code);
       const nameEl = el.querySelector('.item-name');
@@ -243,14 +237,12 @@ function renderResults(){
       const inputEl = el.querySelector('.qty-input');
       if(nameEl && nameEl.textContent !== item.name) nameEl.textContent = item.name;
       if(codeEl && codeEl.textContent !== item.code) codeEl.textContent = item.code;
-      // update input only if it's not focused (to avoid stealing keyboard)
       if(focusedInputCode !== item.code){
         inputEl.value = item.expr || String(item.qty || 0);
       }
       continue;
     }
 
-    // create new card (append at end)
     const card = document.createElement('div');
     card.className = 'card-item';
     card.dataset.code = item.code;
@@ -266,6 +258,7 @@ function renderResults(){
       </div>
 
       <div class="qty-row">
+        <!-- inputmode и pattern помогают вызвать цифровую клавиатуру -->
         <input inputmode="numeric" pattern="[0-9+ ]*" class="qty-input" type="text" value="${escapeHtml(item.expr || String(item.qty || 0))}" aria-label="Выражение для ${item.name}">
         <button class="plus-btn" title="Плюс">+</button>
       </div>
@@ -273,27 +266,23 @@ function renderResults(){
     const qtyInput = card.querySelector('.qty-input');
     const plusBtn = card.querySelector('.plus-btn');
 
-    // focus tracking: set focusedInputCode when input gains focus; clear on blur
     qtyInput.addEventListener('focus', ()=>{
       focusedInputCode = item.code;
     });
     qtyInput.addEventListener('blur', ()=>{
       focusedInputCode = null;
-      // normalize expression on blur
       const expr = qtyInput.value;
       const total = evaluateExpression(expr);
-      upsertInventoryExpr(item.code, item.name, expr, total, /*dontRerender*/ true);
+      upsertInventoryExpr(item.code, item.name, expr, total, true);
       qtyInput.value = normalizeExpression(expr);
     });
 
-    // input: immediate save, but do not re-render whole list (to preserve focus)
     qtyInput.addEventListener('input', ()=>{
       const expr = qtyInput.value;
       const total = evaluateExpression(expr);
-      upsertInventoryExpr(item.code, item.name, expr, total, /*dontRerender*/ true);
+      upsertInventoryExpr(item.code, item.name, expr, total, true);
     });
 
-    // plus: append " + " to expression (do not auto-add numbers)
     plusBtn.addEventListener('click', (ev)=>{
       ev.preventDefault();
       let expr = qtyInput.value || '';
@@ -304,10 +293,10 @@ function renderResults(){
       }
       expr = expr === '' ? '0 + ' : expr + ' + ';
       const total = evaluateExpression(expr);
-      upsertInventoryExpr(item.code, item.name, expr, total, /*dontRerender*/ true);
+      upsertInventoryExpr(item.code, item.name, expr, total, true);
       qtyInput.value = normalizeExpression(expr);
       qtyInput.focus();
-      setTimeout(()=>{ qtyInput.selectionStart = qtyInput.selectionEnd = qtyInput.value.length; }, 0);
+      setTimeout(()=>{ try{ qtyInput.setSelectionRange(qtyInput.value.length, qtyInput.value.length); }catch(e){} }, 0);
     });
 
     resultsEl.appendChild(card);
@@ -336,8 +325,7 @@ function evaluateExpression(expr){
   return nums.reduce((s,v)=>s+v, 0);
 }
 
-/* Upsert inventory with expression and computed total
-   dontRerender: если true — не перерисовываем весь список, только обновляем data и input если не в фокусе */
+/* Upsert inventory with expression and computed total */
 function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
   const idx = inventoryItems.findIndex(it => it.code === code);
   if(idx >= 0){
@@ -348,7 +336,6 @@ function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
     inventoryItems.unshift({ code, name, qty: total, expr });
   }
   saveInventory();
-  // update DOM input for this card only if exists and not focused
   const card = renderedCards.get(code);
   if(card){
     const inputEl = card.querySelector('.qty-input');
@@ -361,20 +348,49 @@ function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
   }
 }
 
-/* Focus input of a card by code (waits for DOM if needed) */
+/* Focus input of a card by code and try to open numeric keyboard reliably */
 function focusCardInput(code){
-  // small delay to ensure DOM updated and scanner hidden
+  // небольшая задержка, чтобы DOM успел обновиться и сканер скрыться
   setTimeout(()=>{
     const card = renderedCards.get(code) || document.querySelector(`[data-code="${code}"]`);
     if(!card) return;
     const input = card.querySelector('.qty-input');
     if(!input) return;
-    input.focus();
-    // move caret to end
-    const len = input.value.length;
-    try{ input.setSelectionRange(len, len); }catch(e){}
-    focusedInputCode = code;
-  }, 180);
+
+    // Трюк: временно переключаем type -> 'tel', фокусируем, затем восстанавливаем 'text'
+    // Это повышает шанс открытия цифровой клавиатуры на Android/iOS.
+    try{
+      // Сохраним текущее значение type
+      const prevType = input.type || 'text';
+      // Установим tel, чтобы вызвать цифровую клавиатуру
+      input.type = 'tel';
+      // Установим inputmode на numeric (подсказка)
+      input.setAttribute('inputmode','numeric');
+      // Фокусируем (пользовательское действие уже было — сканирование/кнопка)
+      input.focus();
+      // Поставим каретку в конец
+      const len = input.value.length;
+      try{ input.setSelectionRange(len, len); }catch(e){}
+      // Через короткий таймаут восстановим type='text', чтобы оставить возможность ввода '+'
+      setTimeout(()=>{
+        try{ input.type = 'text'; }catch(e){}
+        try{ input.setSelectionRange(len, len); }catch(e){}
+      }, 120);
+      // Дополнительно отправим click/touch события — помогают некоторым браузерам
+      setTimeout(()=>{
+        try{
+          input.dispatchEvent(new Event('touchstart', {bubbles:true, cancelable:true}));
+          input.dispatchEvent(new Event('touchend', {bubbles:true, cancelable:true}));
+          input.click();
+        }catch(e){}
+      }, 160);
+      focusedInputCode = code;
+    }catch(e){
+      // fallback: просто фокус
+      input.focus();
+      focusedInputCode = code;
+    }
+  }, 160);
 }
 
 /* ===== Scanner logic (hidden by default) ===== */
@@ -522,7 +538,7 @@ function handleDetected(code){
     showToast('Найден товар в базе');
     const idx = inventoryItems.findIndex(it=>it.code===code);
     if(idx === -1){
-      upsertInventoryExpr(code, found, '0', 0, /*dontRerender*/ true);
+      upsertInventoryExpr(code, found, '0', 0, true);
     }
     renderResults();
     focusCardInput(code);
@@ -533,7 +549,7 @@ function handleDetected(code){
       if(name.trim()){
         barcodeDB[code] = name.trim();
         saveDB();
-        upsertInventoryExpr(code, barcodeDB[code], '1', 1, /*dontRerender*/ true);
+        upsertInventoryExpr(code, barcodeDB[code], '1', 1, true);
         renderResults();
         focusCardInput(code);
         showToast('Товар добавлен и учтён');
@@ -547,14 +563,8 @@ function handleDetected(code){
 }
 
 /* ===== Search and UI wiring ===== */
-searchInput.addEventListener('input', ()=>{
-  renderResults();
-});
-clearSearch.addEventListener('click', ()=>{
-  searchInput.value = '';
-  renderResults();
-  searchInput.focus();
-});
+searchInput.addEventListener('input', ()=>{ renderResults(); });
+clearSearch.addEventListener('click', ()=>{ searchInput.value = ''; renderResults(); searchInput.focus(); });
 
 /* Manual add */
 addManualBtn.addEventListener('click', ()=>{
@@ -563,7 +573,7 @@ addManualBtn.addEventListener('click', ()=>{
   const name = prompt('Название товара', '')?.trim() || code;
   barcodeDB[code] = name;
   saveDB();
-  upsertInventoryExpr(code, name, '0', 0, /*dontRerender*/ true);
+  upsertInventoryExpr(code, name, '0', 0, true);
   renderResults();
   focusCardInput(code);
   showToast('Добавлено вручную');
