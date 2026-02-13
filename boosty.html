@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Добавить товар — Сканер (мобильный)</title>
+<title>Добавить товар — Быстрое добавление </title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
@@ -12,50 +12,78 @@
     --bg:#07040a;
     --card:#0f0b16;
     --muted:#9aa0b4;
-    --accent1:#8a2be2;
-    --accent2:#c86cff;
+    --neon1:#8a2be2;
+    --neon2:#c86cff;
+    --accent: linear-gradient(90deg,var(--neon1),var(--neon2));
     --radius:12px;
   }
   *{box-sizing:border-box}
-  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#05030a,#0b0710);color:#eef0ff}
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:
+    radial-gradient(800px 400px at 10% 10%, rgba(138,43,226,0.06), transparent),
+    radial-gradient(600px 300px at 90% 90%, rgba(200,108,255,0.04), transparent),
+    linear-gradient(180deg,#05030a,#0b0710);color:#eef0ff}
   .app{max-width:480px;margin:0 auto;padding:14px}
   header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
   .title{font-weight:700;font-size:18px}
   .small{font-size:13px;color:var(--muted)}
-  .btn{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#07040a;padding:10px 12px;border-radius:10px;border:none;font-weight:700}
-  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(0,0,0,0.6)}
-  .controls{display:flex;gap:8px;align-items:center;margin-bottom:10px}
-  .preview-wrap{position:relative;border-radius:12px;overflow:hidden;background:#000}
+  .card{background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.03); box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+  .preview-wrap{position:relative;border-radius:12px;overflow:hidden;background:#000;margin-bottom:12px}
   /* camera area set to one third of viewport height */
   .preview-wrap.camera-1-3{
     height: 33vh;
-    min-height: 160px;
-    max-height: 320px;
+    min-height: 140px;
+    max-height: 300px;
   }
   video#preview{width:100%;height:100%;object-fit:cover;display:block}
-  .overlay-ui{position:absolute;left:0;right:0;bottom:0;padding:12px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(180deg, rgba(0,0,0,0.0), rgba(0,0,0,0.45));}
-  .result-card{background:rgba(255,255,255,0.03);padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);display:flex;flex-direction:column;gap:8px}
-  label{font-size:13px;color:var(--muted)}
-  input[type="number"], input[type="text"]{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
-  .row{display:flex;gap:8px;align-items:center}
-  .row .btn{flex:1}
-  .ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--accent2);padding:10px;border-radius:10px;font-weight:700}
-  .list{margin-top:12px;max-height:220px;overflow:auto}
-  .item{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center}
-  .item .meta{display:flex;flex-direction:column}
-  .save-note{font-size:12px;color:var(--muted);margin-top:8px}
-  /* full-screen modal for scanner on mobile */
-  .scanner-modal{position:fixed;inset:0;background:linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0.95));z-index:9999;display:flex;flex-direction:column}
-  .scanner-top{display:flex;align-items:center;justify-content:space-between;padding:12px}
-  .close-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--accent2);padding:8px;border-radius:8px}
-  @media (min-width:481px){
-    .app{margin-top:18px}
-    .preview-wrap.camera-1-3{height: 33vh; min-height:200px}
+  .controls{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+  .btn{
+    background:var(--accent);
+    color:#07040a;
+    padding:10px 12px;
+    border-radius:10px;
+    border:none;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow: 0 10px 30px rgba(138,43,226,0.12);
   }
-
-  /* small helpers */
-  .muted{color:var(--muted)}
-  .center{display:flex;align-items:center;justify-content:center}
+  .ghost{
+    background:transparent;
+    border:1px solid rgba(255,255,255,0.06);
+    color:var(--muted);
+    padding:10px 12px;
+    border-radius:10px;
+    cursor:pointer;
+  }
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input[type="text"], input[type="number"]{
+    width:100%;
+    padding:12px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,0.06);
+    background:transparent;
+    color:inherit;
+    font-size:15px;
+    outline:none;
+  }
+  .row{display:flex;gap:8px}
+  .note{font-size:13px;color:var(--muted);margin-top:8px}
+  .toast{
+    position:fixed;
+    left:50%;
+    transform:translateX(-50%);
+    bottom:22px;
+    background:rgba(0,0,0,0.6);
+    color:#fff;
+    padding:10px 14px;
+    border-radius:10px;
+    font-size:14px;
+    box-shadow:0 8px 30px rgba(0,0,0,0.6);
+    display:none;
+    z-index:9999;
+  }
+  @media (min-width:481px){
+    .preview-wrap.camera-1-3{min-height:180px}
+  }
 </style>
 </head>
 <body>
@@ -64,63 +92,49 @@
   <header>
     <div>
       <div class="title">Добавить товар</div>
-      <div class="small">Открой сканер и добавь товар в корзину</div>
+      <div class="small">Сканер запускается автоматически, камера занимает 1/3 экрана</div>
     </div>
-    <button id="openScannerBtn" class="btn">Открыть сканер</button>
+    <button id="closeBtn" class="ghost" aria-label="Закрыть">Закрыть</button>
   </header>
 
-  <section class="card">
-    <h3 style="margin:0 0 8px 0">Корзина добавленных товаров</h3>
-    <div id="addedList" class="list"></div>
-    <div class="save-note">Сохранённые товары хранятся локально в браузере (addedItems).</div>
-  </section>
-</div>
+  <main class="card" role="main" aria-labelledby="pageTitle">
+    <h1 id="pageTitle" style="display:none">Добавить товар</h1>
 
-<!-- Scanner modal (hidden until opened) -->
-<div id="scannerModal" class="scanner-modal" style="display:none">
-  <div class="scanner-top">
-    <button id="closeScannerBtn" class="close-btn">✕ Закрыть</button>
-    <div class="small">Сканер — поднеси штрихкод под любым углом</div>
-    <button id="torchBtn" class="close-btn">🔦</button>
-  </div>
-
-  <div style="display:flex;flex-direction:column;gap:0;align-items:stretch;flex:1">
-    <!-- Camera area now occupies ~1/3 of viewport height -->
+    <!-- Camera area (1/3 height) -->
     <div class="preview-wrap camera-1-3" aria-hidden="false">
       <video id="preview" playsinline muted></video>
-      <div class="overlay-ui" aria-live="polite">
-        <div id="scanStatus" class="small">Ожидание сканирования…</div>
-        <div id="detectedArea"></div>
-      </div>
     </div>
 
-    <!-- Controls and manual inputs sit below camera -->
-    <div style="padding:12px;background:linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.06));">
-      <div class="row" style="margin-bottom:8px">
-        <button id="manualAddBtn" class="ghost">Ввести вручную</button>
-        <button id="closeAndSaveBtn" class="btn">Готово</button>
+    <!-- Fields: Штрих-код (заполняется автоматически), Название (редактируемое), Сохранить -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div>
+        <label for="barcodeInput">Штрих-код</label>
+        <input id="barcodeInput" type="text" placeholder="Ожидание сканирования..." autocomplete="off" />
       </div>
-      <div class="muted center" style="padding:6px 0;font-size:13px">Камера занимает одну треть экрана — остальная часть интерфейса доступна ниже</div>
-    </div>
 
-    <!-- Optional: quick list preview at bottom of modal -->
-    <div style="padding:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div class="small muted">Последние добавленные</div>
-        <button id="clearAddedBtn" class="ghost">Очистить</button>
+      <div>
+        <label for="nameInput">Название</label>
+        <input id="nameInput" type="text" placeholder="Введите название товара" autocomplete="off" />
       </div>
-      <div id="quickList" class="list" style="max-height:140px;overflow:auto"></div>
+
+      <div class="row">
+        <button id="saveBtn" class="btn" style="flex:1">Сохранить в базу</button>
+        <button id="clearBtn" class="ghost" style="width:120px">Очистить</button>
+      </div>
+
+      <div class="note">После сохранения товар добавится в базу штрих‑кодов (localStorage: <strong>barcodeDB</strong>).</div>
     </div>
-  </div>
+  </main>
 </div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <!-- ZXing fallback -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 
 <script>
 /* ===== State ===== */
-let barcodeDB = JSON.parse(localStorage.getItem('barcodeDB') || '{}'); // ваша база штрихкодов
-let addedItems = JSON.parse(localStorage.getItem('addedItems') || '[]'); // корзина добавленных товаров
+let barcodeDB = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
 let stream = null;
 let scanning = false;
 let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
@@ -129,68 +143,29 @@ let lastDetected = {code:null, ts:0};
 const DEBOUNCE_MS = 900;
 
 /* ===== Elements ===== */
-const openScannerBtn = document.getElementById('openScannerBtn');
-const scannerModal = document.getElementById('scannerModal');
-const closeScannerBtn = document.getElementById('closeScannerBtn');
 const preview = document.getElementById('preview');
-const scanStatus = document.getElementById('scanStatus');
-const detectedArea = document.getElementById('detectedArea');
-const torchBtn = document.getElementById('torchBtn');
-const manualAddBtn = document.getElementById('manualAddBtn');
-const closeAndSaveBtn = document.getElementById('closeAndSaveBtn');
-const addedList = document.getElementById('addedList');
-const quickList = document.getElementById('quickList');
-const clearAddedBtn = document.getElementById('clearAddedBtn');
+const barcodeInput = document.getElementById('barcodeInput');
+const nameInput = document.getElementById('nameInput');
+const saveBtn = document.getElementById('saveBtn');
+const clearBtn = document.getElementById('clearBtn');
+const closeBtn = document.getElementById('closeBtn');
+const toast = document.getElementById('toast');
 
-/* ===== Utilities ===== */
-function saveAdded(){ localStorage.setItem('addedItems', JSON.stringify(addedItems)); renderAddedList(); renderQuickList(); }
-function renderAddedList(){
-  addedList.innerHTML = '';
-  if(!addedItems.length){ addedList.innerHTML = '<div class="small" style="padding:12px;color:var(--muted)">Пусто</div>'; return; }
-  addedItems.forEach((it, idx)=>{
-    const div = document.createElement('div');
-    div.className = 'item';
-    div.innerHTML = `<div class="meta"><strong>${it.name || '—'}</strong><span class="small">Код: ${it.code}</span></div>
-                     <div style="display:flex;gap:8px;align-items:center">
-                       <div class="small">x${it.qty}</div>
-                       <button class="ghost" data-idx="${idx}">Удалить</button>
-                     </div>`;
-    addedList.appendChild(div);
-  });
-  // attach delete handlers
-  addedList.querySelectorAll('button.ghost').forEach(b=>{
-    b.addEventListener('click', e=>{
-      const idx = +b.getAttribute('data-idx');
-      addedItems.splice(idx,1);
-      saveAdded();
-    });
-  });
+/* ===== Helpers ===== */
+function showToast(text, ms = 1600){
+  toast.textContent = text;
+  toast.style.display = 'block';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>{ toast.style.display = 'none'; }, ms);
 }
-function renderQuickList(){
-  quickList.innerHTML = '';
-  if(!addedItems.length){ quickList.innerHTML = '<div class="small muted">Пусто</div>'; return; }
-  addedItems.slice(0,6).forEach(it=>{
-    const d = document.createElement('div');
-    d.className = 'item';
-    d.style.padding = '8px';
-    d.innerHTML = `<div class="meta"><strong style="font-size:14px">${it.name || '—'}</strong><div class="small muted">x${it.qty} • ${it.code}</div></div>`;
-    quickList.appendChild(d);
-  });
+function saveBarcodeDB(){
+  localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
 }
-function beep(){ try{ navigator.vibrate?.(60); }catch(e){} }
+function beep(){
+  try{ navigator.vibrate?.(60); }catch(e){}
+}
 
 /* ===== Camera & scanning ===== */
-async function openScanner(){
-  scannerModal.style.display = 'flex';
-  await startCamera();
-}
-async function closeScanner(){
-  scannerModal.style.display = 'none';
-  stopCamera();
-  scanStatus.innerText = 'Ожидание сканирования…';
-  detectedArea.innerHTML = '';
-}
-
 async function startCamera(){
   stopCamera();
   scanning = true;
@@ -210,9 +185,8 @@ async function startCamera(){
     requestAnimationFrame(scanLoop);
   }catch(err){
     console.error('camera error', err);
-    alert('Не удалось получить доступ к камере. Проверьте разрешения.');
+    showToast('Не удалось получить доступ к камере');
     scanning = false;
-    closeScanner();
   }
 }
 
@@ -225,20 +199,6 @@ function stopCamera(){
   if(reader){
     try{ reader.reset(); }catch(e){}
     reader = null;
-  }
-}
-
-/* Torch toggle */
-let torchOn = false;
-async function toggleTorch(){
-  if(!stream) return;
-  const track = stream.getVideoTracks()[0];
-  try{
-    await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
-    torchOn = !torchOn;
-    torchBtn.textContent = torchOn ? '🔦 ON' : '🔦';
-  }catch(e){
-    alert('Torch не поддерживается на этом устройстве/браузере.');
   }
 }
 
@@ -282,7 +242,7 @@ async function tryDecodeCanvas(canvas){
   return null;
 }
 
-/* Main scanning loop (full frame, multi-angle friendly) */
+/* Main scanning loop (full frame) */
 let canvasPool = [];
 function getCanvas(w,h){
   for(let c of canvasPool) if(c.width===w && c.height===h) return c;
@@ -319,103 +279,64 @@ async function scanLoop(){
   }
 }
 
-/* Handle detection: create card UI for adding quantity */
+/* Handle detection: populate barcode field and name if exists */
 function handleDetected(code){
   const now = Date.now();
   if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
   lastDetected = {code, ts: now};
   beep();
-  const name = barcodeDB[code] || '';
-  scanStatus.innerText = `Найден код: ${code} ${name ? '— ' + name : '— товар не найден в базе'}`;
-
-  // create quick-add card in overlay
-  detectedArea.innerHTML = '';
-  const card = document.createElement('div');
-  card.className = 'result-card';
-  card.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div>
-        <div style="font-weight:700">${name || '—'}</div>
-        <div class="small">Код: ${code}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px;min-width:120px">
-        <label class="small">Кол-во</label>
-        <input id="qtyInput" type="number" min="1" value="1" />
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button id="saveDetectedBtn" class="btn">Добавить</button>
-      <button id="cancelDetectedBtn" class="ghost">Отмена</button>
-    </div>
-  `;
-  detectedArea.appendChild(card);
-
-  // handlers
-  document.getElementById('cancelDetectedBtn').addEventListener('click', ()=>{
-    detectedArea.innerHTML = '';
-    scanStatus.innerText = 'Ожидание сканирования…';
-  });
-
-  document.getElementById('saveDetectedBtn').addEventListener('click', ()=>{
-    const qty = Math.max(1, parseInt(document.getElementById('qtyInput').value || '1', 10));
-    const item = { code, name: name || '', qty, ts: Date.now() };
-    addedItems.unshift(item); // newest first
-    saveAdded();
-    detectedArea.innerHTML = '';
-    scanStatus.innerText = `Добавлено: ${code} ×${qty}`;
-  });
-
-  // If product not in DB, offer quick manual name input
-  if(!name){
-    const addNameBtn = document.createElement('button');
-    addNameBtn.className = 'ghost';
-    addNameBtn.textContent = 'Добавить название в базу';
-    addNameBtn.style.marginTop = '8px';
-    card.appendChild(addNameBtn);
-    addNameBtn.addEventListener('click', ()=>{
-      const newName = prompt('Введите название товара для этого кода', '');
-      if(newName){
-        barcodeDB[code] = newName;
-        localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
-        // update UI
-        card.querySelector('div > div').firstChild.textContent = newName;
-      }
-    });
+  barcodeInput.value = code;
+  if(barcodeDB[code]) {
+    nameInput.value = barcodeDB[code];
+    showToast('Найден в базе: название подставлено');
+  } else {
+    nameInput.value = '';
+    showToast('Код найден — введите название и сохраните');
   }
 }
 
-/* Manual add fallback */
-manualAddBtn.addEventListener('click', ()=>{
-  const code = prompt('Введите штрихкод', '')?.trim();
-  if(!code) return;
-  const name = barcodeDB[code] || prompt('Название товара (не найдено в базе)', '') || '';
-  const qty = parseInt(prompt('Количество', '1') || '1', 10) || 1;
-  const item = { code, name, qty, ts: Date.now() };
-  addedItems.unshift(item);
-  saveAdded();
-  scanStatus.innerText = `Добавлено вручную: ${code} ×${qty}`;
+/* Save to barcodeDB */
+saveBtn.addEventListener('click', ()=>{
+  const code = (barcodeInput.value || '').trim();
+  const name = (nameInput.value || '').trim();
+  if(!code) return showToast('Штрих-код пустой');
+  if(!name) return showToast('Введите название товара');
+  barcodeDB[code] = name;
+  saveBarcodeDB();
+  showToast('Сохранено в базе');
+  // keep fields for further edits; optionally clear barcodeInput if desired
 });
 
-/* Buttons */
-openScannerBtn.addEventListener('click', openScanner);
-closeScannerBtn.addEventListener('click', closeScanner);
-closeAndSaveBtn.addEventListener('click', closeScanner);
-torchBtn.addEventListener('click', toggleTorch);
-clearAddedBtn.addEventListener('click', ()=>{
-  if(confirm('Очистить список добавленных товаров?')){ addedItems = []; saveAdded(); }
+/* Clear fields */
+clearBtn.addEventListener('click', ()=>{
+  barcodeInput.value = '';
+  nameInput.value = '';
+  showToast('Поля очищены');
 });
 
-/* Init list and warm-up camera permissions for labels */
-renderAddedList();
-renderQuickList();
-navigator.mediaDevices.getUserMedia({video:true}).then(s=>{
-  s.getTracks().forEach(t=>t.stop());
-}).catch(()=>{ /* ignore */ });
+/* Close button (if you want to navigate back) */
+closeBtn.addEventListener('click', ()=>{
+  stopCamera();
+  // If this page is opened as a modal in your app, you can call history.back() or close overlay.
+  // For now, just show toast and stop camera.
+  showToast('Камера остановлена');
+});
 
-/* Optional: expose a function to open scanner programmatically (for binding to other UI) */
-window.openAddScanner = openScanner;
+/* Start camera automatically on load */
+window.addEventListener('DOMContentLoaded', async ()=>{
+  // Try to warm permissions so device labels appear later if needed
+  try{
+    await navigator.mediaDevices.getUserMedia({video:true});
+  }catch(e){}
+  startCamera();
+});
+
+/* Stop camera on unload */
+window.addEventListener('pagehide', ()=>{ stopCamera(); });
+window.addEventListener('beforeunload', ()=>{ stopCamera(); });
 
 </script>
 </body>
 </html>
+
 
