@@ -25,7 +25,13 @@
   .btn{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#07040a;padding:10px 12px;border-radius:10px;border:none;font-weight:700}
   .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(0,0,0,0.6)}
   .controls{display:flex;gap:8px;align-items:center;margin-bottom:10px}
-  .preview-wrap{position:relative;border-radius:12px;overflow:hidden;background:#000;min-height:320px}
+  .preview-wrap{position:relative;border-radius:12px;overflow:hidden;background:#000}
+  /* camera area set to one third of viewport height */
+  .preview-wrap.camera-1-3{
+    height: 33vh;
+    min-height: 160px;
+    max-height: 320px;
+  }
   video#preview{width:100%;height:100%;object-fit:cover;display:block}
   .overlay-ui{position:absolute;left:0;right:0;bottom:0;padding:12px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(180deg, rgba(0,0,0,0.0), rgba(0,0,0,0.45));}
   .result-card{background:rgba(255,255,255,0.03);padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);display:flex;flex-direction:column;gap:8px}
@@ -39,13 +45,17 @@
   .item .meta{display:flex;flex-direction:column}
   .save-note{font-size:12px;color:var(--muted);margin-top:8px}
   /* full-screen modal for scanner on mobile */
-  .scanner-modal{position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column}
+  .scanner-modal{position:fixed;inset:0;background:linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0.95));z-index:9999;display:flex;flex-direction:column}
   .scanner-top{display:flex;align-items:center;justify-content:space-between;padding:12px}
   .close-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--accent2);padding:8px;border-radius:8px}
   @media (min-width:481px){
     .app{margin-top:18px}
-    .preview-wrap{min-height:420px}
+    .preview-wrap.camera-1-3{height: 33vh; min-height:200px}
   }
+
+  /* small helpers */
+  .muted{color:var(--muted)}
+  .center{display:flex;align-items:center;justify-content:center}
 </style>
 </head>
 <body>
@@ -74,8 +84,9 @@
     <button id="torchBtn" class="close-btn">🔦</button>
   </div>
 
-  <div style="flex:1;display:flex;flex-direction:column">
-    <div class="preview-wrap" style="flex:1">
+  <div style="display:flex;flex-direction:column;gap:0;align-items:stretch;flex:1">
+    <!-- Camera area now occupies ~1/3 of viewport height -->
+    <div class="preview-wrap camera-1-3" aria-hidden="false">
       <video id="preview" playsinline muted></video>
       <div class="overlay-ui" aria-live="polite">
         <div id="scanStatus" class="small">Ожидание сканирования…</div>
@@ -83,11 +94,22 @@
       </div>
     </div>
 
-    <div style="padding:12px;background:linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.06))">
-      <div class="row">
+    <!-- Controls and manual inputs sit below camera -->
+    <div style="padding:12px;background:linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.06));">
+      <div class="row" style="margin-bottom:8px">
         <button id="manualAddBtn" class="ghost">Ввести вручную</button>
         <button id="closeAndSaveBtn" class="btn">Готово</button>
       </div>
+      <div class="muted center" style="padding:6px 0;font-size:13px">Камера занимает одну треть экрана — остальная часть интерфейса доступна ниже</div>
+    </div>
+
+    <!-- Optional: quick list preview at bottom of modal -->
+    <div style="padding:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="small muted">Последние добавленные</div>
+        <button id="clearAddedBtn" class="ghost">Очистить</button>
+      </div>
+      <div id="quickList" class="list" style="max-height:140px;overflow:auto"></div>
     </div>
   </div>
 </div>
@@ -117,9 +139,11 @@ const torchBtn = document.getElementById('torchBtn');
 const manualAddBtn = document.getElementById('manualAddBtn');
 const closeAndSaveBtn = document.getElementById('closeAndSaveBtn');
 const addedList = document.getElementById('addedList');
+const quickList = document.getElementById('quickList');
+const clearAddedBtn = document.getElementById('clearAddedBtn');
 
 /* ===== Utilities ===== */
-function saveAdded(){ localStorage.setItem('addedItems', JSON.stringify(addedItems)); renderAddedList(); }
+function saveAdded(){ localStorage.setItem('addedItems', JSON.stringify(addedItems)); renderAddedList(); renderQuickList(); }
 function renderAddedList(){
   addedList.innerHTML = '';
   if(!addedItems.length){ addedList.innerHTML = '<div class="small" style="padding:12px;color:var(--muted)">Пусто</div>'; return; }
@@ -142,9 +166,18 @@ function renderAddedList(){
     });
   });
 }
-function beep(){
-  try{ navigator.vibrate?.(60); }catch(e){}
+function renderQuickList(){
+  quickList.innerHTML = '';
+  if(!addedItems.length){ quickList.innerHTML = '<div class="small muted">Пусто</div>'; return; }
+  addedItems.slice(0,6).forEach(it=>{
+    const d = document.createElement('div');
+    d.className = 'item';
+    d.style.padding = '8px';
+    d.innerHTML = `<div class="meta"><strong style="font-size:14px">${it.name || '—'}</strong><div class="small muted">x${it.qty} • ${it.code}</div></div>`;
+    quickList.appendChild(d);
+  });
 }
+function beep(){ try{ navigator.vibrate?.(60); }catch(e){} }
 
 /* ===== Camera & scanning ===== */
 async function openScanner(){
@@ -216,7 +249,6 @@ function increaseContrast(ctx,w,h,contrast=30){ const img=ctx.getImageData(0,0,w
 
 /* Try decode with detector or ZXing, including rotated attempts */
 async function tryDecodeCanvas(canvas){
-  // BarcodeDetector
   if(detector){
     try{
       const imageData = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
@@ -224,14 +256,12 @@ async function tryDecodeCanvas(canvas){
       if(res && res.length) return res[0].rawValue;
     }catch(e){}
   }
-  // ZXing direct
   try{
     const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
     const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
     const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
     if(result && result.text) return result.text;
   }catch(e){}
-  // rotated attempts
   const w = canvas.width, h = canvas.height;
   const temp = createCanvas(w,h);
   const tctx = temp.getContext('2d');
@@ -371,9 +401,13 @@ openScannerBtn.addEventListener('click', openScanner);
 closeScannerBtn.addEventListener('click', closeScanner);
 closeAndSaveBtn.addEventListener('click', closeScanner);
 torchBtn.addEventListener('click', toggleTorch);
+clearAddedBtn.addEventListener('click', ()=>{
+  if(confirm('Очистить список добавленных товаров?')){ addedItems = []; saveAdded(); }
+});
 
 /* Init list and warm-up camera permissions for labels */
 renderAddedList();
+renderQuickList();
 navigator.mediaDevices.getUserMedia({video:true}).then(s=>{
   s.getTracks().forEach(t=>t.stop());
 }).catch(()=>{ /* ignore */ });
@@ -384,3 +418,4 @@ window.openAddScanner = openScanner;
 </script>
 </body>
 </html>
+
