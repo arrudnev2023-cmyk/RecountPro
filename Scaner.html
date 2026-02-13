@@ -3,134 +3,152 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>База штрих‑кодов — Мобильная</title>
+<title>База штрих‑кодов — Тетрадка</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
 :root{
-  --bg-1:#07040a;
-  --bg-2:#0f0b16;
-  --muted:#9aa0b4;
-  --neon1:#8a2be2;
-  --neon2:#c86cff;
-  --accent:linear-gradient(90deg,var(--neon1),var(--neon2));
-  --card-radius:14px;
-  --btn-radius:12px;
-}
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;padding:0;background:
-  radial-gradient(800px 400px at 10% 10%, rgba(138,43,226,0.06), transparent),
-  radial-gradient(600px 300px at 90% 90%, rgba(200,108,255,0.04), transparent),
-  linear-gradient(180deg,var(--bg-1),var(--bg-2));
-  font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;
-  color:#eef0ff;
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
-  padding:12px;
+  --paper:#fffdf6;
+  --ink:#1b1b1b;
+  --accent:#6b3bd6;
+  --muted:#6b6b6b;
+  --card-radius:12px;
+  --btn-radius:10px;
 }
 
-/* Layout */
-.container{
-  max-width:480px;
-  margin:0 auto;
+/* Page background: lined/graph paper look */
+html,body{height:100%;margin:0;font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{
+  /* subtle paper texture via repeating-linear-gradient for horizontal lines and vertical faint grid */
+  background-image:
+    linear-gradient(to bottom, rgba(107,59,214,0.06) 1px, transparent 1px),
+    linear-gradient(to right, rgba(107,59,214,0.02) 1px, transparent 1px);
+  background-size: 28px 28px, 28px 28px;
+  padding:18px;
   display:flex;
-  flex-direction:column;
-  gap:12px;
+  justify-content:center;
 }
 
-/* Header */
+/* Notebook container */
+.container{
+  width:100%;
+  max-width:520px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,250,0.98));
+  border: 1px solid rgba(27,27,27,0.06);
+  border-radius:14px;
+  box-shadow: 0 10px 30px rgba(27,27,27,0.08);
+  padding:14px;
+  box-sizing:border-box;
+}
+
+/* Header: like notebook margin and title */
 .header{
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:12px;
+  margin-bottom:10px;
 }
-.brand{
+.title{
   display:flex;
   gap:12px;
   align-items:center;
 }
 .logo{
-  width:44px;height:44px;border-radius:10px;
-  background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;
-  box-shadow:0 10px 30px rgba(138,43,226,0.12);
+  width:46px;height:46px;border-radius:8px;
+  background:linear-gradient(180deg,#fff,#f3f0ff);
+  border:2px solid rgba(107,59,214,0.12);
+  display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent);
+  box-shadow: inset 0 -6px 12px rgba(107,59,214,0.02);
+  font-size:18px;
 }
-.title{
-  font-size:18px;font-weight:700;
+.h1{
+  font-size:18px;font-weight:700;color:var(--ink);
 }
-.subtitle{font-size:13px;color:var(--muted)}
+.hint{font-size:13px;color:var(--muted)}
 
-/* Card */
+/* Card blocks styled like notebook sections with ruled header */
 .card{
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border-radius:var(--card-radius);
-  padding:12px;
-  border:1px solid rgba(255,255,255,0.03);
-  box-shadow:0 10px 30px rgba(0,0,0,0.6);
+  background: transparent;
+  border-radius:10px;
+  padding:10px 8px 14px 8px;
+  margin-bottom:12px;
+  border-left:4px solid rgba(107,59,214,0.12);
 }
 
-/* Camera area: max 1/3 viewport height */
+/* Camera area: occupies ~1/3 of viewport height */
 .preview-wrap{
   position:relative;
-  border-radius:12px;
+  border-radius:8px;
   overflow:hidden;
   background:#000;
+  border:1px dashed rgba(27,27,27,0.06);
 }
 .preview-wrap.camera-1-3{
   height:33vh;
   min-height:140px;
   max-height:300px;
 }
-video#preview{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
-}
+video#preview{width:100%;height:100%;object-fit:cover;display:block}
 
-/* Controls */
-.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+/* Controls: buttons look like stickers/labels */
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .btn{
   padding:10px 12px;border-radius:var(--btn-radius);border:none;cursor:pointer;font-weight:700;
-  background:var(--accent);color:#07040a;box-shadow:0 10px 30px rgba(138,43,226,0.12);
+  background:linear-gradient(180deg,#fff,#f6f6ff);color:var(--ink);box-shadow:0 6px 18px rgba(27,27,27,0.06);
+  border:1px solid rgba(27,27,27,0.06);
 }
-.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);box-shadow:none}
-.select{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+.btn.primary{
+  background:linear-gradient(180deg,#6b3bd6,#8a5bf0);color:#fff;border:none;box-shadow:0 10px 30px rgba(107,59,214,0.12);
+}
+.btn.ghost{background:transparent;border:1px solid rgba(27,27,27,0.06);color:var(--muted);box-shadow:none}
 
-/* Inputs */
+/* Notebook input style: ruled lines inside inputs */
 .field{display:flex;flex-direction:column;gap:6px;margin-top:8px}
-label{font-size:13px;color:var(--muted)}
-input,textarea{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;font-size:15px}
-textarea{resize:vertical}
+label{font-size:13px;color:var(--muted);margin-left:6px}
+input,textarea{
+  width:100%;
+  padding:12px 12px;
+  border-radius:8px;
+  border:1px solid rgba(27,27,27,0.06);
+  background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.4));
+  font-size:15px;color:var(--ink);
+  outline:none;
+  box-shadow: inset 0 -6px 12px rgba(0,0,0,0.02);
+}
+input::placeholder{color:rgba(27,27,27,0.35)}
+textarea{min-height:80px;resize:vertical}
 
-/* Results */
-.found{font-size:15px;color:var(--neon2);font-weight:700;margin-top:8px}
+/* Table: simple, like list in notebook */
+.table-wrap{overflow:auto;max-height:260px;margin-top:8px;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:14px;color:var(--ink)}
+thead th{text-align:left;padding:10px;font-weight:700;color:var(--muted);border-bottom:1px dashed rgba(27,27,27,0.06)}
+tbody td{padding:10px;border-bottom:1px dashed rgba(27,27,27,0.04)}
 
-/* Table */
-.table-wrap{overflow:auto;max-height:260px;margin-top:8px;border-radius:10px}
-table{width:100%;border-collapse:collapse;font-size:14px;color:#dfe6ff}
-thead th{text-align:left;padding:10px;font-weight:700;color:var(--muted);border-bottom:1px solid rgba(255,255,255,0.03)}
-tbody td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.02)}
-
-/* Footer small */
+/* small helpers */
 .small{font-size:13px;color:var(--muted)}
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:rgba(27,27,27,0.9);color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:9999;
+}
 
-/* Responsive tweaks */
-@media (min-width:520px){
-  .container{max-width:520px}
+/* mobile tweaks */
+@media (max-width:420px){
+  .container{padding:10px}
+  .h1{font-size:16px}
+  .logo{width:40px;height:40px}
 }
 </style>
 </head>
 <body>
 
-<div class="container" role="main" aria-label="База штрих-кодов мобильная">
+<div class="container" role="main" aria-label="Мобильная база штрих-кодов в стиле тетрадки">
   <header class="header">
-    <div class="brand">
+    <div class="title">
       <div class="logo">BC</div>
       <div>
-        <div class="title">База штрих‑кодов</div>
-        <div class="subtitle">Сканер занимает треть экрана — мобильная версия</div>
+        <div class="h1">База штрих‑кодов</div>
+        <div class="hint">Стиль: школьная тетрадка в клетку</div>
       </div>
     </div>
 
@@ -142,26 +160,26 @@ tbody td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.02)}
 
   <!-- Camera card -->
   <section class="card" aria-labelledby="cameraTitle">
-    <h3 id="cameraTitle" style="margin:0 0 8px 0">Сканер</h3>
+    <h3 id="cameraTitle" style="margin:0 0 8px 6px;font-weight:700">Сканер</h3>
 
     <div class="preview-wrap camera-1-3" aria-hidden="false">
       <video id="preview" playsinline muted></video>
     </div>
 
     <div class="controls" style="margin-top:10px">
-      <select id="deviceSelect" class="select" aria-label="Выбор камеры"></select>
-      <button id="switchBtn" class="btn ghost" aria-label="Сменить камеру">🔄</button>
+      <button id="startScannerBtn" class="btn primary" aria-label="Включить сканер">▶ Включить сканер</button>
+      <button id="stopScannerBtn" class="btn ghost" aria-label="Остановить сканер">⛔ Остановить</button>
+      <select id="deviceSelect" class="btn ghost" aria-label="Выбор камеры" style="padding:10px;border-radius:10px;background:transparent;color:var(--muted)"></select>
       <button id="torchBtn" class="btn ghost" aria-label="Фонарик">🔦</button>
-      <button id="stopBtn" class="btn ghost" aria-label="Остановить">⛔</button>
     </div>
 
-    <div id="scanResult" class="found" aria-live="polite"></div>
-    <div class="small" style="margin-top:8px">Поднесите штрих‑код — распознавание по всему кадру, под любым углом.</div>
+    <div id="scanResult" class="small" aria-live="polite" style="margin-top:8px;padding-left:6px"></div>
+    <div class="small" style="margin-top:8px;padding-left:6px">Поднесите штрих‑код — распознавание по всему кадру, под любым углом.</div>
   </section>
 
   <!-- Manual add / quick edit -->
   <section class="card" aria-labelledby="manualTitle">
-    <h3 id="manualTitle" style="margin:0 0 8px 0">Добавить / Редактировать запись</h3>
+    <h3 id="manualTitle" style="margin:0 0 8px 6px;font-weight:700">Добавить / Редактировать запись</h3>
 
     <div class="field">
       <label for="codeInput">Штрих‑код</label>
@@ -174,28 +192,28 @@ tbody td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.02)}
     </div>
 
     <div style="display:flex;gap:8px;margin-top:10px">
-      <button id="saveBtn" class="btn" style="flex:1">Сохранить в базу</button>
+      <button id="saveBtn" class="btn primary" style="flex:1">Сохранить в базу</button>
       <button id="deleteBtn" class="btn ghost" style="width:120px">Удалить</button>
     </div>
 
-    <div class="small" style="margin-top:8px">Сохранённые записи хранятся в localStorage под ключом <strong>barcodeDB</strong>.</div>
+    <div class="small" style="margin-top:8px;padding-left:6px">Сохранённые записи хранятся в localStorage под ключом <strong>barcodeDB</strong>.</div>
   </section>
 
   <!-- Bulk import -->
   <section class="card" aria-labelledby="bulkTitle">
-    <h3 id="bulkTitle" style="margin:0 0 8px 0">Массовый импорт</h3>
-    <label for="bulk">Формат: "4600605026533": "Молоко"</label>
+    <h3 id="bulkTitle" style="margin:0 0 8px 6px;font-weight:700">Массовый импорт</h3>
+    <label for="bulk" style="margin-left:6px" class="small">Формат: "4600605026533": "Молоко"</label>
     <textarea id="bulk" rows="4" placeholder='"4600605026533": "Молоко"
 "4810268035258": "Сыр российский"'></textarea>
     <div style="display:flex;gap:8px;margin-top:8px">
-      <button id="bulkImportBtn" class="btn" style="flex:1">Импортировать</button>
+      <button id="bulkImportBtn" class="btn primary" style="flex:1">Импортировать</button>
       <button id="clearAllBtn" class="btn ghost" style="width:120px">Очистить</button>
     </div>
   </section>
 
   <!-- Table -->
   <section class="card" aria-labelledby="tableTitle">
-    <h3 id="tableTitle" style="margin:0 0 8px 0">База товаров</h3>
+    <h3 id="tableTitle" style="margin:0 0 8px 6px;font-weight:700">База товаров</h3>
     <div class="table-wrap" role="region" aria-label="Список штрих-кодов">
       <table id="table" aria-live="polite">
         <thead><tr><th>Штрих‑код</th><th>Название</th></tr></thead>
@@ -204,6 +222,8 @@ tbody td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.02)}
     </div>
   </section>
 </div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <!-- ZXing fallback -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
@@ -221,10 +241,10 @@ const DEBOUNCE_MS = 900;
 
 /* ===== Elements ===== */
 const preview = document.getElementById('preview');
+const startScannerBtn = document.getElementById('startScannerBtn');
+const stopScannerBtn = document.getElementById('stopScannerBtn');
 const deviceSelect = document.getElementById('deviceSelect');
-const switchBtn = document.getElementById('switchBtn');
 const torchBtn = document.getElementById('torchBtn');
-const stopBtn = document.getElementById('stopBtn');
 const scanResult = document.getElementById('scanResult');
 
 const codeInput = document.getElementById('codeInput');
@@ -240,7 +260,15 @@ const tableBody = document.querySelector('#table tbody');
 const exportBtn = document.getElementById('exportBtn');
 const importBtn = document.getElementById('importBtn');
 
+const toast = document.getElementById('toast');
+
 /* ===== Utilities ===== */
+function showToast(text, ms = 1400){
+  toast.textContent = text;
+  toast.style.display = 'block';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>{ toast.style.display = 'none'; }, ms);
+}
 function saveDB(){ localStorage.setItem('barcodeDB', JSON.stringify(db)); renderTable(); }
 function renderTable(){
   tableBody.innerHTML = '';
@@ -275,6 +303,7 @@ async function enumerateCameras(){
 }
 
 async function startCamera(){
+  if(scanning) return;
   stopCamera();
   scanning = true;
   await enumerateCameras();
@@ -296,12 +325,15 @@ async function startCamera(){
     currentDeviceId = stream.getVideoTracks()[0].getSettings().deviceId || currentDeviceId;
     deviceSelect.value = currentDeviceId || deviceSelect.value;
 
-    reader = new ZXing.BrowserMultiFormatReader();
+    if(!reader) reader = new ZXing.BrowserMultiFormatReader();
+
     requestAnimationFrame(scanLoop);
+    showToast('Сканер включён');
   }catch(err){
     console.error('camera error', err);
     scanResult.innerText = 'Ошибка доступа к камере';
     scanning = false;
+    showToast('Не удалось включить камеру');
   }
 }
 
@@ -313,21 +345,21 @@ function stopCamera(){
   }
   if(reader){
     try{ reader.reset(); }catch(e){}
-    reader = null;
   }
+  showToast('Сканер остановлен');
 }
 
 /* Torch */
 let torchOn = false;
 async function toggleTorch(){
-  if(!stream) return alert('Сначала включите камеру');
+  if(!stream) return showToast('Сначала включите сканер');
   const track = stream.getVideoTracks()[0];
   try{
     await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
     torchOn = !torchOn;
     torchBtn.textContent = torchOn ? '🔦 ON' : '🔦';
   }catch(e){
-    alert('Torch не поддерживается на этом устройстве/браузере.');
+    showToast('Torch не поддерживается');
   }
 }
 
@@ -335,7 +367,6 @@ async function toggleTorch(){
 function createCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
 
 async function tryDecodeCanvas(canvas){
-  // BarcodeDetector
   if(detector){
     try{
       const imageData = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
@@ -343,14 +374,12 @@ async function tryDecodeCanvas(canvas){
       if(res && res.length) return res[0].rawValue;
     }catch(e){}
   }
-  // ZXing direct
   try{
     const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
     const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
     const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
     if(result && result.text) return result.text;
   }catch(e){}
-  // rotated attempts
   const w = canvas.width, h = canvas.height;
   const temp = createCanvas(w,h);
   const tctx = temp.getContext('2d');
@@ -378,31 +407,44 @@ function getCanvas(w,h){
   const c = createCanvas(w,h); canvasPool.push(c); return c;
 }
 
+let scanLoopRunning = false;
 async function scanLoop(){
-  if(!scanning) return;
+  if(!scanning) { scanLoopRunning = false; return; }
+  if(scanLoopRunning) return;
+  scanLoopRunning = true;
+
   try{
-    const w = preview.videoWidth;
-    const h = preview.videoHeight;
-    if(w===0 || h===0){ requestAnimationFrame(scanLoop); return; }
+    while(scanning){
+      const w = preview.videoWidth;
+      const h = preview.videoHeight;
+      if(w===0 || h===0){
+        await new Promise(r => requestAnimationFrame(r));
+        continue;
+      }
 
-    const canvas = getCanvas(w,h);
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(preview, 0, 0, w, h);
+      const canvas = getCanvas(w,h);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(preview, 0, 0, w, h);
 
-    // downscale for speed
-    const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
-    const sw = Math.floor(w/scale);
-    const sh = Math.floor(h/scale);
-    const small = getCanvas(sw,sh);
-    const sctx = small.getContext('2d');
-    sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
+      const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
+      const sw = Math.floor(w/scale);
+      const sh = Math.floor(h/scale);
+      const small = getCanvas(sw,sh);
+      const sctx = small.getContext('2d');
+      sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
 
-    const code = await tryDecodeCanvas(small);
-    if(code) handleDetected(code);
-  }catch(e){
-    // ignore
-  } finally {
-    requestAnimationFrame(scanLoop);
+      try{
+        const code = await tryDecodeCanvas(small);
+        if(code) {
+          handleDetected(code);
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }catch(e){}
+
+      await new Promise(r => requestAnimationFrame(r));
+    }
+  }finally{
+    scanLoopRunning = false;
   }
 }
 
@@ -413,29 +455,16 @@ function handleDetected(code){
   lastDetected = {code, ts: now};
   beep();
   scanResult.innerText = `${code} → ${db[code] || 'Товар не найден'}`;
-  // populate inputs for quick save/edit
   codeInput.value = code;
   if(db[code]) nameInput.value = db[code];
   else nameInput.value = '';
 }
 
 /* ===== UI actions ===== */
-deviceSelect.addEventListener('change', async ()=>{
-  currentDeviceId = deviceSelect.value;
-  await startCamera();
-});
-switchBtn.addEventListener('click', async ()=>{
-  // cycle devices
-  const opts = Array.from(deviceSelect.options);
-  if(!opts.length) return;
-  const idx = opts.findIndex(o=>o.value === deviceSelect.value);
-  const next = opts[(idx+1) % opts.length];
-  deviceSelect.value = next.value;
-  currentDeviceId = next.value;
-  await startCamera();
-});
+startScannerBtn.addEventListener('click', async ()=>{ await startCamera(); });
+stopScannerBtn.addEventListener('click', ()=>{ stopCamera(); });
+deviceSelect.addEventListener('change', async ()=>{ currentDeviceId = deviceSelect.value; await startCamera(); });
 torchBtn.addEventListener('click', toggleTorch);
-stopBtn.addEventListener('click', stopCamera);
 
 saveBtn.addEventListener('click', ()=>{
   const code = (codeInput.value || '').trim();
@@ -444,13 +473,16 @@ saveBtn.addEventListener('click', ()=>{
   if(!name) return alert('Введите название товара');
   db[code] = name;
   saveDB();
-  scanResult.innerText = `Сохранено: ${code} → ${name}`;
+  showToast('Сохранено в базе');
+  lastDetected = {code:null, ts:0};
+  codeInput.value = '';
+  nameInput.value = '';
 });
 
 deleteBtn.addEventListener('click', ()=>{
   const code = (codeInput.value || '').trim();
   if(!code) return alert('Введите код для удаления');
-  if(db[code]){ delete db[code]; saveDB(); alert('Удалено'); } else alert('Код не найден');
+  if(db[code]){ delete db[code]; saveDB(); showToast('Удалено'); } else alert('Код не найден');
 });
 
 bulkImportBtn.addEventListener('click', ()=>{
@@ -462,11 +494,11 @@ bulkImportBtn.addEventListener('click', ()=>{
     if(match){ db[match[1]] = match[2]; count++; }
   });
   saveDB();
-  alert(`Импортировано ${count} записей`);
+  showToast(`Импортировано ${count}`);
 });
 
 clearAllBtn.addEventListener('click', ()=>{
-  if(confirm('Очистить всю базу штрих-кодов?')){ db = {}; saveDB(); }
+  if(confirm('Очистить всю базу штрих-кодов?')){ db = {}; saveDB(); showToast('База очищена'); }
 });
 
 /* Export / Import JSON */
@@ -492,7 +524,7 @@ importBtn.addEventListener('click', ()=>{
         const obj = JSON.parse(ev.target.result);
         db = Object.assign({}, db, obj);
         saveDB();
-        alert('Импорт завершён');
+        showToast('Импорт завершён');
       }catch(err){ alert('Ошибка парсинга JSON'); }
     };
     readerFile.readAsText(file);
@@ -508,11 +540,11 @@ navigator.mediaDevices.getUserMedia({video:true}).then(s=>{
   enumerateCameras();
 }).catch(()=>{ /* ignore */ });
 
-/* Stop camera when leaving page */
 window.addEventListener('pagehide', ()=>{ stopCamera(); });
 window.addEventListener('beforeunload', ()=>{ stopCamera(); });
 
 </script>
 </body>
 </html>
+
 
