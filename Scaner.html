@@ -1,303 +1,682 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>База штрих‑кодов</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>База штрих кодов — Neon</title>
+
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
 <style>
-    body {
-        margin: 0;
-        background: #f4f6f8;
-        font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-    }
+:root{
+  --bg:#0b0710;
+  --card:#0f0b16;
+  --muted:#9aa0b4;
+  --neon1:#8a2be2;
+  --neon2:#c86cff;
+  --accent:linear-gradient(90deg,var(--neon1),var(--neon2));
+  --glass: rgba(255,255,255,0.03);
+  --radius:14px;
+  --glass-2: rgba(255,255,255,0.02);
+}
 
-    header {
-        background: #1e88e5;
-        color: white;
-        padding: 15px;
-        font-size: 22px;
-        text-align: center;
-        font-weight: bold;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: radial-gradient(1200px 600px at 10% 10%, rgba(138,43,226,0.12), transparent),
+              radial-gradient(900px 400px at 90% 90%, rgba(200,108,255,0.08), transparent),
+              var(--bg);
+  color:#e9e9f2;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  padding:20px;
+}
 
-    .container {
-        padding: 15px;
-        max-width: 900px;
-        margin: auto;
-    }
+/* Header */
+header{
+  max-width:1100px;
+  margin:0 auto 18px;
+  padding:18px 22px;
+  border-radius:18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  box-shadow: 0 6px 30px rgba(0,0,0,0.6), 0 0 40px rgba(138,43,226,0.06) inset;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  border:1px solid rgba(255,255,255,0.03);
+}
+.header-title{
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.logo{
+  width:44px;
+  height:44px;
+  border-radius:10px;
+  background:var(--accent);
+  box-shadow: 0 6px 30px rgba(138,43,226,0.18);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:800;
+  color:white;
+  font-size:18px;
+}
+.header-title h1{
+  margin:0;
+  font-size:18px;
+  letter-spacing:0.2px;
+}
+.header-actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
 
-    .card {
-        background: white;
-        border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
+/* Container */
+.container{
+  max-width:1100px;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns: 1fr 420px;
+  gap:18px;
+}
 
-    h2 {
-        margin-top: 0;
-        font-size: 20px;
-        color: #333;
-    }
+/* Card */
+.card{
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius:var(--radius);
+  padding:16px;
+  border:1px solid rgba(255,255,255,0.03);
+  box-shadow: 0 8px 30px rgba(2,2,8,0.6);
+}
 
-    input, textarea, button {
-        width: 100%;
-        padding: 12px;
-        margin-top: 8px;
-        border-radius: 8px;
-        border: 1px solid #ccc;
-        font-size: 16px;
-        box-sizing: border-box;
-    }
+/* Left column full width on small screens */
+@media (max-width:980px){
+  .container{grid-template-columns:1fr; padding:0 6px}
+}
 
-    button {
-        background: #1e88e5;
-        color: white;
-        border: none;
-        font-weight: bold;
-        transition: 0.2s;
-    }
+/* Titles */
+h2{
+  margin:0 0 10px 0;
+  font-size:16px;
+  color:#f3f2ff;
+}
 
-    button:hover {
-        background: #1565c0;
-    }
+/* Controls */
+.controls{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.btn{
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.06);
+  color:var(--neon2);
+  padding:10px 12px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:600;
+  display:inline-flex;
+  gap:8px;
+  align-items:center;
+  transition:all .18s ease;
+}
+.btn.primary{
+  background:var(--accent);
+  color:#0b0710;
+  box-shadow: 0 8px 30px rgba(138,43,226,0.18);
+  border: none;
+}
+.btn.ghost{
+  background:transparent;
+  color:var(--muted);
+  border:1px dashed rgba(255,255,255,0.03);
+}
+.btn:active{transform:translateY(1px)}
+.select, input, textarea{
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.04);
+  color:inherit;
+  padding:10px;
+  border-radius:10px;
+  outline:none;
+}
+.select{min-width:160px}
 
-    #preview {
-        width: 100%;
-        border-radius: 12px;
-        margin-top: 10px;
-    }
+/* Scanner area */
+.scanner-card{
+  display:flex;
+  gap:14px;
+  align-items:flex-start;
+  flex-direction:column;
+}
+.preview-wrap{
+  position:relative;
+  width:100%;
+  max-width:720px;
+  border-radius:12px;
+  overflow:hidden;
+  background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border:1px solid rgba(255,255,255,0.03);
+}
+video#preview{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+  transform-origin:center;
+  -webkit-transform-origin:center;
+}
+.overlay-frame{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:86%;
+  max-width:640px;
+  height:96px;
+  border-radius:12px;
+  pointer-events:none;
+  box-shadow: 0 0 40px rgba(200,108,255,0.12), 0 0 8px rgba(138,43,226,0.18) inset;
+  border:2px solid rgba(200,108,255,0.28);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  backdrop-filter: blur(6px);
+}
 
-    #frame {
-        position: absolute;
-        border: 3px solid #ff5252;
-        width: 80%;
-        height: 80px;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        pointer-events: none;
-        border-radius: 8px;
-    }
+/* corners */
+.overlay-frame::before,
+.overlay-frame::after{
+  content:"";
+  position:absolute;
+  width:18px;
+  height:18px;
+  border:3px solid var(--neon2);
+  border-radius:6px;
+  box-shadow: 0 6px 20px rgba(200,108,255,0.12);
+}
+.overlay-frame::before{left:-10px; top:-10px; border-right:none; border-bottom:none}
+.overlay-frame::after{right:-10px; bottom:-10px; border-left:none; border-top:none}
 
-    .scanner-wrapper {
-        position: relative;
-        max-width: 400px;
-        margin: auto;
-    }
+/* scan line */
+.scan-line{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  width:84%;
+  height:2px;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+  animation:scan 2s linear infinite;
+  top:calc(50% - 44px);
+  mix-blend-mode:screen;
+}
+@keyframes scan{
+  0%{top:calc(50% - 44px); opacity:0}
+  10%{opacity:1}
+  50%{top:calc(50% + 44px); opacity:1}
+  90%{opacity:1}
+  100%{top:calc(50% - 44px); opacity:0}
+}
 
-    .found {
-        font-size: 18px;
-        margin-top: 10px;
-        font-weight: bold;
-        color: #1e88e5;
-    }
+/* Results and table */
+.found{
+  font-size:15px;
+  color:var(--neon2);
+  font-weight:700;
+  margin-top:8px;
+}
+.table-wrap{overflow:auto; max-height:320px}
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+  color:#dfe6ff;
+}
+thead th{
+  text-align:left;
+  padding:10px;
+  font-weight:700;
+  color:var(--muted);
+  border-bottom:1px solid rgba(255,255,255,0.03);
+}
+tbody td{
+  padding:10px;
+  border-bottom:1px dashed rgba(255,255,255,0.02);
+}
+
+/* small helpers */
+.row{display:flex; gap:10px; align-items:center}
+.right{margin-left:auto}
+.small{font-size:13px; color:var(--muted)}
+.footer-note{font-size:12px; color:rgba(255,255,255,0.35); margin-top:8px}
 </style>
 </head>
 <body>
 
-<header>База штрих‑кодов</header>
+<header>
+  <div class="header-title">
+    <div class="logo">BC</div>
+    <div>
+      <h1>База штрих кодов</h1>
+      <div class="small">Надёжное сканирование • Neon UI</div>
+    </div>
+  </div>
 
-<div class="container">
+  <div class="header-actions">
+    <button class="btn ghost" id="exportBtn">Экспорт JSON</button>
+    <button class="btn ghost" id="importBtn">Импорт JSON</button>
+  </div>
+</header>
 
-    <div class="card">
-        <h2>Сканирование камерой</h2>
+<main class="container">
 
-        <button onclick="startCamera()">📷 Включить сканер</button>
-        <button onclick="switchCamera()" style="background:#6a1b9a;margin-top:10px;">🔄 Сменить камеру</button>
-        <button onclick="stopCamera()" style="background:#e53935;margin-top:10px;">⛔ Остановить</button>
+  <section class="card scanner-card">
+    <h2>Сканирование камерой</h2>
 
-        <div class="scanner-wrapper">
-            <video id="preview" playsinline></video>
-            <div id="frame"></div>
-        </div>
-
-        <div id="scanResult" class="found"></div>
+    <div class="row controls">
+      <button class="btn primary" id="startBtn">📷 Включить сканер</button>
+      <button class="btn" id="stopBtn">⛔ Остановить</button>
+      <select id="deviceSelect" class="select"></select>
+      <button class="btn" id="switchBtn">🔄 Сменить камеру</button>
+      <button class="btn" id="torchBtn">🔦 Torch</button>
     </div>
 
+    <div class="preview-wrap" style="margin-top:12px;">
+      <video id="preview" playsinline muted></video>
+      <div class="overlay-frame" aria-hidden="true">
+        <div class="scan-line"></div>
+      </div>
+    </div>
+
+    <div id="scanResult" class="found" aria-live="polite"></div>
+    <div class="footer-note">Рамка показывает область сканирования. Поднесите штрихкод в рамку и держите стабильно.</div>
+  </section>
+
+  <aside>
     <div class="card">
-        <h2>Добавить товар вручную</h2>
-        <input id="code" placeholder="Штрих‑код">
+      <h2>Добавить товар вручную</h2>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input id="code" placeholder="Штрих код">
         <input id="name" placeholder="Название товара">
-        <button onclick="addItem()">Добавить</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn primary" id="addBtn">Добавить</button>
+          <button class="btn" id="deleteBtn">Удалить код</button>
+        </div>
+      </div>
     </div>
 
-    <div class="card">
-        <h2>Поиск по штрих‑коду</h2>
-        <input id="scanInput" placeholder="Введите код" oninput="scanCodeManual()">
-        <div id="manualResult" class="found"></div>
+    <div class="card" style="margin-top:12px">
+      <h2>Поиск по штрих коду</h2>
+      <input id="scanInput" placeholder="Введите код" oninput="scanCodeManual()">
+      <div id="manualResult" class="found"></div>
     </div>
 
-    <div class="card">
-        <h2>Массовый импорт</h2>
-        <textarea id="bulk" rows="6" placeholder='"4600605026533": "Молоко"
+    <div class="card" style="margin-top:12px">
+      <h2>Массовый импорт</h2>
+      <textarea id="bulk" rows="6" placeholder='"4600605026533": "Молоко"
 "4810268035258": "Сыр российский"'></textarea>
-        <button onclick="bulkImport()">Импортировать</button>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn primary" id="bulkImportBtn">Импортировать</button>
+        <button class="btn" id="clearBtn">Очистить базу</button>
+      </div>
     </div>
+  </aside>
 
-    <div class="card">
-        <h2>База товаров</h2>
-        <table id="table">
-            <thead>
-                <tr><th>Штрих‑код</th><th>Название</th></tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+  <section class="card" style="grid-column:1 / -1">
+    <h2>База товаров</h2>
+    <div class="table-wrap">
+      <table id="table">
+        <thead><tr><th>Штрих код</th><th>Название</th></tr></thead>
+        <tbody></tbody>
+      </table>
     </div>
+  </section>
 
-</div>
+</main>
 
+<!-- ZXing fallback -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 
 <script>
+/* ======= State and DB ======= */
 let db = JSON.parse(localStorage.getItem("barcodeDB") || "{}");
-let currentFacing = "environment";
+let currentDeviceId = null;
 let stream = null;
-let usingBarcodeDetector = false;
+let reader = null;
+let detectorAvailable = ('BarcodeDetector' in window);
+let detector = null;
+let scanning = false;
+let lastDetected = { code: null, ts: 0 };
+const DEBOUNCE_MS = 1200; // минимальный интервал между срабатываниями
 
-function saveDB() {
-    localStorage.setItem("barcodeDB", JSON.stringify(db));
-    renderTable();
+/* ======= Elements ======= */
+const preview = document.getElementById('preview');
+const deviceSelect = document.getElementById('deviceSelect');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const switchBtn = document.getElementById('switchBtn');
+const torchBtn = document.getElementById('torchBtn');
+const scanResult = document.getElementById('scanResult');
+const addBtn = document.getElementById('addBtn');
+const deleteBtn = document.getElementById('deleteBtn');
+const bulkImportBtn = document.getElementById('bulkImportBtn');
+const clearBtn = document.getElementById('clearBtn');
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+
+/* ======= Utilities ======= */
+function saveDB(){ localStorage.setItem('barcodeDB', JSON.stringify(db)); renderTable(); }
+function renderTable(){
+  const tbody = document.querySelector('#table tbody');
+  tbody.innerHTML = '';
+  Object.keys(db).forEach(code=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${code}</td><td>${db[code]}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+function beep(){
+  try{
+    navigator.vibrate?.(60);
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = 880;
+    g.gain.value = 0.02;
+    o.connect(g); g.connect(ctx.destination);
+    o.start();
+    setTimeout(()=>{ o.stop(); ctx.close(); }, 120);
+  }catch(e){}
 }
 
-function renderTable() {
-    const tbody = document.querySelector("#table tbody");
-    tbody.innerHTML = "";
-    Object.keys(db).forEach(code => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${code}</td><td>${db[code]}</td>`;
-        tbody.appendChild(tr);
+/* ======= Camera and devices ======= */
+async function enumerateCameras(){
+  try{
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d => d.kind === 'videoinput');
+    deviceSelect.innerHTML = '';
+    cams.forEach((c, idx)=>{
+      const opt = document.createElement('option');
+      opt.value = c.deviceId;
+      opt.text = c.label || `Камера ${idx+1}`;
+      deviceSelect.appendChild(opt);
     });
+    if(cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
+    if(currentDeviceId) deviceSelect.value = currentDeviceId;
+  }catch(e){}
 }
 
-function addItem() {
-    const code = document.getElementById("code").value.trim();
-    const name = document.getElementById("name").value.trim();
-    if (!code || !name) return alert("Введите код и название");
-    db[code] = name;
-    saveDB();
-    document.getElementById("code").value = "";
-    document.getElementById("name").value = "";
-}
+async function startCamera(){
+  stopCamera();
+  scanning = true;
+  await enumerateCameras();
 
-function bulkImport() {
-    const text = document.getElementById("bulk").value.trim();
-    const lines = text.split("\n");
-    lines.forEach(line => {
-        const match = line.match(/"(\d+)":\s*"(.+?)"/);
-        if (match) db[match[1]] = match[2];
-    });
-    saveDB();
-    alert("Импорт завершён");
-}
+  const constraints = {
+    audio: false,
+    video: {
+      deviceId: deviceSelect.value || currentDeviceId || undefined,
+      facingMode: { ideal: "environment" },
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    }
+  };
 
-function scanCodeManual() {
-    const code = document.getElementById("scanInput").value.trim();
-    document.getElementById("manualResult").innerText =
-        db[code] ? `${code} → ${db[code]}` : (code ? "Товар не найден" : "");
-}
-
-// ------------------ CAMERA ------------------
-
-async function startCamera() {
-    stopCamera();
-
-    stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: currentFacing }
-    });
-
-    const preview = document.getElementById("preview");
+  try{
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
     preview.srcObject = stream;
-    preview.play();
+    await preview.play();
+    currentDeviceId = stream.getVideoTracks()[0].getSettings().deviceId || currentDeviceId;
+    deviceSelect.value = currentDeviceId || deviceSelect.value;
 
-    if ("BarcodeDetector" in window) {
-        usingBarcodeDetector = true;
-        runBarcodeDetector();
-    } else {
-        usingBarcodeDetector = false;
-        runZXing();
-    }
-}
-
-function switchCamera() {
-    currentFacing = currentFacing === "environment" ? "user" : "environment";
-    startCamera();
-}
-
-async function runBarcodeDetector() {
-    const detector = new BarcodeDetector({
-        formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "itf"]
-    });
-
-    const preview = document.getElementById("preview");
-
-    async function scan() {
-        if (!usingBarcodeDetector) return;
-
-        try {
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
-
-            const w = preview.videoWidth;
-            const h = preview.videoHeight;
-
-            canvas.width = w;
-            canvas.height = h;
-
-            ctx.drawImage(preview, 0, 0, w, h);
-
-            const roi = {
-                x: w * 0.1,
-                y: h * 0.45,
-                width: w * 0.8,
-                height: h * 0.1
-            };
-
-            const imageData = ctx.getImageData(roi.x, roi.y, roi.width, roi.height);
-
-            const barcodes = await detector.detect(imageData);
-
-            if (barcodes.length > 0) {
-                const code = barcodes[0].rawValue;
-                const name = db[code] || "Товар не найден";
-                document.getElementById("scanResult").innerText = `${code} → ${name}`;
-            }
-        } catch {}
-
-        requestAnimationFrame(scan);
+    // prepare BarcodeDetector if available
+    if(detectorAvailable){
+      try{
+        detector = new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]});
+      }catch(e){ detector = null; }
     }
 
-    scan();
+    // ZXing fallback reader
+    reader = new ZXing.BrowserMultiFormatReader();
+
+    // Start scanning loop
+    requestAnimationFrame(scanLoop);
+  }catch(err){
+    console.error('Camera error', err);
+    alert('Не удалось получить доступ к камере. Проверьте разрешения.');
+    scanning = false;
+  }
 }
 
-function runZXing() {
-    const preview = document.getElementById("preview");
-    const reader = new ZXing.BrowserMultiFormatReader();
+function stopCamera(){
+  scanning = false;
+  if(preview.srcObject){
+    preview.srcObject.getTracks().forEach(t=>t.stop());
+    preview.srcObject = null;
+  }
+  if(reader){
+    try{ reader.reset(); }catch(e){}
+    reader = null;
+  }
+  detector = null;
+}
 
-    reader.decodeFromVideoDevice(null, preview, (result, err) => {
-        if (result) {
-            const code = result.text;
-            const name = db[code] || "Товар не найден";
-            document.getElementById("scanResult").innerText = `${code} → ${name}`;
+/* ======= Torch control ======= */
+let torchOn = false;
+async function toggleTorch(){
+  if(!stream) return alert('Сначала включите камеру');
+  const track = stream.getVideoTracks()[0];
+  const imageCapture = ('ImageCapture' in window) ? new ImageCapture(track) : null;
+  try{
+    if(imageCapture && 'getPhotoCapabilities' in imageCapture){
+      const cap = await imageCapture.getPhotoCapabilities();
+      if(cap.fillLightMode && cap.fillLightMode.length){
+        // Some devices support fillLightMode
+      }
+    }
+    // Try applyConstraints
+    await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
+    torchOn = !torchOn;
+    torchBtn.textContent = torchOn ? '🔦 Torch ON' : '🔦 Torch';
+  }catch(e){
+    // fallback: inform user
+    alert('Torch не поддерживается на этом устройстве или в этом браузере.');
+  }
+}
+
+/* ======= Scanning logic ======= */
+async function scanLoop(){
+  if(!scanning) return;
+  try{
+    const now = Date.now();
+
+    // compute ROI from video size
+    const w = preview.videoWidth;
+    const h = preview.videoHeight;
+    if(w === 0 || h === 0){
+      requestAnimationFrame(scanLoop);
+      return;
+    }
+
+    // Use BarcodeDetector if available and initialized
+    if(detector){
+      try{
+        // draw ROI to canvas and pass ImageData to detector for better perf
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const roi = {
+          x: Math.floor(w * 0.07),
+          y: Math.floor(h * 0.45),
+          width: Math.floor(w * 0.86),
+          height: Math.floor(h * 0.12)
+        };
+        canvas.width = roi.width;
+        canvas.height = roi.height;
+        ctx.drawImage(preview, roi.x, roi.y, roi.width, roi.height, 0, 0, roi.width, roi.height);
+        const imageData = ctx.getImageData(0,0,roi.width,roi.height);
+        const barcodes = await detector.detect(imageData);
+        if(barcodes && barcodes.length){
+          handleDetected(barcodes[0].rawValue);
         }
-    });
-}
-
-function stopCamera() {
-    usingBarcodeDetector = false;
-
-    const preview = document.getElementById("preview");
-
-    if (preview.srcObject) {
-        preview.srcObject.getTracks().forEach(t => t.stop());
-        preview.srcObject = null;
+      }catch(e){
+        // if detector fails, fallback to zxing
+        // console.warn('detector error', e);
+      }
     }
+
+    // ZXing fallback decode from canvas
+    if(reader){
+      try{
+        // ZXing has decodeFromVideoDevice helper but we prefer decodeFromCanvas for ROI control
+        const canvas2 = document.createElement('canvas');
+        const ctx2 = canvas2.getContext('2d');
+        const roi2 = {
+          x: Math.floor(w * 0.07),
+          y: Math.floor(h * 0.45),
+          width: Math.floor(w * 0.86),
+          height: Math.floor(h * 0.12)
+        };
+        canvas2.width = roi2.width;
+        canvas2.height = roi2.height;
+        ctx2.drawImage(preview, roi2.x, roi2.y, roi2.width, roi2.height, 0, 0, roi2.width, roi2.height);
+        const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas2);
+        const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+        const result = reader.decode(binaryBitmap);
+        if(result && result.text) handleDetected(result.text);
+      }catch(e){
+        // ignore decode errors
+      }
+    }
+
+  }catch(e){
+    // general safety
+  } finally {
+    requestAnimationFrame(scanLoop);
+  }
 }
 
-renderTable();
-</script>
+function handleDetected(code){
+  const now = Date.now();
+  if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+  lastDetected = { code, ts: now };
+  const name = db[code] || 'Товар не найден';
+  scanResult.innerText = `${code} → ${name}`;
+  beep();
+  // auto add to DB prompt if not found
+  if(!db[code]){
+    // show quick add UI
+    const add = confirm(`Код ${code} не найден. Добавить товар?`);
+    if(add){
+      const title = prompt('Название товара', '');
+      if(title) { db[code] = title; saveDB(); }
+    }
+  }
+}
 
+/* ======= Manual UI actions ======= */
+function scanCodeManual(){
+  const code = document.getElementById('scanInput').value.trim();
+  document.getElementById('manualResult').innerText = db[code] ? `${code} → ${db[code]}` : (code ? 'Товар не найден' : '');
+}
+
+document.getElementById('addBtn').addEventListener('click', ()=>{
+  const code = document.getElementById('code').value.trim();
+  const name = document.getElementById('name').value.trim();
+  if(!code || !name) return alert('Введите код и название');
+  db[code] = name;
+  saveDB();
+  document.getElementById('code').value = '';
+  document.getElementById('name').value = '';
+});
+
+document.getElementById('deleteBtn').addEventListener('click', ()=>{
+  const code = document.getElementById('code').value.trim();
+  if(!code) return alert('Введите код для удаления');
+  if(db[code]){ delete db[code]; saveDB(); alert('Удалено'); } else alert('Код не найден');
+});
+
+bulkImportBtn.addEventListener('click', ()=>{
+  const text = document.getElementById('bulk').value.trim();
+  const lines = text.split('\n');
+  let count = 0;
+  lines.forEach(line=>{
+    const match = line.match(/"(\d+)":\s*"(.+?)"/);
+    if(match){ db[match[1]] = match[2]; count++; }
+  });
+  saveDB();
+  alert(`Импортировано ${count} записей`);
+});
+
+clearBtn.addEventListener('click', ()=>{
+  if(confirm('Очистить всю базу?')){ db = {}; saveDB(); }
+});
+
+exportBtn.addEventListener('click', ()=>{
+  const data = JSON.stringify(db, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'barcodeDB.json'; a.click();
+  URL.revokeObjectURL(url);
+});
+
+importBtn.addEventListener('click', ()=>{
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json';
+  input.onchange = e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      try{
+        const obj = JSON.parse(ev.target.result);
+        db = Object.assign({}, db, obj);
+        saveDB();
+        alert('Импорт завершён');
+      }catch(err){ alert('Ошибка парсинга JSON'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+});
+
+/* ======= Camera controls events ======= */
+startBtn.addEventListener('click', ()=>{ startCamera(); });
+stopBtn.addEventListener('click', ()=>{ stopCamera(); });
+switchBtn.addEventListener('click', async ()=>{
+  // cycle through device list
+  const opts = Array.from(deviceSelect.options);
+  if(!opts.length) return;
+  const idx = opts.findIndex(o=>o.value === deviceSelect.value);
+  const next = opts[(idx+1) % opts.length];
+  deviceSelect.value = next.value;
+  currentDeviceId = next.value;
+  await startCamera();
+});
+deviceSelect.addEventListener('change', async ()=>{
+  currentDeviceId = deviceSelect.value;
+  await startCamera();
+});
+torchBtn.addEventListener('click', toggleTorch);
+
+/* ======= Init ======= */
+renderTable();
+enumerateCameras();
+
+// Try to warm up permissions to show labels on devices
+navigator.mediaDevices.getUserMedia({video:true}).then(s=>{
+  s.getTracks().forEach(t=>t.stop());
+  enumerateCameras();
+}).catch(()=>{ /* ignore */ });
+
+</script>
 </body>
 </html>
