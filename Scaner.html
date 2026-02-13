@@ -3,218 +3,127 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>База штрих‑кодов — Тетрадка (мобильная)</title>
+<title>База штрих‑кодов — Dark Neon</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
 :root{
-  --paper:#fffdf6;
-  --ink:#1b1b1b;
-  --accent:#6b3bd6;
-  --muted:#6b6b6b;
-  --card-radius:12px;
-  --btn-radius:10px;
-  --rule-color: rgba(107,59,214,0.06);
-  --grid-size:28px;
+  --bg:#07060b;
+  --panel:#0f0c16;
+  --muted:#9aa0b4;
+  --neon1:#8a2be2;
+  --neon2:#c86cff;
+  --accent:linear-gradient(90deg,var(--neon1),var(--neon2));
+  --radius:12px;
+  --glass: rgba(255,255,255,0.03);
 }
 
-/* Page background: realistic notebook sheet with grid/lines and left margin */
-html,body{height:100%;margin:0;font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
-body{
-  padding:18px;
-  display:flex;
-  justify-content:center;
-  background-image:
-    linear-gradient(to bottom, rgba(107,59,214,0.06) 1px, transparent 1px),
-    linear-gradient(to right, rgba(107,59,214,0.02) 1px, transparent 1px);
-  background-size: var(--grid-size) var(--grid-size), var(--grid-size) var(--grid-size);
-}
-
-/* Notebook container: looks like an open page with margin and subtle shadow */
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,#05030a,#0b0710);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#eae9f8;-webkit-font-smoothing:antialiased}
 .container{
-  width:100%;
-  max-width:540px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,250,0.98));
-  border-radius:14px;
-  box-shadow: 0 18px 40px rgba(27,27,27,0.06);
-  padding:14px;
-  box-sizing:border-box;
-  border-left: 6px solid rgba(200,40,40,0.12); /* left margin like notebook */
-  position:relative;
-  overflow:hidden;
-}
-
-/* top spiral / header hint */
-.container::before{
-  content:"";
-  position:absolute;
-  left:12px;
-  top:-10px;
-  width:calc(100% - 24px);
-  height:18px;
-  background: repeating-linear-gradient(90deg, rgba(0,0,0,0.04) 0 6px, transparent 6px 12px);
-  border-radius:6px;
-  opacity:0.06;
+  max-width:520px;margin:18px auto;padding:16px;display:flex;flex-direction:column;gap:12px;
 }
 
 /* Header */
 .header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  margin-bottom:10px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,0.03);
+  box-shadow:0 10px 30px rgba(0,0,0,0.6);
 }
-.brand{
-  display:flex;
-  gap:12px;
-  align-items:center;
-}
-.logo{
-  width:46px;height:46px;border-radius:8px;
-  background:linear-gradient(180deg,#fff,#f3f0ff);
-  border:2px solid rgba(107,59,214,0.12);
-  display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent);
-  box-shadow: inset 0 -6px 12px rgba(107,59,214,0.02);
-  font-size:18px;
-}
-.title{
-  font-size:18px;font-weight:700;color:var(--ink);
-}
-.hint{font-size:13px;color:var(--muted)}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:44px;height:44px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;color:#0b0710}
+.title{font-size:18px;font-weight:700}
+.subtitle{font-size:13px;color:var(--muted)}
 
-/* Card blocks styled like notebook sections with ruled header */
+/* Card */
 .card{
-  background: transparent;
-  border-radius:10px;
-  padding:10px 8px 14px 8px;
-  margin-bottom:12px;
-  border-left:4px solid rgba(107,59,214,0.06);
-  position:relative;
+  background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+  border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.03);
+  box-shadow:0 8px 24px rgba(0,0,0,0.6);
 }
 
-/* small ruled header line */
-.card h3{
-  margin:0 0 8px 6px;
-  font-weight:700;
-  color:var(--ink);
-}
-
-/* Camera area: occupies ~1/3 of viewport height */
-.preview-wrap{
-  position:relative;
-  border-radius:8px;
-  overflow:hidden;
-  background:#000;
-  border:1px dashed rgba(27,27,27,0.06);
-}
-.preview-wrap.camera-1-3{
-  height:33vh;
-  min-height:140px;
-  max-height:300px;
-}
+/* Camera area: 1/3 viewport height */
+.preview-wrap{position:relative;border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,0.02)}
+.preview-wrap.camera-1-3{height:33vh;min-height:140px;max-height:300px}
 video#preview{width:100%;height:100%;object-fit:cover;display:block}
 
-/* Controls: buttons look like paper stickers */
+/* Controls */
 .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .btn{
-  padding:10px 12px;border-radius:var(--btn-radius);border:none;cursor:pointer;font-weight:700;
-  background:linear-gradient(180deg,#fff,#f6f6ff);color:var(--ink);box-shadow:0 6px 18px rgba(27,27,27,0.06);
-  border:1px solid rgba(27,27,27,0.06);
+  padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;
+  background:linear-gradient(90deg,#22202a,#1a1620);color:#eae9f8;
+  box-shadow:0 6px 18px rgba(0,0,0,0.6);
 }
 .btn.primary{
-  background:linear-gradient(180deg,#6b3bd6,#8a5bf0);color:#fff;border:none;box-shadow:0 10px 30px rgba(107,59,214,0.12);
+  background:var(--accent);color:#0b0710;box-shadow:0 12px 36px rgba(138,43,226,0.12);
 }
-.btn.ghost{background:transparent;border:1px solid rgba(27,27,27,0.06);color:var(--muted);box-shadow:none}
+.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
 
-/* Notebook input style: lined inputs with left margin like ruled paper */
-.field{display:flex;flex-direction:column;gap:6px;margin-top:8px}
-label{font-size:13px;color:var(--muted);margin-left:6px}
-input,textarea{
-  width:100%;
-  padding:12px 12px;
-  border-radius:8px;
-  border:1px solid rgba(27,27,27,0.06);
-  background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.4));
-  font-size:15px;color:var(--ink);
-  outline:none;
-  box-shadow: inset 0 -6px 12px rgba(0,0,0,0.02);
-  position:relative;
+/* Inputs */
+.field{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+label{font-size:13px;color:var(--muted)}
+input[type="text"], textarea{
+  width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);
+  background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+  color:#eae9f8;font-size:15px;outline:none;
 }
-/* add faint ruled lines inside inputs */
-input, textarea {
-  background-image:
-    linear-gradient(to bottom, rgba(107,59,214,0.03) 1px, transparent 1px);
-  background-size: 100% 18px;
-}
-input::placeholder{color:rgba(27,27,27,0.35)}
-textarea{min-height:80px;resize:vertical}
 
-/* Table: simple, like list in notebook */
-.table-wrap{overflow:auto;max-height:260px;margin-top:8px;border-radius:8px}
-table{width:100%;border-collapse:collapse;font-size:14px;color:var(--ink)}
-thead th{text-align:left;padding:10px;font-weight:700;color:var(--muted);border-bottom:1px dashed rgba(27,27,27,0.06)}
-tbody td{padding:10px;border-bottom:1px dashed rgba(27,27,27,0.04)}
+/* Table */
+.table-wrap{overflow:auto;max-height:220px;margin-top:8px;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:14px;color:#eae9f8}
+thead th{text-align:left;padding:10px;font-weight:700;color:var(--muted);border-bottom:1px solid rgba(255,255,255,0.03)}
+tbody td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.02)}
 
-/* small helpers */
+/* small */
 .small{font-size:13px;color:var(--muted)}
-.toast{
-  position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:rgba(27,27,27,0.9);color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:9999;
-}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:rgba(10,8,14,0.9);color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:9999}
 
-/* responsive tweaks */
-@media (max-width:420px){
-  .container{padding:10px}
-  .h1{font-size:16px}
-  .logo{width:40px;height:40px}
-}
+/* responsive */
+@media (max-width:420px){ .container{padding:12px} .logo{width:40px;height:40px} }
 </style>
 </head>
 <body>
 
-<div class="container" role="main" aria-label="Мобильная база штрих-кодов в стиле тетрадки">
+<div class="container" role="main" aria-label="База штрих-кодов — тёмная неоновая тема">
   <header class="header">
     <div class="brand">
       <div class="logo">BC</div>
       <div>
         <div class="title">База штрих‑кодов</div>
-        <div class="hint">Открытая тетрадка — мобильная версия</div>
+        <div class="subtitle">Тёмная минималка • Неоновый акцент</div>
       </div>
     </div>
-
     <div style="display:flex;gap:8px;align-items:center">
-      <button id="exportBtn" class="btn ghost" aria-label="Экспорт базы">Экспорт</button>
-      <button id="importBtn" class="btn ghost" aria-label="Импорт базы">Импорт</button>
+      <button id="exportBtn" class="btn ghost" aria-label="Экспорт">Экспорт</button>
+      <button id="importBtn" class="btn ghost" aria-label="Импорт">Импорт</button>
     </div>
   </header>
 
-  <!-- Camera card -->
-  <section class="card" aria-labelledby="cameraTitle">
-    <h3 id="cameraTitle">Сканер</h3>
+  <section class="card" aria-labelledby="scannerTitle">
+    <h3 id="scannerTitle" style="margin:0 0 8px 0">Сканер</h3>
 
     <div class="preview-wrap camera-1-3" aria-hidden="false">
       <video id="preview" playsinline muted></video>
     </div>
 
-    <div class="controls" style="margin-top:10px">
+    <div class="controls">
       <button id="startScannerBtn" class="btn primary" aria-label="Включить сканер">▶ Включить сканер</button>
       <button id="stopScannerBtn" class="btn ghost" aria-label="Остановить сканер">⛔ Остановить</button>
-      <select id="deviceSelect" class="btn ghost" aria-label="Выбор камеры" style="padding:10px;border-radius:10px;background:transparent;color:var(--muted)"></select>
+      <select id="deviceSelect" class="btn ghost" aria-label="Выбор камеры" style="min-width:140px"></select>
       <button id="torchBtn" class="btn ghost" aria-label="Фонарик">🔦</button>
     </div>
 
-    <div id="scanResult" class="small" aria-live="polite" style="margin-top:8px;padding-left:6px"></div>
-    <div class="small" style="margin-top:8px;padding-left:6px">Поднесите штрих‑код — распознавание по всему кадру, под любым углом.</div>
+    <div id="scanResult" class="small" style="margin-top:10px" aria-live="polite"></div>
   </section>
 
-  <!-- Manual add / quick edit -->
-  <section class="card" aria-labelledby="manualTitle">
-    <h3 id="manualTitle">Добавить / Редактировать запись</h3>
+  <section class="card" aria-labelledby="editTitle">
+    <h3 id="editTitle" style="margin:0 0 8px 0">Добавить / Редактировать</h3>
 
     <div class="field">
       <label for="codeInput">Штрих‑код</label>
-      <input id="codeInput" type="text" placeholder="Сканируйте или введите код вручную" autocomplete="off" />
+      <input id="codeInput" type="text" placeholder="Сканируйте или введите код" autocomplete="off" />
     </div>
 
     <div class="field">
@@ -223,29 +132,16 @@ tbody td{padding:10px;border-bottom:1px dashed rgba(27,27,27,0.04)}
     </div>
 
     <div style="display:flex;gap:8px;margin-top:10px">
-      <button id="saveBtn" class="btn primary" style="flex:1">Сохранить в базу</button>
-      <button id="deleteBtn" class="btn ghost" style="width:120px">Удалить</button>
+      <button id="saveBtn" class="btn primary" style="flex:1">Сохранить</button>
+      <button id="clearBtn" class="btn ghost" style="width:120px">Очистить</button>
     </div>
 
-    <div class="small" style="margin-top:8px;padding-left:6px">Сохранённые записи хранятся в localStorage под ключом <strong>barcodeDB</strong>.</div>
+    <div class="small" style="margin-top:8px">Данные сохраняются локально в <code>localStorage</code> под ключом <strong>barcodeDB</strong>.</div>
   </section>
 
-  <!-- Bulk import -->
-  <section class="card" aria-labelledby="bulkTitle">
-    <h3 id="bulkTitle">Массовый импорт</h3>
-    <label for="bulk" class="small" style="margin-left:6px">Формат: "4600605026533": "Молоко"</label>
-    <textarea id="bulk" rows="4" placeholder='"4600605026533": "Молоко"
-"4810268035258": "Сыр российский"'></textarea>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button id="bulkImportBtn" class="btn primary" style="flex:1">Импортировать</button>
-      <button id="clearAllBtn" class="btn ghost" style="width:120px">Очистить</button>
-    </div>
-  </section>
-
-  <!-- Table -->
   <section class="card" aria-labelledby="tableTitle">
-    <h3 id="tableTitle">База товаров</h3>
-    <div class="table-wrap" role="region" aria-label="Список штрих-кодов">
+    <h3 id="tableTitle" style="margin:0 0 8px 0">База товаров</h3>
+    <div class="table-wrap">
       <table id="table" aria-live="polite">
         <thead><tr><th>Штрих‑код</th><th>Название</th></tr></thead>
         <tbody></tbody>
@@ -281,16 +177,11 @@ const scanResult = document.getElementById('scanResult');
 const codeInput = document.getElementById('codeInput');
 const nameInput = document.getElementById('nameInput');
 const saveBtn = document.getElementById('saveBtn');
-const deleteBtn = document.getElementById('deleteBtn');
-
-const bulk = document.getElementById('bulk');
-const bulkImportBtn = document.getElementById('bulkImportBtn');
-const clearAllBtn = document.getElementById('clearAllBtn');
+const clearBtn = document.getElementById('clearBtn');
 
 const tableBody = document.querySelector('#table tbody');
 const exportBtn = document.getElementById('exportBtn');
 const importBtn = document.getElementById('importBtn');
-
 const toast = document.getElementById('toast');
 
 /* ===== Utilities ===== */
@@ -431,7 +322,7 @@ async function tryDecodeCanvas(canvas){
   return null;
 }
 
-/* Main scanning loop (full frame) */
+/* Main scanning loop */
 let canvasPool = [];
 function getCanvas(w,h){
   for(let c of canvasPool) if(c.width===w && c.height===h) return c;
@@ -500,36 +391,20 @@ torchBtn.addEventListener('click', toggleTorch);
 saveBtn.addEventListener('click', ()=>{
   const code = (codeInput.value || '').trim();
   const name = (nameInput.value || '').trim();
-  if(!code) return alert('Введите или отсканируйте штрих-код');
-  if(!name) return alert('Введите название товара');
+  if(!code) return showToast('Штрих‑код пустой');
+  if(!name) return showToast('Введите название');
   db[code] = name;
   saveDB();
-  showToast('Сохранено в базе');
+  showToast('Сохранено');
   lastDetected = {code:null, ts:0};
   codeInput.value = '';
   nameInput.value = '';
 });
 
-deleteBtn.addEventListener('click', ()=>{
-  const code = (codeInput.value || '').trim();
-  if(!code) return alert('Введите код для удаления');
-  if(db[code]){ delete db[code]; saveDB(); showToast('Удалено'); } else alert('Код не найден');
-});
-
-bulkImportBtn.addEventListener('click', ()=>{
-  const text = bulk.value.trim();
-  const lines = text.split('\n');
-  let count = 0;
-  lines.forEach(line=>{
-    const match = line.match(/"(\d+)":\s*"(.+?)"/);
-    if(match){ db[match[1]] = match[2]; count++; }
-  });
-  saveDB();
-  showToast(`Импортировано ${count}`);
-});
-
-clearAllBtn.addEventListener('click', ()=>{
-  if(confirm('Очистить всю базу штрих-кодов?')){ db = {}; saveDB(); showToast('База очищена'); }
+clearBtn.addEventListener('click', ()=>{
+  codeInput.value = '';
+  nameInput.value = '';
+  showToast('Поля очищены');
 });
 
 /* Export / Import JSON */
@@ -556,7 +431,7 @@ importBtn.addEventListener('click', ()=>{
         db = Object.assign({}, db, obj);
         saveDB();
         showToast('Импорт завершён');
-      }catch(err){ alert('Ошибка парсинга JSON'); }
+      }catch(err){ showToast('Ошибка парсинга JSON'); }
     };
     readerFile.readAsText(file);
   };
@@ -577,6 +452,5 @@ window.addEventListener('beforeunload', ()=>{ stopCamera(); });
 </script>
 </body>
 </html>
-
 
 
