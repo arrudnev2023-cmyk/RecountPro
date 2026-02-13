@@ -14,6 +14,7 @@
   --neon2:#c86cff;
   --accent:linear-gradient(90deg,var(--neon1),var(--neon2));
   --radius:12px;
+  --card-border: rgba(124,58,237,0.10);
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:linear-gradient(180deg,#f6f7fb,#f0f2f8);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#0b1020}
@@ -25,31 +26,35 @@ html,body{height:100%;margin:0;background:linear-gradient(180deg,#f6f7fb,#f0f2f8
 .title{font-size:18px;font-weight:700}
 .subtitle{font-size:13px;color:var(--muted)}
 .search-row{display:flex;gap:8px;align-items:center}
-.input{flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(11,16,32,0.06);background:#fff;outline:none}
-.scan-btn{padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;background:var(--accent);color:#fff}
-.card{background:var(--panel);border-radius:12px;padding:12px;border:1px solid rgba(124,58,237,0.08);box-shadow:0 8px 24px rgba(16,24,40,0.04)}
+.input-wrap{position:relative;flex:1}
+.input{width:100%;padding:10px 40px 10px 12px;border-radius:10px;border:1px solid rgba(11,16,32,0.06);background:#fff;outline:none;font-size:15px}
+.clear-x{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--muted);font-weight:700;padding:6px;border-radius:6px;cursor:pointer}
+.scan-btn{padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;background:var(--accent);color:#fff;min-width:84px}
+.card{background:var(--panel);border-radius:12px;padding:12px;border:1px solid var(--card-border);box-shadow:0 8px 24px rgba(16,24,40,0.04)}
 .preview-wrap{border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(11,16,32,0.06);display:none}
 .preview-wrap.visible{display:block}
 .preview-wrap.camera-1-3{height:33vh;min-height:140px;max-height:300px}
 video#preview{width:100%;height:100%;object-fit:cover;display:block}
-.controls{display:flex;gap:8px;align-items:center;margin-top:8px}
+.controls{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
 .btn{padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;background:#111827;color:#fff}
 .btn.ghost{background:transparent;border:1px solid rgba(11,16,32,0.06);color:var(--muted)}
+.btn.neon{background:var(--accent);color:#fff;box-shadow:0 10px 30px rgba(124,58,237,0.12)}
 .results{display:flex;flex-direction:column;gap:10px;margin-top:10px}
-.card-item{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:10px;border:1px solid rgba(11,16,32,0.04);background:linear-gradient(180deg,#fff,#fbfbff)}
+.card-item{display:flex;flex-direction:column;padding:10px;border-radius:10px;border:1px solid rgba(11,16,32,0.04);background:linear-gradient(180deg,#fff,#fbfbff)}
+.item-top{display:flex;align-items:center;gap:12px}
 .item-left{display:flex;gap:12px;align-items:center;min-width:0}
-.item-meta{display:flex;flex-direction:column;min-width:0}
+.item-meta{display:flex;flex-direction:column;min-width:0;flex:1}
 .item-code{font-weight:700;color:#0b1020;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item-name{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.qty-controls{display:flex;gap:8px;align-items:center}
-.qty-input{width:100px;padding:8px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);text-align:right;font-weight:700}
-.plus-btn{padding:8px 10px;border-radius:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));color:#fff;border:none;cursor:pointer}
+.qty-row{margin-top:10px;display:flex;gap:8px;align-items:center}
+.qty-input{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);font-weight:700;font-size:15px}
+.plus-btn{padding:10px 12px;border-radius:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));color:#fff;border:none;cursor:pointer}
 .footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
 .clear-btn{background:transparent;border:1px dashed rgba(11,16,32,0.08);padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
 .small{font-size:13px;color:var(--muted)}
 .overlay{position:fixed;inset:0;background:rgba(11,16,32,0.35);z-index:9998;display:none}
 .summary-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:14px;box-shadow:0 20px 60px rgba(11,16,32,0.2);max-width:92%;max-height:80%;overflow:auto;z-index:9999;display:none}
-@media (max-width:420px){ .container{padding:10px} .qty-input{width:84px} }
+@media (max-width:420px){ .container{padding:10px} .qty-input{font-size:14px} }
 </style>
 </head>
 <body>
@@ -69,22 +74,23 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
       </div>
     </div>
 
-    <!-- Поиск и кнопка сканера под шапкой -->
+    <!-- Поиск и кнопка сканера -->
     <div class="search-row">
-      <input id="searchInput" class="input" type="text" placeholder="Поиск по названию или коду (часть слова)" aria-label="Поиск">
+      <div class="input-wrap">
+        <input id="searchInput" class="input" type="text" placeholder="Поиск по названию или коду (часть слова)" aria-label="Поиск">
+        <button id="clearSearch" class="clear-x" title="Очистить" aria-label="Очистить поле">✕</button>
+      </div>
       <button id="openScannerBtn" class="scan-btn" aria-label="Открыть сканер">Сканер</button>
     </div>
   </header>
 
-  <!-- Скрытое окно сканера: показывается только по кнопке -->
+  <!-- Скрытое окно сканера: показывается по кнопке; при показе запускается сразу -->
   <section id="scannerCard" class="card" style="display:none">
     <div class="preview-wrap camera-1-3" id="previewWrap">
       <video id="preview" playsinline muted></video>
     </div>
 
     <div class="controls" style="margin-top:8px">
-      <button id="startScannerBtn" class="btn neon">▶ Запустить</button>
-      <button id="stopScannerBtn" class="btn ghost">⛔ Остановить</button>
       <select id="deviceSelect" class="btn ghost" aria-label="Камера" style="min-width:80px"></select>
       <button id="closeScannerBtn" class="btn ghost">✕ Закрыть</button>
     </div>
@@ -136,12 +142,11 @@ const DEBOUNCE_MS = 900;
 
 /* ===== Elements ===== */
 const searchInput = document.getElementById('searchInput');
+const clearSearch = document.getElementById('clearSearch');
 const openScannerBtn = document.getElementById('openScannerBtn');
 const scannerCard = document.getElementById('scannerCard');
 const previewWrap = document.getElementById('previewWrap');
 const preview = document.getElementById('preview');
-const startScannerBtn = document.getElementById('startScannerBtn');
-const stopScannerBtn = document.getElementById('stopScannerBtn');
 const deviceSelect = document.getElementById('deviceSelect');
 const closeScannerBtn = document.getElementById('closeScannerBtn');
 const scanResult = document.getElementById('scanResult');
@@ -203,46 +208,56 @@ function renderResults(list){
   list.forEach(item=>{
     const existingInv = inventoryItems.find(it => it.code === item.code);
     const qtyVal = existingInv ? existingInv.qty : 0;
+    const exprVal = existingInv ? (existingInv.expr || String(qtyVal)) : String(qtyVal);
 
     const card = document.createElement('div');
     card.className = 'card-item';
     card.innerHTML = `
-      <div class="item-left">
-        <div style="width:56px;height:56px;border-radius:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">${item.code.slice(-4)}</div>
-        <div class="item-meta">
-          <div class="item-code">${item.code}</div>
-          <div class="item-name">${item.name}</div>
+      <div class="item-top">
+        <div class="item-left">
+          <div style="width:56px;height:56px;border-radius:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">${item.code.slice(-4)}</div>
+          <div class="item-meta">
+            <div class="item-code">${item.code}</div>
+            <div class="item-name">${item.name}</div>
+          </div>
         </div>
       </div>
-      <div class="qty-controls">
-        <input inputmode="numeric" pattern="[0-9]*" class="qty-input" type="number" min="0" value="${qtyVal}" aria-label="Количество для ${item.name}">
+
+      <div class="qty-row">
+        <input inputmode="numeric" pattern="[0-9+ ]*" class="qty-input" type="text" value="${escapeHtml(exprVal)}" aria-label="Выражение для ${item.name}">
         <button class="plus-btn" title="Добавить">+</button>
       </div>
     `;
     const qtyInput = card.querySelector('.qty-input');
     const plusBtn = card.querySelector('.plus-btn');
 
-    // Save immediately on change
+    // When user types expression manually, compute total and persist
     qtyInput.addEventListener('input', ()=>{
-      const v = Math.max(0, parseInt(qtyInput.value || '0', 10));
-      upsertInventory(item.code, item.name, v);
-    });
-    qtyInput.addEventListener('blur', ()=>{
-      const v = Math.max(0, parseInt(qtyInput.value || '0', 10));
-      upsertInventory(item.code, item.name, v);
+      // keep expression as-is, but compute total and save
+      const expr = qtyInput.value.trim();
+      const total = evaluateExpression(expr);
+      upsertInventoryExpr(item.code, item.name, expr, total);
     });
 
-    // Plus: add current input value to stored qty (sum)
+    qtyInput.addEventListener('blur', ()=>{
+      const expr = qtyInput.value.trim();
+      const total = evaluateExpression(expr);
+      upsertInventoryExpr(item.code, item.name, expr, total);
+      // normalize expression to show spaced pluses
+      qtyInput.value = normalizeExpression(expr);
+    });
+
+    // Plus button: append "+ <current number in input or 1>" to expression and sum
     plusBtn.addEventListener('click', ()=>{
-      const add = Math.max(1, parseInt(qtyInput.value || '1', 10));
-      const existing = inventoryItems.find(it => it.code === item.code);
-      if(existing){
-        existing.qty = (existing.qty || 0) + add;
-      } else {
-        inventoryItems.unshift({ code: item.code, name: item.name, qty: add });
-      }
-      saveInventory();
-      qtyInput.value = (inventoryItems.find(it=>it.code===item.code).qty || 0);
+      // determine number to add: if input contains a trailing number, use it; else use 1
+      const currentExpr = qtyInput.value.trim();
+      const lastNumber = extractLastNumber(currentExpr);
+      const add = Math.max(1, lastNumber || 1);
+      // append to expression
+      const newExpr = (currentExpr ? currentExpr + ' + ' + add : String(add));
+      const total = evaluateExpression(newExpr);
+      upsertInventoryExpr(item.code, item.name, newExpr, total);
+      qtyInput.value = normalizeExpression(newExpr);
       showToast('Добавлено');
     });
 
@@ -250,15 +265,44 @@ function renderResults(list){
   });
 }
 
-/* Upsert inventory and persist */
-function upsertInventory(code, name, qty){
-  qty = Math.max(0, parseInt(qty || '0', 10));
+/* Escape HTML for safe insertion into value attribute */
+function escapeHtml(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* Normalize expression: remove extra spaces, ensure "a + b + c" format */
+function normalizeExpression(expr){
+  if(!expr) return '';
+  // keep only digits and plus signs and spaces
+  const cleaned = expr.replace(/[^\d+]/g, ' ');
+  const parts = cleaned.split('+').map(p=>p.trim()).filter(Boolean);
+  return parts.join(' + ');
+}
+
+/* Extract last number from expression (if any) */
+function extractLastNumber(expr){
+  if(!expr) return null;
+  const m = expr.match(/(\d+)\s*$/);
+  return m ? parseInt(m[1],10) : null;
+}
+
+/* Evaluate expression like "5 + 3 + 7" -> 15. Non-numeric tokens ignored. */
+function evaluateExpression(expr){
+  if(!expr) return 0;
+  // extract numbers
+  const nums = (expr.match(/\d+/g) || []).map(n=>parseInt(n,10) || 0);
+  return nums.reduce((s,v)=>s+v, 0);
+}
+
+/* Upsert inventory with expression and computed total */
+function upsertInventoryExpr(code, name, expr, total){
   const idx = inventoryItems.findIndex(it => it.code === code);
   if(idx >= 0){
-    inventoryItems[idx].qty = qty;
+    inventoryItems[idx].qty = total;
+    inventoryItems[idx].expr = expr;
     inventoryItems[idx].name = name || inventoryItems[idx].name;
   } else {
-    inventoryItems.unshift({ code, name, qty });
+    inventoryItems.unshift({ code, name, qty: total, expr });
   }
   saveInventory();
 }
@@ -386,11 +430,11 @@ async function scanLoop(){
       try{
         const code = await tryDecodeCanvas(small);
         if(code) {
-          // play sound
+          // sound
           beepSound();
           // hide scanner UI immediately
           hideScannerUI();
-          // handle detection (populate search and create if needed)
+          // handle detection
           handleDetected(code);
           await new Promise(r=>setTimeout(r, 300));
         }
@@ -400,7 +444,7 @@ async function scanLoop(){
   }finally{ scanLoopRunning = false; }
 }
 
-/* When code detected: populate search, create if missing, add to inventory if user agrees */
+/* When code detected: populate search, create if missing, keep item on screen */
 function handleDetected(code){
   const now = Date.now();
   if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
@@ -409,7 +453,9 @@ function handleDetected(code){
   const found = barcodeDB[code];
   if(found){
     showToast('Найден товар в базе');
+    // ensure item is present in results and not removed after counting
     performSearch();
+    // keep item visible (do not remove)
   } else {
     const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить 1 шт.?`);
     if(create){
@@ -417,7 +463,7 @@ function handleDetected(code){
       if(name.trim()){
         barcodeDB[code] = name.trim();
         saveDB();
-        upsertInventory(code, barcodeDB[code], 1); // сразу добавляем 1 шт.
+        upsertInventoryExpr(code, barcodeDB[code], '1', 1); // add 1
         performSearch();
         showToast('Товар добавлен и учтён');
       } else {
@@ -436,6 +482,11 @@ function performSearch(){
   renderResults(results);
 }
 searchInput.addEventListener('input', performSearch);
+clearSearch.addEventListener('click', ()=>{
+  searchInput.value = '';
+  performSearch();
+  searchInput.focus();
+});
 
 /* Manual add */
 addManualBtn.addEventListener('click', ()=>{
@@ -444,7 +495,7 @@ addManualBtn.addEventListener('click', ()=>{
   const name = prompt('Название товара', '')?.trim() || code;
   barcodeDB[code] = name;
   saveDB();
-  upsertInventory(code, name, 0);
+  upsertInventoryExpr(code, name, '0', 0);
   performSearch();
   showToast('Добавлено вручную');
 });
@@ -483,13 +534,14 @@ function clearRecount(){
   showToast('Пересчёт очищен');
 }
 
-/* Show/hide scanner UI (scanner window hidden by default) */
+/* Show/hide scanner UI and auto-start when shown */
 function showScannerUI(){
   scannerCard.style.display = 'block';
   previewWrap.classList.add('visible');
+  // start camera immediately
+  startCamera();
 }
 function hideScannerUI(){
-  // stop camera when hiding
   stopCamera();
   scannerCard.style.display = 'none';
   previewWrap.classList.remove('visible');
@@ -498,8 +550,6 @@ function hideScannerUI(){
 /* Events wiring */
 openScannerBtn.addEventListener('click', ()=>{ showScannerUI(); });
 closeScannerBtn.addEventListener('click', ()=>{ hideScannerUI(); });
-startScannerBtn.addEventListener('click', ()=>{ startCamera(); });
-stopScannerBtn.addEventListener('click', ()=>{ stopCamera(); });
 deviceSelect.addEventListener('change', async ()=>{ currentDeviceId = deviceSelect.value; await startCamera(); });
 summaryBtn.addEventListener('click', openSummary);
 closeSummary.addEventListener('click', closeSummaryModal);
@@ -513,4 +563,5 @@ navigator.mediaDevices.getUserMedia({video:true}).then(s=>{ s.getTracks().forEac
 </script>
 </body>
 </html>
+
 
