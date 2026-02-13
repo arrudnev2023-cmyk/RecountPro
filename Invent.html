@@ -74,7 +74,6 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
       </div>
     </div>
 
-    <!-- Поиск и кнопка сканера -->
     <div class="search-row">
       <div class="input-wrap">
         <input id="searchInput" class="input" type="text" placeholder="Поиск по названию или коду (часть слова)" aria-label="Поиск">
@@ -84,7 +83,6 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
     </div>
   </header>
 
-  <!-- Скрытое окно сканера: показывается по кнопке; при показе запускается сразу -->
   <section id="scannerCard" class="card" style="display:none">
     <div class="preview-wrap camera-1-3" id="previewWrap">
       <video id="preview" playsinline muted></video>
@@ -98,7 +96,6 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
     <div id="scanResult" class="small" style="margin-top:8px"></div>
   </section>
 
-  <!-- Результаты (изначально пусто) -->
   <section class="card" aria-labelledby="resultsTitle">
     <h3 id="resultsTitle" style="margin:0 0 8px 0">Найденные товары</h3>
     <div id="results" class="results" aria-live="polite">
@@ -164,6 +161,8 @@ const closeSummary = document.getElementById('closeSummary');
 
 /* Map of rendered cards to avoid full re-render */
 const renderedCards = new Map();
+/* Track which input (by code) currently has focus — when set, we avoid DOM updates that would steal focus */
+let focusedInputCode = null;
 
 /* ===== Utilities ===== */
 function saveDB(){ localStorage.setItem(STORAGE_DB, JSON.stringify(barcodeDB)); }
@@ -221,10 +220,11 @@ function getDisplayList(){
   return display;
 }
 
-/* ===== Render results (incremental, preserve inputs) ===== */
+/* ===== Render results (incremental, preserve inputs & focus) ===== */
 function renderResults(){
   const list = getDisplayList();
-  // if empty
+
+  // clear if empty
   if(!list.length){
     resultsEl.innerHTML = '';
     emptyHint.style.display = 'block';
@@ -233,27 +233,27 @@ function renderResults(){
   }
   emptyHint.style.display = 'none';
 
-  // For each item in list, ensure a DOM card exists; if not — create and append.
+  // create or update cards incrementally
   for(const item of list){
+    // if card exists, update name/code and expression only if input not focused
     if(renderedCards.has(item.code)){
-      // update name/expr if changed, but do not recreate element (preserve focus)
       const el = renderedCards.get(item.code);
       const nameEl = el.querySelector('.item-name');
       const codeEl = el.querySelector('.item-code');
       const inputEl = el.querySelector('.qty-input');
       if(nameEl && nameEl.textContent !== item.name) nameEl.textContent = item.name;
       if(codeEl && codeEl.textContent !== item.code) codeEl.textContent = item.code;
-      // update expression only if input is not focused (to avoid stealing caret)
-      if(document.activeElement !== inputEl){
-        const exprVal = item.expr || String(item.qty || 0);
-        inputEl.value = exprVal;
+      // update input only if it's not focused (to avoid stealing keyboard)
+      if(focusedInputCode !== item.code){
+        inputEl.value = item.expr || String(item.qty || 0);
       }
       continue;
     }
 
-    // create new card
+    // create new card (append at end)
     const card = document.createElement('div');
     card.className = 'card-item';
+    card.dataset.code = item.code;
     card.innerHTML = `
       <div class="item-top">
         <div class="item-left">
@@ -270,30 +270,35 @@ function renderResults(){
         <button class="plus-btn" title="Плюс">+</button>
       </div>
     `;
-    // attach handlers (closure captures code & name)
     const qtyInput = card.querySelector('.qty-input');
     const plusBtn = card.querySelector('.plus-btn');
 
-    // input: immediate save, but do not re-render whole list
-    qtyInput.addEventListener('input', ()=>{
-      const expr = qtyInput.value;
-      const total = evaluateExpression(expr);
-      upsertInventoryExpr(item.code, item.name, expr, total, /*dontRerender*/ true);
+    // focus tracking: set focusedInputCode when input gains focus; clear on blur
+    qtyInput.addEventListener('focus', ()=>{
+      focusedInputCode = item.code;
     });
-
     qtyInput.addEventListener('blur', ()=>{
+      focusedInputCode = null;
+      // normalize expression on blur
       const expr = qtyInput.value;
       const total = evaluateExpression(expr);
       upsertInventoryExpr(item.code, item.name, expr, total, /*dontRerender*/ true);
       qtyInput.value = normalizeExpression(expr);
     });
 
+    // input: immediate save, but do not re-render whole list (to preserve focus)
+    qtyInput.addEventListener('input', ()=>{
+      const expr = qtyInput.value;
+      const total = evaluateExpression(expr);
+      upsertInventoryExpr(item.code, item.name, expr, total, /*dontRerender*/ true);
+    });
+
     // plus: append " + " to expression (do not auto-add numbers)
-    plusBtn.addEventListener('click', ()=>{
+    plusBtn.addEventListener('click', (ev)=>{
+      ev.preventDefault();
       let expr = qtyInput.value || '';
       expr = expr.trim();
       if(/\+\s*$/.test(expr)){
-        // already ends with plus — keep focus
         qtyInput.focus();
         return;
       }
@@ -302,11 +307,9 @@ function renderResults(){
       upsertInventoryExpr(item.code, item.name, expr, total, /*dontRerender*/ true);
       qtyInput.value = normalizeExpression(expr);
       qtyInput.focus();
-      // caret to end
       setTimeout(()=>{ qtyInput.selectionStart = qtyInput.selectionEnd = qtyInput.value.length; }, 0);
     });
 
-    // append card and store reference
     resultsEl.appendChild(card);
     renderedCards.set(item.code, card);
   }
@@ -317,10 +320,9 @@ function escapeHtml(s){
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-/* Normalize expression: keep digits and pluses, format with spaces */
+/* Normalize expression: keep digits and pluses, format with spaces; preserve trailing plus */
 function normalizeExpression(expr){
   if(!expr) return '';
-  // detect trailing plus
   const trailingPlus = /\+\s*$/.test(expr);
   const parts = (expr.match(/\d+/g) || []);
   const joined = parts.join(' + ');
@@ -335,7 +337,7 @@ function evaluateExpression(expr){
 }
 
 /* Upsert inventory with expression and computed total
-   dontRerender: если true — не перерисовываем весь список, только обновляем data и DOM input если нужно */
+   dontRerender: если true — не перерисовываем весь список, только обновляем data и input если не в фокусе */
 function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
   const idx = inventoryItems.findIndex(it => it.code === code);
   if(idx >= 0){
@@ -357,6 +359,22 @@ function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
   if(!dontRerender){
     renderResults();
   }
+}
+
+/* Focus input of a card by code (waits for DOM if needed) */
+function focusCardInput(code){
+  // small delay to ensure DOM updated and scanner hidden
+  setTimeout(()=>{
+    const card = renderedCards.get(code) || document.querySelector(`[data-code="${code}"]`);
+    if(!card) return;
+    const input = card.querySelector('.qty-input');
+    if(!input) return;
+    input.focus();
+    // move caret to end
+    const len = input.value.length;
+    try{ input.setSelectionRange(len, len); }catch(e){}
+    focusedInputCode = code;
+  }, 180);
 }
 
 /* ===== Scanner logic (hidden by default) ===== */
@@ -482,11 +500,8 @@ async function scanLoop(){
       try{
         const code = await tryDecodeCanvas(small);
         if(code) {
-          // sound
           beepSound();
-          // hide scanner UI immediately
           hideScannerUI();
-          // handle detection
           handleDetected(code);
           await new Promise(r=>setTimeout(r, 300));
         }
@@ -496,7 +511,7 @@ async function scanLoop(){
   }finally{ scanLoopRunning = false; }
 }
 
-/* When code detected: populate search, create if missing, keep item on screen */
+/* When code detected: populate search, create if missing, keep item on screen and focus its input */
 function handleDetected(code){
   const now = Date.now();
   if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
@@ -505,12 +520,12 @@ function handleDetected(code){
   const found = barcodeDB[code];
   if(found){
     showToast('Найден товар в базе');
-    // ensure item is present in inventory (if not, add with qty 0)
     const idx = inventoryItems.findIndex(it=>it.code===code);
     if(idx === -1){
       upsertInventoryExpr(code, found, '0', 0, /*dontRerender*/ true);
     }
     renderResults();
+    focusCardInput(code);
   } else {
     const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить 1 шт.?`);
     if(create){
@@ -518,8 +533,9 @@ function handleDetected(code){
       if(name.trim()){
         barcodeDB[code] = name.trim();
         saveDB();
-        upsertInventoryExpr(code, barcodeDB[code], '1', 1, /*dontRerender*/ true); // add 1
+        upsertInventoryExpr(code, barcodeDB[code], '1', 1, /*dontRerender*/ true);
         renderResults();
+        focusCardInput(code);
         showToast('Товар добавлен и учтён');
       } else {
         showToast('Название не введено');
@@ -549,6 +565,7 @@ addManualBtn.addEventListener('click', ()=>{
   saveDB();
   upsertInventoryExpr(code, name, '0', 0, /*dontRerender*/ true);
   renderResults();
+  focusCardInput(code);
   showToast('Добавлено вручную');
 });
 
@@ -591,7 +608,6 @@ function clearRecount(){
 function showScannerUI(){
   scannerCard.style.display = 'block';
   previewWrap.classList.add('visible');
-  // start camera immediately
   startCamera();
 }
 function hideScannerUI(){
@@ -609,13 +625,14 @@ closeSummary.addEventListener('click', closeSummaryModal);
 overlay.addEventListener('click', closeSummaryModal);
 clearRecountBtn.addEventListener('click', clearRecount);
 
-/* Init: screen empty by default */
+/* Init */
 renderResults();
 enumerateCameras();
 navigator.mediaDevices.getUserMedia({video:true}).then(s=>{ s.getTracks().forEach(t=>t.stop()); enumerateCameras(); }).catch(()=>{});
 </script>
 </body>
 </html>
+
 
 
 
