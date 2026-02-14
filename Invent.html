@@ -191,7 +191,7 @@ function buildAllItemsFromDB(){
 }
 
 /* =========================
-   Render UI
+   Render UI (title first, then barcode)
    ========================= */
 function render(items){
   listEl.innerHTML = '';
@@ -200,9 +200,10 @@ function render(items){
     const div = document.createElement('div');
     div.className = 'item';
     div.dataset.code = item.code;
+    // Title first, then barcode (user requested)
     div.innerHTML = `
-      <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
       <div class="field"><span class="label">Название:</span> ${escapeHtml(item.name)}</div>
+      <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
         <div style="flex:1">
           <input type="text" data-code="${item.code}" value="${escapeHtml(value)}" inputmode="none" readonly />
@@ -224,7 +225,15 @@ function render(items){
 
 /* =========================
    Keyboard & input handlers
+   - Back button removes one Unicode code point (one digit or one symbol)
    ========================= */
+function removeLastCodePoint(str){
+  if(!str) return '';
+  const arr = Array.from(str);
+  arr.pop();
+  return arr.join('');
+}
+
 function attachInputHandlers(){
   document.querySelectorAll('input[data-code]').forEach(input=>{
     input.addEventListener('focus', ()=> openKeyboardFor(input));
@@ -235,15 +244,28 @@ function attachInputHandlers(){
     btn.onclick = ()=>{
       if(!activeInput) return;
       const v = btn.textContent;
-      if(v === '←') activeInput.value = activeInput.value.slice(0,-1);
+      if(v === '←') {
+        // remove one code point (handles emojis/surrogates)
+        activeInput.value = removeLastCodePoint(activeInput.value);
+      }
       else if(v === 'Готово') { closeKeyboard(); return; }
       else activeInput.value += v;
       activeInput.dispatchEvent(new Event('input',{bubbles:true}));
     };
   });
 
-  document.getElementById('done').addEventListener('click', closeKeyboard);
-  document.getElementById('back').addEventListener('click', ()=>{ if(!activeInput) return; activeInput.value = activeInput.value.slice(0,-1); activeInput.dispatchEvent(new Event('input',{bubbles:true})); });
+  // ensure the explicit back button handler also uses removeLastCodePoint
+  const backBtn = document.getElementById('back');
+  if(backBtn){
+    backBtn.addEventListener('click', ()=>{
+      if(!activeInput) return;
+      activeInput.value = removeLastCodePoint(activeInput.value);
+      activeInput.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+  }
+
+  const doneBtn = document.getElementById('done');
+  if(doneBtn) doneBtn.addEventListener('click', closeKeyboard);
 
   document.addEventListener('click', e=>{
     if(!e.target.closest('#custom-keyboard') && !e.target.matches('input[data-code]')) closeKeyboard();
