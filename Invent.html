@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Инвентаризация — Mobile</title>
+<title>Инвентаризация — мобильное приложение</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -13,16 +13,13 @@
   --accent-1:#7b3be6;
   --accent-2:#c86cff;
   --accent:linear-gradient(90deg,var(--accent-1),var(--accent-2));
-  --header-h:96px;
+  --header-h:104px;
   --footer-h:84px;
   --max-w:420px;
   --gap:10px;
   --card-radius:10px;
   --shadow: 0 8px 20px rgba(16,24,40,0.06);
-  --text: #0b1020;
-  --small:13px;
-  --avatar-size:48px;
-  --ui-scale:0.92; /* slightly smaller to fit screens */
+  --ui-scale:0.96;
 }
 
 /* Reset & base */
@@ -32,7 +29,7 @@ html,body{
   margin:0;
   background:var(--bg);
   font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-  color:var(--text);
+  color:#0b1020;
   -webkit-font-smoothing:antialiased;
   overscroll-behavior-y: none;
   touch-action: manipulation;
@@ -42,17 +39,17 @@ html,body{
   transform: scale(var(--ui-scale));
 }
 
-/* App layout: three strict zones */
+/* App layout */
 .app{height:100vh;display:flex;flex-direction:column;align-items:center;}
 
-/* Header fixed: two rows (title + search) */
+/* Header fixed (two rows) */
 .header{
   position:fixed; left:0; right:0; top:0;
   height:var(--header-h);
   display:flex;align-items:flex-start;justify-content:center;
   background:linear-gradient(180deg, rgba(255,255,255,0.99), rgba(255,255,255,0.98));
   border-bottom:1px solid rgba(11,16,32,0.04);
-  z-index:1600;
+  z-index:2000;
   padding:10px 12px;
   box-shadow: 0 6px 18px rgba(16,24,40,0.04);
   overscroll-behavior: contain;
@@ -61,7 +58,7 @@ html,body{
 
 /* Title row */
 .title-row{ display:flex; align-items:center; gap:10px; }
-.logo{ width:var(--avatar-size); height:var(--avatar-size); border-radius:10px; background:var(--accent); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; flex:0 0 var(--avatar-size); font-size:14px; }
+.logo{ width:44px; height:44px; border-radius:10px; background:var(--accent); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; flex:0 0 44px; font-size:14px; }
 .title{ font-size:16px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* Search row */
@@ -108,33 +105,31 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 .item-top{ display:flex; align-items:center; gap:10px; }
 .avatar{ width:44px; height:44px; border-radius:8px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; flex:0 0 44px; font-size:13px; }
 .item-meta{ display:flex; flex-direction:column; min-width:0; flex:1; }
-.item-name{ font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px; }
+.item-name{ font-weight:700; color:#0b1020; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px; }
 .item-code{ color:var(--muted); font-size:12px; margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .qty-row{ margin-top:8px; display:flex; gap:8px; align-items:center; }
 .qty-input{ flex:1; padding:8px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); font-weight:700; font-size:14px; background:#fbfbff; cursor:pointer; }
-.qty-input[readonly]{ cursor:default; }
 .plus-btn{ padding:8px 10px; border-radius:8px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border:none; cursor:pointer; font-weight:700; }
 
-/* Footer (fixed) */
-.footer{ position:fixed; left:0; right:0; bottom:0; height:var(--footer-h); display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(255,255,255,0.99), rgba(255,255,255,0.98)); border-top:1px solid rgba(11,16,32,0.04); z-index:1600; padding:10px; box-shadow:0 -6px 18px rgba(16,24,40,0.04); }
+/* Footer (fixed) - strictly at bottom */
+.footer{ position:fixed; left:0; right:0; bottom:0; height:var(--footer-h); display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(255,255,255,0.99), rgba(255,255,255,0.98)); border-top:1px solid rgba(11,16,32,0.04); z-index:2000; padding:10px; box-shadow:0 -6px 18px rgba(16,24,40,0.04); }
 .footer-inner{ width:100%; max-width:var(--max-w); display:flex; gap:8px; align-items:center; }
 .manual-input{ flex:1; display:flex; gap:8px; align-items:center; }
 .manual-input input{ flex:1; padding:8px; border-radius:10px; border:1px solid rgba(11,16,32,0.06); background:#fff; outline:none; min-width:0; cursor:pointer; }
-.manual-input input[readonly]{ cursor:default; }
 .manual-input button{ padding:8px 10px; border-radius:10px; border:none; background:var(--accent-1); color:#fff; font-weight:700; cursor:pointer; }
 
-/* Numeric pad (custom) */
+/* Numeric pad (custom) - will be positioned under the active card */
 .numeric-pad {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: var(--footer-h);
+  /* left and width set dynamically to match card */
+  bottom: calc(var(--footer-h)); /* sits above footer */
   background: linear-gradient(180deg,#fff,#f3f4f8);
   border-top: 1px solid rgba(11,16,32,0.06);
   box-shadow: 0 -8px 30px rgba(11,16,32,0.08);
   padding: 8px;
   display: none;
-  z-index: 1700;
+  z-index: 2100;
+  border-radius: 10px 10px 0 0;
 }
 .numeric-pad.visible { display: block; }
 .numeric-pad .row { display:flex; gap:8px; margin-bottom:8px; }
@@ -142,21 +137,18 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 .numeric-pad .key.action { background: linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border:none; }
 .numeric-pad .key.wide { flex:2; }
 
-/* Modal for manual text input (if needed) */
-.modal-backdrop{ position:fixed; inset:0; background:rgba(11,16,32,0.45); display:none; z-index:1800; align-items:center; justify-content:center; }
+/* small */
+.small{ font-size:13px; color:var(--muted); }
+
+/* modal (hidden by default) kept minimal */
+.modal-backdrop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:2200; background:rgba(11,16,32,0.45); }
 .modal{ width:92%; max-width:420px; background:#fff; border-radius:12px; padding:12px; box-shadow:0 20px 60px rgba(11,16,32,0.25); }
 .modal .row{ display:flex; gap:8px; margin-top:8px; }
 .modal input{ flex:1; padding:8px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); }
 
-/* small */
-.small{ font-size:var(--small); color:var(--muted); }
-
-/* ensure body doesn't scroll behind fixed zones */
-body > .app { padding-top:0; }
-
 /* responsive tweak */
 @media (max-width:420px){
-  :root{ --header-h:120px; --footer-h:96px; --ui-scale:0.95; }
+  :root{ --header-h:120px; --footer-h:96px; --ui-scale:0.98; }
 }
 </style>
 </head>
@@ -173,7 +165,6 @@ body > .app { padding-top:0; }
 
       <div class="search-row" role="search" aria-label="Поиск и сканер">
         <div class="input-wrap">
-          <!-- Search remains editable (system keyboard allowed) -->
           <input id="searchInput" class="input" type="text" placeholder="Поиск по названию или коду" aria-label="Поиск по товарам" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
           <button id="clearSearch" class="clear-x" title="Очистить поле" aria-label="Очистить поле">✕</button>
         </div>
@@ -205,11 +196,10 @@ body > .app { padding-top:0; }
     </section>
   </main>
 
-  <!-- Footer -->
-  <footer class="footer" role="contentinfo" aria-label="Добавление вручную">
+  <!-- Footer (strictly bottom) -->
+  <footer class="footer" id="footer" role="contentinfo" aria-label="Добавление вручную">
     <div class="footer-inner">
       <div class="manual-input">
-        <!-- Make manual inputs readonly to prevent system keyboard; open modal with custom pad instead -->
         <input id="manualCode" placeholder="Штрихкод (опционально)" aria-label="Штрихкод вручную" readonly>
         <input id="manualName" placeholder="Название товара" aria-label="Название вручную" readonly>
       </div>
@@ -219,7 +209,7 @@ body > .app { padding-top:0; }
     </div>
   </footer>
 
-  <!-- Numeric pad -->
+  <!-- Numeric pad (will be positioned under active card) -->
   <div id="numericPad" class="numeric-pad" aria-hidden="true">
     <div class="row">
       <button class="key" data-key="1">1</button>
@@ -246,7 +236,7 @@ body > .app { padding-top:0; }
     </div>
   </div>
 
-  <!-- Modal for manual text entry (uses same custom pad for numbers; text typed via on-screen buttons) -->
+  <!-- Modal for manual text entry (optional) -->
   <div id="modalBackdrop" class="modal-backdrop" style="display:none;align-items:center;justify-content:center;">
     <div class="modal" role="dialog" aria-modal="true" aria-label="Ввод вручную">
       <div style="font-weight:700">Добавить товар вручную</div>
@@ -274,9 +264,12 @@ const STORAGE_INV = 'inventoryItems';
 let barcodeDB = JSON.parse(localStorage.getItem(STORAGE_DB) || '{}');
 let inventoryItems = JSON.parse(localStorage.getItem(STORAGE_INV) || '[]');
 let renderedCards = new Map();
-let padTarget = null; // {type:'qty'|'modal'|'manual', code: '...'} or null
+let padTarget = null; // {type:'qty'|'modal'|'manual', code/field}
 
 /* ===== Elements ===== */
+const content = document.getElementById('content');
+const header = document.querySelector('.header');
+const footer = document.getElementById('footer');
 const searchInput = document.getElementById('searchInput');
 const clearSearch = document.getElementById('clearSearch');
 const openScannerBtn = document.getElementById('openScannerBtn');
@@ -295,6 +288,9 @@ const manualName = document.getElementById('manualName');
 const addManualBtn = document.getElementById('addManualBtn');
 
 const numericPad = document.getElementById('numericPad');
+const padBack = document.getElementById('padBack');
+const padDone = document.getElementById('padDone');
+
 const modalBackdrop = document.getElementById('modalBackdrop');
 const modalCode = document.getElementById('modalCode');
 const modalName = document.getElementById('modalName');
@@ -384,13 +380,12 @@ function renderResults(){
     const qtyInput = card.querySelector('.qty-input');
     const plusBtn = card.querySelector('.plus-btn');
 
-    // prevent system keyboard: readonly + inputmode none; open custom pad on click/touch
+    // open custom pad under this card
     qtyInput.addEventListener('click', ()=>{ openPadForQty(item.code); });
     qtyInput.addEventListener('touchstart', (e)=>{ e.preventDefault(); openPadForQty(item.code); });
 
     plusBtn.addEventListener('click', (ev)=>{
       ev.preventDefault();
-      // add trailing plus via pad logic: open pad and insert plus
       openPadForQty(item.code, ()=>{ padInsert('+'); });
     });
 
@@ -425,27 +420,90 @@ function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
   if(!dontRerender) renderResults();
 }
 
-/* ===== Custom numeric pad logic ===== */
+/* ===== Custom numeric pad behavior and precise positioning ===== */
 function openPadForQty(code, callbackAfterOpen){
   padTarget = { type:'qty', code };
-  // show pad
-  numericPad.classList.add('visible');
-  numericPad.setAttribute('aria-hidden','false');
-  // ensure the target input is visible (scroll into view)
+  // compute card rect and position pad under it
   const card = document.querySelector(`[data-code="${code}"]`);
-  if(card) card.scrollIntoView({behavior:'smooth', block:'center'});
-  if(typeof callbackAfterOpen === 'function') setTimeout(callbackAfterOpen, 220);
+  if(!card) return;
+  // ensure card visible and scrolled so it sits near top of content
+  // target: card top should be visible with some offset so pad doesn't overlap
+  const contentRect = content.getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
+  // compute desired scroll: bring card to top of content area with small margin
+  const desiredTop = card.offsetTop - 8;
+  content.scrollTo({ top: desiredTop, behavior: 'smooth' });
+
+  // show pad after small delay to allow scroll
+  setTimeout(()=>{
+    // set pad width and left to match card within viewport, but clamp to viewport
+    const viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
+    const pad = numericPad;
+    const cardRect2 = card.getBoundingClientRect();
+    const footerRect = footer.getBoundingClientRect();
+    const padWidth = Math.min(cardRect2.width, viewportWidth - 16);
+    const padLeft = Math.max(8, cardRect2.left + (cardRect2.width - padWidth)/2);
+    pad.style.width = padWidth + 'px';
+    pad.style.left = padLeft + 'px';
+    // place pad bottom above footer
+    const footerHeight = footer.getBoundingClientRect().height;
+    pad.style.bottom = footerHeight + 'px';
+    pad.classList.add('visible');
+    pad.setAttribute('aria-hidden','false');
+    // if callback provided, call after pad visible
+    if(typeof callbackAfterOpen === 'function') setTimeout(callbackAfterOpen, 160);
+  }, 260);
 }
-function openPadForModal(field){ // field: 'code' or 'name'
+
+function openPadForManualField(field){
+  padTarget = { type:'manual', field };
+  // position pad above footer and centered over footer input area
+  const footerInner = document.querySelector('.footer-inner');
+  const rect = footerInner.getBoundingClientRect();
+  const pad = numericPad;
+  const padWidth = Math.min(rect.width - 16, window.innerWidth - 16);
+  const padLeft = rect.left + 8;
+  pad.style.width = padWidth + 'px';
+  pad.style.left = padLeft + 'px';
+  pad.style.bottom = footer.getBoundingClientRect().height + 'px';
+  pad.classList.add('visible');
+  pad.setAttribute('aria-hidden','false');
+}
+
+function openPadForModalField(field){
   padTarget = { type:'modal', field };
-  numericPad.classList.add('visible');
-  numericPad.setAttribute('aria-hidden','false');
+  // center pad under modal (modal centered)
+  const modal = document.querySelector('.modal');
+  if(modal){
+    const rect = modal.getBoundingClientRect();
+    const pad = numericPad;
+    const padWidth = Math.min(rect.width - 16, window.innerWidth - 16);
+    const padLeft = rect.left + 8;
+    pad.style.width = padWidth + 'px';
+    pad.style.left = padLeft + 'px';
+    pad.style.bottom = footer.getBoundingClientRect().height + 'px';
+    pad.classList.add('visible');
+    pad.setAttribute('aria-hidden','false');
+  } else {
+    // fallback: center
+    numericPad.style.width = Math.min(window.innerWidth - 16, 360) + 'px';
+    numericPad.style.left = ((window.innerWidth - parseFloat(numericPad.style.width)) / 2) + 'px';
+    numericPad.style.bottom = footer.getBoundingClientRect().height + 'px';
+    numericPad.classList.add('visible');
+    numericPad.setAttribute('aria-hidden','false');
+  }
 }
+
 function closePad(){
   padTarget = null;
   numericPad.classList.remove('visible');
   numericPad.setAttribute('aria-hidden','true');
+  // clear inline left/width if desired
+  // numericPad.style.left = '';
+  // numericPad.style.width = '';
 }
+
+/* Insert key into current pad target */
 function padInsert(ch){
   if(!padTarget) return;
   if(padTarget.type === 'qty'){
@@ -455,37 +513,44 @@ function padInsert(ch){
     if(!input) return;
     if(ch === '←') input.value = input.value.slice(0,-1);
     else input.value = (input.value || '') + ch;
-    // update inventory immediately
     const expr = input.value;
     const total = evaluateExpression(expr);
     upsertInventoryExpr(padTarget.code, (barcodeDB[padTarget.code] || ''), expr, total, true);
-  } else if(padTarget.type === 'modal'){
-    if(padTarget.field === 'code'){
-      modalCode.value = modalCode.value + ch;
-    } else {
-      modalName.value = modalName.value + ch;
-    }
   } else if(padTarget.type === 'manual'){
-    // manual footer fields
     if(padTarget.field === 'manualCode') manualCode.value = manualCode.value + ch;
     if(padTarget.field === 'manualName') manualName.value = manualName.value + ch;
+  } else if(padTarget.type === 'modal'){
+    if(padTarget.field === 'code') modalCode.value = modalCode.value + ch;
+    if(padTarget.field === 'name') modalName.value = modalName.value + ch;
   }
 }
-document.getElementById('padBack').addEventListener('click', ()=>{ padInsert('←'); });
-document.getElementById('padDone').addEventListener('click', ()=>{ closePad(); });
 
+/* pad buttons wiring */
 numericPad.addEventListener('click', (e)=>{
   const btn = e.target.closest('button.key');
   if(!btn) return;
   const key = btn.getAttribute('data-key');
   if(key) padInsert(key);
 });
+padBack.addEventListener('click', ()=>{ padInsert('←'); });
+padDone.addEventListener('click', ()=>{
+  // when Done pressed: close pad and ensure Done button is just above footer visually
+  closePad();
+});
 
-/* Prevent native keyboard in content/footer: inputs are readonly and open custom pad instead */
-manualCode.addEventListener('click', ()=>{ padTarget = {type:'manual', field:'manualCode'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
-manualName.addEventListener('click', ()=>{ padTarget = {type:'manual', field:'manualName'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
+/* clicking outside pad closes it (but not when interacting with card or footer) */
+document.addEventListener('click', (e)=>{
+  if(numericPad.contains(e.target)) return;
+  if(e.target.closest('.qty-input')) return;
+  if(e.target.closest('#manualCode') || e.target.closest('#manualName')) return;
+  if(e.target.closest('.modal')) return;
+  closePad();
+});
 
-/* Save manual footer add using current manualCode/manualName values */
+/* ===== Manual footer interactions (readonly fields open pad) ===== */
+manualCode.addEventListener('click', ()=>{ openPadForManualField('manualCode'); padTarget = {type:'manual', field:'manualCode'}; });
+manualName.addEventListener('click', ()=>{ openPadForManualField('manualName'); padTarget = {type:'manual', field:'manualName'}; });
+
 document.getElementById('addManualBtn').addEventListener('click', ()=>{
   const code = (manualCode.value||'').trim();
   const name = (manualName.value||'').trim() || (code || 'Новый товар');
@@ -494,23 +559,18 @@ document.getElementById('addManualBtn').addEventListener('click', ()=>{
   saveDB();
   upsertInventoryExpr(finalCode, name, '0', 0, true);
   renderResults();
-  // clear manual fields
   manualCode.value = '';
   manualName.value = '';
   showToast('Добавлено вручную');
 });
 
-/* ===== Modal manual add (for text entry) ===== */
-addManualBtn.addEventListener('contextmenu', (e)=>{ e.preventDefault(); openManualModal(); }); // optional: long-press
-// open modal on double click of footer add button (or via explicit call)
+/* ===== Modal manual add (optional) ===== */
 function openManualModal(){
   modalCode.value = '';
   modalName.value = '';
   modalBackdrop.style.display = 'flex';
-  // set pad target to modal code by default
-  padTarget = { type:'modal', field:'code' };
-  numericPad.classList.add('visible');
-  numericPad.setAttribute('aria-hidden','false');
+  // open pad for modal code by default
+  openPadForModalField('code');
 }
 modalCancel.addEventListener('click', ()=>{ modalBackdrop.style.display='none'; closePad(); });
 modalSave.addEventListener('click', ()=>{
@@ -525,20 +585,8 @@ modalSave.addEventListener('click', ()=>{
   closePad();
   showToast('Добавлено вручную');
 });
-
-/* Allow clicking modal inputs to switch pad target */
-modalCode.addEventListener('click', ()=>{ padTarget = {type:'modal', field:'code'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
-modalName.addEventListener('click', ()=>{ padTarget = {type:'modal', field:'name'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
-
-/* Close pad when tapping outside */
-document.addEventListener('click', (e)=>{
-  if(numericPad.contains(e.target)) return;
-  if(e.target.closest('.qty-input')) return;
-  if(e.target.closest('#manualCode') || e.target.closest('#manualName')) return;
-  // don't close if modal is open and user interacts with it
-  if(modalBackdrop.style.display === 'flex' && e.target.closest('.modal')) return;
-  closePad();
-});
+modalCode.addEventListener('click', ()=>{ openPadForModalField('code'); padTarget = {type:'modal', field:'code'}; });
+modalName.addEventListener('click', ()=>{ openPadForModalField('name'); padTarget = {type:'modal', field:'name'}; });
 
 /* ===== Search wiring (no autofocus on load) ===== */
 searchInput.addEventListener('input', ()=>{ renderResults(); });
@@ -617,7 +665,6 @@ function handleDetected(code){
     const idx = inventoryItems.findIndex(it=>it.code===code);
     if(idx === -1) upsertInventoryExpr(code, found, '0', 0, true);
     renderResults();
-    // open pad for that card
     openPadForQty(code);
   } else {
     const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить 1 шт.?`);
