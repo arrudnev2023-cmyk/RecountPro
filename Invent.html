@@ -1,39 +1,31 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <title>RecountPro — Пересчёт</title>
 
-  <!-- Библиотеки -->
+  <!-- ZXing и вспомогательные библиотеки (по необходимости) -->
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
 
   <style>
-    :root {
-      --accent: #6d28d9;
-      --accent-light: #a78bfa;
-      --text: #e6eef8;
-      --muted: #9aa3b2;
-      --card-bg: linear-gradient(135deg,#1e1e2f,#2a2a40);
-      --max-width: 980px;
+    :root{
+      --accent:#6d28d9; --accent-light:#a78bfa; --text:#e6eef8; --muted:#9aa3b2;
+      --card-bg: linear-gradient(135deg,#1e1e2f,#2a2a40); --max-width:980px;
     }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html,body{height:100%;margin:0;background:#000;color:var(--text);font-family:"Segoe UI",system-ui,Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden; touch-action: manipulation; -ms-touch-action: manipulation;}
-    /* Prevent double-tap zoom on iOS Safari by disabling gestures */
-    html, body, button, input, select, textarea { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+    html,body{height:100%;margin:0;background:#000;color:var(--text);font-family:Segoe UI,system-ui,Arial;overflow:hidden; touch-action: manipulation;}
+    /* предотвращаем зум по двойному тапу */
+    html,body,button,input,select,textarea{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
     #bg{position:fixed;inset:0;z-index:-1;background:#000}
-    /* Header */
-    #header{position:fixed;left:0;right:0;top:0;z-index:1000;background:rgba(12,12,16,0.72);backdrop-filter:blur(10px);padding:12px;border-radius:0 0 18px 18px;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
-    #header h1{margin:0;text-align:center;font-size:1.15rem;color:#fff}
+    #header{position:fixed;left:0;right:0;top:0;z-index:1000;background:rgba(12,12,16,0.72);backdrop-filter:blur(10px);padding:12px;border-radius:0 0 18px 18px}
+    #header h1{margin:0;text-align:center;font-size:1.15rem}
     #search-container{margin-top:8px;max-width:var(--max-width);margin-left:auto;margin-right:auto;position:relative}
-    #search{width:100%;padding:10px 56px 10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(20,20,24,0.6);color:#fff;font-size:15px; touch-action: manipulation;}
-    #clear-search{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;z-index:3; touch-action: manipulation;}
-    #voice-or-scan{position:absolute;right:48px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;z-index:3; touch-action: manipulation;}
-    /* Content */
+    #search{width:100%;padding:10px 56px 10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(20,20,24,0.6);color:#fff;font-size:15px}
+    #clear-search{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;z-index:3}
+    #voice-or-scan{position:absolute;right:48px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;z-index:3}
     #content{position:fixed;left:0;right:0;top:96px;bottom:0;overflow:auto;padding:12px;box-sizing:border-box}
     #content.with-keyboard{padding-bottom:34vh}
     .item{max-width:var(--max-width);margin:10px auto;padding:12px;border-radius:12px;background:var(--card-bg);box-shadow:0 8px 30px rgba(0,0,0,0.6);border-left:6px solid transparent}
@@ -43,13 +35,11 @@
     .item.found{box-shadow:0 18px 50px rgba(106,17,203,0.18);transform:translateY(-6px)}
     .field{margin-bottom:8px}
     .label{font-weight:700;color:#dbeafe;margin-right:6px}
-    input[data-code]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#fff;color:#000;font-size:15px; touch-action: manipulation;}
-    /* Keyboard */
-    #custom-keyboard{position:fixed;left:0;right:0;bottom:-40vh;height:34vh;background:#0b0b0d;padding:10px;box-sizing:border-box;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:8px;z-index:3000;transition:bottom .28s}
+    input[data-code]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#fff;color:#000;font-size:15px}
+    #custom-keyboard{position:fixed;left:0;right:0;bottom:-40vh;height:34vh;background:#0b0b0d;padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;z-index:3000;transition:bottom .28s}
     #custom-keyboard.show{bottom:0}
-    #custom-keyboard button{border:none;border-radius:8px;background:#222;color:#fff;font-size:20px;cursor:pointer; touch-action: manipulation;}
+    #custom-keyboard button{border:none;border-radius:8px;background:#222;color:#fff;font-size:20px;cursor:pointer}
     #custom-keyboard .done{grid-column:1 / -1;background:linear-gradient(90deg,var(--accent),var(--accent-light));font-weight:800;font-size:18px}
-    /* Scanner preview */
     #scannerCard{display:none;max-width:var(--max-width);margin:10px auto;color:#ddd}
     .preview-wrap{border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,0.04)}
     .preview-wrap.camera-1-3{height:34vh;min-height:140px}
@@ -57,10 +47,6 @@
     #deviceSelect{background:#111;color:#fff;border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.04)}
     #scanResult{margin-top:8px;color:var(--muted)}
     .hidden{display:none!important}
-    /* Modal / small */
-    #modal, #session-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;align-items:center;justify-content:center}
-    .modal-inner{background:#fff;border-radius:12px;max-width:95%;width:95%;max-height:85%;overflow:auto;padding:12px}
-    /* export area hidden */
     #export-area{display:none}
     @media(min-width:900px){#content{padding-left:24px;padding-right:24px}}
   </style>
@@ -72,28 +58,21 @@
     <h1>RecountPro — Пересчёт</h1>
     <div id="search-container">
       <div style="position:relative;">
-        <input id="search" type="text" placeholder="Поиск..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Поиск" />
-        <button id="clear-search" aria-label="Очистить поиск">×</button>
-        <!-- Кнопка сканера (заменяет голосовую) -->
+        <input id="search" type="text" placeholder="Поиск..." autocomplete="off" />
+        <button id="clear-search" aria-label="Очистить">×</button>
         <button id="voice-or-scan" aria-label="Сканер" title="Открыть сканер">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M3 7v4a1 1 0 0 0 1 1h4" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M21 17v-4a1 1 0 0 0-1-1h-4" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            <rect x="7" y="7" width="10" height="10" rx="2" stroke="#cbd5e1" stroke-width="1.6" fill="none"/>
-            <circle cx="12" cy="12" r="2.2" stroke="#cbd5e1" stroke-width="1.6" fill="none"/>
-          </svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 7v4a1 1 0 0 0 1 1h4" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 17v-4a1 1 0 0 0-1-1h-4" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="7" y="7" width="10" height="10" rx="2" stroke="#cbd5e1" stroke-width="1.6" fill="none"/><circle cx="12" cy="12" r="2.2" stroke="#cbd5e1" stroke-width="1.6" fill="none"/></svg>
         </button>
       </div>
     </div>
   </div>
 
   <div id="content">
-    <!-- Scanner preview -->
     <div id="scannerCard">
       <div class="preview-wrap camera-1-3" id="previewWrap"><video id="preview" playsinline muted></video></div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
         <select id="deviceSelect" aria-label="Камера"></select>
-        <button id="closeScannerBtn" style="background:none;border:1px solid rgba(255,255,255,0.06);color:#fff;padding:8px;border-radius:8px;cursor:pointer; touch-action: manipulation;">✕ Закрыть</button>
+        <button id="closeScannerBtn" style="background:none;border:1px solid rgba(255,255,255,0.06);color:#fff;padding:8px;border-radius:8px;cursor:pointer">✕ Закрыть</button>
       </div>
       <div id="scanResult"></div>
     </div>
@@ -101,7 +80,6 @@
     <div id="list"></div>
   </div>
 
-  <!-- Кастомная клавиатура -->
   <div id="custom-keyboard" aria-hidden="true">
     <button>1</button><button>2</button><button>3</button>
     <button>4</button><button>5</button><button>6</button>
@@ -110,47 +88,44 @@
     <button class="done" id="done">Готово</button>
   </div>
 
-  <!-- Модали -->
-  <div id="modal">
-    <div class="modal-inner" role="dialog" aria-modal="true">
-      <div style="display:flex;justify-content:center;align-items:center;position:relative;padding-bottom:8px;border-bottom:1px solid #eee">
-        <h2 style="margin:0;color:var(--accent)">Итог пересчёта</h2>
-        <button onclick="document.getElementById('modal').style.display='none'" style="position:absolute;right:8px;top:8px;background:none;border:none;font-size:18px;cursor:pointer">✕</button>
-      </div>
-      <div id="modal-content" style="padding-top:8px"></div>
-      <div style="margin-top:12px"><button onclick="document.getElementById('modal').style.display='none'" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-weight:700">Закрыть</button></div>
-    </div>
-  </div>
-
-  <!-- Скрытая область экспорта -->
   <div id="export-area"></div>
 
 <script>
-/* =========================
-   Время активности (оставлено)
-   ========================= */
-const LAST_ACTIVITY_KEY = "lastActivity";
-const MAX_IDLE_TIME = 6 * 60 * 60 * 1000;
-function updateActivity(){ localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString()); }
-function checkIdleTime(){ const last = parseInt(localStorage.getItem(LAST_ACTIVITY_KEY) || "0",10); if(last && Date.now()-last > MAX_IDLE_TIME){ localStorage.removeItem("isAuth"); window.location.href="/demo.html"; } }
-["click","keydown","mousemove","scroll","touchstart"].forEach(evt=>document.addEventListener(evt, updateActivity, {passive:true}));
-setInterval(checkIdleTime, 30*60*1000);
-updateActivity();
+/* -------------------------
+   Утилиты и переменные
+   ------------------------- */
+let barcodeDB = {}; // будет загружена из Scaner.html или fallback
+let allItems = [];
+let sessionValues = {};
+let activeInput = null;
+let codeReader = null;
+let scanning = false;
+let lastDetected = { code: null, ts: 0 };
+const DEBOUNCE_MS = 900;
 
-/* =========================
-   Подключение реальной базы штрихкодов (Scaner.html)
-   Попытка загрузить внешнюю страницу/скрипт и получить из неё объект window.scanerDB.
-   Если не найдено — используется локальный пример.
-   ========================= */
-let barcodeDB = {}; // будет заполнен
+/* DOM элементы */
+const listEl = () => document.getElementById('list');
+const searchInput = () => document.getElementById('search');
+const clearSearchBtn = () => document.getElementById('clear-search');
+const scanBtn = () => document.getElementById('voice-or-scan');
+const keyboard = () => document.getElementById('custom-keyboard');
+const preview = () => document.getElementById('preview');
+const previewWrap = () => document.getElementById('previewWrap');
+const scannerCard = () => document.getElementById('scannerCard');
+const deviceSelect = () => document.getElementById('deviceSelect');
+const closeScannerBtn = () => document.getElementById('closeScannerBtn');
+const scanResult = () => document.getElementById('scanResult');
 
+/* -------------------------
+   Загрузка внешней базы Scaner.html (безопасно)
+   ------------------------- */
 async function loadExternalScaner() {
   try {
     const resp = await fetch('Scaner.html', { cache: 'no-store' });
     if (!resp.ok) throw new Error('fetch failed');
     const text = await resp.text();
 
-    // 1) Попытка: найти <script id="scaner-data" type="application/json">...</script>
+    // 1) Ищем JSON внутри <script id="scaner-data" type="application/json">...</script>
     const jsonMatch = text.match(/<script[^>]*id=["']scaner-data["'][^>]*type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/i);
     if (jsonMatch && jsonMatch[1]) {
       try {
@@ -163,7 +138,7 @@ async function loadExternalScaner() {
       } catch (e) { /* continue */ }
     }
 
-    // 2) Попытка: найти JS-скрипт, который присваивает window.scanerDB = {...}
+    // 2) Ищем присвоение window.scanerDB = {...}
     const assignMatch = text.match(/window\.scanerDB\s*=\s*({[\s\S]*?});/i);
     if (assignMatch && assignMatch[1]) {
       try {
@@ -189,24 +164,9 @@ async function loadExternalScaner() {
   }
 }
 
-/* =========================
-   Сканер (ZXing) — предпочтение задней камеры и стабильность
-   ========================= */
-let codeReader = null;
-let scanning = false;
-let lastDetected = { code: null, ts: 0 };
-const DEBOUNCE_MS = 900;
-
-const preview = document.getElementById('preview');
-const previewWrap = document.getElementById('previewWrap');
-const scannerCard = document.getElementById('scannerCard');
-const deviceSelect = document.getElementById('deviceSelect');
-const closeScannerBtn = document.getElementById('closeScannerBtn');
-const scanResult = document.getElementById('scanResult');
-
-/**
- * Выбирает устройство, которое, скорее всего, является задней камерой.
- */
+/* -------------------------
+   Выбор задней камеры
+   ------------------------- */
 function chooseRearCamera(devices) {
   if (!devices || devices.length === 0) return null;
   const labels = devices.map(d => (d.label || '').toLowerCase());
@@ -217,7 +177,6 @@ function chooseRearCamera(devices) {
       return devices[i].deviceId;
     }
   }
-  // если нет явной метки, rear — последний в списке
   return devices[devices.length - 1].deviceId;
 }
 
@@ -225,55 +184,59 @@ async function enumerateCamerasAndSelectRear() {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const cams = devices.filter(d => d.kind === 'videoinput');
-    deviceSelect.innerHTML = '';
+    const sel = deviceSelect();
+    sel.innerHTML = '';
     cams.forEach((c, idx) => {
       const opt = document.createElement('option');
       opt.value = c.deviceId;
       opt.text = c.label || `Камера ${idx+1}`;
-      deviceSelect.appendChild(opt);
+      sel.appendChild(opt);
     });
     if (cams.length === 0) {
       const opt = document.createElement('option');
       opt.value = '';
       opt.text = 'Камера не найдена';
-      deviceSelect.appendChild(opt);
+      sel.appendChild(opt);
       return null;
     }
     const rearId = chooseRearCamera(cams);
-    if (rearId) deviceSelect.value = rearId;
-    else deviceSelect.selectedIndex = 0;
-    return deviceSelect.value || cams[0].deviceId;
+    if (rearId) sel.value = rearId;
+    else sel.selectedIndex = 0;
+    return sel.value || cams[0].deviceId;
   } catch (e) {
     console.warn('enumerateCameras error', e);
     return null;
   }
 }
 
-async function startScanner(){
+/* -------------------------
+   Сканер: старт/стоп
+   ------------------------- */
+async function startScanner() {
   if (scanning) return;
   try {
-    try { if (codeReader) { codeReader.reset(); } } catch(e){}
+    try { if (codeReader) codeReader.reset(); } catch (e) {}
     codeReader = new ZXing.BrowserMultiFormatReader();
   } catch (e) {
-    scanResult.textContent = 'Сканер недоступен';
+    scanResult().textContent = 'Сканер недоступен';
     return;
   }
 
   const selectedRear = await enumerateCamerasAndSelectRear();
   const deviceId = selectedRear || undefined;
-  const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { exact: "environment" } } };
+  const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { ideal: "environment" } } };
 
   try {
-    scanResult.textContent = 'Запрашиваем доступ к камере...';
+    scanResult().textContent = 'Запрашиваем доступ к камере...';
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    preview.srcObject = stream;
-    try { await preview.play(); } catch (e) {}
-    previewWrap.classList.add('visible');
-    scannerCard.style.display = 'block';
-    scanResult.textContent = 'Сканер запущен';
+    preview().srcObject = stream;
+    try { await preview().play(); } catch (e) {}
+    previewWrap().classList.add('visible');
+    scannerCard().style.display = 'block';
+    scanResult().textContent = 'Сканер запущен';
     scanning = true;
 
-    codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
+    codeReader.decodeFromVideoDevice(deviceId, preview(), (result, err) => {
       if (result && result.text) {
         const now = Date.now();
         if (result.text === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
@@ -284,25 +247,25 @@ async function startScanner(){
     });
   } catch (err) {
     scanning = false;
-    scanResult.textContent = 'Ошибка доступа к камере или устройство не поддерживает камеру';
+    scanResult().textContent = 'Ошибка доступа к камере или устройство не поддерживает камеру';
     console.error('startScanner error', err);
   }
 }
 
-function stopScanner(){
+function stopScanner() {
   try { if (codeReader) codeReader.reset(); } catch (e) {}
   scanning = false;
   try {
-    const stream = preview.srcObject;
+    const stream = preview().srcObject;
     if (stream && stream.getTracks) stream.getTracks().forEach(t => t.stop());
   } catch (e) {}
-  preview.srcObject = null;
-  previewWrap.classList.remove('visible');
-  scannerCard.style.display = 'none';
-  scanResult.textContent = '';
+  preview().srcObject = null;
+  previewWrap().classList.remove('visible');
+  scannerCard().style.display = 'none';
+  scanResult().textContent = '';
 }
 
-function beep(){
+function beep() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const o = ctx.createOscillator();
@@ -316,14 +279,17 @@ function beep(){
   } catch (e) {}
 }
 
-function handleDetected(code){
+/* -------------------------
+   Обработка найденного кода
+   ------------------------- */
+function handleDetected(code) {
   try { if (codeReader) codeReader.reset(); } catch (e) {}
   scanning = false;
-  try { const stream = preview.srcObject; if (stream && stream.getTracks) stream.getTracks().forEach(t => t.stop()); } catch (e) {}
-  preview.srcObject = null;
-  previewWrap.classList.remove('visible');
-  scannerCard.style.display = 'none';
-  scanResult.textContent = `Найден код: ${code}`;
+  try { const stream = preview().srcObject; if (stream && stream.getTracks) stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+  preview().srcObject = null;
+  previewWrap().classList.remove('visible');
+  scannerCard().style.display = 'none';
+  scanResult().textContent = `Найден код: ${code}`;
 
   const found = barcodeDB[code];
   if (found) {
@@ -366,67 +332,20 @@ function handleDetected(code){
   }
 }
 
-/* Попытка перечислить камеры при загрузке (не блокирующая) */
-if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-  navigator.mediaDevices.enumerateDevices().then(enumerateCamerasAndSelectRear).catch(()=>{});
-}
-
-/* =========================
-   Состояние приложения и UI
-   ========================= */
-const listEl = document.getElementById("list");
-const searchInput = document.getElementById("search");
-const clearSearchBtn = document.getElementById("clear-search");
-const scanBtn = document.getElementById("voice-or-scan");
-const keyboard = document.getElementById("custom-keyboard");
-let allItems = [];
-let sessionValues = {};
-let activeInput = null;
-
-/* Восстановление автосессии при загрузке */
-window.addEventListener("DOMContentLoaded", async () => {
-  await loadExternalScaner();
-
-  const currentLocalkaId = (window.localkaData && window.localkaData.docId) ? window.localkaData.docId : "loc_" + new Date().toISOString().slice(0,10);
-  const sessionKey = "autosave_session_" + currentLocalkaId;
-  const savedSession = localStorage.getItem(sessionKey);
-  if (savedSession) {
-    try {
-      const session = JSON.parse(savedSession);
-      allItems = session.items || [];
-      sessionValues = session.values || {};
-    } catch { allItems = []; sessionValues = {}; }
-  } else {
-    allItems = Object.values(barcodeDB).map(b => ({ code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0, docQty: 0 }));
-    sessionValues = {};
-  }
-  render(allItems);
-});
-
-/* Автосохранение */
-function autosave(){
-  const currentLocalkaId = (window.localkaData && window.localkaData.docId) ? window.localkaData.docId : "loc_" + new Date().toISOString().slice(0,10);
-  const sessionKey = "autosave_session_" + currentLocalkaId;
-  const session = { items: allItems, values: sessionValues };
-  localStorage.setItem(sessionKey, JSON.stringify(session));
-}
-window.addEventListener("beforeunload", autosave);
-
-/* =========================
-   Поиск: нормализация и проверка
-   ========================= */
+/* -------------------------
+   UI: рендер, поиск, клавиатура, автосохранение
+   ------------------------- */
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function normalize(str){ return String(str||"").toLowerCase().replace(/ё/g,"е").replace(/№/g,"").replace(/\s+/g," ").trim(); }
 function matchesQuery(text, query){ const words = query.split(" ").filter(Boolean); return words.every(w => text.includes(w)); }
 
-/* =========================
-   Рендер списка (карточки)
-   ========================= */
-function render(items){
-  listEl.innerHTML = '';
+function render(items) {
+  const container = listEl();
+  container.innerHTML = '';
   items.forEach(item => {
     const value = sessionValues[item.code] || localStorage.getItem("qty_" + item.code) || "";
-    const div = document.createElement("div");
-    div.className = "item";
+    const div = document.createElement('div');
+    div.className = 'item';
     div.dataset.code = item.code;
     div.innerHTML = `
       <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
@@ -439,51 +358,43 @@ function render(items){
     `;
     let actual = 0;
     try { actual = Function("return " + (value || "0").replace(',', '.'))() || 0; } catch {}
-    if (actual === item.docQty) div.classList.add("match");
-    else if (actual < item.docQty) div.classList.add("missing");
-    else if (actual > item.docQty) div.classList.add("excess");
-    listEl.appendChild(div);
+    if (actual === item.docQty) div.classList.add('match');
+    else if (actual < item.docQty) div.classList.add('missing');
+    else if (actual > item.docQty) div.classList.add('excess');
+    container.appendChild(div);
   });
   attachInputHandlers();
-  updateSummary(allItems);
+  updateSummary(items);
 }
 
-/* escapeHtml */
-function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-/* =========================
-   Обработчики инпутов и кастомная клавиатура
-   ========================= */
-function attachInputHandlers(){
+function attachInputHandlers() {
   document.querySelectorAll('input[data-code]').forEach(input => {
     input.addEventListener('focus', () => { activeInput = input; openKeyboardFor(input); });
     input.addEventListener('click', () => { activeInput = input; openKeyboardFor(input); });
   });
 
-  keyboard.querySelectorAll('button').forEach(btn => {
+  keyboard().querySelectorAll('button').forEach(btn => {
     btn.onclick = () => {
       if (!activeInput) return;
       const val = btn.textContent;
-      if (val === "←") activeInput.value = activeInput.value.slice(0, -1);
-      else if (val === "Готово" || val === "Готово") { closeKeyboard(); return; }
+      if (val === '←') activeInput.value = activeInput.value.slice(0, -1);
+      else if (val === 'Готово') { closeKeyboard(); return; }
       else activeInput.value += val;
-      activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      activeInput.dispatchEvent(new Event('input', { bubbles: true }));
     };
   });
 
   document.getElementById('done').addEventListener('click', closeKeyboard);
-  document.getElementById('back').addEventListener('click', () => { if (!activeInput) return; activeInput.value = activeInput.value.slice(0, -1); activeInput.dispatchEvent(new Event("input", { bubbles: true })); });
+  document.getElementById('back').addEventListener('click', () => { if (!activeInput) return; activeInput.value = activeInput.value.slice(0, -1); activeInput.dispatchEvent(new Event('input', { bubbles: true })); });
 
   document.addEventListener('click', e => {
-    if (!e.target.closest('#custom-keyboard') && !e.target.matches('input[data-code]')) {
-      closeKeyboard();
-    }
+    if (!e.target.closest('#custom-keyboard') && !e.target.matches('input[data-code]')) closeKeyboard();
   });
 }
 
-function openKeyboardFor(input){
+function openKeyboardFor(input) {
   activeInput = input;
-  keyboard.classList.add('show');
+  keyboard().classList.add('show');
   document.getElementById('content').classList.add('with-keyboard');
   setTimeout(() => {
     const rect = input.getBoundingClientRect();
@@ -500,14 +411,13 @@ function openKeyboardFor(input){
   }, 150);
 }
 
-function closeKeyboard(){
+function closeKeyboard() {
   activeInput = null;
-  keyboard.classList.remove('show');
+  keyboard().classList.remove('show');
   document.getElementById('content').classList.remove('with-keyboard');
 }
 
-/* Обработка ввода и перекраска карточек */
-listEl.addEventListener('input', e => {
+listEl().addEventListener('input', e => {
   if (e.target.tagName !== 'INPUT') return;
   const code = e.target.dataset.code;
   const value = e.target.value;
@@ -526,8 +436,8 @@ listEl.addEventListener('input', e => {
   const card = e.target.closest('.item');
   card.classList.remove('match', 'missing', 'excess');
 
-  if (!value) {
-  } else if (!isNaN(actual)) {
+  if (!value) {}
+  else if (!isNaN(actual)) {
     if (actual === item.docQty) card.classList.add('match');
     else if (actual < item.docQty) card.classList.add('missing');
     else if (actual > item.docQty) card.classList.add('excess');
@@ -536,11 +446,9 @@ listEl.addEventListener('input', e => {
   autosave();
 });
 
-/* =========================
-   Поиск: скрываем неподходящие карточки
-   ========================= */
-searchInput.addEventListener('input', () => {
-  const q = normalize(searchInput.value);
+/* Поиск */
+searchInput().addEventListener('input', () => {
+  const q = normalize(searchInput().value);
   document.querySelectorAll('#list .item').forEach(div => {
     const code = normalize(div.dataset.code);
     const item = allItems.find(i => i.code === div.dataset.code);
@@ -550,185 +458,75 @@ searchInput.addEventListener('input', () => {
     div.classList.toggle('hidden', !match);
   });
 });
-clearSearchBtn.addEventListener('click', () => {
-  searchInput.value = '';
+clearSearchBtn().addEventListener('click', () => {
+  searchInput().value = '';
   document.querySelectorAll('#list .item').forEach(div => div.classList.remove('hidden'));
 });
 
-/* =========================
-   Парсинг PDF (как в вашем коде)
-   ========================= */
-function groupByY(items) {
-  const lines = {};
-  items.forEach(item => {
-    const y = Math.round(item.transform[5]);
-    if (!lines[y]) lines[y] = [];
-    lines[y].push({ str: item.str, x: item.transform[4] });
-  });
-  return Object.values(lines).map(words => words.sort((a,b)=>a.x-b.x).map(w=>w.str).join(' '));
-}
-
-function parseLines(lines) {
-  const items = [];
-  for (let line of lines) {
-    line = line.trim();
-    if (!/^\d+\s+\d{4,6}/.test(line)) continue;
-    const match = line.match(/^(\d+)\s+(\d{4,6})\s+(.+?)\s+(\d+\*\d+)?\s+([\d.,]+)\s+(.*)$/i);
-    if (match) {
-      const rawTail = match[6];
-      const qtyMatches = [...rawTail.matchAll(/(\d+)\s*шт/gi)];
-      const docQty = qtyMatches.length > 0 ? parseInt(qtyMatches[qtyMatches.length - 1][1]) : null;
-      items.push({
-        code: match[2],
-        name: match[3].trim(),
-        unit: match[4] || '',
-        price: parseFloat(match[5].replace(',', '.')),
-        docQty
-      });
-    }
-  }
-  return items;
-}
-
-/* =========================
-   Итоги и экспорт (упрощённо)
-   ========================= */
-function updateSummary(items) {
-  let match = 0, missing = 0, excess = 0, delta = 0;
-  items.forEach(item => {
-    const input = document.querySelector(`input[data-code="${item.code}"]`);
-    if (!input) return;
-    const raw = input.value.trim();
-    const actual = parseFloat(raw.replace(',', '.')) || 0;
-    if (actual === item.docQty) match++;
-    else if (actual < item.docQty) { missing++; delta += item.docQty - actual; }
-    else { excess++; delta += actual - item.docQty; }
-  });
-}
-
-/* Экспорт PDF — заглушка (вставьте вашу реализацию при необходимости) */
-let startTime = new Date();
-function exportPDF() {
-  autosave();
-  alert("Экспорт вызван. Вставьте реализацию exportPDF при необходимости.");
-}
-
-/* =========================
-   Загрузка PDF (как в вашем коде)
-   ========================= */
-document.addEventListener('DOMContentLoaded', () => {
-  const upload = document.getElementById('upload');
-  if (upload) {
-    upload.addEventListener('change', async e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const arrayBuffer = await file.arrayBuffer();
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let allLines = [];
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        const grouped = groupByY(content.items);
-        allLines.push(...grouped);
-      }
-      allItems = parseLines(allLines);
-      const overwrite = confirm("Заменить текущие данные пересчёта?");
-      if (overwrite) sessionValues = {};
-      else {
-        allItems.forEach(item => {
-          const saved = localStorage.getItem("qty_" + item.code);
-          if (saved) sessionValues[item.code] = saved;
-        });
-      }
-      render(allItems);
-      autosave();
-    });
-  }
-});
-
-/* =========================
-   Canvas background (звёзды/кометы)
-   ========================= */
-const canvas = document.getElementById("bg");
-const ctx = canvas.getContext("2d");
-function resizeCanvas(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
-let stars = [];
-for (let i = 0; i < 200; i++) stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: Math.random() * 1.5 + 0.5, alpha: Math.random(), speed: Math.random() * 0.2 + 0.05 });
-let comets = [];
-function spawnComet(){ comets.push({ x: -100, y: Math.random() * canvas.height * 0.5, vx: 6 + Math.random() * 2, vy: 2 + Math.random(), life: 0, maxLife: 300 }); }
-let clickParticles = [];
-canvas.addEventListener('click', e => {
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left, y = e.clientY - rect.top;
-  for (let i = 0; i < 20; i++) clickParticles.push({ x, y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, life: 0, maxLife: 60, r: Math.random() * 2 + 1 });
-});
-function drawClickParticles(){ clickParticles.forEach((p,i)=>{ ctx.fillStyle = `rgba(255,255,200,${1 - p.life / p.maxLife})`; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); p.x += p.vx; p.y += p.vy; p.life++; if (p.life > p.maxLife) clickParticles.splice(i,1); }); }
-function animate(){ ctx.clearRect(0,0,canvas.width,canvas.height); stars.forEach(s=>{ s.alpha += (Math.random()-0.5)*0.05; if(s.alpha<0) s.alpha=0; if(s.alpha>1) s.alpha=1; s.y += s.speed; if(s.y>canvas.height){ s.y=0; s.x=Math.random()*canvas.width } ctx.fillStyle = `rgba(255,255,255,${s.alpha})`; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill(); }); if(Math.random()<0.005) spawnComet(); comets.forEach((c,i)=>{ let grad = ctx.createLinearGradient(c.x,c.y,c.x-120,c.y-60); grad.addColorStop(0,"rgba(255,255,255,0.8)"); grad.addColorStop(1,"rgba(255,255,255,0)"); ctx.strokeStyle = grad; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(c.x,c.y); ctx.lineTo(c.x-120,c.y-60); ctx.stroke(); ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(c.x,c.y,3.5,0,Math.PI*2); ctx.fill(); c.x += c.vx; c.y += c.vy; c.life++; if(c.x>canvas.width+150||c.y>canvas.height+150||c.life>c.maxLife) comets.splice(i,1); }); drawClickParticles(); requestAnimationFrame(animate); }
-animate();
-
-/* =========================
-   Утилиты: очистка, сессии, экспорт и т.д.
-   ========================= */
-function clearRecount() {
-  if (!confirm("Очистить пересчёт?")) return;
+/* Автосохранение */
+function autosave() {
   const currentLocalkaId = (window.localkaData && window.localkaData.docId) ? window.localkaData.docId : "loc_" + new Date().toISOString().slice(0,10);
   const sessionKey = "autosave_session_" + currentLocalkaId;
-  localStorage.removeItem(sessionKey);
-  if (Array.isArray(allItems) && allItems.length > 0) allItems.forEach(item => localStorage.removeItem("qty_" + item.code));
-  allItems = [];
-  sessionValues = {};
-  listEl.innerHTML = '';
-  updateSummary([]);
-}
-
-function saveSession() {
-  const name = prompt("Введите имя сессии");
-  if (!name) return;
-  document.querySelectorAll('input[data-code]').forEach(input => sessionValues[input.dataset.code] = input.value);
   const session = { items: allItems, values: sessionValues };
-  localStorage.setItem("session_" + name, JSON.stringify(session));
-  localStorage.setItem("active_session", name);
-  alert("Сессия сохранена: " + name);
+  localStorage.setItem(sessionKey, JSON.stringify(session));
+}
+window.addEventListener('beforeunload', autosave);
+
+/* Обновление итогов (заглушка, можно расширить) */
+function updateSummary(items) {
+  // оставлено для совместимости — можно вывести куда нужно
 }
 
-function openSessionModal() {
-  const container = document.getElementById("session-list");
-  if (!container) return;
-  container.innerHTML = '';
-  const keys = Object.keys(localStorage).filter(k => k.startsWith("session_"));
-  if (keys.length === 0) container.innerHTML = "<div>Нет сохранённых сессий</div>";
-  else keys.forEach(key => {
-    const name = key.replace("session_", "");
-    const div = document.createElement("div");
-    div.style = "margin-bottom:0.5rem; padding:0.5rem; border:1px solid #ddd; border-radius:6px;";
-    div.innerHTML = `<strong>${name}</strong><div style="margin-top:0.3rem;"><button onclick="loadSession('${name}')">📂 Загрузить</button> <button onclick="switchSession('${name}')">🔁 Активировать</button> <button onclick="deleteSession('${name}')">🗑 Удалить</button></div>`;
-    container.appendChild(div);
-  });
-  document.getElementById("session-modal").style.display = "flex";
-}
+/* -------------------------
+   Инициализация при загрузке страницы
+   ------------------------- */
+window.addEventListener('DOMContentLoaded', async () => {
+  // Загружаем внешнюю базу (если есть)
+  await loadExternalScaner();
 
-function loadSession(name) {
-  const raw = localStorage.getItem("session_" + name);
-  if (!raw) return alert("Сессия не найдена");
-  try {
-    const session = JSON.parse(raw);
-    allItems = session.items;
-    sessionValues = session.values || {};
-    render(allItems);
-    alert("Сессия загружена: " + name);
-  } catch {
-    alert("Ошибка при загрузке сессии");
+  // Восстанавливаем автосессию
+  const currentLocalkaId = (window.localkaData && window.localkaData.docId) ? window.localkaData.docId : "loc_" + new Date().toISOString().slice(0,10);
+  const sessionKey = "autosave_session_" + currentLocalkaId;
+  const savedSession = localStorage.getItem(sessionKey);
+  if (savedSession) {
+    try {
+      const session = JSON.parse(savedSession);
+      allItems = session.items || [];
+      sessionValues = session.values || {};
+    } catch {
+      allItems = Object.values(barcodeDB).map(b => ({ code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0, docQty: 0 }));
+      sessionValues = {};
+    }
+  } else {
+    allItems = Object.values(barcodeDB).map(b => ({ code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0, docQty: 0 }));
+    sessionValues = {};
   }
-}
-function switchSession(name) { localStorage.setItem("active_session", name); loadSession(name); }
-function deleteSession(name) { if (!confirm("Удалить сессию: " + name + "?")) return; localStorage.removeItem("session_" + name); if (localStorage.getItem("active_session") === name) localStorage.removeItem("active_session"); openSessionModal(); }
 
-/* =========================
+  render(allItems);
+
+  // Привязываем обработчики сканера
+  scanBtn().addEventListener('click', async () => {
+    if (!scanning) await startScanner();
+    else stopScanner();
+  });
+  closeScannerBtn().addEventListener('click', stopScanner);
+  deviceSelect().addEventListener('change', async () => {
+    if (scanning) {
+      try { codeReader.reset(); } catch (e) {}
+      scanning = false;
+    }
+    await startScanner();
+  });
+
+  // Попытка предварительно перечислить камеры (не блокирующая)
+  if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+    try { await enumerateCamerasAndSelectRear(); } catch (e) { /* ignore */ }
+  }
+});
+
+/* -------------------------
    Экспорт для отладки
-   ========================= */
+   ------------------------- */
 window._recount = { render, allItems, barcodeDB, startScanner, stopScanner, autosave };
 
 </script>
