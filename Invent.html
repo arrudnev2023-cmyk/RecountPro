@@ -4,7 +4,6 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
 <title>Инвентаризация — Mobile</title>
-<meta name="description" content="Инвентаризация — мобильный интерфейс" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -19,15 +18,16 @@
   --safe-margin:12px;
   --card-radius:10px;
   --shadow: 0 8px 20px rgba(16,24,40,0.06);
+  --highlight: 0 0 0 3px rgba(123,59,230,0.12), 0 6px 20px rgba(123,59,230,0.12);
 }
 
-/* Base */
+/* Reset & base */
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#0b1020;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;touch-action:pan-y;-webkit-text-size-adjust:100%;}
 .app{height:100vh;display:flex;flex-direction:column;align-items:center;}
 
 /* Header */
-.header{position:fixed;left:0;right:0;top:0;height:var(--header-h);display:flex;align-items:flex-start;justify-content:center;background:#fff;border-bottom:1px solid rgba(11,16,32,0.04);z-index:4000;padding:10px var(--safe-margin);box-shadow:0 6px 18px rgba(16,24,40,0.04);touch-action:none;}
+.header{position:fixed;left:0;right:0;top:0;height:var(--header-h);display:flex;align-items:flex-start;justify-content:center;background:#fff;border-bottom:1px solid rgba(11,16,32,0.04);z-index:5000;padding:10px var(--safe-margin);box-shadow:0 6px 18px rgba(16,24,40,0.04);touch-action:none;}
 .header-inner{width:100%;max-width:var(--max-width);display:flex;flex-direction:column;gap:8px;margin:0 auto;}
 .title-row{display:flex;align-items:center;gap:10px;}
 .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;}
@@ -47,7 +47,8 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,
 .cards-block{position:fixed;left:0;right:0;top:calc(var(--header-h) + 6px);bottom:0;max-width:var(--max-width);margin-left:auto;margin-right:auto;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px;display:flex;flex-direction:column;gap:10px;z-index:1000;background:transparent;}
 
 /* Cards */
-.card{background:var(--panel);border-radius:var(--card-radius);padding:12px;border:1px solid rgba(11,16,32,0.06);box-shadow:var(--shadow);}
+.card{background:var(--panel);border-radius:var(--card-radius);padding:12px;border:1px solid rgba(11,16,32,0.06);box-shadow:var(--shadow);transition:box-shadow 180ms, transform 180ms;}
+.card.found{box-shadow:var(--highlight);transform:translateY(-4px);}
 .preview-wrap{border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(11,16,32,0.06);display:none;}
 .preview-wrap.visible{display:block;}
 .preview-wrap.camera-1-3{height:32vh;min-height:140px;max-height:300px;}
@@ -63,14 +64,15 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block;}
 .qty-input{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);font-weight:700;font-size:15px;background:#fbfbff;cursor:pointer;touch-action:manipulation;}
 .plus-btn{padding:10px 12px;border-radius:8px;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:#fff;border:none;cursor:pointer;font-weight:700;}
 
-/* Numeric pad positioned under input (absolute) */
-.numeric-pad{position:fixed;left:0;width:100vw;max-width:100%;display:none;z-index:4500;background:linear-gradient(180deg,#fff,#f3f4f8);border-top:1px solid rgba(11,16,32,0.06);box-shadow:0 -8px 30px rgba(11,16,32,0.08);padding:8px;border-radius:12px 12px 0 0;transform:translateY(12px) scale(.92);transform-origin:center bottom;opacity:0;transition:transform 220ms cubic-bezier(.2,.9,.2,1),opacity 160ms ease;height:var(--pad-height);box-sizing:border-box;}
+/* Numeric pad: full-width but positioned under input; 'Готово' full width */
+.numeric-pad{position:fixed;left:0;width:100vw;max-width:100%;display:none;z-index:4500;background:linear-gradient(180deg,#fff,#f3f4f8);border-top:1px solid rgba(11,16,32,0.06);box-shadow:0 -8px 30px rgba(11,16,32,0.08);padding:8px;border-radius:12px 12px 0 0;transform:translateY(12px) scale(.96);transform-origin:center bottom;opacity:0;transition:transform 220ms cubic-bezier(.2,.9,.2,1),opacity 160ms ease;height:var(--pad-height);box-sizing:border-box;}
 .numeric-pad.visible{display:block;transform:translateY(0) scale(1);opacity:1;}
 .numeric-pad .inner{height:100%;display:flex;flex-direction:column;justify-content:space-between;}
 .numeric-pad .keys{display:flex;flex-wrap:wrap;gap:8px;}
 .numeric-pad button.key{flex:1 1 30%;padding:12px 8px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);background:#fff;font-size:18px;font-weight:700;min-width:56px;}
 .numeric-pad .key.action{background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:#fff;border:none;}
 .numeric-pad .row-bottom{display:flex;gap:8px;align-items:center;}
+.numeric-pad .done{width:100%;padding:12px;border-radius:8px;border:none;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:#fff;font-weight:800;font-size:16px;}
 
 /* small */
 .small{font-size:13px;color:var(--muted);}
@@ -82,7 +84,7 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block;}
 /* responsive */
 @media (min-width:600px){
   .cards-block{left:50%;transform:translateX(-50%);max-width:420px;}
-  .numeric-pad{left:50%;transform-origin:center bottom;transform:translateX(-50%) translateY(12px) scale(.92);width:420px;}
+  .numeric-pad{left:50%;transform-origin:center bottom;transform:translateX(-50%) translateY(12px) scale(.96);width:420px;}
   .numeric-pad.visible{transform:translateX(-50%) translateY(0) scale(1);}
 }
 </style>
@@ -152,8 +154,7 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block;}
         <button class="key action" id="padBack">←</button>
       </div>
       <div class="row-bottom">
-        <div style="flex:1"></div>
-        <button class="key wide action" id="padDone" style="flex:0 0 160px">Готово</button>
+        <button id="padDone" class="done">Готово</button>
       </div>
     </div>
   </div>
@@ -172,7 +173,6 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block;}
   </div>
 </div>
 
-<!-- ZXing -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 <script>
 /* ===== State ===== */
@@ -211,34 +211,79 @@ const modalName = document.getElementById('modalName');
 const modalCancel = document.getElementById('modalCancel');
 const modalSave = document.getElementById('modalSave');
 
-/* ===== Utils ===== */
+/* ===== Utilities ===== */
 function saveDB(){ localStorage.setItem(STORAGE_DB, JSON.stringify(barcodeDB)); }
 function saveInventory(){ localStorage.setItem(STORAGE_INV, JSON.stringify(inventoryItems)); }
 function showToast(text, ms=1200){ scanResult.textContent = text; setTimeout(()=>{ if(scanResult.textContent===text) scanResult.textContent=''; }, ms); }
 function beep(){ try{ const ctx = new (window.AudioContext||window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value=880; g.gain.value=0.02; o.connect(g); g.connect(ctx.destination); o.start(); setTimeout(()=>{ o.stop(); ctx.close(); },120); }catch(e){} }
 function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
-function evaluateExpression(expr){ if(!expr) return 0; const nums = (expr.match(/\d+/g) || []).map(n=>parseInt(n,10)||0); return nums.reduce((s,v)=>s+v,0); }
 
-/* ===== Scroll detection to avoid accidental pad opens ===== */
-cardsBlock.addEventListener('scroll', ()=>{
-  isScrolling = true;
-  clearTimeout(scrollTimer);
-  scrollTimer = setTimeout(()=>{ isScrolling = false; }, 160);
-}, {passive:true});
+/* Levenshtein for fuzzy tolerance */
+function levenshtein(a,b){
+  if(a===b) return 0;
+  const al=a.length, bl=b.length;
+  if(al===0) return bl;
+  if(bl===0) return al;
+  const v0 = new Array(bl+1), v1 = new Array(bl+1);
+  for(let j=0;j<=bl;j++) v0[j]=j;
+  for(let i=0;i<al;i++){
+    v1[0]=i+1;
+    for(let j=0;j<bl;j++){
+      const cost = a[i]===b[j]?0:1;
+      v1[j+1] = Math.min(v1[j]+1, v0[j+1]+1, v0[j]+cost);
+    }
+    for(let j=0;j<=bl;j++) v0[j]=v1[j];
+  }
+  return v1[bl];
+}
 
-/* ===== Search & render ===== */
+/* subsequence check */
+function isSubsequence(s, t){
+  let i=0,j=0;
+  while(i<s.length && j<t.length){
+    if(s[i]===t[j]) i++; j++;
+  }
+  return i===s.length;
+}
+
+/* fuzzy token match: exact substring OR subsequence OR small levenshtein */
+function tokenMatches(token, text){
+  token = normalize(token);
+  text = normalize(text);
+  if(!token) return false;
+  if(text.indexOf(token) !== -1) return true;
+  if(isSubsequence(token, text)) return true;
+  const words = text.split(/\s+/);
+  for(const w of words){
+    const dist = levenshtein(token, w);
+    const threshold = Math.max(1, Math.floor(w.length * 0.35));
+    if(dist <= threshold) return true;
+  }
+  // also compare to code digits
+  const digits = text.replace(/\D/g,'');
+  if(digits && levenshtein(token.replace(/\D/g,''), digits) <= 1) return true;
+  return false;
+}
+
+/* search: tokens must match somewhere in name or code (order irrelevant) */
 function searchItems(q){
   q = normalize(q);
   if(!q) return [];
   const tokens = q.split(/\s+/).filter(Boolean);
   const out = [];
   for(const code of Object.keys(barcodeDB)){
-    const name = normalize(barcodeDB[code]);
-    const hay = (code + ' ' + name);
-    if(tokens.every(t => hay.indexOf(t) !== -1)) out.push({code, name: barcodeDB[code]});
+    const name = barcodeDB[code] || '';
+    const hay = (code + ' ' + name).toString();
+    let ok = true;
+    for(const t of tokens){
+      if(!tokenMatches(t, hay)){ ok = false; break; }
+    }
+    if(ok) out.push({code, name});
   }
   return out;
 }
+
+/* ===== Render list ===== */
 function getDisplayList(){
   const q = searchInput.value.trim();
   const list = [];
@@ -250,6 +295,7 @@ function getDisplayList(){
   }
   return list;
 }
+
 function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function renderResults(){
@@ -271,6 +317,7 @@ function renderResults(){
       frag.appendChild(el);
       continue;
     }
+
     const card = document.createElement('div');
     card.className = 'card-item';
     card.dataset.code = item.code;
@@ -292,32 +339,29 @@ function renderResults(){
     const qtyInput = card.querySelector('.qty-input');
     const plusBtn = card.querySelector('.plus-btn');
 
-    // Pointer-based handling (works for touch and mouse). Prevent opening during scroll.
+    // pointer handling to avoid opening during scroll
     let pointerDownY = 0, pointerMoved = false, pointerId = null;
     card.addEventListener('pointerdown', (e)=>{
       pointerDownY = e.clientY;
       pointerMoved = false;
       pointerId = e.pointerId;
-      card.setPointerCapture(pointerId);
+      try{ card.setPointerCapture(pointerId); }catch(err){}
     });
     card.addEventListener('pointermove', (e)=>{
       if(Math.abs(e.clientY - pointerDownY) > 8) pointerMoved = true;
     });
     card.addEventListener('pointerup', (e)=>{
       try{ card.releasePointerCapture(pointerId); }catch(err){}
-      // If user tapped on the qty input area specifically, open pad; if tapped elsewhere on card, scroll to card and open pad as requested
-      const target = e.target;
       if(isScrolling || pointerMoved) return;
-      // If clicked on qty input or plus button -> open pad
+      const target = e.target;
       if(target.classList.contains('qty-input') || target.classList.contains('plus-btn') || target.closest('.qty-row')){
         openPadForQty(item.code);
       } else {
-        // Click on card body: scroll to card and open pad
+        // click on card body: scroll to card and open pad
         scrollToCardAndOpenPad(item.code);
       }
     });
 
-    // plus button explicit
     plusBtn.addEventListener('click', (ev)=>{
       ev.preventDefault();
       if(isScrolling) return;
@@ -344,23 +388,20 @@ function upsertInventoryExpr(code, name, expr, total, dontRerender=false){
   if(!dontRerender) renderResults();
 }
 
-/* ===== Scroll to card and open pad helper ===== */
+/* ===== Scroll & pad helpers ===== */
 function scrollToCardAndOpenPad(code){
   const card = document.querySelector(`[data-code="${code}"]`);
   if(!card) return;
-  // scroll so card top is near header bottom
   const desiredTop = Math.max(0, card.offsetTop - 12);
   cardsBlock.scrollTo({top: desiredTop, behavior:'smooth'});
-  // open pad after scroll
   setTimeout(()=>{ openPadForQty(code); }, 220);
 }
 
-/* ===== Numeric pad behavior: position under input ===== */
 function openPadForQty(code, callbackAfterOpen){
   padTarget = {type:'qty', code};
   const card = document.querySelector(`[data-code="${code}"]`);
   if(!card) return;
-  // ensure card visible near top
+  // scroll card near top first
   const desiredTop = Math.max(0, card.offsetTop - 12);
   cardsBlock.scrollTo({top: desiredTop, behavior:'smooth'});
 
@@ -371,44 +412,59 @@ function openPadForQty(code, callbackAfterOpen){
     numericPad.classList.add('visible');
     numericPad.setAttribute('aria-hidden','false');
 
-    // compute position: place pad so its top is just below input bottom (if fits), otherwise scroll card up so it fits
-    const inputRect = input.getBoundingClientRect();
-    const headerRect = header.getBoundingClientRect();
+    // measure pad and input, compute top
     const padRect = numericPad.getBoundingClientRect();
     const padHeight = padRect.height || parseInt(getComputedStyle(numericPad).height) || 260;
+    const inputRect = input.getBoundingClientRect();
+    const headerRect = header.getBoundingClientRect();
     const viewportH = window.innerHeight;
-    // desired pad top = inputRect.bottom + 8
+
+    // desired pad top directly under input
     let desiredPadTop = inputRect.bottom + 8;
-    // if pad would go beyond viewport bottom, we need to scroll cardsBlock up
+
+    // if pad would overflow bottom, scroll cardsBlock so input moves up
     if(desiredPadTop + padHeight > viewportH){
-      // compute how much to move card up so that inputRect.top becomes headerRect.bottom + 12
       const desiredInputTop = headerRect.bottom + 12;
       const delta = inputRect.top - desiredInputTop;
-      // scroll cardsBlock by delta
+      // scroll by delta inside cardsBlock
       cardsBlock.scrollBy({top: delta, behavior:'smooth'});
-      // after scroll, recompute input rect and set pad top
       setTimeout(()=>{
         const inputRect2 = input.getBoundingClientRect();
         desiredPadTop = inputRect2.bottom + 8;
-        // clamp pad top to not exceed viewport
         if(desiredPadTop + padHeight > viewportH) desiredPadTop = Math.max(headerRect.bottom + 8, viewportH - padHeight - 8);
+        numericPad.style.top = desiredPadTop + 'px';
         numericPad.style.left = '0px';
         numericPad.style.width = '100vw';
-        numericPad.style.top = desiredPadTop + 'px';
       }, 260);
     } else {
+      numericPad.style.top = desiredPadTop + 'px';
       numericPad.style.left = '0px';
       numericPad.style.width = '100vw';
-      numericPad.style.top = desiredPadTop + 'px';
     }
+
+    // highlight card briefly
+    highlightCard(code);
 
     if(typeof callbackAfterOpen === 'function') setTimeout(callbackAfterOpen, 120);
   }, 260);
 }
 
-function closePad(){ padTarget = null; numericPad.classList.remove('visible'); numericPad.setAttribute('aria-hidden','true'); numericPad.style.top = ''; }
+function closePad(){
+  padTarget = null;
+  numericPad.classList.remove('visible');
+  numericPad.setAttribute('aria-hidden','true');
+  numericPad.style.top = '';
+}
 
-/* Insert key into pad target */
+/* highlight card */
+function highlightCard(code){
+  const card = document.querySelector(`[data-code="${code}"]`);
+  if(!card) return;
+  card.classList.add('found');
+  setTimeout(()=>{ card.classList.remove('found'); }, 2200);
+}
+
+/* pad input handling */
 function padInsert(ch){
   if(!padTarget) return;
   if(padTarget.type === 'qty'){
@@ -427,7 +483,7 @@ function padInsert(ch){
   }
 }
 
-/* pad buttons wiring */
+/* pad buttons */
 numericPad.addEventListener('click', (e)=>{
   const btn = e.target.closest('button.key');
   if(!btn) return;
@@ -437,7 +493,7 @@ numericPad.addEventListener('click', (e)=>{
 padBack.addEventListener('click', ()=>{ padInsert('←'); });
 padDone.addEventListener('click', ()=>{ closePad(); });
 
-/* clicking outside pad closes it (but not when interacting with header inputs) */
+/* clicking outside pad closes it (but not header inputs) */
 document.addEventListener('click', (e)=>{
   if(numericPad.contains(e.target)) return;
   if(e.target.closest('.qty-input')) return;
@@ -446,7 +502,7 @@ document.addEventListener('click', (e)=>{
   closePad();
 });
 
-/* Manual header: system keyboard (no custom pad) */
+/* ===== Manual header: system keyboard (no custom pad) ===== */
 addManualHeaderBtn.addEventListener('click', ()=>{
   const code = (manualCodeHeader.value||'').trim();
   const name = (manualNameHeader.value||'').trim() || (code || 'Новый товар');
@@ -460,7 +516,7 @@ addManualHeaderBtn.addEventListener('click', ()=>{
   showToast('Добавлено вручную');
 });
 
-/* Modal handlers (optional) */
+/* modal handlers (optional) */
 modalCancel.addEventListener('click', ()=>{ modalBackdrop.style.display='none'; closePad(); });
 modalSave.addEventListener('click', ()=>{
   const code = (modalCode.value||'').trim();
@@ -475,11 +531,11 @@ modalSave.addEventListener('click', ()=>{
   showToast('Добавлено вручную');
 });
 
-/* Search wiring */
+/* search wiring */
 searchInput.addEventListener('input', ()=>{ renderResults(); });
 clearSearch.addEventListener('click', ()=>{ searchInput.value=''; renderResults(); });
 
-/* ===== Scanner (ZXing) with robust stop and immediate handling ===== */
+/* ===== Scanner (ZXing) robust stop + immediate handling ===== */
 let codeReader = null;
 let scanning = false;
 let lastDetected = {code:null, ts:0};
@@ -506,14 +562,12 @@ async function startScanner(){
   const deviceId = deviceSelect.value || undefined;
   try{
     scanning = true;
-    // decodeFromVideoDevice returns a Promise; callback will be invoked on detection
     codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
       if(result && result.text){
         const now = Date.now();
         if(result.text === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
         lastDetected = {code: result.text, ts: now};
         beep();
-        // handle detection and ensure scanner stops
         handleDetected(result.text);
       }
     });
@@ -543,7 +597,7 @@ openScannerBtn.addEventListener('click', async ()=>{ await startScanner(); });
 closeScannerBtn.addEventListener('click', ()=>{ stopScanner(); });
 deviceSelect.addEventListener('change', async ()=>{ if(scanning){ try{ codeReader.reset(); }catch(e){} scanning=false; } await startScanner(); });
 
-/* handle detection: robust stop then process */
+/* handle detection: stop scanner then process */
 function handleDetected(code){
   // stop scanner and camera immediately
   try{ if(codeReader) codeReader.reset(); }catch(e){}
@@ -561,8 +615,7 @@ function handleDetected(code){
     const idx = inventoryItems.findIndex(it=>it.code===code);
     if(idx === -1) upsertInventoryExpr(code, found, '0', 0, true);
     renderResults();
-    // open pad for that card
-    setTimeout(()=>{ openPadForQty(code); }, 220);
+    setTimeout(()=>{ highlightCard(code); openPadForQty(code); }, 220);
   } else {
     const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить 1 шт.?`);
     if(create){
@@ -572,7 +625,7 @@ function handleDetected(code){
         saveDB();
         upsertInventoryExpr(code, barcodeDB[code], '1', 1, true);
         renderResults();
-        setTimeout(()=>{ openPadForQty(code); }, 220);
+        setTimeout(()=>{ highlightCard(code); openPadForQty(code); }, 220);
         showToast('Товар добавлен');
       } else showToast('Название не введено');
     } else showToast('Код не найден');
@@ -600,11 +653,19 @@ if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) navigator.
   document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, {passive:false});
 })();
 
+/* Scroll detection to avoid accidental pad opens */
+cardsBlock.addEventListener('scroll', ()=>{
+  isScrolling = true;
+  clearTimeout(scrollTimer);
+  scrollTimer = setTimeout(()=>{ isScrolling = false; }, 160);
+}, {passive:true});
+
 /* Initial render */
 renderResults();
 
-/* Debug */
+/* Expose for debugging if needed */
 window._inv = { renderResults, upsertInventoryExpr, inventoryItems, barcodeDB, stopScanner };
 </script>
 </body>
 </html>
+
