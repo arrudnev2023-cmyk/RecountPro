@@ -6,8 +6,6 @@
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>RecountPro — Пересчёт</title>
 
-  <!-- Проверка авторизации и таймера -->
-  
   <!-- Библиотеки -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -75,7 +73,7 @@
         <input id="search" type="text" placeholder="Поиск..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Поиск" />
         <button id="clear-search" aria-label="Очистить поиск">×</button>
         <!-- Кнопка сканера (заменяет голосовую) -->
-        <button id="voice-or-scan" aria-label="Сканер / голос" title="Открыть сканер">
+        <button id="voice-or-scan" aria-label="Сканер" title="Открыть сканер">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M3 7v4a1 1 0 0 0 1 1h4" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M21 17v-4a1 1 0 0 0-1-1h-4" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -127,7 +125,7 @@
 
 <script>
 /* =========================
-   Общие переменные и автосохранение
+   Время активности (оставлено)
    ========================= */
 const LAST_ACTIVITY_KEY = "lastActivity";
 const MAX_IDLE_TIME = 6 * 60 * 60 * 1000;
@@ -139,7 +137,6 @@ updateActivity();
 
 /* =========================
    База штрихкодов (пример)
-   Замените на вашу реальную базу при интеграции
    ========================= */
 const barcodeDB = {
   "4601234000011": { code: "4601234000011", name: "Молоко 1л", unit: "шт", price: 59.90 },
@@ -173,7 +170,6 @@ window.addEventListener("DOMContentLoaded", () => {
       sessionValues = session.values || {};
     } catch { allItems = []; sessionValues = {}; }
   } else {
-    // если нет автосейва — инициализируем из barcodeDB
     allItems = Object.values(barcodeDB).map(b => ({ code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0, docQty: 0 }));
     sessionValues = {};
   }
@@ -214,7 +210,6 @@ function render(items){
         <input type="text" data-code="${item.code}" value="${escapeHtml(value)}" inputmode="none" readonly />
       </div>
     `;
-    // начальная окраска
     let actual = 0;
     try { actual = Function("return " + (value || "0").replace(',', '.'))() || 0; } catch {}
     if (actual === item.docQty) div.classList.add("match");
@@ -252,7 +247,6 @@ function attachInputHandlers(){
   document.getElementById('done').addEventListener('click', closeKeyboard);
   document.getElementById('back').addEventListener('click', () => { if (!activeInput) return; activeInput.value = activeInput.value.slice(0, -1); activeInput.dispatchEvent(new Event("input", { bubbles: true })); });
 
-  // клик вне клавиатуры закрывает её
   document.addEventListener('click', e => {
     if (!e.target.closest('#custom-keyboard') && !e.target.matches('input[data-code]')) {
       closeKeyboard();
@@ -306,7 +300,6 @@ listEl.addEventListener('input', e => {
   card.classList.remove('match', 'missing', 'excess');
 
   if (!value) {
-    // нейтральный вид
   } else if (!isNaN(actual)) {
     if (actual === item.docQty) card.classList.add('match');
     else if (actual < item.docQty) card.classList.add('missing');
@@ -336,11 +329,7 @@ clearSearchBtn.addEventListener('click', () => {
 });
 
 /* =========================
-   Сканер (ZXing) — стабильная схема
-   - decodeFromVideoDevice используется
-   - при детекции: стоп декодера, стоп видеотреков, закрыть превью
-   - если код найден в базе: подсветить, скролл, открыть клавиатуру
-   - если нет: предложить создать товар
+   Сканер (ZXing) — предпочтение задней камеры
    ========================= */
 let codeReader = null;
 let scanning = false;
@@ -354,8 +343,29 @@ const deviceSelect = document.getElementById('deviceSelect');
 const closeScannerBtn = document.getElementById('closeScannerBtn');
 const scanResult = document.getElementById('scanResult');
 
-async function enumerateCameras(){
-  try{
+/**
+ * Выбирает устройство, которое, скорее всего, является задней камерой.
+ * Логика:
+ *  - если в label есть 'back', 'rear', 'environment', 'задн', 'тыл' — выбираем его
+ *  - иначе, если есть несколько камер, выбираем последнюю (часто rear)
+ *  - иначе возвращаем первый deviceId
+ */
+function chooseRearCamera(devices) {
+  if (!devices || devices.length === 0) return null;
+  const labels = devices.map(d => (d.label || '').toLowerCase());
+  for (let i = 0; i < devices.length; i++) {
+    const l = labels[i];
+    if (!l) continue;
+    if (l.includes('back') || l.includes('rear') || l.includes('environment') || l.includes('задн') || l.includes('тыл')) {
+      return devices[i].deviceId;
+    }
+  }
+  // если нет явной метки, часто rear — последний в списке
+  return devices[devices.length - 1].deviceId;
+}
+
+async function enumerateCamerasAndSelectRear() {
+  try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const cams = devices.filter(d => d.kind === 'videoinput');
     deviceSelect.innerHTML = '';
@@ -370,9 +380,15 @@ async function enumerateCameras(){
       opt.value = '';
       opt.text = 'Камера не найдена';
       deviceSelect.appendChild(opt);
+      return null;
     }
-  }catch(e){
+    const rearId = chooseRearCamera(cams);
+    if (rearId) deviceSelect.value = rearId;
+    else deviceSelect.selectedIndex = 0;
+    return deviceSelect.value || cams[0].deviceId;
+  } catch (e) {
     console.warn('enumerateCameras error', e);
+    return null;
   }
 }
 
@@ -385,10 +401,11 @@ async function startScanner(){
     return;
   }
 
-  await enumerateCameras();
+  // Обновляем список камер и выбираем заднюю
+  const selectedRear = await enumerateCamerasAndSelectRear();
 
-  const deviceId = deviceSelect.value || undefined;
-  const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { ideal: "environment" } } };
+  const deviceId = selectedRear || undefined;
+  const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { exact: "environment" } } };
 
   try {
     scanResult.textContent = 'Запрашиваем доступ к камере...';
@@ -400,7 +417,7 @@ async function startScanner(){
     scanResult.textContent = 'Сканер запущен';
     scanning = true;
 
-    // decodeFromVideoDevice — стабильный метод
+    // decodeFromVideoDevice — используем выбранный deviceId
     codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
       if (result && result.text) {
         const now = Date.now();
@@ -409,7 +426,6 @@ async function startScanner(){
         beep();
         handleDetected(result.text);
       }
-      // ошибки игнорируем — декодер продолжит попытки
     });
   } catch (err) {
     scanning = false;
@@ -459,7 +475,6 @@ function beep(){
 }
 
 function handleDetected(code){
-  // остановим декодер и видеопотоки
   try { if (codeReader) codeReader.reset(); } catch (e) {}
   scanning = false;
   try { const stream = preview.srcObject; if (stream && stream.getTracks) stream.getTracks().forEach(t => t.stop()); } catch (e) {}
@@ -468,7 +483,6 @@ function handleDetected(code){
   scannerCard.style.display = 'none';
   scanResult.textContent = `Найден код: ${code}`;
 
-  // ищем в базе
   const found = barcodeDB[code];
   if (found) {
     const card = document.querySelector(`.item[data-code="${found.code}"]`);
@@ -510,9 +524,9 @@ function handleDetected(code){
   }
 }
 
-/* Попытка перечислить камеры при загрузке */
+/* Попытка перечислить камеры при загрузке (не блокирующая) */
 if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-  navigator.mediaDevices.enumerateDevices().then(enumerateCameras).catch(()=>{});
+  navigator.mediaDevices.enumerateDevices().then(enumerateCamerasAndSelectRear).catch(()=>{});
 }
 
 /* =========================
@@ -551,10 +565,9 @@ function parseLines(lines) {
 }
 
 /* =========================
-   Итоги и экспорт (как в вашем коде)
+   Итоги и экспорт (упрощённо)
    ========================= */
 function updateSummary(items) {
-  // можно расширить — сейчас просто пересчитываем счётчики
   let match = 0, missing = 0, excess = 0, delta = 0;
   items.forEach(item => {
     const input = document.querySelector(`input[data-code="${item.code}"]`);
@@ -565,20 +578,13 @@ function updateSummary(items) {
     else if (actual < item.docQty) { missing++; delta += item.docQty - actual; }
     else { excess++; delta += actual - item.docQty; }
   });
-  // можно отобразить где-то, если нужно
 }
 
-/* Экспорт PDF — упрощённо (как в вашем коде) */
+/* Экспорт PDF — заглушка (вставьте вашу реализацию при необходимости) */
 let startTime = new Date();
 function exportPDF() {
   autosave();
-  const exportArea = document.getElementById("export-area");
-  exportArea.innerHTML = "";
-  exportArea.style.display = "block";
-  // ... (реализация как в вашем коде, при необходимости можно вставить)
-  // Для краткости оставляю реализацию экспорта из вашего предыдущего кода при необходимости.
-  alert("Экспорт (функция exportPDF) вызвана — вставьте вашу реализацию экспорта при необходимости.");
-  exportArea.style.display = "none";
+  alert("Экспорт вызван. Вставьте реализацию exportPDF при необходимости.");
 }
 
 /* =========================
@@ -695,14 +701,9 @@ function switchSession(name) { localStorage.setItem("active_session", name); loa
 function deleteSession(name) { if (!confirm("Удалить сессию: " + name + "?")) return; localStorage.removeItem("session_" + name); if (localStorage.getItem("active_session") === name) localStorage.removeItem("active_session"); openSessionModal(); }
 
 /* =========================
-   Вспомогательные экспорты для отладки
+   Экспорт для отладки
    ========================= */
 window._recount = { render, allItems, barcodeDB, startScanner, stopScanner, autosave };
-
-/* =========================
-   Небольшие функции: normalize, updateSummary, escapeHtml уже определены
-   ========================= */
-function updateSummary(items) { /* уже реализовано выше */ }
 
 </script>
 </body>
