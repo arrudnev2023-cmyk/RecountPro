@@ -13,15 +13,14 @@
   --accent-1:#7b3be6;
   --accent-2:#c86cff;
   --accent:linear-gradient(90deg,var(--accent-1),var(--accent-2));
-  --header-h:160px; /* увеличено, т.к. шапка теперь включает ручной ввод */
-  --footer-h:88px;
+  --header-h:160px; /* шапка: название + поиск + ручной ввод */
   --gap:10px;
   --card-radius:10px;
   --shadow: 0 8px 20px rgba(16,24,40,0.06);
   --max-width:420px;
   --safe-margin:12px;
   --pad-scale:0.92;
-  --pad-height:260px; /* ориентировочная высота клавиатуры */
+  --pad-height:260px;
 }
 
 /* Reset & base */
@@ -104,13 +103,13 @@ html,body{
   cursor:pointer;
 }
 
-/* Cards block: fixed under header, scrollable */
+/* Cards block: fixed under header, scrollable to bottom of screen */
 .cards-block{
   position:fixed;
   left:0;
   right:0;
   top:calc(var(--header-h) + 6px);
-  bottom:calc(var(--footer-h) + 6px);
+  bottom:0;
   max-width:var(--max-width);
   margin-left:auto;
   margin-right:auto;
@@ -143,27 +142,13 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 .qty-input{ flex:1; padding:10px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); font-weight:700; font-size:15px; background:#fbfbff; cursor:pointer; }
 .plus-btn{ padding:10px 12px; border-radius:8px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border:none; cursor:pointer; font-weight:700; }
 
-/* Footer (fixed) - strictly at bottom */
-.footer{
-  position:fixed; left:0; right:0; bottom:0;
-  height:var(--footer-h);
-  display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(180deg, rgba(255,255,255,0.995), rgba(255,255,255,0.98));
-  border-top:1px solid rgba(11,16,32,0.04);
-  z-index:4000;
-  padding:10px var(--safe-margin);
-  box-shadow:0 -6px 18px rgba(16,24,40,0.04);
-  touch-action:none;
-}
-.footer-inner{ width:100%; max-width:var(--max-width); display:flex; gap:8px; align-items:center; margin:0 auto; }
-
-/* Numeric pad (custom) - full width and animated */
+/* Numeric pad (custom) - full width and animated, anchored to bottom */
 .numeric-pad{
   position:fixed;
   left:0;
   width:100vw;
   max-width:100%;
-  bottom:calc(var(--footer-h));
+  bottom:0;
   display:none;
   z-index:4500;
   background:linear-gradient(180deg,#fff,#f3f4f8);
@@ -240,7 +225,7 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
     </div>
   </header>
 
-  <!-- Cards block (fixed under header, scrollable) -->
+  <!-- Cards block (fixed under header, scrollable to bottom) -->
   <section class="cards-block" id="cardsBlock" aria-label="Блок карточек">
     <!-- Scanner card (hidden by default) -->
     <div id="scannerCard" class="card" style="display:none" aria-hidden="true">
@@ -262,13 +247,6 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
       </div>
     </div>
   </section>
-
-  <!-- Footer (strict bottom) -->
-  <footer class="footer" id="footer" role="contentinfo" aria-label="Футер">
-    <div class="footer-inner">
-      <div class="small">Готово</div>
-    </div>
-  </footer>
 
   <!-- Numeric pad full-width -->
   <div id="numericPad" class="numeric-pad" aria-hidden="true">
@@ -328,7 +306,6 @@ let padTarget = null; // {type:'qty'|'manual'|'modal', code/field}
 const cardsBlock = document.getElementById('cardsBlock');
 const contentScroll = cardsBlock;
 const header = document.querySelector('.header');
-const footer = document.getElementById('footer');
 const searchInput = document.getElementById('searchInput');
 const clearSearch = document.getElementById('clearSearch');
 const openScannerBtn = document.getElementById('openScannerBtn');
@@ -454,7 +431,6 @@ function renderResults(){
   resultsEl.appendChild(frag);
 }
 function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function normalizeExpression(expr){ if(!expr) return ''; const trailingPlus = /\+\s*$/.test(expr); const parts = (expr.match(/\d+/g) || []); const joined = parts.join(' + '); return trailingPlus ? (joined ? joined + ' + ' : ' + ') : joined; }
 function evaluateExpression(expr){ if(!expr) return 0; const nums = (expr.match(/\d+/g) || []).map(n=>parseInt(n,10) || 0); return nums.reduce((s,v)=>s+v, 0); }
 
 /* Upsert inventory */
@@ -500,8 +476,7 @@ function openPadForQty(code, callbackAfterOpen){
     // measure pad height (actual)
     const padRect = numericPad.getBoundingClientRect();
     const padHeight = padRect.height || parseInt(getComputedStyle(numericPad).getPropertyValue('height')) || 260;
-    const footerRect = footer.getBoundingClientRect();
-    const padTop = window.innerHeight - footerRect.height - padHeight;
+    const padTop = window.innerHeight - padHeight;
 
     // compute card bottom relative to viewport
     const cardRect = card.getBoundingClientRect();
@@ -511,33 +486,16 @@ function openPadForQty(code, callbackAfterOpen){
     const margin = 12;
     if(cardBottom > padTop - margin){
       // compute how much to scroll within cardsBlock
-      // desired card top in viewport: header.bottom + 12
       const headerRect = header.getBoundingClientRect();
       const desiredCardTop = headerRect.bottom + 12;
       const delta = cardRect.top - desiredCardTop;
       contentScroll.scrollBy({ top: delta, behavior: 'smooth' });
-
-      // after scroll, ensure pad still visible and adjust if needed
-      setTimeout(()=>{
-        // re-measure and set pad bottom (it is fixed full-width)
-        // nothing else needed because pad is full-width anchored to bottom above footer
-      }, 260);
+      // reposition pad after scroll (pad is anchored to bottom, no reposition needed)
+      setTimeout(()=>{}, 260);
     }
 
     if(typeof callbackAfterOpen === 'function') setTimeout(callbackAfterOpen, 120);
   }, 260);
-}
-
-function openPadForManualField(field){
-  padTarget = { type:'manual', field };
-  numericPad.classList.add('visible');
-  numericPad.setAttribute('aria-hidden','false');
-}
-
-function openPadForModalField(field){
-  padTarget = { type:'modal', field };
-  numericPad.classList.add('visible');
-  numericPad.setAttribute('aria-hidden','false');
 }
 
 function closePad(){
@@ -588,8 +546,8 @@ document.addEventListener('click', (e)=>{
 });
 
 /* ===== Manual header interactions (readonly fields open pad) ===== */
-manualCodeHeader.addEventListener('click', ()=>{ padTarget = {type:'manual', field:'manualCode'}; openPadForManualField('manualCode'); });
-manualNameHeader.addEventListener('click', ()=>{ padTarget = {type:'manual', field:'manualName'}; openPadForManualField('manualName'); });
+manualCodeHeader.addEventListener('click', ()=>{ padTarget = {type:'manual', field:'manualCode'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
+manualNameHeader.addEventListener('click', ()=>{ padTarget = {type:'manual', field:'manualName'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
 
 addManualHeaderBtn.addEventListener('click', ()=>{
   const code = (manualCodeHeader.value||'').trim();
@@ -609,7 +567,9 @@ function openManualModal(){
   modalCode.value = '';
   modalName.value = '';
   modalBackdrop.style.display = 'flex';
-  openPadForModalField('code');
+  padTarget = {type:'modal', field:'code'};
+  numericPad.classList.add('visible');
+  numericPad.setAttribute('aria-hidden','false');
 }
 modalCancel.addEventListener('click', ()=>{ modalBackdrop.style.display='none'; closePad(); });
 modalSave.addEventListener('click', ()=>{
@@ -624,8 +584,8 @@ modalSave.addEventListener('click', ()=>{
   closePad();
   showToast('Добавлено вручную');
 });
-modalCode.addEventListener('click', ()=>{ openPadForModalField('code'); padTarget = {type:'modal', field:'code'}; });
-modalName.addEventListener('click', ()=>{ openPadForModalField('name'); padTarget = {type:'modal', field:'name'}; });
+modalCode.addEventListener('click', ()=>{ padTarget = {type:'modal', field:'code'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
+modalName.addEventListener('click', ()=>{ padTarget = {type:'modal', field:'name'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
 
 /* ===== Search wiring (no autofocus on load) ===== */
 searchInput.addEventListener('input', ()=>{ renderResults(); });
@@ -750,10 +710,9 @@ if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) navigator.
   }, {passive:false});
 })();
 
-/* Make header and footer non-draggable on touch (extra safety) */
+/* Make header non-draggable on touch (extra safety) */
 ['touchstart','touchmove','touchend','touchcancel'].forEach(ev=>{
   header.addEventListener(ev, (e)=>{ e.stopPropagation(); }, {passive:true});
-  footer.addEventListener(ev, (e)=>{ e.stopPropagation(); }, {passive:true});
 });
 
 /* Disable double-tap zoom (prevent quick successive taps) */
