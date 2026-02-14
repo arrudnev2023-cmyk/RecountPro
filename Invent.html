@@ -41,10 +41,10 @@
     .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-light));color:#07060b;font-weight:700}
     .list{max-width:var(--maxw);margin:12px auto;display:flex;flex-direction:column;gap:8px}
 
-    /* === Card design restored to original === */
+    /* === Card design restored to original but full width === */
     .item{
-      max-width:var(--maxw);
-      margin:10px auto;
+      width:100%;
+      margin:10px 0;
       padding:12px;
       border-radius:12px;
       background:var(--card-bg);
@@ -225,7 +225,8 @@ function render(items){
 
 /* =========================
    Keyboard & input handlers
-   - Back button removes one Unicode code point (one digit or one symbol)
+   - Back button removes one Unicode code point (one character)
+   - Ensure back button is handled only once
    ========================= */
 function removeLastCodePoint(str){
   if(!str) return '';
@@ -240,33 +241,33 @@ function attachInputHandlers(){
     input.addEventListener('click', ()=> openKeyboardFor(input));
   });
 
+  // Attach handlers for keyboard buttons except back/done which are handled separately
   keyboard.querySelectorAll('button').forEach(btn=>{
+    const id = btn.id || '';
+    if(id === 'back' || id === 'done') return; // skip, will attach separately
     btn.onclick = ()=>{
       if(!activeInput) return;
       const v = btn.textContent;
-      if(v === '←') {
-        // remove one code point (handles emojis/surrogates)
-        activeInput.value = removeLastCodePoint(activeInput.value);
-      }
-      else if(v === 'Готово') { closeKeyboard(); return; }
-      else activeInput.value += v;
+      activeInput.value += v;
       activeInput.dispatchEvent(new Event('input',{bubbles:true}));
     };
   });
 
-  // ensure the explicit back button handler also uses removeLastCodePoint
+  // Back button: single handler that removes one code point
   const backBtn = document.getElementById('back');
   if(backBtn){
-    backBtn.addEventListener('click', ()=>{
+    backBtn.onclick = ()=>{
       if(!activeInput) return;
       activeInput.value = removeLastCodePoint(activeInput.value);
       activeInput.dispatchEvent(new Event('input',{bubbles:true}));
-    });
+    };
   }
 
+  // Done button
   const doneBtn = document.getElementById('done');
-  if(doneBtn) doneBtn.addEventListener('click', closeKeyboard);
+  if(doneBtn) doneBtn.onclick = closeKeyboard;
 
+  // Close keyboard when clicking outside
   document.addEventListener('click', e=>{
     if(!e.target.closest('#custom-keyboard') && !e.target.matches('input[data-code]')) closeKeyboard();
   });
