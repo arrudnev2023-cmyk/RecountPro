@@ -6,154 +6,45 @@
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>RecountPro — Пересчёт</title>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
   <style>
-    :root {
-      --accent: #6d28d9;
-      --accent-light: #a78bfa;
-      --text: #1f2937;
-      --border: #d1d5db;
+    :root{
+      --accent:#6d28d9;
+      --accent-light:#a78bfa;
+      --bg:#000;
+      --card-bg:linear-gradient(135deg,#1e1e2f,#2a2a40);
     }
-    body {
-      font-family: "Segoe UI", system-ui, sans-serif;
-      margin: 0;
-      color: var(--text);
-      overflow: hidden;
-      background: #000;
-    }
-
-    /* Фон canvas */
-    #bg {
-      position: fixed;
-      top:0; left:0;
-      width:100%; height:100%;
-      z-index:-1;
-      background: #000;
-    }
-
-    /* Шапка */
-#header {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  z-index: 1000;
-  background: rgba(20, 20, 20, 0.7);
-  color: #f5f5f5;
-  padding: 0.8rem 1rem;
-  border-radius: 0 0 20px 20px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  animation: fadeInDown 0.4s ease;
-}
-#header h1 { margin: 0; font-size: 1.3rem; text-align: center; font-weight: 600; letter-spacing: 0.5px; }
-
-#search-container { margin-top: 0.6rem; background: rgba(40, 40, 40, 0.6); border-radius: 12px; padding: 0.4rem; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-#search { width: 100%; padding: 0.6rem 3.6rem 0.6rem 0.8rem; font-size: 1rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; box-sizing: border-box; background: rgba(30,30,30,0.8); color: #f5f5f5; transition: border 0.2s ease, background 0.2s ease; }
-#search:focus { border: 1px solid #6a11cb; background: rgba(40,40,40,0.9); outline: none; }
-
-#clear-search { position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 1.2rem; color: #aaa; cursor: pointer; transition: color 0.2s ease; z-index: 2; }
-#clear-search:hover { color: #fff; }
-
-/* Сканер-кнопка (замена голосовой кнопки) */
-#scan-btn {
-  position: absolute;
-  right: 2.6rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  z-index: 2;
-  color: #ddd;
-}
-#scan-btn.recording svg path { stroke: var(--accent); }
-
-/* Анимация */
-@keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-
-#content {
-  position: fixed;
-  top: 6.5rem;
-  bottom: 0;
-  left: 0; right: 0;
-  overflow-y: auto;
-  padding: 0.5rem;
-  box-sizing: border-box;
-  z-index: 1;
-  transition: padding-bottom 0.3s ease;
-}
-#content.with-keyboard { padding-bottom: 35vh; }
-
-.item {
-  margin: 0.5rem auto;
-  padding: 1rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  max-width: 600px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  background: linear-gradient(135deg, #1e1e2f, #2a2a40);
-  color: #fff;
-  border-left: 6px solid transparent;
-}
-.item.match { border-left-color: #22c55e; }
-.item.missing { border-left-color: #ef4444; }
-.item.excess { border-left-color: #3b82f6; }
-.item.found { box-shadow: 0 10px 30px rgba(106,17,203,0.18); transform: translateY(-6px); }
-
-.field { margin-bottom: 0.4rem; font-size: 0.9rem; }
-.label { font-weight: 600; }
-
-input[data-code] {
-  width: 100%;
-  padding: 0.6rem;
-  font-size: 1rem;
-  box-sizing: border-box;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #fefefe;
-  color: #000;
-  caret-color: var(--accent, #6a11cb);
-}
-
-/* Клавиатура */
-#custom-keyboard {
-  position: fixed;
-  bottom: -40vh;
-  left: 0; right: 0;
-  height: 33vh;
-  background: #111;
-  padding: 0.5rem;
-  box-sizing: border-box;
-  z-index: 3000;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(4, 1fr);
-  gap: 0.5rem;
-  transition: bottom 0.3s ease;
-  -webkit-user-select: none; -ms-user-select: none; user-select: none; -webkit-touch-callout: none;
-}
-#custom-keyboard.show { bottom: 0; }
-#custom-keyboard button { width: 100%; height: 100%; font-size: 1.6rem; background: #333; color: #fff; border: none; border-radius: 8px; cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; transition: background 0.15s ease, transform 0.1s ease; }
-#custom-keyboard button:active { background: #555; transform: scale(0.95); }
-#custom-keyboard .done { grid-column: 1 / -1; background: linear-gradient(90deg,var(--accent),var(--accent-light)); font-weight:800; font-size:1.1rem; }
-
-/* Scanner preview card */
-#scannerCard { display:none; margin: 0.5rem auto; max-width:600px; color:#ddd; }
-.preview-wrap{ border-radius:10px; overflow:hidden; background:#000; border:1px solid rgba(11,16,32,0.06); }
-.preview-wrap.visible{ display:block; }
-.preview-wrap.camera-1-3{ height:32vh; min-height:140px; max-height:300px; }
-video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
-
-/* small responsive tweaks */
-@media (min-width: 900px) {
-  #content { padding-left: 1.5rem; padding-right: 1.5rem; }
-}
-.hidden { display:none !important; }
+    html,body{height:100%;margin:0;background:var(--bg);font-family:Segoe UI,system-ui,Arial;color:#fff;overflow:hidden}
+    #bg{position:fixed;inset:0;z-index:-1;background:#000}
+    #header{position:fixed;left:0;right:0;top:0;padding:12px;background:rgba(20,20,20,0.75);backdrop-filter:blur(8px);z-index:1000;border-radius:0 0 16px 16px}
+    #header h1{margin:0;text-align:center;font-size:1.15rem}
+    #search-container{margin-top:8px;position:relative;max-width:980px;margin-left:auto;margin-right:auto}
+    #search{width:100%;padding:10px 56px 10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:rgba(30,30,30,0.85);color:#fff;font-size:15px}
+    #clear-search{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#aaa;font-size:18px;cursor:pointer;z-index:3}
+    #scan-btn{position:absolute;right:48px;top:50%;transform:translateY(-50%);background:none;border:none;color:#ddd;cursor:pointer;z-index:3}
+    #content{position:fixed;left:0;right:0;top:92px;bottom:0;overflow:auto;padding:12px;box-sizing:border-box}
+    .item{max-width:820px;margin:10px auto;padding:12px;border-radius:12px;background:var(--card-bg);box-shadow:0 6px 20px rgba(0,0,0,0.5);border-left:6px solid transparent}
+    .item.match{border-left-color:#22c55e}
+    .item.missing{border-left-color:#ef4444}
+    .item.excess{border-left-color:#3b82f6}
+    .item.found{box-shadow:0 14px 40px rgba(106,17,203,0.18);transform:translateY(-6px)}
+    .field{margin-bottom:8px}
+    .label{font-weight:700;margin-right:6px}
+    input[data-code]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#fff;color:#000;font-size:15px}
+    #custom-keyboard{position:fixed;left:0;right:0;bottom:-40vh;height:34vh;background:#111;padding:10px;box-sizing:border-box;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:8px;z-index:3000;transition:bottom .28s}
+    #custom-keyboard.show{bottom:0}
+    #custom-keyboard button{border:none;border-radius:8px;background:#333;color:#fff;font-size:20px;cursor:pointer}
+    #custom-keyboard .done{grid-column:1 / -1;background:linear-gradient(90deg,var(--accent),var(--accent-light));font-weight:800;font-size:18px}
+    /* scanner preview */
+    #scannerCard{display:none;max-width:820px;margin:10px auto;color:#ddd}
+    .preview-wrap{border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,0.04)}
+    .preview-wrap.camera-1-3{height:34vh;min-height:140px}
+    video#preview{width:100%;height:100%;object-fit:cover;display:block}
+    #deviceSelect{background:#222;color:#fff;border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.04)}
+    #scanResult{margin-top:8px;color:#ddd}
+    .hidden{display:none!important}
+    @media(min-width:900px){#content{padding-left:24px;padding-right:24px}}
   </style>
 </head>
 <body>
@@ -162,32 +53,24 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
   <div id="header">
     <h1>RecountPro — Пересчёт</h1>
     <div id="search-container">
-      <div id="search-wrapper" style="position:relative;">
-        <input type="text" id="search" placeholder="Поиск..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Поиск" />
-        <button id="clear-search" type="button" aria-label="Очистить поиск">×</button>
-
-        <!-- Сканер (замена голосовой кнопки) -->
-        <button id="scan-btn" type="button" aria-label="Открыть сканер" title="Открыть сканер">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M3 7v4a1 1 0 0 0 1 1h4" stroke="#ddd" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M21 17v-4a1 1 0 0 0-1-1h-4" stroke="#ddd" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            <rect x="7" y="7" width="10" height="10" rx="2" stroke="#ddd" stroke-width="1.6" fill="none"/>
-            <circle cx="12" cy="12" r="2.2" stroke="#ddd" stroke-width="1.6" fill="none"/>
-          </svg>
-        </button>
-      </div>
+      <input id="search" type="text" placeholder="Поиск по названию или коду..." autocomplete="off" />
+      <button id="scan-btn" title="Открыть сканер" aria-label="Открыть сканер">
+        <!-- иконка сканера -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 7v4a1 1 0 0 0 1 1h4" stroke="#ddd" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 17v-4a1 1 0 0 0-1-1h-4" stroke="#ddd" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="7" y="7" width="10" height="10" rx="2" stroke="#ddd" stroke-width="1.6" fill="none"/><circle cx="12" cy="12" r="2.2" stroke="#ddd" stroke-width="1.6" fill="none"/></svg>
+      </button>
+      <button id="clear-search" title="Очистить">×</button>
     </div>
   </div>
 
   <div id="content">
-    <!-- Scanner preview card -->
-    <div id="scannerCard" class="card">
+    <!-- Scanner preview -->
+    <div id="scannerCard">
       <div class="preview-wrap camera-1-3" id="previewWrap"><video id="preview" playsinline muted></video></div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-        <select id="deviceSelect" style="min-width:80px"></select>
-        <button id="closeScannerBtn" style="background:none;border:none;color:#fff;cursor:pointer">✕ Закрыть</button>
+        <select id="deviceSelect"></select>
+        <button id="closeScannerBtn" style="background:none;border:1px solid rgba(255,255,255,0.06);color:#fff;padding:8px;border-radius:8px;cursor:pointer">✕ Закрыть</button>
       </div>
-      <div id="scanResult" style="color:#ddd;margin-top:8px"></div>
+      <div id="scanResult"></div>
     </div>
 
     <div id="list"></div>
@@ -202,9 +85,10 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
   </div>
 
 <script>
-/* =========================
-   База штрихкодов (пример)
-   ========================= */
+/* -------------------------
+   Примерная база штрихкодов
+   Замените на вашу реальную базу при интеграции
+   ------------------------- */
 const barcodeDB = {
   "4601234000011": { code: "4601234000011", name: "Молоко 1л" },
   "4601234000028": { code: "4601234000028", name: "Хлеб ржаной" },
@@ -213,36 +97,43 @@ const barcodeDB = {
   "4601234000059": { code: "4601234000059", name: "Кофе 250г" }
 };
 
-/* =========================
-   Основные переменные
-   ========================= */
-const list = document.getElementById("list");
-const searchInput = document.getElementById("search");
-const keyboard = document.getElementById("custom-keyboard");
-let allItems = [];            // массив объектов {code,name,docQty}
-let sessionValues = {};      // сохранённые факты
+/* -------------------------
+   Состояние и элементы
+   ------------------------- */
+const list = document.getElementById('list');
+const searchInput = document.getElementById('search');
+const clearSearch = document.getElementById('clear-search');
+const scanBtn = document.getElementById('scan-btn');
+const scannerCard = document.getElementById('scannerCard');
+const preview = document.getElementById('preview');
+const previewWrap = document.getElementById('previewWrap');
+const deviceSelect = document.getElementById('deviceSelect');
+const closeScannerBtn = document.getElementById('closeScannerBtn');
+const scanResult = document.getElementById('scanResult');
+const keyboard = document.getElementById('custom-keyboard');
+
+let allItems = [];
+let sessionValues = {};
 let activeInput = null;
 
-/* Инициализация: берем данные из barcodeDB как "документ" */
-function initFromBarcodeDB() {
-  allItems = Object.values(barcodeDB).map(b => ({
-    code: b.code,
-    name: b.name,
-    docQty: 0 // по умолчанию 0 — можно заполнить из внешнего источника
-  }));
+/* -------------------------
+   Инициализация списка (берём из barcodeDB)
+   ------------------------- */
+function initFromBarcodeDB(){
+  allItems = Object.values(barcodeDB).map(b => ({ code: b.code, name: b.name, docQty: 0 }));
   render(allItems);
 }
 initFromBarcodeDB();
 
-/* =========================
-   Рендер карточек (без размерности и цены)
-   ========================= */
-function render(items) {
+/* -------------------------
+   Рендер карточек (без размерности/цены)
+   ------------------------- */
+function render(items){
   list.innerHTML = '';
-  items.forEach(item => {
-    const value = sessionValues[item.code] || localStorage.getItem("qty_" + item.code) || "";
-    const div = document.createElement("div");
-    div.className = "item";
+  items.forEach(item=>{
+    const value = sessionValues[item.code] || localStorage.getItem('qty_' + item.code) || '';
+    const div = document.createElement('div');
+    div.className = 'item';
     div.dataset.code = item.code;
     div.innerHTML = `
       <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
@@ -253,77 +144,55 @@ function render(items) {
         <input type="text" data-code="${item.code}" value="${value}" inputmode="none" readonly />
       </div>
     `;
-
-    // начальная окраска при рендере
+    // начальная окраска
     let actual = 0;
-    try { actual = Function("return " + (value || "0").replace(',', '.'))() || 0; } catch {}
-    if (actual === item.docQty) div.classList.add("match");
-    else if (actual < item.docQty) div.classList.add("missing");
-    else if (actual > item.docQty) div.classList.add("excess");
-
+    try{ actual = Function('return ' + (value || '0').replace(',', '.'))() || 0 }catch{}
+    if(actual === item.docQty) div.classList.add('match');
+    else if(actual < item.docQty) div.classList.add('missing');
+    else if(actual > item.docQty) div.classList.add('excess');
     list.appendChild(div);
   });
   attachInputHandlers();
 }
 
-/* =========================
-   Обработчики инпутов и клавиатуры
-   ========================= */
-function attachInputHandlers() {
-  document.querySelectorAll('input[data-code]').forEach(input => {
-    // focus/click открывают кастомную клавиатуру
-    input.addEventListener('focus', () => openKeyboardFor(input));
-    input.addEventListener('click', () => openKeyboardFor(input));
+/* -------------------------
+   Кастомная клавиатура
+   ------------------------- */
+function attachInputHandlers(){
+  document.querySelectorAll('input[data-code]').forEach(input=>{
+    input.addEventListener('focus', ()=> openKeyboardFor(input));
+    input.addEventListener('click', ()=> openKeyboardFor(input));
   });
 
-  // кнопки клавиатуры
-  keyboard.querySelectorAll('button').forEach(btn => {
-    btn.onclick = () => {
-      if (!activeInput) return;
-      const val = btn.textContent;
-      if (val === "←") {
-        activeInput.value = activeInput.value.slice(0, -1);
-      } else if (val === "Готово") {
-        closeKeyboard();
-        return;
-      } else {
-        activeInput.value += val;
-      }
-      // триггерим input для обработки
-      activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+  keyboard.querySelectorAll('button').forEach(btn=>{
+    btn.onclick = ()=>{
+      if(!activeInput) return;
+      const v = btn.textContent;
+      if(v === '←') activeInput.value = activeInput.value.slice(0,-1);
+      else if(v === 'Готово' || v === 'Готово') { closeKeyboard(); return; }
+      else activeInput.value += v;
+      activeInput.dispatchEvent(new Event('input',{bubbles:true}));
     };
   });
 
-  // done button full width
-  const doneBtn = document.getElementById('done');
-  doneBtn.addEventListener('click', closeKeyboard);
+  document.getElementById('done').addEventListener('click', closeKeyboard);
+  document.getElementById('back').addEventListener('click', ()=>{ if(!activeInput) return; activeInput.value = activeInput.value.slice(0,-1); activeInput.dispatchEvent(new Event('input',{bubbles:true})); });
 
-  // back button
-  document.getElementById('back').addEventListener('click', () => {
-    if (!activeInput) return;
-    activeInput.value = activeInput.value.slice(0, -1);
-    activeInput.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-
-  // клик вне клавиатуры закрывает её
-  document.addEventListener("click", e => {
-    if (!e.target.closest("#custom-keyboard") && !e.target.matches("input[data-code]")) {
-      closeKeyboard();
-    }
+  document.addEventListener('click', e=>{
+    if(!e.target.closest('#custom-keyboard') && !e.target.matches('input[data-code]')) closeKeyboard();
   });
 }
 
-function openKeyboardFor(input) {
+function openKeyboardFor(input){
   activeInput = input;
-  keyboard.classList.add("show");
-  document.getElementById("content").classList.add("with-keyboard");
-  // плавно скроллим так, чтобы поле было видимо и клавиатура не перекрывала
-  setTimeout(() => {
+  keyboard.classList.add('show');
+  // поднимаем контент, чтобы клавиатура не перекрывала поле
+  setTimeout(()=>{
     const rect = input.getBoundingClientRect();
     const viewportH = window.innerHeight;
-    const padHeight = Math.max(260, Math.round(viewportH * 0.33));
-    const desiredBottom = padHeight + 16;
-    if (rect.bottom > viewportH - desiredBottom) {
+    const padH = Math.max(260, Math.round(viewportH * 0.34));
+    const desiredBottom = padH + 12;
+    if(rect.bottom > viewportH - desiredBottom){
       const content = document.getElementById('content');
       const offset = rect.bottom - (viewportH - desiredBottom);
       content.scrollBy({ top: offset + 12, behavior: 'smooth' });
@@ -333,174 +202,152 @@ function openKeyboardFor(input) {
   }, 150);
 }
 
-function closeKeyboard() {
+function closeKeyboard(){
   activeInput = null;
-  keyboard.classList.remove("show");
-  document.getElementById("content").classList.remove("with-keyboard");
+  keyboard.classList.remove('show');
 }
 
-/* Обработка ввода значений и перекраска карточек */
-list.addEventListener("input", e => {
-  if (e.target.tagName === "INPUT") {
-    const code = e.target.dataset.code;
-    const value = e.target.value;
-    sessionValues[code] = value;
-    localStorage.setItem("qty_" + code, value);
+/* Обработка ввода и подсветка карточек */
+list.addEventListener('input', e=>{
+  if(e.target.tagName !== 'INPUT') return;
+  const code = e.target.dataset.code;
+  const value = e.target.value;
+  sessionValues[code] = value;
+  localStorage.setItem('qty_' + code, value);
 
-    const raw = value.replace(',', '.').trim();
-    let actual = NaN;
-    try {
-      let safeRaw = raw;
-      if (/[\+\-\*\/]$/.test(safeRaw)) safeRaw = safeRaw.slice(0, -1);
-      if (safeRaw) actual = Function("return " + safeRaw)();
-    } catch { actual = NaN; }
+  const raw = value.replace(',', '.').trim();
+  let actual = NaN;
+  try{
+    let safe = raw;
+    if(/[\+\-\*\/]$/.test(safe)) safe = safe.slice(0,-1);
+    if(safe) actual = Function('return ' + safe)();
+  }catch{ actual = NaN; }
 
-    const item = allItems.find(i => i.code === code);
-    const card = e.target.closest(".item");
-    card.classList.remove("match", "missing", "excess");
-
-    if (!value) {
-      // нейтральный вид
-    } else if (!isNaN(actual)) {
-      if (actual === item.docQty) card.classList.add("match");
-      else if (actual < item.docQty) card.classList.add("missing");
-      else if (actual > item.docQty) card.classList.add("excess");
-    }
-    autosave();
+  const item = allItems.find(i=>i.code === code);
+  const card = e.target.closest('.item');
+  card.classList.remove('match','missing','excess');
+  if(!value) {}
+  else if(!isNaN(actual)){
+    if(actual === item.docQty) card.classList.add('match');
+    else if(actual < item.docQty) card.classList.add('missing');
+    else if(actual > item.docQty) card.classList.add('excess');
   }
+  autosave();
 });
 
-/* =========================
-   Поиск (как в вашем коде) — скрывает карточки, которые не подходят
-   ========================= */
-function normalize(str) {
-  return String(str || "").toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
-}
-function matchesQuery(text, query) {
-  const words = query.split(" ").filter(Boolean);
-  return words.every(w => text.includes(w));
-}
+/* -------------------------
+   Поиск: скрываем карточки, которые не подходят
+   (поведение как в вашем коде)
+   ------------------------- */
+function normalize(s){ return String(s||'').toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ').trim(); }
+function matchesQuery(text, query){ const words = query.split(' ').filter(Boolean); return words.every(w => text.includes(w)); }
 
-searchInput.addEventListener("input", () => {
+searchInput.addEventListener('input', ()=>{
   const q = normalize(searchInput.value);
-  document.querySelectorAll("#list .item").forEach(div => {
+  document.querySelectorAll('#list .item').forEach(div=>{
     const code = normalize(div.dataset.code);
-    const item = allItems.find(i => i.code === div.dataset.code);
-    if (!item) { div.classList.add("hidden"); return; }
+    const item = allItems.find(i=>i.code === div.dataset.code);
+    if(!item){ div.classList.add('hidden'); return; }
     const name = normalize(item.name);
-    const match = (q === "") || matchesQuery(name, q) || matchesQuery(code, q);
-    div.classList.toggle("hidden", !match);
+    const match = (q === '') || matchesQuery(name, q) || matchesQuery(code, q);
+    div.classList.toggle('hidden', !match);
   });
 });
-document.getElementById("clear-search").addEventListener("click", () => {
-  searchInput.value = '';
-  document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
-});
+clearSearch.addEventListener('click', ()=>{ searchInput.value=''; document.querySelectorAll('#list .item').forEach(d=>d.classList.remove('hidden')); });
 
-/* =========================
-   Autosave (упрощённо)
-   ========================= */
-function autosave() {
-  const session = { items: allItems, values: sessionValues };
-  const key = "autosave_barcode_db";
-  localStorage.setItem(key, JSON.stringify(session));
-}
-window.addEventListener("beforeunload", autosave);
+/* -------------------------
+   Autosave
+   ------------------------- */
+function autosave(){ localStorage.setItem('autosave_barcode_db', JSON.stringify({items:allItems, values:sessionValues})); }
+window.addEventListener('beforeunload', autosave);
 
-/* =========================
-   Scanner (ZXing) — исправленный старт
-   - сначала запрашиваем getUserMedia (чтобы точно вызвать prompt)
-   - затем подключаем поток к preview и запускаем декодер по элементу video
-   - при остановке корректно останавливаем треки и reset декодера
-   ========================= */
+/* -------------------------
+   Сканер: стабильная схема с decodeFromVideoDevice
+   - при детекции: стоп декодера, стоп видеотреков, закрыть превью
+   - если код в базе: подсветить, скролл, открыть клавиатуру
+   - если нет: предложить создать товар
+   ------------------------- */
 let codeReader = null;
 let scanning = false;
-let lastDetected = { code: null, ts: 0 };
+let lastDetected = { code:null, ts:0 };
 const DEBOUNCE_MS = 900;
 
-const preview = document.getElementById('preview');
-const previewWrap = document.getElementById('previewWrap');
-const scannerCard = document.getElementById('scannerCard');
-const deviceSelect = document.getElementById('deviceSelect');
-const scanBtn = document.getElementById('scan-btn');
-const closeScannerBtn = document.getElementById('closeScannerBtn');
-const scanResult = document.getElementById('scanResult');
-
-async function enumerateCameras() {
-  try {
+async function enumerateCameras(){
+  try{
     const devices = await navigator.mediaDevices.enumerateDevices();
     const cams = devices.filter(d => d.kind === 'videoinput');
     deviceSelect.innerHTML = '';
-    cams.forEach((c, idx) => {
+    cams.forEach((c, idx)=>{
       const opt = document.createElement('option');
       opt.value = c.deviceId;
       opt.text = c.label || `Камера ${idx+1}`;
       deviceSelect.appendChild(opt);
     });
-    // если нет камер — добавляем пустой вариант
-    if (cams.length === 0) {
+    if(cams.length === 0){
       const opt = document.createElement('option');
       opt.value = '';
       opt.text = 'Камера не найдена';
       deviceSelect.appendChild(opt);
     }
-  } catch (e) {
-    // ignore
+  }catch(e){
+    console.warn('enumerateCameras error', e);
   }
 }
 
-async function startScanner() {
-  if (scanning) return;
-  try {
+async function startScanner(){
+  if(scanning) return;
+  try{
     codeReader = codeReader || new ZXing.BrowserMultiFormatReader();
-  } catch (e) {
-    scanResult.textContent = 'Сканер недоступен';
+  }catch(e){
+    scanResult.textContent = 'Сканер недоступен в этом окружении';
     return;
   }
 
   await enumerateCameras();
 
-  // сначала явно запросим разрешение и поток — это помогает на некоторых устройствах/браузерах
   const deviceId = deviceSelect.value || undefined;
-  const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { ideal: "environment" } } };
 
-  try {
+  try{
     scanResult.textContent = 'Запрашиваем доступ к камере...';
+    // Запрашиваем поток вручную — это помогает на некоторых браузерах/устройствах
+    const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { ideal: 'environment' } } };
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    // подключаем поток к preview
+    // подключаем поток к video (preview)
     preview.srcObject = stream;
-    preview.play().catch(()=>{});
+    try{ await preview.play(); }catch(e){}
     previewWrap.classList.add('visible');
     scannerCard.style.display = 'block';
     scanBtn.classList.add('recording');
     scanResult.textContent = 'Сканер запущен';
 
-    // используем decodeFromVideoElement для стабильности
+    // Запускаем декодер через decodeFromVideoDevice — он сам использует поток
     scanning = true;
-    codeReader.decodeFromVideoElement(preview, (result, err) => {
-      if (result && result.text) {
+    // decodeFromVideoDevice удобен: он сам откроет камеру, но мы уже подключили поток — всё равно используем callback
+    codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
+      if(result && result.text){
         const now = Date.now();
-        if (result.text === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+        if(result.text === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
         lastDetected = { code: result.text, ts: now };
         beep();
+        // Обрабатываем найденный код (и гарантированно останавливаем)
         handleDetected(result.text);
       }
-      // ошибки игнорируем — декодер сам пытается дальше
+      // err можно игнорировать — декодер продолжит попытки
     });
-  } catch (err) {
+  }catch(err){
     scanning = false;
     scanResult.textContent = 'Ошибка доступа к камере или устройство не поддерживает камеру';
     console.error('startScanner error', err);
   }
 }
 
-function stopScanner() {
-  try { if (codeReader) codeReader.reset(); } catch (e) {}
+function stopScanner(){
+  try{ if(codeReader) codeReader.reset(); }catch(e){}
   scanning = false;
-  try {
+  try{
     const stream = preview.srcObject;
-    if (stream && stream.getTracks) stream.getTracks().forEach(t => t.stop());
-  } catch (e) {}
+    if(stream && stream.getTracks) stream.getTracks().forEach(t=>t.stop());
+  }catch(e){}
   preview.srcObject = null;
   previewWrap.classList.remove('visible');
   scannerCard.style.display = 'none';
@@ -508,33 +355,38 @@ function stopScanner() {
   scanResult.textContent = '';
 }
 
-scanBtn.addEventListener('click', async () => {
-  if (!scanning) await startScanner();
+scanBtn.addEventListener('click', async ()=>{
+  if(!scanning) await startScanner();
   else stopScanner();
 });
 closeScannerBtn.addEventListener('click', stopScanner);
-deviceSelect.addEventListener('change', async () => { if (scanning) { try { codeReader.reset(); } catch (e) {} scanning = false; } await startScanner(); });
+deviceSelect.addEventListener('change', async ()=>{
+  if(scanning){
+    try{ codeReader.reset(); }catch(e){}
+    scanning = false;
+  }
+  await startScanner();
+});
 
-function beep() {
-  try {
+function beep(){
+  try{
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const o = ctx.createOscillator();
     const g = ctx.createGain();
     o.type = 'sine';
     o.frequency.value = 880;
     g.gain.value = 0.02;
-    o.connect(g);
-    g.connect(ctx.destination);
+    o.connect(g); g.connect(ctx.destination);
     o.start();
-    setTimeout(() => { o.stop(); ctx.close(); }, 120);
-  } catch (e) {}
+    setTimeout(()=>{ o.stop(); ctx.close(); }, 120);
+  }catch(e){}
 }
 
-function handleDetected(code) {
-  // гарантированно останавливаем сканер и видеопотоки
-  try { if (codeReader) codeReader.reset(); } catch (e) {}
+function handleDetected(code){
+  // Сразу останавливаем декодер и видеопотоки
+  try{ if(codeReader) codeReader.reset(); }catch(e){}
   scanning = false;
-  try { const stream = preview.srcObject; if (stream && stream.getTracks) stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+  try{ const stream = preview.srcObject; if(stream && stream.getTracks) stream.getTracks().forEach(t=>t.stop()); }catch(e){}
   preview.srcObject = null;
   previewWrap.classList.remove('visible');
   scannerCard.style.display = 'none';
@@ -542,128 +394,97 @@ function handleDetected(code) {
 
   scanResult.textContent = `Найден код: ${code}`;
 
-  // ищем в базе
+  // Ищем в базе
   const found = barcodeDB[code];
-  if (found) {
+  if(found){
     // подсветка карточки, скролл и открытие клавиатуры
     const card = document.querySelector(`.item[data-code="${found.code}"]`);
-    if (card) {
+    if(card){
       card.classList.add('found');
-      setTimeout(() => card.classList.remove('found'), 2200);
-
-      const input = card.querySelector('input[data-code]');
-      if (input) {
-        setTimeout(() => {
-          input.focus();
-          openKeyboardFor(input);
-        }, 220);
-      }
-      // если карточка скрыта из-за поиска — убираем скрытие
+      // если карточка скрыта поиском — показываем её
       card.classList.remove('hidden');
-      // прокрутка к карточке
-      setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 260);
+      setTimeout(()=>card.classList.remove('found'), 2200);
+      // скроллим к карточке
+      setTimeout(()=> card.scrollIntoView({behavior:'smooth', block:'center'}), 120);
+      // открываем клавиатуру на поле факта
+      const input = card.querySelector('input[data-code]');
+      if(input){
+        setTimeout(()=>{ input.focus(); openKeyboardFor(input); }, 320);
+      }
     } else {
+      // если карточки нет — добавляем и рендерим
       allItems.unshift({ code: found.code, name: found.name, docQty: 0 });
       render(allItems);
       const newCard = document.querySelector(`.item[data-code="${found.code}"]`);
-      if (newCard) {
+      if(newCard){
         newCard.classList.add('found');
-        setTimeout(() => newCard.classList.remove('found'), 2200);
+        setTimeout(()=>newCard.classList.remove('found'), 2200);
+        setTimeout(()=> newCard.scrollIntoView({behavior:'smooth', block:'center'}), 160);
         const input = newCard.querySelector('input[data-code]');
-        if (input) setTimeout(() => { input.focus(); openKeyboardFor(input); }, 220);
-        setTimeout(() => newCard.scrollIntoView({ behavior: 'smooth', block: 'center' }), 260);
+        if(input) setTimeout(()=>{ input.focus(); openKeyboardFor(input); }, 320);
       }
     }
   } else {
-    if (confirm(`Код ${code} не найден в базе. Добавить как новый товар?`)) {
+    // не найден — предложить создать
+    const create = confirm(`Код ${code} не найден в базе. Добавить как новый товар?`);
+    if(create){
       const name = prompt('Введите название товара', '') || `Товар ${code}`;
       barcodeDB[code] = { code, name };
       allItems.unshift({ code, name, docQty: 0 });
       render(allItems);
       const newCard = document.querySelector(`.item[data-code="${code}"]`);
-      if (newCard) {
+      if(newCard){
         newCard.classList.add('found');
-        setTimeout(() => newCard.classList.remove('found'), 2200);
+        setTimeout(()=>newCard.classList.remove('found'), 2200);
+        setTimeout(()=> newCard.scrollIntoView({behavior:'smooth', block:'center'}), 160);
         const input = newCard.querySelector('input[data-code]');
-        if (input) setTimeout(() => { input.focus(); openKeyboardFor(input); }, 220);
-        setTimeout(() => newCard.scrollIntoView({ behavior: 'smooth', block: 'center' }), 260);
+        if(input) setTimeout(()=>{ input.focus(); openKeyboardFor(input); }, 320);
       }
     }
   }
 }
 
-/* enumerate cameras on load (non-blocking) */
-if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+/* Попытка предварительно перечислить камеры при загрузке (не блокирующая) */
+if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices){
   navigator.mediaDevices.enumerateDevices().then(enumerateCameras).catch(()=>{});
 }
 
-/* =========================
-   Canvas background animation (stars/comets)
-   ========================= */
-const canvas = document.getElementById("bg");
-const ctx = canvas.getContext("2d");
-function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-window.addEventListener("resize", resizeCanvas);
+/* -------------------------
+   Canvas background (звёзды/кометы) — как раньше
+   ------------------------- */
+const canvas = document.getElementById('bg');
+const ctx = canvas.getContext('2d');
+function resizeCanvas(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
 let stars = [];
-for (let i = 0; i < 200; i++) {
-  stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: Math.random() * 1.5 + 0.5, alpha: Math.random(), speed: Math.random() * 0.2 + 0.05 });
-}
+for(let i=0;i<200;i++) stars.push({ x:Math.random()*canvas.width, y:Math.random()*canvas.height, r:Math.random()*1.5+0.5, alpha:Math.random(), speed:Math.random()*0.2+0.05 });
 let comets = [];
-function spawnComet() { comets.push({ x: -100, y: Math.random() * canvas.height * 0.5, vx: 6 + Math.random() * 2, vy: 2 + Math.random(), life: 0, maxLife: 300 }); }
+function spawnComet(){ comets.push({ x:-100, y:Math.random()*canvas.height*0.5, vx:6+Math.random()*2, vy:2+Math.random(), life:0, maxLife:300 }); }
 let clickParticles = [];
-canvas.addEventListener("click", e => {
+canvas.addEventListener('click', e=>{
   const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  for (let i = 0; i < 20; i++) {
-    clickParticles.push({ x, y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, life: 0, maxLife: 60, r: Math.random() * 2 + 1 });
-  }
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  for(let i=0;i<20;i++) clickParticles.push({ x,y,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4,life:0,maxLife:60,r:Math.random()*2+1 });
 });
-function drawClickParticles() {
-  clickParticles.forEach((p, i) => {
-    ctx.fillStyle = `rgba(255,255,200,${1 - p.life / p.maxLife})`;
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-    p.x += p.vx; p.y += p.vy; p.life++;
-    if (p.life > p.maxLife) clickParticles.splice(i, 1);
-  });
-}
-function animate() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  stars.forEach(s => {
-    s.alpha += (Math.random() - 0.5) * 0.05;
-    if (s.alpha < 0) s.alpha = 0;
-    if (s.alpha > 1) s.alpha = 1;
-    s.y += s.speed;
-    if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; }
-    ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
-    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
-  });
-  if (Math.random() < 0.005) spawnComet();
-  comets.forEach((c, i) => {
-    let grad = ctx.createLinearGradient(c.x, c.y, c.x - 120, c.y - 60);
-    grad.addColorStop(0, "rgba(255,255,255,0.8)");
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.strokeStyle = grad; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(c.x - 120, c.y - 60); ctx.stroke();
-    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(c.x, c.y, 3.5, 0, Math.PI * 2); ctx.fill();
-    c.x += c.vx; c.y += c.vy; c.life++;
-    if (c.x > canvas.width + 150 || c.y > canvas.height + 150 || c.life > c.maxLife) comets.splice(i, 1);
-  });
+function drawClickParticles(){ clickParticles.forEach((p,i)=>{ ctx.fillStyle = `rgba(255,255,200,${1-p.life/p.maxLife})`; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); p.x+=p.vx; p.y+=p.vy; p.life++; if(p.life>p.maxLife) clickParticles.splice(i,1); }); }
+function animate(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  stars.forEach(s=>{ s.alpha += (Math.random()-0.5)*0.05; if(s.alpha<0) s.alpha=0; if(s.alpha>1) s.alpha=1; s.y += s.speed; if(s.y>canvas.height){ s.y=0; s.x=Math.random()*canvas.width } ctx.fillStyle = `rgba(255,255,255,${s.alpha})`; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill(); });
+  if(Math.random()<0.005) spawnComet();
+  comets.forEach((c,i)=>{ let grad = ctx.createLinearGradient(c.x,c.y,c.x-120,c.y-60); grad.addColorStop(0,"rgba(255,255,255,0.8)"); grad.addColorStop(1,"rgba(255,255,255,0)"); ctx.strokeStyle = grad; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(c.x,c.y); ctx.lineTo(c.x-120,c.y-60); ctx.stroke(); ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(c.x,c.y,3.5,0,Math.PI*2); ctx.fill(); c.x+=c.vx; c.y+=c.vy; c.life++; if(c.x>canvas.width+150||c.y>canvas.height+150||c.life>c.maxLife) comets.splice(i,1); });
   drawClickParticles();
   requestAnimationFrame(animate);
 }
 animate();
 
-/* =========================
+/* -------------------------
    Утилиты
-   ========================= */
-document.getElementById("clear-search").addEventListener("click", () => {
-  searchInput.value = '';
-  document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
-});
+   ------------------------- */
+document.getElementById('clear-search').addEventListener('click', ()=>{ searchInput.value=''; document.querySelectorAll('#list .item').forEach(d=>d.classList.remove('hidden')); });
 
-/* expose for debugging */
+/* Экспортируем для отладки */
 window._recount = { render, allItems, barcodeDB, startScanner, stopScanner };
 
 </script>
