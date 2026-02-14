@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Инвентаризация — Mobile</title>
+<title>Инвентаризация — Mobile (фиксированная шапка)</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -15,31 +15,94 @@
   --accent:linear-gradient(90deg,var(--neon1),var(--neon2));
   --radius:12px;
   --card-border: rgba(124,58,237,0.10);
+  --header-height:84px; /* высота фиксированной шапки */
 }
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;background:linear-gradient(180deg,#f6f7fb,#f0f2f8);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#0b1020}
-.container{max-width:420px;margin:12px auto;padding:12px;display:flex;flex-direction:column;gap:12px}
-.header{display:flex;flex-direction:column;gap:10px}
-.header-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.brand{display:flex;gap:10px;align-items:center}
-.logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,var(--neon1),var(--neon2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
-.title{font-size:18px;font-weight:700}
-.subtitle{font-size:13px;color:var(--muted)}
-.search-row{display:flex;gap:8px;align-items:center}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,#f6f7fb,#f0f2f8);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#0b1020;-webkit-font-smoothing:antialiased}
+.app{
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+}
+
+/* Фиксированная верхняя панель */
+.header-fixed{
+  position:fixed;
+  left:0;
+  right:0;
+  top:0;
+  height:var(--header-height);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.96));
+  border-bottom:1px solid rgba(11,16,32,0.04);
+  z-index:1100;
+  box-shadow: 0 6px 20px rgba(16,24,40,0.04);
+}
+
+/* Внутри шапки: контейнер */
+.header-inner{
+  width:100%;
+  max-width:420px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+
+/* Бренд слева */
+.brand{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  min-width:0;
+}
+.logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,var(--neon1),var(--neon2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;flex:0 0 44px}
+.title{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Поиск и кнопка сканера — фиксированы в шапке */
+.search-row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex:1;
+}
 .input-wrap{position:relative;flex:1}
-.input{width:100%;padding:10px 40px 10px 12px;border-radius:10px;border:1px solid rgba(11,16,32,0.06);background:#fff;outline:none;font-size:15px}
+.input{
+  width:100%;
+  padding:10px 40px 10px 12px;
+  border-radius:10px;
+  border:1px solid rgba(11,16,32,0.06);
+  background:#fff;
+  outline:none;
+  font-size:15px;
+}
 .clear-x{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--muted);font-weight:700;padding:6px;border-radius:6px;cursor:pointer}
-.scan-btn{padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;background:var(--accent);color:#fff;min-width:84px}
+.scan-btn{padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;background:var(--accent);color:#fff;min-width:84px;flex:0 0 auto}
+
+/* Основной контент под шапкой — делаем отступ сверху равный высоте шапки */
+.content{
+  width:100%;
+  max-width:420px;
+  margin:0 auto;
+  padding:16px;
+  padding-top: calc(var(--header-height) + 12px);
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+/* Карточки и сканер */
 .card{background:var(--panel);border-radius:12px;padding:12px;border:1px solid var(--card-border);box-shadow:0 8px 24px rgba(16,24,40,0.04)}
 .preview-wrap{border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(11,16,32,0.06);display:none}
 .preview-wrap.visible{display:block}
 .preview-wrap.camera-1-3{height:33vh;min-height:140px;max-height:300px}
 video#preview{width:100%;height:100%;object-fit:cover;display:block}
-.controls{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
-.btn{padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;background:#111827;color:#fff}
-.btn.ghost{background:transparent;border:1px solid rgba(11,16,32,0.06);color:var(--muted)}
-.btn.neon{background:var(--accent);color:#fff;box-shadow:0 10px 30px rgba(124,58,237,0.12)}
-.results{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+
+/* Результаты */
+.results{display:flex;flex-direction:column;gap:10px;margin-top:6px}
 .card-item{display:flex;flex-direction:column;padding:10px;border-radius:10px;border:1px solid rgba(11,16,32,0.04);background:linear-gradient(180deg,#fff,#fbfbff)}
 .item-top{display:flex;align-items:center;gap:12px}
 .item-left{display:flex;gap:12px;align-items:center;min-width:0}
@@ -49,74 +112,127 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
 .qty-row{margin-top:10px;display:flex;gap:8px;align-items:center}
 .qty-input{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);font-weight:700;font-size:15px}
 .plus-btn{padding:10px 12px;border-radius:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));color:#fff;border:none;cursor:pointer}
+
+/* Numeric pad (встроенная цифровая панель) */
+.numeric-pad {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg,#fff,#f3f4f8);
+  border-top: 1px solid rgba(11,16,32,0.06);
+  box-shadow: 0 -8px 30px rgba(11,16,32,0.08);
+  padding: 10px;
+  display: none;
+  z-index: 1200;
+}
+.numeric-pad.visible { display: block; }
+.numeric-pad .row { display:flex; gap:8px; margin-bottom:8px; }
+.numeric-pad button.key {
+  flex:1;
+  padding:12px 8px;
+  border-radius:8px;
+  border:1px solid rgba(11,16,32,0.06);
+  background:#fff;
+  font-size:18px;
+  font-weight:700;
+}
+.numeric-pad .key.action { background: linear-gradient(90deg,#7b3be6,#c86cff); color:#fff; border:none; }
+.numeric-pad .key.wide { flex:2; }
+
+/* Мелкие стили */
 .footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
 .clear-btn{background:transparent;border:1px dashed rgba(11,16,32,0.08);padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
 .small{font-size:13px;color:var(--muted)}
-.overlay{position:fixed;inset:0;background:rgba(11,16,32,0.35);z-index:9998;display:none}
-.summary-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:14px;box-shadow:0 20px 60px rgba(11,16,32,0.2);max-width:92%;max-height:80%;overflow:auto;z-index:9999;display:none}
-@media (max-width:420px){ .container{padding:10px} .qty-input{font-size:14px} }
+
+/* Адаптив */
+@media (max-width:420px){
+  .header-inner{padding:0 6px}
+  .input{font-size:15px;padding:10px 36px 10px 10px}
+  .logo{width:40px;height:40px}
+  :root{--header-height:88px}
+}
 </style>
 </head>
 <body>
-<div class="container" role="main" aria-label="Инвентаризация">
-  <header class="header">
-    <div class="header-top">
-      <div class="brand">
+<div class="app" id="app">
+  <!-- Фиксированная шапка -->
+  <div class="header-fixed" role="banner" aria-label="Шапка инвентаризации">
+    <div class="header-inner">
+      <div class="brand" aria-hidden="false">
         <div class="logo">INV</div>
-        <div>
+        <div style="min-width:0">
           <div class="title">Инвентаризация</div>
-          <div class="subtitle">Сканируй, считай, сохраняй</div>
         </div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button id="summaryBtn" class="btn ghost" title="Итог">Итог</button>
-        <button id="clearRecountBtn" class="clear-btn" title="Очистить пересчёт">Очистить пересчёт</button>
+
+      <div class="search-row" role="search" aria-label="Поиск и сканер">
+        <div class="input-wrap">
+          <input id="searchInput" class="input" type="text" placeholder="Поиск по названию или коду" aria-label="Поиск по товарам">
+          <button id="clearSearch" class="clear-x" title="Очистить поле" aria-label="Очистить поле">✕</button>
+        </div>
+        <button id="openScannerBtn" class="scan-btn" aria-label="Открыть сканер">Сканер</button>
       </div>
     </div>
+  </div>
 
-    <div class="search-row">
-      <div class="input-wrap">
-        <input id="searchInput" class="input" type="text" placeholder="Поиск по названию или коду (часть слова)" aria-label="Поиск">
-        <button id="clearSearch" class="clear-x" title="Очистить" aria-label="Очистить поле">✕</button>
+  <!-- Основной контент -->
+  <main class="content" id="content" role="main" aria-label="Контент инвентаризации">
+    <!-- Сканер (скрыт по умолчанию) -->
+    <section id="scannerCard" class="card" style="display:none" aria-hidden="true">
+      <div class="preview-wrap camera-1-3" id="previewWrap">
+        <video id="preview" playsinline muted></video>
       </div>
-      <button id="openScannerBtn" class="scan-btn" aria-label="Открыть сканер">Сканер</button>
-    </div>
-  </header>
 
-  <section id="scannerCard" class="card" style="display:none">
-    <div class="preview-wrap camera-1-3" id="previewWrap">
-      <video id="preview" playsinline muted></video>
-    </div>
-
-    <div class="controls" style="margin-top:8px">
-      <select id="deviceSelect" class="btn ghost" aria-label="Камера" style="min-width:80px"></select>
-      <button id="closeScannerBtn" class="btn ghost">✕ Закрыть</button>
-    </div>
-
-    <div id="scanResult" class="small" style="margin-top:8px"></div>
-  </section>
-
-  <section class="card" aria-labelledby="resultsTitle">
-    <h3 id="resultsTitle" style="margin:0 0 8px 0">Найденные товары</h3>
-    <div id="results" class="results" aria-live="polite">
-      <div id="emptyHint" class="small">Пока нет позиций. Сканируйте штрихкод или добавьте вручную.</div>
-    </div>
-
-    <div class="footer">
-      <div class="small">Если код не в базе — сканер предложит создать товар.</div>
-      <div style="display:flex;gap:8px">
-        <button id="addManualBtn" class="btn ghost">Добавить вручную</button>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+        <select id="deviceSelect" class="btn ghost" aria-label="Выбор камеры" style="min-width:80px"></select>
+        <button id="closeScannerBtn" class="btn ghost" aria-label="Закрыть сканер">✕ Закрыть</button>
       </div>
-    </div>
-  </section>
-</div>
 
-<div id="overlay" class="overlay"></div>
-<div id="summaryModal" class="summary-modal" role="dialog" aria-modal="true">
-  <h3 style="margin-top:0">Итог инвентаризации</h3>
-  <div id="summaryList" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
-  <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
-    <button id="closeSummary" class="btn ghost">Закрыть</button>
+      <div id="scanResult" class="small" style="margin-top:8px"></div>
+    </section>
+
+    <!-- Результаты -->
+    <section class="card" aria-labelledby="resultsTitle">
+      <h3 id="resultsTitle" style="margin:0 0 8px 0">Найденные товары</h3>
+      <div id="results" class="results" aria-live="polite">
+        <div id="emptyHint" class="small">Пока нет позиций. Сканируйте штрихкод или добавьте вручную.</div>
+      </div>
+
+      <div class="footer">
+        <div class="small">Если код не в базе — сканер предложит создать товар.</div>
+        <div style="display:flex;gap:8px">
+          <button id="addManualBtn" class="btn ghost" aria-label="Добавить товар вручную">Добавить вручную</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Встроенная цифровая панель -->
+  <div id="numericPad" class="numeric-pad" aria-hidden="true">
+    <div class="row">
+      <button class="key" data-key="1">1</button>
+      <button class="key" data-key="2">2</button>
+      <button class="key" data-key="3">3</button>
+    </div>
+    <div class="row">
+      <button class="key" data-key="4">4</button>
+      <button class="key" data-key="5">5</button>
+      <button class="key" data-key="6">6</button>
+    </div>
+    <div class="row">
+      <button class="key" data-key="7">7</button>
+      <button class="key" data-key="8">8</button>
+      <button class="key" data-key="9">9</button>
+    </div>
+    <div class="row">
+      <button class="key" data-key="+">+</button>
+      <button class="key" data-key="0">0</button>
+      <button class="key action" id="padBack">←</button>
+    </div>
+    <div class="row">
+      <button class="key wide action" id="padDone">Готово</button>
+    </div>
   </div>
 </div>
 
@@ -151,42 +267,27 @@ const scanResult = document.getElementById('scanResult');
 const resultsEl = document.getElementById('results');
 const emptyHint = document.getElementById('emptyHint');
 const addManualBtn = document.getElementById('addManualBtn');
-const summaryBtn = document.getElementById('summaryBtn');
 const clearRecountBtn = document.getElementById('clearRecountBtn');
 
-const overlay = document.getElementById('overlay');
-const summaryModal = document.getElementById('summaryModal');
-const summaryList = document.getElementById('summaryList');
-const closeSummary = document.getElementById('closeSummary');
+const numericPad = document.getElementById('numericPad');
+const padBack = document.getElementById('padBack');
+const padDone = document.getElementById('padDone');
 
-/* Map of rendered cards to avoid full re-render */
 const renderedCards = new Map();
-/* Track which input (by code) currently has focus */
 let focusedInputCode = null;
+let padTargetCode = null;
 
 /* ===== Utilities ===== */
 function saveDB(){ localStorage.setItem(STORAGE_DB, JSON.stringify(barcodeDB)); }
 function saveInventory(){ localStorage.setItem(STORAGE_INV, JSON.stringify(inventoryItems)); }
-function showToast(text, ms=1400){ scanResult.textContent = text; setTimeout(()=>{ if(scanResult.textContent===text) scanResult.textContent=''; }, ms); }
-function beepSound(){
-  try{
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = 'sine';
-    o.frequency.value = 880;
-    g.gain.value = 0.02;
-    o.connect(g); g.connect(ctx.destination);
-    o.start();
-    setTimeout(()=>{ o.stop(); ctx.close(); }, 120);
-  }catch(e){}
-}
+function showToast(text, ms=1200){ scanResult.textContent = text; setTimeout(()=>{ if(scanResult.textContent===text) scanResult.textContent=''; }, ms); }
+function beepSound(){ try{ const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value=880; g.gain.value=0.02; o.connect(g); g.connect(ctx.destination); o.start(); setTimeout(()=>{ o.stop(); ctx.close(); },120); }catch(e){} }
 function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
 
-/* ===== Search (partial, any order) ===== */
+/* ===== Search helpers ===== */
 function searchItems(query){
   const q = normalize(query);
-  if(!q) return []; // empty by default
+  if(!q) return [];
   const tokens = q.split(/\s+/).filter(Boolean);
   const results = [];
   for(const code of Object.keys(barcodeDB)){
@@ -258,7 +359,6 @@ function renderResults(){
       </div>
 
       <div class="qty-row">
-        <!-- inputmode и pattern помогают вызвать цифровую клавиатуру -->
         <input inputmode="numeric" pattern="[0-9+ ]*" class="qty-input" type="text" value="${escapeHtml(item.expr || String(item.qty || 0))}" aria-label="Выражение для ${item.name}">
         <button class="plus-btn" title="Плюс">+</button>
       </div>
@@ -268,6 +368,8 @@ function renderResults(){
 
     qtyInput.addEventListener('focus', ()=>{
       focusedInputCode = item.code;
+      // if pad is visible, set pad target to this input
+      padTargetCode = item.code;
     });
     qtyInput.addEventListener('blur', ()=>{
       focusedInputCode = null;
@@ -348,52 +450,81 @@ function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
   }
 }
 
-/* Focus input of a card by code and try to open numeric keyboard reliably */
+/* Focus input of a card by code and try to open native keyboard (best-effort) and open numeric pad */
 function focusCardInput(code){
-  // небольшая задержка, чтобы DOM успел обновиться и сканер скрыться
   setTimeout(()=>{
     const card = renderedCards.get(code) || document.querySelector(`[data-code="${code}"]`);
     if(!card) return;
     const input = card.querySelector('.qty-input');
     if(!input) return;
 
-    // Трюк: временно переключаем type -> 'tel', фокусируем, затем восстанавливаем 'text'
-    // Это повышает шанс открытия цифровой клавиатуры на Android/iOS.
+    // Best-effort native keyboard nudge
     try{
-      // Сохраним текущее значение type
-      const prevType = input.type || 'text';
-      // Установим tel, чтобы вызвать цифровую клавиатуру
       input.type = 'tel';
-      // Установим inputmode на numeric (подсказка)
       input.setAttribute('inputmode','numeric');
-      // Фокусируем (пользовательское действие уже было — сканирование/кнопка)
       input.focus();
-      // Поставим каретку в конец
       const len = input.value.length;
       try{ input.setSelectionRange(len, len); }catch(e){}
-      // Через короткий таймаут восстановим type='text', чтобы оставить возможность ввода '+'
-      setTimeout(()=>{
-        try{ input.type = 'text'; }catch(e){}
-        try{ input.setSelectionRange(len, len); }catch(e){}
-      }, 120);
-      // Дополнительно отправим click/touch события — помогают некоторым браузерам
-      setTimeout(()=>{
-        try{
-          input.dispatchEvent(new Event('touchstart', {bubbles:true, cancelable:true}));
-          input.dispatchEvent(new Event('touchend', {bubbles:true, cancelable:true}));
-          input.click();
-        }catch(e){}
-      }, 160);
-      focusedInputCode = code;
+      setTimeout(()=>{ try{ input.type = 'text'; }catch(e){} try{ input.setSelectionRange(len, len); }catch(e){} }, 120);
     }catch(e){
-      // fallback: просто фокус
-      input.focus();
-      focusedInputCode = code;
+      try{ input.focus(); }catch(e){}
     }
+
+    // Open our numeric pad as guaranteed fallback
+    openNumericPad(code);
+    padTargetCode = code;
+    focusedInputCode = code;
   }, 160);
 }
 
-/* ===== Scanner logic (hidden by default) ===== */
+/* ===== Numeric pad integration ===== */
+function openNumericPad(code){
+  padTargetCode = code;
+  numericPad.classList.add('visible');
+  numericPad.setAttribute('aria-hidden','false');
+  // try to keep native keyboard open if it opened
+  setTimeout(()=>{
+    const card = document.querySelector(`[data-code="${code}"]`);
+    if(card){
+      const input = card.querySelector('.qty-input');
+      if(input){
+        try{ input.focus(); }catch(e){}
+      }
+    }
+  }, 80);
+}
+function closeNumericPad(){
+  padTargetCode = null;
+  numericPad.classList.remove('visible');
+  numericPad.setAttribute('aria-hidden','true');
+  try{ document.activeElement && document.activeElement.blur(); }catch(e){}
+}
+function padInsert(ch){
+  if(!padTargetCode) return;
+  const card = document.querySelector(`[data-code="${padTargetCode}"]`);
+  if(!card) return;
+  const input = card.querySelector('.qty-input');
+  if(!input) return;
+  if(ch === '←'){
+    input.value = input.value.slice(0, -1);
+  } else {
+    input.value = (input.value || '') + ch;
+  }
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  try{ input.focus(); }catch(e){}
+}
+
+/* pad button handlers */
+numericPad.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button.key');
+  if(!btn) return;
+  const key = btn.getAttribute('data-key');
+  if(key){ padInsert(key); return; }
+  if(btn.id === 'padBack'){ padInsert('←'); return; }
+  if(btn.id === 'padDone'){ closeNumericPad(); return; }
+});
+
+/* ===== Scanner implementation ===== */
 async function enumerateCameras(){
   try{
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -562,11 +693,28 @@ function handleDetected(code){
   }
 }
 
-/* ===== Search and UI wiring ===== */
+/* ===== UI wiring ===== */
+openScannerBtn.addEventListener('click', ()=>{
+  scannerCard.style.display = 'block';
+  scannerCard.setAttribute('aria-hidden','false');
+  previewWrap.classList.add('visible');
+  startCamera();
+});
+closeScannerBtn.addEventListener('click', ()=>{
+  hideScannerUI();
+});
+function hideScannerUI(){
+  stopCamera();
+  scannerCard.style.display = 'none';
+  scannerCard.setAttribute('aria-hidden','true');
+  previewWrap.classList.remove('visible');
+}
+
+deviceSelect.addEventListener('change', async ()=>{ currentDeviceId = deviceSelect.value; await startCamera(); });
+
 searchInput.addEventListener('input', ()=>{ renderResults(); });
 clearSearch.addEventListener('click', ()=>{ searchInput.value = ''; renderResults(); searchInput.focus(); });
 
-/* Manual add */
 addManualBtn.addEventListener('click', ()=>{
   const code = prompt('Введите штрихкод', '')?.trim();
   if(!code) return;
@@ -579,32 +727,15 @@ addManualBtn.addEventListener('click', ()=>{
   showToast('Добавлено вручную');
 });
 
-/* Summary modal */
-function openSummary(){
-  overlay.style.display = 'block';
-  summaryModal.style.display = 'block';
-  summaryList.innerHTML = '';
-  if(!inventoryItems.length){
-    summaryList.innerHTML = '<div class="small">Нет добавленных позиций</div>';
-    return;
-  }
-  const agg = {};
-  for(const it of inventoryItems){
-    if(!agg[it.code]) agg[it.code] = { name: it.name, qty: 0 };
-    agg[it.code].qty += Number(it.qty || 0);
-  }
-  for(const code of Object.keys(agg)){
-    const row = document.createElement('div');
-    row.style.display = 'flex';
-    row.style.justifyContent = 'space-between';
-    row.style.padding = '8px 0';
-    row.innerHTML = `<div><strong>${agg[code].name || '—'}</strong><div class="small">${code}</div></div><div style="font-weight:700">${agg[code].qty}</div>`;
-    summaryList.appendChild(row);
-  }
-}
-function closeSummaryModal(){ overlay.style.display = 'none'; summaryModal.style.display = 'none'; }
+/* Numeric pad outside click close */
+document.addEventListener('click', (e)=>{
+  if(!numericPad.classList.contains('visible')) return;
+  if(numericPad.contains(e.target)) return;
+  if(e.target.closest('.qty-input')) return;
+  closeNumericPad();
+});
 
-/* Clear recount */
+/* Clear recount (button in header not present in this layout; keep function for future) */
 function clearRecount(){
   if(!confirm('Очистить все текущие пересчёты на этом экране? Это не удалит базу штрих-кодов.')) return;
   inventoryItems = [];
@@ -614,27 +745,6 @@ function clearRecount(){
   showToast('Пересчёт очищен');
 }
 
-/* Show/hide scanner UI and auto-start when shown */
-function showScannerUI(){
-  scannerCard.style.display = 'block';
-  previewWrap.classList.add('visible');
-  startCamera();
-}
-function hideScannerUI(){
-  stopCamera();
-  scannerCard.style.display = 'none';
-  previewWrap.classList.remove('visible');
-}
-
-/* Events wiring */
-openScannerBtn.addEventListener('click', ()=>{ showScannerUI(); });
-closeScannerBtn.addEventListener('click', ()=>{ hideScannerUI(); });
-deviceSelect.addEventListener('change', async ()=>{ currentDeviceId = deviceSelect.value; await startCamera(); });
-summaryBtn.addEventListener('click', openSummary);
-closeSummary.addEventListener('click', closeSummaryModal);
-overlay.addEventListener('click', closeSummaryModal);
-clearRecountBtn.addEventListener('click', clearRecount);
-
 /* Init */
 renderResults();
 enumerateCameras();
@@ -642,6 +752,7 @@ navigator.mediaDevices.getUserMedia({video:true}).then(s=>{ s.getTracks().forEac
 </script>
 </body>
 </html>
+
 
 
 
