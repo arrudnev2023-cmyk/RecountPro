@@ -140,22 +140,20 @@ input[data-code] {
 #custom-keyboard.show { bottom: 0; }
 #custom-keyboard button { width: 100%; height: 100%; font-size: 1.6rem; background: #333; color: #fff; border: none; border-radius: 8px; cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; transition: background 0.15s ease, transform 0.1s ease; }
 #custom-keyboard button:active { background: #555; transform: scale(0.95); }
-#custom-keyboard .done { grid-column: 1 / -1; background: linear-gradient(90deg,var(--accent-1),var(--accent-2)); font-weight:800; font-size:1.1rem; }
+#custom-keyboard .done { grid-column: 1 / -1; background: linear-gradient(90deg,var(--accent),var(--accent-light)); font-weight:800; font-size:1.1rem; }
 
 /* Scanner preview card */
-#scannerCard { display:none; margin: 0.5rem auto; max-width:600px; }
+#scannerCard { display:none; margin: 0.5rem auto; max-width:600px; color:#ddd; }
 .preview-wrap{ border-radius:10px; overflow:hidden; background:#000; border:1px solid rgba(11,16,32,0.06); }
 .preview-wrap.visible{ display:block; }
 .preview-wrap.camera-1-3{ height:32vh; min-height:140px; max-height:300px; }
 video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 
-/* Menu removed per request; keep minimal debug area */
-#ocr-debug { position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: #0f0; padding: 10px; font-size: 16px; z-index: 99999; max-width: 90vw; white-space: pre-wrap; display:none; }
-
 /* small responsive tweaks */
 @media (min-width: 900px) {
   #content { padding-left: 1.5rem; padding-right: 1.5rem; }
 }
+.hidden { display:none !important; }
   </style>
 </head>
 <body>
@@ -203,20 +201,16 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
     <button class="done" id="done">Готово</button>
   </div>
 
-  <div id="ocr-debug"></div>
-
 <script>
 /* =========================
    База штрихкодов (пример)
-   =========================
-   Замените на реальную базу (fetch/локалка) при интеграции.
-*/
+   ========================= */
 const barcodeDB = {
-  "4601234000011": { code: "4601234000011", name: "Молоко 1л", unit: "шт", price: 59.90 },
-  "4601234000028": { code: "4601234000028", name: "Хлеб ржаной", unit: "шт", price: 35.00 },
-  "4601234000035": { code: "4601234000035", name: "Яблоки кг", unit: "кг", price: 120.00 },
-  "4601234000042": { code: "4601234000042", name: "Сыр 200г", unit: "шт", price: 250.00 },
-  "4601234000059": { code: "4601234000059", name: "Кофе 250г", unit: "шт", price: 499.00 }
+  "4601234000011": { code: "4601234000011", name: "Молоко 1л" },
+  "4601234000028": { code: "4601234000028", name: "Хлеб ржаной" },
+  "4601234000035": { code: "4601234000035", name: "Яблоки кг" },
+  "4601234000042": { code: "4601234000042", name: "Сыр 200г" },
+  "4601234000059": { code: "4601234000059", name: "Кофе 250г" }
 };
 
 /* =========================
@@ -225,7 +219,7 @@ const barcodeDB = {
 const list = document.getElementById("list");
 const searchInput = document.getElementById("search");
 const keyboard = document.getElementById("custom-keyboard");
-let allItems = [];            // массив объектов {code,name,unit,price,docQty}
+let allItems = [];            // массив объектов {code,name,docQty}
 let sessionValues = {};      // сохранённые факты
 let activeInput = null;
 
@@ -234,8 +228,6 @@ function initFromBarcodeDB() {
   allItems = Object.values(barcodeDB).map(b => ({
     code: b.code,
     name: b.name,
-    unit: b.unit || '',
-    price: b.price || 0,
     docQty: 0 // по умолчанию 0 — можно заполнить из внешнего источника
   }));
   render(allItems);
@@ -243,7 +235,7 @@ function initFromBarcodeDB() {
 initFromBarcodeDB();
 
 /* =========================
-   Рендер карточек (как в вашем коде)
+   Рендер карточек (без размерности и цены)
    ========================= */
 function render(items) {
   list.innerHTML = '';
@@ -255,8 +247,6 @@ function render(items) {
     div.innerHTML = `
       <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
       <div class="field"><span class="label">Название:</span> ${item.name}</div>
-      <div class="field"><span class="label">Размерность:</span> ${item.unit}</div>
-      <div class="field"><span class="label">Цена:</span> ${item.price.toFixed(2)} ₽</div>
       <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
       <div class="field">
         <span class="label">Фактическое количество:</span>
@@ -308,7 +298,7 @@ function attachInputHandlers() {
   const doneBtn = document.getElementById('done');
   doneBtn.addEventListener('click', closeKeyboard);
 
-  // back button (redundant)
+  // back button
   document.getElementById('back').addEventListener('click', () => {
     if (!activeInput) return;
     activeInput.value = activeInput.value.slice(0, -1);
@@ -329,13 +319,11 @@ function openKeyboardFor(input) {
   document.getElementById("content").classList.add("with-keyboard");
   // плавно скроллим так, чтобы поле было видимо и клавиатура не перекрывала
   setTimeout(() => {
-    // вычислим видимую область и при необходимости поднимем элемент
     const rect = input.getBoundingClientRect();
     const viewportH = window.innerHeight;
     const padHeight = Math.max(260, Math.round(viewportH * 0.33));
-    const desiredBottom = padHeight + 16; // запас
+    const desiredBottom = padHeight + 16;
     if (rect.bottom > viewportH - desiredBottom) {
-      // сколько нужно прокрутить внутри content
       const content = document.getElementById('content');
       const offset = rect.bottom - (viewportH - desiredBottom);
       content.scrollBy({ top: offset + 12, behavior: 'smooth' });
@@ -383,9 +371,7 @@ list.addEventListener("input", e => {
 });
 
 /* =========================
-   Поиск (по названию и коду)
-   - tolerant: разбивает запрос на слова, ищет в любом порядке
-   - также ищет по коду
+   Поиск (как в вашем коде) — скрывает карточки, которые не подходят
    ========================= */
 function normalize(str) {
   return String(str || "").toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
@@ -412,7 +398,7 @@ document.getElementById("clear-search").addEventListener("click", () => {
 });
 
 /* =========================
-   Autosave / sessions (упрощённо)
+   Autosave (упрощённо)
    ========================= */
 function autosave() {
   const session = { items: allItems, values: sessionValues };
@@ -422,10 +408,10 @@ function autosave() {
 window.addEventListener("beforeunload", autosave);
 
 /* =========================
-   Scanner (ZXing) integration
-   - кнопка в шапке открывает превью
-   - при нахождении штрихкода: останавливаем сканер, ищем в barcodeDB
-   - если найдено — подсвечиваем карточку, скроллим и открываем клавиатуру
+   Scanner (ZXing) — исправленный старт
+   - сначала запрашиваем getUserMedia (чтобы точно вызвать prompt)
+   - затем подключаем поток к preview и запускаем декодер по элементу video
+   - при остановке корректно останавливаем треки и reset декодера
    ========================= */
 let codeReader = null;
 let scanning = false;
@@ -451,6 +437,13 @@ async function enumerateCameras() {
       opt.text = c.label || `Камера ${idx+1}`;
       deviceSelect.appendChild(opt);
     });
+    // если нет камер — добавляем пустой вариант
+    if (cams.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.text = 'Камера не найдена';
+      deviceSelect.appendChild(opt);
+    }
   } catch (e) {
     // ignore
   }
@@ -464,12 +457,27 @@ async function startScanner() {
     scanResult.textContent = 'Сканер недоступен';
     return;
   }
+
   await enumerateCameras();
+
+  // сначала явно запросим разрешение и поток — это помогает на некоторых устройствах/браузерах
   const deviceId = deviceSelect.value || undefined;
+  const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { ideal: "environment" } } };
+
   try {
+    scanResult.textContent = 'Запрашиваем доступ к камере...';
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    // подключаем поток к preview
+    preview.srcObject = stream;
+    preview.play().catch(()=>{});
+    previewWrap.classList.add('visible');
+    scannerCard.style.display = 'block';
+    scanBtn.classList.add('recording');
+    scanResult.textContent = 'Сканер запущен';
+
+    // используем decodeFromVideoElement для стабильности
     scanning = true;
-    scanResult.textContent = 'Запуск камеры...';
-    codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
+    codeReader.decodeFromVideoElement(preview, (result, err) => {
       if (result && result.text) {
         const now = Date.now();
         if (result.text === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
@@ -477,14 +485,12 @@ async function startScanner() {
         beep();
         handleDetected(result.text);
       }
+      // ошибки игнорируем — декодер сам пытается дальше
     });
-    previewWrap.classList.add('visible');
-    scannerCard.style.display = 'block';
-    scanBtn.classList.add('recording');
-    scanResult.textContent = 'Сканер запущен';
-  } catch (e) {
+  } catch (err) {
     scanning = false;
-    scanResult.textContent = 'Ошибка доступа к камере';
+    scanResult.textContent = 'Ошибка доступа к камере или устройство не поддерживает камеру';
+    console.error('startScanner error', err);
   }
 }
 
@@ -542,22 +548,22 @@ function handleDetected(code) {
     // подсветка карточки, скролл и открытие клавиатуры
     const card = document.querySelector(`.item[data-code="${found.code}"]`);
     if (card) {
-      // подсветим
       card.classList.add('found');
       setTimeout(() => card.classList.remove('found'), 2200);
 
-      // скроллим и открываем клавиатуру на поле факта
       const input = card.querySelector('input[data-code]');
       if (input) {
-        // фокусируем и открываем кастомную клавиатуру
         setTimeout(() => {
           input.focus();
           openKeyboardFor(input);
         }, 220);
       }
+      // если карточка скрыта из-за поиска — убираем скрытие
+      card.classList.remove('hidden');
+      // прокрутка к карточке
+      setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 260);
     } else {
-      // если карточки нет (например, не загружена) — добавим её в список и рендерим
-      allItems.unshift({ code: found.code, name: found.name, unit: found.unit || '', price: found.price || 0, docQty: 0 });
+      allItems.unshift({ code: found.code, name: found.name, docQty: 0 });
       render(allItems);
       const newCard = document.querySelector(`.item[data-code="${found.code}"]`);
       if (newCard) {
@@ -565,14 +571,14 @@ function handleDetected(code) {
         setTimeout(() => newCard.classList.remove('found'), 2200);
         const input = newCard.querySelector('input[data-code]');
         if (input) setTimeout(() => { input.focus(); openKeyboardFor(input); }, 220);
+        setTimeout(() => newCard.scrollIntoView({ behavior: 'smooth', block: 'center' }), 260);
       }
     }
   } else {
-    // не найден — предлагаем добавить (простая реализация)
     if (confirm(`Код ${code} не найден в базе. Добавить как новый товар?`)) {
       const name = prompt('Введите название товара', '') || `Товар ${code}`;
-      barcodeDB[code] = { code, name, unit: '', price: 0 };
-      allItems.unshift({ code, name, unit: '', price: 0, docQty: 0 });
+      barcodeDB[code] = { code, name };
+      allItems.unshift({ code, name, docQty: 0 });
       render(allItems);
       const newCard = document.querySelector(`.item[data-code="${code}"]`);
       if (newCard) {
@@ -580,6 +586,7 @@ function handleDetected(code) {
         setTimeout(() => newCard.classList.remove('found'), 2200);
         const input = newCard.querySelector('input[data-code]');
         if (input) setTimeout(() => { input.focus(); openKeyboardFor(input); }, 220);
+        setTimeout(() => newCard.scrollIntoView({ behavior: 'smooth', block: 'center' }), 260);
       }
     }
   }
@@ -591,7 +598,7 @@ if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
 }
 
 /* =========================
-   Canvas background animation (stars/comets) — как в вашем коде
+   Canvas background animation (stars/comets)
    ========================= */
 const canvas = document.getElementById("bg");
 const ctx = canvas.getContext("2d");
@@ -649,7 +656,7 @@ function animate() {
 animate();
 
 /* =========================
-   Утилиты: очистка, экспорт и т.д. (упрощённо)
+   Утилиты
    ========================= */
 document.getElementById("clear-search").addEventListener("click", () => {
   searchInput.value = '';
