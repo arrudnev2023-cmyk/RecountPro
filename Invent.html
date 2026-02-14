@@ -1,533 +1,600 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <title>RecountPro — Пересчёт</title>
 
-  <!-- ZXing и вспомогательные библиотеки (по необходимости) -->
+  <!-- ZXing -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
     :root{
-      --accent:#6d28d9; --accent-light:#a78bfa; --text:#e6eef8; --muted:#9aa3b2;
-      --card-bg: linear-gradient(135deg,#1e1e2f,#2a2a40); --max-width:980px;
+      --accent:#6d28d9; --accent-light:#a78bfa; --bg:#000; --card:#111;
+      --muted:#9aa3b2; --text:#e6eef8; --radius:12px; --maxw:980px;
     }
     *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
-    html,body{height:100%;margin:0;background:#000;color:var(--text);font-family:Segoe UI,system-ui,Arial;overflow:hidden; touch-action: manipulation;}
-    /* предотвращаем зум по двойному тапу */
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#05030a,#0b0710);color:var(--text);font-family:Inter,Segoe UI,system-ui,Arial;overflow:hidden; touch-action: manipulation;}
+    /* prevent double-tap zoom */
     html,body,button,input,select,textarea{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
     #bg{position:fixed;inset:0;z-index:-1;background:#000}
-    #header{position:fixed;left:0;right:0;top:0;z-index:1000;background:rgba(12,12,16,0.72);backdrop-filter:blur(10px);padding:12px;border-radius:0 0 18px 18px}
-    #header h1{margin:0;text-align:center;font-size:1.15rem}
-    #search-container{margin-top:8px;max-width:var(--max-width);margin-left:auto;margin-right:auto;position:relative}
-    #search{width:100%;padding:10px 56px 10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(20,20,24,0.6);color:#fff;font-size:15px}
-    #clear-search{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;z-index:3}
-    #voice-or-scan{position:absolute;right:48px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;z-index:3}
+    header{position:fixed;left:0;right:0;top:0;padding:12px;background:rgba(10,10,12,0.7);backdrop-filter:blur(8px);z-index:1000;border-radius:0 0 14px 14px}
+    header h1{margin:0;text-align:center;font-size:1.15rem}
+    #search-wrap{max-width:var(--maxw);margin:10px auto;position:relative}
+    #search{width:100%;padding:10px 56px 10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(20,20,24,0.6);color:var(--text);font-size:15px}
+    #scan-btn{position:absolute;right:44px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer}
+    #clear-search{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer}
     #content{position:fixed;left:0;right:0;top:96px;bottom:0;overflow:auto;padding:12px;box-sizing:border-box}
-    #content.with-keyboard{padding-bottom:34vh}
-    .item{max-width:var(--max-width);margin:10px auto;padding:12px;border-radius:12px;background:var(--card-bg);box-shadow:0 8px 30px rgba(0,0,0,0.6);border-left:6px solid transparent}
+    .card{max-width:var(--maxw);margin:10px auto;padding:12px;border-radius:12px;background:linear-gradient(135deg,#121018,#1b1724);box-shadow:0 10px 30px rgba(0,0,0,0.6)}
+    .preview-wrap{border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,0.03)}
+    .preview-wrap.camera-1-3{height:34vh;min-height:140px}
+    video#preview{width:100%;height:100%;object-fit:cover;display:block}
+    .controls{display:flex;gap:8px;align-items:center;margin-top:10px}
+    .btn{padding:8px 10px;border-radius:8px;border:none;cursor:pointer;background:#222;color:var(--text)}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-light));color:#07060b;font-weight:700}
+    .list{max-width:var(--maxw);margin:12px auto;display:flex;flex-direction:column;gap:8px}
+    .item{padding:10px;border-radius:10px;background:linear-gradient(180deg,#0f0d14,#16121b);display:flex;flex-direction:column;gap:6px;border-left:6px solid transparent}
     .item.match{border-left-color:#22c55e}
     .item.missing{border-left-color:#ef4444}
     .item.excess{border-left-color:#3b82f6}
     .item.found{box-shadow:0 18px 50px rgba(106,17,203,0.18);transform:translateY(-6px)}
-    .field{margin-bottom:8px}
-    .label{font-weight:700;color:#dbeafe;margin-right:6px}
-    input[data-code]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#fff;color:#000;font-size:15px}
+    input[data-code]{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:#fff;color:#000}
     #custom-keyboard{position:fixed;left:0;right:0;bottom:-40vh;height:34vh;background:#0b0b0d;padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;z-index:3000;transition:bottom .28s}
     #custom-keyboard.show{bottom:0}
     #custom-keyboard button{border:none;border-radius:8px;background:#222;color:#fff;font-size:20px;cursor:pointer}
-    #custom-keyboard .done{grid-column:1 / -1;background:linear-gradient(90deg,var(--accent),var(--accent-light));font-weight:800;font-size:18px}
-    #scannerCard{display:none;max-width:var(--max-width);margin:10px auto;color:#ddd}
-    .preview-wrap{border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,0.04)}
-    .preview-wrap.camera-1-3{height:34vh;min-height:140px}
-    video#preview{width:100%;height:100%;object-fit:cover;display:block}
-    #deviceSelect{background:#111;color:#fff;border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.04)}
-    #scanResult{margin-top:8px;color:var(--muted)}
     .hidden{display:none!important}
-    #export-area{display:none}
     @media(min-width:900px){#content{padding-left:24px;padding-right:24px}}
   </style>
 </head>
 <body>
   <canvas id="bg"></canvas>
 
-  <div id="header">
+  <header>
     <h1>RecountPro — Пересчёт</h1>
-    <div id="search-container">
-      <div style="position:relative;">
-        <input id="search" type="text" placeholder="Поиск..." autocomplete="off" />
-        <button id="clear-search" aria-label="Очистить">×</button>
-        <button id="voice-or-scan" aria-label="Сканер" title="Открыть сканер">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 7v4a1 1 0 0 0 1 1h4" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 17v-4a1 1 0 0 0-1-1h-4" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="7" y="7" width="10" height="10" rx="2" stroke="#cbd5e1" stroke-width="1.6" fill="none"/><circle cx="12" cy="12" r="2.2" stroke="#cbd5e1" stroke-width="1.6" fill="none"/></svg>
-        </button>
-      </div>
+    <div id="search-wrap">
+      <input id="search" placeholder="Поиск по названию или коду..." autocomplete="off" />
+      <button id="scan-btn" title="Открыть сканер">📷</button>
+      <button id="clear-search" title="Очистить">×</button>
     </div>
-  </div>
+  </header>
 
-  <div id="content">
-    <div id="scannerCard">
+  <main id="content">
+    <!-- Scanner card -->
+    <div class="card" id="scannerCard" style="display:none">
       <div class="preview-wrap camera-1-3" id="previewWrap"><video id="preview" playsinline muted></video></div>
-      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-        <select id="deviceSelect" aria-label="Камера"></select>
-        <button id="closeScannerBtn" style="background:none;border:1px solid rgba(255,255,255,0.06);color:#fff;padding:8px;border-radius:8px;cursor:pointer">✕ Закрыть</button>
+      <div class="controls">
+        <select id="deviceSelect" class="btn" style="min-width:160px"></select>
+        <button id="torchBtn" class="btn">🔦</button>
+        <button id="closeScannerBtn" class="btn">Закрыть</button>
+        <div id="scanResult" style="margin-left:auto;color:var(--muted)"></div>
       </div>
-      <div id="scanResult"></div>
     </div>
 
-    <div id="list"></div>
-  </div>
+    <!-- Items list -->
+    <div id="list" class="list"></div>
+  </main>
 
+  <!-- Custom keyboard -->
   <div id="custom-keyboard" aria-hidden="true">
     <button>1</button><button>2</button><button>3</button>
     <button>4</button><button>5</button><button>6</button>
     <button>7</button><button>8</button><button>9</button>
     <button>+</button><button>0</button><button id="back">←</button>
-    <button class="done" id="done">Готово</button>
+    <button class="done" id="done" style="grid-column:1 / -1">Готово</button>
   </div>
 
-  <div id="export-area"></div>
-
 <script>
-/* -------------------------
-   Утилиты и переменные
-   ------------------------- */
-let barcodeDB = {}; // будет загружена из Scaner.html или fallback
+/* =========================
+   State and elements
+   ========================= */
+let db = JSON.parse(localStorage.getItem('barcodeDB') || '{}'); // real DB from Scaner.html
+let barcodeDB = db; // alias
 let allItems = [];
 let sessionValues = {};
 let activeInput = null;
-let codeReader = null;
+
+/* Scanner state */
+let stream = null;
+let currentDeviceId = null;
 let scanning = false;
-let lastDetected = { code: null, ts: 0 };
+let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
+let reader = null; // ZXing reader instance
+let lastDetected = {code:null, ts:0};
 const DEBOUNCE_MS = 900;
 
-/* DOM элементы */
-const listEl = () => document.getElementById('list');
-const searchInput = () => document.getElementById('search');
-const clearSearchBtn = () => document.getElementById('clear-search');
-const scanBtn = () => document.getElementById('voice-or-scan');
-const keyboard = () => document.getElementById('custom-keyboard');
-const preview = () => document.getElementById('preview');
-const previewWrap = () => document.getElementById('previewWrap');
-const scannerCard = () => document.getElementById('scannerCard');
-const deviceSelect = () => document.getElementById('deviceSelect');
-const closeScannerBtn = () => document.getElementById('closeScannerBtn');
-const scanResult = () => document.getElementById('scanResult');
+/* Canvas pool for decoding */
+let canvasPool = [];
+let scanLoopRunning = false;
 
-/* -------------------------
-   Загрузка внешней базы Scaner.html (безопасно)
-   ------------------------- */
-async function loadExternalScaner() {
-  try {
-    const resp = await fetch('Scaner.html', { cache: 'no-store' });
-    if (!resp.ok) throw new Error('fetch failed');
-    const text = await resp.text();
+/* Elements */
+const listEl = document.getElementById('list');
+const searchEl = document.getElementById('search');
+const scanBtn = document.getElementById('scan-btn');
+const clearSearchBtn = document.getElementById('clear-search');
 
-    // 1) Ищем JSON внутри <script id="scaner-data" type="application/json">...</script>
-    const jsonMatch = text.match(/<script[^>]*id=["']scaner-data["'][^>]*type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/i);
-    if (jsonMatch && jsonMatch[1]) {
-      try {
-        const parsed = JSON.parse(jsonMatch[1]);
-        if (parsed && typeof parsed === 'object') {
-          barcodeDB = parsed;
-          console.info('Loaded barcodeDB from Scaner.html (embedded JSON).');
-          return;
-        }
-      } catch (e) { /* continue */ }
-    }
+const scannerCard = document.getElementById('scannerCard');
+const preview = document.getElementById('preview');
+const previewWrap = document.getElementById('previewWrap');
+const deviceSelect = document.getElementById('deviceSelect');
+const closeScannerBtn = document.getElementById('closeScannerBtn');
+const torchBtn = document.getElementById('torchBtn');
+const scanResult = document.getElementById('scanResult');
 
-    // 2) Ищем присвоение window.scanerDB = {...}
-    const assignMatch = text.match(/window\.scanerDB\s*=\s*({[\s\S]*?});/i);
-    if (assignMatch && assignMatch[1]) {
-      try {
-        const obj = (new Function('return ' + assignMatch[1]))();
-        if (obj && typeof obj === 'object') {
-          barcodeDB = obj;
-          console.info('Loaded barcodeDB from Scaner.html (window.scanerDB assignment).');
-          return;
-        }
-      } catch (e) { /* continue */ }
-    }
+const keyboard = document.getElementById('custom-keyboard');
 
-    throw new Error('No scaner data found');
-  } catch (e) {
-    console.warn('Не удалось загрузить Scaner.html, используем локальную тестовую базу.', e);
-    barcodeDB = {
-      "4601234000011": { code: "4601234000011", name: "Молоко 1л", unit: "шт", price: 59.90 },
-      "4601234000028": { code: "4601234000028", name: "Хлеб ржаной", unit: "шт", price: 35.00 },
-      "4601234000035": { code: "4601234000035", name: "Яблоки кг", unit: "кг", price: 120.00 },
-      "4601234000042": { code: "4601234000042", name: "Сыр 200г", unit: "шт", price: 250.00 },
-      "4601234000059": { code: "4601234000059", name: "Кофе 250г", unit: "шт", price: 499.00 }
-    };
-  }
+/* =========================
+   Utilities
+   ========================= */
+function showToast(text, ms = 1200){
+  // simple non-blocking toast using scanResult area for brevity
+  scanResult.innerText = text;
+  setTimeout(()=>{ if(scanResult.innerText === text) scanResult.innerText = ''; }, ms);
 }
-
-/* -------------------------
-   Выбор задней камеры
-   ------------------------- */
-function chooseRearCamera(devices) {
-  if (!devices || devices.length === 0) return null;
-  const labels = devices.map(d => (d.label || '').toLowerCase());
-  for (let i = 0; i < devices.length; i++) {
-    const l = labels[i];
-    if (!l) continue;
-    if (l.includes('back') || l.includes('rear') || l.includes('environment') || l.includes('задн') || l.includes('тыл')) {
-      return devices[i].deviceId;
-    }
-  }
-  return devices[devices.length - 1].deviceId;
-}
-
-async function enumerateCamerasAndSelectRear() {
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const cams = devices.filter(d => d.kind === 'videoinput');
-    const sel = deviceSelect();
-    sel.innerHTML = '';
-    cams.forEach((c, idx) => {
-      const opt = document.createElement('option');
-      opt.value = c.deviceId;
-      opt.text = c.label || `Камера ${idx+1}`;
-      sel.appendChild(opt);
-    });
-    if (cams.length === 0) {
-      const opt = document.createElement('option');
-      opt.value = '';
-      opt.text = 'Камера не найдена';
-      sel.appendChild(opt);
-      return null;
-    }
-    const rearId = chooseRearCamera(cams);
-    if (rearId) sel.value = rearId;
-    else sel.selectedIndex = 0;
-    return sel.value || cams[0].deviceId;
-  } catch (e) {
-    console.warn('enumerateCameras error', e);
-    return null;
-  }
-}
-
-/* -------------------------
-   Сканер: старт/стоп
-   ------------------------- */
-async function startScanner() {
-  if (scanning) return;
-  try {
-    try { if (codeReader) codeReader.reset(); } catch (e) {}
-    codeReader = new ZXing.BrowserMultiFormatReader();
-  } catch (e) {
-    scanResult().textContent = 'Сканер недоступен';
-    return;
-  }
-
-  const selectedRear = await enumerateCamerasAndSelectRear();
-  const deviceId = selectedRear || undefined;
-  const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { ideal: "environment" } } };
-
-  try {
-    scanResult().textContent = 'Запрашиваем доступ к камере...';
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    preview().srcObject = stream;
-    try { await preview().play(); } catch (e) {}
-    previewWrap().classList.add('visible');
-    scannerCard().style.display = 'block';
-    scanResult().textContent = 'Сканер запущен';
-    scanning = true;
-
-    codeReader.decodeFromVideoDevice(deviceId, preview(), (result, err) => {
-      if (result && result.text) {
-        const now = Date.now();
-        if (result.text === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
-        lastDetected = { code: result.text, ts: now };
-        beep();
-        handleDetected(result.text);
-      }
-    });
-  } catch (err) {
-    scanning = false;
-    scanResult().textContent = 'Ошибка доступа к камере или устройство не поддерживает камеру';
-    console.error('startScanner error', err);
-  }
-}
-
-function stopScanner() {
-  try { if (codeReader) codeReader.reset(); } catch (e) {}
-  scanning = false;
-  try {
-    const stream = preview().srcObject;
-    if (stream && stream.getTracks) stream.getTracks().forEach(t => t.stop());
-  } catch (e) {}
-  preview().srcObject = null;
-  previewWrap().classList.remove('visible');
-  scannerCard().style.display = 'none';
-  scanResult().textContent = '';
-}
-
-function beep() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = 'sine';
-    o.frequency.value = 880;
-    g.gain.value = 0.02;
-    o.connect(g); g.connect(ctx.destination);
-    o.start();
-    setTimeout(()=>{ o.stop(); ctx.close(); }, 120);
-  } catch (e) {}
-}
-
-/* -------------------------
-   Обработка найденного кода
-   ------------------------- */
-function handleDetected(code) {
-  try { if (codeReader) codeReader.reset(); } catch (e) {}
-  scanning = false;
-  try { const stream = preview().srcObject; if (stream && stream.getTracks) stream.getTracks().forEach(t => t.stop()); } catch (e) {}
-  preview().srcObject = null;
-  previewWrap().classList.remove('visible');
-  scannerCard().style.display = 'none';
-  scanResult().textContent = `Найден код: ${code}`;
-
-  const found = barcodeDB[code];
-  if (found) {
-    const card = document.querySelector(`.item[data-code="${found.code}"]`);
-    if (card) {
-      card.classList.add('found');
-      card.classList.remove('hidden');
-      setTimeout(()=>card.classList.remove('found'), 2200);
-      setTimeout(()=> card.scrollIntoView({ behavior:'smooth', block:'center' }), 160);
-      const input = card.querySelector('input[data-code]');
-      if (input) setTimeout(()=>{ input.focus(); openKeyboardFor(input); }, 320);
-    } else {
-      allItems.unshift({ code: found.code, name: found.name, unit: found.unit || '', price: found.price || 0, docQty: 0 });
-      render(allItems);
-      const newCard = document.querySelector(`.item[data-code="${found.code}"]`);
-      if (newCard) {
-        newCard.classList.add('found');
-        setTimeout(()=>newCard.classList.remove('found'), 2200);
-        setTimeout(()=> newCard.scrollIntoView({ behavior:'smooth', block:'center' }), 160);
-        const input = newCard.querySelector('input[data-code]');
-        if (input) setTimeout(()=>{ input.focus(); openKeyboardFor(input); }, 320);
-      }
-    }
-  } else {
-    const create = confirm(`Код ${code} не найден в базе. Добавить как новый товар?`);
-    if (create) {
-      const name = prompt('Введите название товара', '') || `Товар ${code}`;
-      barcodeDB[code] = { code, name, unit: '', price: 0 };
-      allItems.unshift({ code, name, unit: '', price: 0, docQty: 0 });
-      render(allItems);
-      const newCard = document.querySelector(`.item[data-code="${code}"]`);
-      if (newCard) {
-        newCard.classList.add('found');
-        setTimeout(()=>newCard.classList.remove('found'), 2200);
-        setTimeout(()=> newCard.scrollIntoView({ behavior:'smooth', block:'center' }), 160);
-        const input = newCard.querySelector('input[data-code]');
-        if (input) setTimeout(()=>{ input.focus(); openKeyboardFor(input); }, 320);
-      }
-    }
-  }
-}
-
-/* -------------------------
-   UI: рендер, поиск, клавиатура, автосохранение
-   ------------------------- */
+function saveDB(){ localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB)); }
 function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function normalize(str){ return String(str||"").toLowerCase().replace(/ё/g,"е").replace(/№/g,"").replace(/\s+/g," ").trim(); }
-function matchesQuery(text, query){ const words = query.split(" ").filter(Boolean); return words.every(w => text.includes(w)); }
 
-function render(items) {
-  const container = listEl();
-  container.innerHTML = '';
-  items.forEach(item => {
-    const value = sessionValues[item.code] || localStorage.getItem("qty_" + item.code) || "";
+/* =========================
+   Load DB and build items
+   ========================= */
+function loadBarcodeDB(){
+  try{
+    const raw = localStorage.getItem('barcodeDB');
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && typeof parsed === 'object'){
+        barcodeDB = parsed;
+        db = barcodeDB;
+        return;
+      }
+    }
+  }catch(e){}
+  // fallback sample if none
+  barcodeDB = {
+    "4601234000011": { code: "4601234000011", name: "Молоко 1л", unit: "шт", price: 59.90 },
+    "4601234000028": { code: "4601234000028", name: "Хлеб ржаной", unit: "шт", price: 35.00 },
+    "4601234000035": { code: "4601234000035", name: "Яблоки кг", unit: "кг", price: 120.00 },
+    "4601234000042": { code: "4601234000042", name: "Сыр 200г", unit: "шт", price: 250.00 },
+    "4601234000059": { code: "4601234000059", name: "Кофе 250г", unit: "шт", price: 499.00 }
+  };
+  db = barcodeDB;
+  saveDB();
+}
+
+function buildAllItemsFromDB(){
+  allItems = Object.keys(barcodeDB).map(k=>{
+    const b = barcodeDB[k];
+    return { code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0, docQty: 0 };
+  });
+}
+
+/* =========================
+   Render UI
+   ========================= */
+function render(items){
+  listEl.innerHTML = '';
+  items.forEach(item=>{
+    const value = sessionValues[item.code] || localStorage.getItem('qty_' + item.code) || '';
     const div = document.createElement('div');
     div.className = 'item';
     div.dataset.code = item.code;
     div.innerHTML = `
-      <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
-      <div class="field"><span class="label">Название:</span> ${escapeHtml(item.name)}</div>
-      <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
-      <div class="field">
-        <span class="label">Фактическое количество:</span>
-        <input type="text" data-code="${item.code}" value="${escapeHtml(value)}" inputmode="none" readonly />
+      <div><strong>${item.code}</strong></div>
+      <div style="font-size:0.95rem;color:var(--muted)">${escapeHtml(item.name)}</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+        <div style="flex:1">
+          <input type="text" data-code="${item.code}" value="${escapeHtml(value)}" inputmode="none" readonly />
+        </div>
+        <div style="min-width:70px;text-align:right;color:var(--muted)">${item.docQty} шт</div>
       </div>
     `;
+    // initial coloring
     let actual = 0;
-    try { actual = Function("return " + (value || "0").replace(',', '.'))() || 0; } catch {}
-    if (actual === item.docQty) div.classList.add('match');
-    else if (actual < item.docQty) div.classList.add('missing');
-    else if (actual > item.docQty) div.classList.add('excess');
-    container.appendChild(div);
+    try{ actual = Function("return " + (value || "0").replace(',', '.'))() || 0; }catch{}
+    if(actual === item.docQty) div.classList.add('match');
+    else if(actual < item.docQty) div.classList.add('missing');
+    else if(actual > item.docQty) div.classList.add('excess');
+
+    listEl.appendChild(div);
   });
   attachInputHandlers();
-  updateSummary(items);
 }
 
-function attachInputHandlers() {
-  document.querySelectorAll('input[data-code]').forEach(input => {
-    input.addEventListener('focus', () => { activeInput = input; openKeyboardFor(input); });
-    input.addEventListener('click', () => { activeInput = input; openKeyboardFor(input); });
+/* =========================
+   Keyboard & input handlers
+   ========================= */
+function attachInputHandlers(){
+  document.querySelectorAll('input[data-code]').forEach(input=>{
+    input.addEventListener('focus', ()=> openKeyboardFor(input));
+    input.addEventListener('click', ()=> openKeyboardFor(input));
   });
 
-  keyboard().querySelectorAll('button').forEach(btn => {
-    btn.onclick = () => {
-      if (!activeInput) return;
-      const val = btn.textContent;
-      if (val === '←') activeInput.value = activeInput.value.slice(0, -1);
-      else if (val === 'Готово') { closeKeyboard(); return; }
-      else activeInput.value += val;
-      activeInput.dispatchEvent(new Event('input', { bubbles: true }));
+  keyboard.querySelectorAll('button').forEach(btn=>{
+    btn.onclick = ()=>{
+      if(!activeInput) return;
+      const v = btn.textContent;
+      if(v === '←') activeInput.value = activeInput.value.slice(0,-1);
+      else if(v === 'Готово') { closeKeyboard(); return; }
+      else activeInput.value += v;
+      activeInput.dispatchEvent(new Event('input',{bubbles:true}));
     };
   });
 
   document.getElementById('done').addEventListener('click', closeKeyboard);
-  document.getElementById('back').addEventListener('click', () => { if (!activeInput) return; activeInput.value = activeInput.value.slice(0, -1); activeInput.dispatchEvent(new Event('input', { bubbles: true })); });
+  document.getElementById('back').addEventListener('click', ()=>{ if(!activeInput) return; activeInput.value = activeInput.value.slice(0,-1); activeInput.dispatchEvent(new Event('input',{bubbles:true})); });
 
-  document.addEventListener('click', e => {
-    if (!e.target.closest('#custom-keyboard') && !e.target.matches('input[data-code]')) closeKeyboard();
+  document.addEventListener('click', e=>{
+    if(!e.target.closest('#custom-keyboard') && !e.target.matches('input[data-code]')) closeKeyboard();
   });
 }
 
-function openKeyboardFor(input) {
+function openKeyboardFor(input){
   activeInput = input;
-  keyboard().classList.add('show');
+  keyboard.classList.add('show');
   document.getElementById('content').classList.add('with-keyboard');
-  setTimeout(() => {
+  setTimeout(()=>{
     const rect = input.getBoundingClientRect();
     const viewportH = window.innerHeight;
     const padHeight = Math.max(260, Math.round(viewportH * 0.34));
     const desiredBottom = padHeight + 12;
-    if (rect.bottom > viewportH - desiredBottom) {
+    if(rect.bottom > viewportH - desiredBottom){
       const content = document.getElementById('content');
       const offset = rect.bottom - (viewportH - desiredBottom);
       content.scrollBy({ top: offset + 12, behavior: 'smooth' });
     } else {
       input.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, 150);
+  },150);
 }
 
-function closeKeyboard() {
+function closeKeyboard(){
   activeInput = null;
-  keyboard().classList.remove('show');
+  keyboard.classList.remove('show');
   document.getElementById('content').classList.remove('with-keyboard');
 }
 
-listEl().addEventListener('input', e => {
-  if (e.target.tagName !== 'INPUT') return;
+/* handle manual input changes */
+listEl.addEventListener('input', e=>{
+  if(e.target.tagName !== 'INPUT') return;
   const code = e.target.dataset.code;
   const value = e.target.value;
   sessionValues[code] = value;
-  localStorage.setItem("qty_" + code, value);
+  localStorage.setItem('qty_' + code, value);
 
   const raw = value.replace(',', '.').trim();
   let actual = NaN;
-  try {
+  try{
     let safeRaw = raw;
-    if (/[\+\-\*\/]$/.test(safeRaw)) safeRaw = safeRaw.slice(0, -1);
-    if (safeRaw) actual = Function("return " + safeRaw)();
-  } catch { actual = NaN; }
+    if(/[\+\-\*\/]$/.test(safeRaw)) safeRaw = safeRaw.slice(0,-1);
+    if(safeRaw) actual = Function('return ' + safeRaw)();
+  }catch{ actual = NaN; }
 
-  const item = allItems.find(i => i.code === code);
+  const item = allItems.find(i=>i.code === code);
   const card = e.target.closest('.item');
-  card.classList.remove('match', 'missing', 'excess');
-
-  if (!value) {}
-  else if (!isNaN(actual)) {
-    if (actual === item.docQty) card.classList.add('match');
-    else if (actual < item.docQty) card.classList.add('missing');
-    else if (actual > item.docQty) card.classList.add('excess');
+  card.classList.remove('match','missing','excess');
+  if(!value) {}
+  else if(!isNaN(actual)){
+    if(actual === item.docQty) card.classList.add('match');
+    else if(actual < item.docQty) card.classList.add('missing');
+    else if(actual > item.docQty) card.classList.add('excess');
   }
-  updateSummary(allItems);
   autosave();
 });
 
-/* Поиск */
-searchInput().addEventListener('input', () => {
-  const q = normalize(searchInput().value);
-  document.querySelectorAll('#list .item').forEach(div => {
+/* =========================
+   Search: hide non-matching cards
+   ========================= */
+function normalize(s){ return String(s||'').toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ').trim(); }
+function matchesQuery(text, query){ const words = query.split(' ').filter(Boolean); return words.every(w => text.includes(w)); }
+
+searchEl.addEventListener('input', ()=>{
+  const q = normalize(searchEl.value);
+  document.querySelectorAll('#list .item').forEach(div=>{
     const code = normalize(div.dataset.code);
-    const item = allItems.find(i => i.code === div.dataset.code);
-    if (!item) { div.classList.add('hidden'); return; }
+    const item = allItems.find(i=>i.code === div.dataset.code);
+    if(!item){ div.classList.add('hidden'); return; }
     const name = normalize(item.name);
-    const match = (q === "") || matchesQuery(name, q) || matchesQuery(code, q);
+    const match = (q === '') || matchesQuery(name, q) || matchesQuery(code, q);
     div.classList.toggle('hidden', !match);
   });
 });
-clearSearchBtn().addEventListener('click', () => {
-  searchInput().value = '';
-  document.querySelectorAll('#list .item').forEach(div => div.classList.remove('hidden'));
-});
+clearSearchBtn.addEventListener('click', ()=>{ searchEl.value=''; document.querySelectorAll('#list .item').forEach(d=>d.classList.remove('hidden')); });
 
-/* Автосохранение */
-function autosave() {
-  const currentLocalkaId = (window.localkaData && window.localkaData.docId) ? window.localkaData.docId : "loc_" + new Date().toISOString().slice(0,10);
-  const sessionKey = "autosave_session_" + currentLocalkaId;
+/* =========================
+   Autosave
+   ========================= */
+function autosave(){
+  const currentLocalkaId = (window.localkaData && window.localkaData.docId) ? window.localkaData.docId : 'loc_' + new Date().toISOString().slice(0,10);
+  const sessionKey = 'autosave_session_' + currentLocalkaId;
   const session = { items: allItems, values: sessionValues };
   localStorage.setItem(sessionKey, JSON.stringify(session));
 }
 window.addEventListener('beforeunload', autosave);
 
-/* Обновление итогов (заглушка, можно расширить) */
-function updateSummary(items) {
-  // оставлено для совместимости — можно вывести куда нужно
+/* =========================
+   Camera helpers (from your Scaner.html)
+   ========================= */
+async function enumerateCameras(){
+  try{
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d => d.kind === 'videoinput');
+    deviceSelect.innerHTML = '';
+    cams.forEach((c, idx)=>{
+      const opt = document.createElement('option');
+      opt.value = c.deviceId;
+      opt.text = c.label || `Камера ${idx+1}`;
+      deviceSelect.appendChild(opt);
+    });
+    if(cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
+    if(currentDeviceId) deviceSelect.value = currentDeviceId;
+  }catch(e){}
 }
 
-/* -------------------------
-   Инициализация при загрузке страницы
-   ------------------------- */
-window.addEventListener('DOMContentLoaded', async () => {
-  // Загружаем внешнюю базу (если есть)
-  await loadExternalScaner();
+/* startCamera / stopCamera and scanning loop (adapted) */
+async function startCamera(){
+  if(scanning) return;
+  stopCamera();
+  scanning = true;
+  await enumerateCameras();
 
-  // Восстанавливаем автосессию
-  const currentLocalkaId = (window.localkaData && window.localkaData.docId) ? window.localkaData.docId : "loc_" + new Date().toISOString().slice(0,10);
-  const sessionKey = "autosave_session_" + currentLocalkaId;
-  const savedSession = localStorage.getItem(sessionKey);
-  if (savedSession) {
-    try {
-      const session = JSON.parse(savedSession);
-      allItems = session.items || [];
-      sessionValues = session.values || {};
-    } catch {
-      allItems = Object.values(barcodeDB).map(b => ({ code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0, docQty: 0 }));
-      sessionValues = {};
+  const constraints = {
+    audio:false,
+    video:{
+      deviceId: deviceSelect.value || currentDeviceId || undefined,
+      facingMode: { ideal: "environment" },
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    }
+  };
+
+  try{
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    preview.srcObject = stream;
+    await preview.play();
+    currentDeviceId = stream.getVideoTracks()[0].getSettings().deviceId || currentDeviceId;
+    if(currentDeviceId) deviceSelect.value = currentDeviceId;
+
+    if(!reader) reader = new ZXing.BrowserMultiFormatReader();
+
+    requestAnimationFrame(scanLoop);
+    scannerCard.style.display = 'block';
+    showToast('Сканер включён');
+  }catch(err){
+    console.error('camera error', err);
+    scanResult.innerText = 'Ошибка доступа к камере';
+    scanning = false;
+    showToast('Не удалось включить камеру');
+  }
+}
+
+function stopCamera(){
+  scanning = false;
+  if(preview.srcObject){
+    try{ preview.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){}
+    preview.srcObject = null;
+  }
+  if(reader){
+    try{ reader.reset(); }catch(e){}
+  }
+  scannerCard.style.display = 'none';
+  showToast('Сканер остановлен');
+}
+
+/* Torch toggle */
+let torchOn = false;
+async function toggleTorch(){
+  if(!stream) return showToast('Сначала включите сканер');
+  const track = stream.getVideoTracks()[0];
+  try{
+    await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
+    torchOn = !torchOn;
+    torchBtn.textContent = torchOn ? '🔦 ON' : '🔦';
+  }catch(e){
+    showToast('Torch не поддерживается');
+  }
+}
+
+/* Canvas helpers for decoding */
+function createCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+function getCanvas(w,h){
+  for(let c of canvasPool) if(c.width===w && c.height===h) return c;
+  const c = createCanvas(w,h); canvasPool.push(c); return c;
+}
+
+/* tryDecodeCanvas uses BarcodeDetector if available, otherwise ZXing */
+async function tryDecodeCanvas(canvas){
+  if(detector){
+    try{
+      const imageData = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+      const res = await detector.detect(imageData);
+      if(res && res.length) return res[0].rawValue;
+    }catch(e){}
+  }
+  try{
+    const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+    const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+    if(result && result.text) return result.text;
+  }catch(e){}
+  // try rotated variants
+  const w = canvas.width, h = canvas.height;
+  const temp = getCanvas(w,h);
+  const tctx = temp.getContext('2d');
+  for(let angle of [90,180,270]){
+    tctx.clearRect(0,0,w,h);
+    tctx.save();
+    tctx.translate(w/2,h/2);
+    tctx.rotate(angle*Math.PI/180);
+    tctx.drawImage(canvas, -w/2, -h/2);
+    tctx.restore();
+    try{
+      const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(temp);
+      const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+      const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+      if(result && result.text) return result.text;
+    }catch(e){}
+  }
+  return null;
+}
+
+/* Main scanning loop */
+async function scanLoop(){
+  if(!scanning) { scanLoopRunning = false; return; }
+  if(scanLoopRunning) return;
+  scanLoopRunning = true;
+
+  try{
+    while(scanning){
+      const w = preview.videoWidth;
+      const h = preview.videoHeight;
+      if(w===0 || h===0){
+        await new Promise(r => requestAnimationFrame(r));
+        continue;
+      }
+
+      const canvas = getCanvas(w,h);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(preview, 0, 0, w, h);
+
+      const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
+      const sw = Math.floor(w/scale);
+      const sh = Math.floor(h/scale);
+      const small = getCanvas(sw,sh);
+      const sctx = small.getContext('2d');
+      sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
+
+      try{
+        const code = await tryDecodeCanvas(small);
+        if(code) {
+          handleDetected(code);
+          // small delay to avoid immediate re-detection
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }catch(e){}
+
+      await new Promise(r => requestAnimationFrame(r));
+    }
+  }finally{
+    scanLoopRunning = false;
+  }
+}
+
+/* Handle detection: stop scanner, show item or prompt to create */
+function handleDetected(code){
+  const now = Date.now();
+  if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+  lastDetected = {code, ts: now};
+  try{ navigator.vibrate?.(60); }catch(e){}
+  scanResult.innerText = `${code} → ${db[code] || 'Товар не найден'}`;
+  // auto-stop scanner
+  try{ if(reader) reader.reset(); }catch(e){}
+  scanning = false;
+  try{ if(preview.srcObject) preview.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){}
+  preview.srcObject = null;
+  scannerCard.style.display = 'none';
+
+  // fill code input in UI: find or create card and open keyboard
+  const found = db[code];
+  if(found){
+    // ensure item exists in allItems
+    let card = document.querySelector(`.item[data-code="${code}"]`);
+    if(!card){
+      allItems.unshift({ code, name: found, unit:'', price:0, docQty:0 });
+      render(allItems);
+      card = document.querySelector(`.item[data-code="${code}"]`);
+    }
+    if(card){
+      card.classList.add('found');
+      setTimeout(()=>card.classList.remove('found'), 2200);
+      card.classList.remove('hidden');
+      setTimeout(()=>card.scrollIntoView({ behavior:'smooth', block:'center' }), 160);
+      const input = card.querySelector('input[data-code]');
+      if(input) setTimeout(()=>{ input.focus(); openKeyboardFor(input); }, 320);
     }
   } else {
-    allItems = Object.values(barcodeDB).map(b => ({ code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0, docQty: 0 }));
-    sessionValues = {};
+    const create = confirm(`Код ${code} не найден в базе. Добавить как новый товар?`);
+    if(create){
+      const name = prompt('Введите название товара', '') || `Товар ${code}`;
+      db[code] = name;
+      barcodeDB = db;
+      saveDB();
+      allItems.unshift({ code, name, unit:'', price:0, docQty:0 });
+      render(allItems);
+      const newCard = document.querySelector(`.item[data-code="${code}"]`);
+      if(newCard){
+        newCard.classList.add('found');
+        setTimeout(()=>newCard.classList.remove('found'), 2200);
+        setTimeout(()=> newCard.scrollIntoView({ behavior:'smooth', block:'center' }), 160);
+        const input = newCard.querySelector('input[data-code]');
+        if(input) setTimeout(()=>{ input.focus(); openKeyboardFor(input); }, 320);
+      }
+    }
+  }
+}
+
+/* =========================
+   UI actions wiring
+   ========================= */
+scanBtn.addEventListener('click', async ()=>{
+  if(!scanning) await startCamera();
+  else stopCamera();
+});
+closeScannerBtn.addEventListener('click', stopCamera);
+deviceSelect.addEventListener('change', async ()=>{
+  currentDeviceId = deviceSelect.value;
+  if(scanning){
+    try{ reader.reset(); }catch(e){}
+    scanning = false;
+  }
+  await startCamera();
+});
+torchBtn.addEventListener('click', toggleTorch);
+
+/* =========================
+   Save qty on input done (keyboard 'Готово' will close)
+   ========================= */
+/* (already handled by input event and autosave) */
+
+/* =========================
+   Init on load
+   ========================= */
+window.addEventListener('DOMContentLoaded', async ()=>{
+  // load DB from Scaner.html storage (localStorage 'barcodeDB')
+  loadBarcodeDB();
+  buildAllItemsFromDB();
+
+  // restore autosave session if exists
+  const currentLocalkaId = (window.localkaData && window.localkaData.docId) ? window.localkaData.docId : 'loc_' + new Date().toISOString().slice(0,10);
+  const sessionKey = 'autosave_session_' + currentLocalkaId;
+  const savedSession = localStorage.getItem(sessionKey);
+  if(savedSession){
+    try{
+      const session = JSON.parse(savedSession);
+      allItems = session.items || allItems;
+      sessionValues = session.values || {};
+    }catch(e){}
   }
 
   render(allItems);
 
-  // Привязываем обработчики сканера
-  scanBtn().addEventListener('click', async () => {
-    if (!scanning) await startScanner();
-    else stopScanner();
-  });
-  closeScannerBtn().addEventListener('click', stopScanner);
-  deviceSelect().addEventListener('change', async () => {
-    if (scanning) {
-      try { codeReader.reset(); } catch (e) {}
-      scanning = false;
-    }
-    await startScanner();
-  });
-
-  // Попытка предварительно перечислить камеры (не блокирующая)
-  if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-    try { await enumerateCamerasAndSelectRear(); } catch (e) { /* ignore */ }
+  // enumerate cameras (non-blocking)
+  if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices){
+    try{ await enumerateCameras(); }catch(e){}
   }
+
+  // warm permission check to populate labels on some devices
+  try{
+    const s = await navigator.mediaDevices.getUserMedia({video:true});
+    s.getTracks().forEach(t=>t.stop());
+    await enumerateCameras();
+  }catch(e){ /* ignore */ }
 });
 
-/* -------------------------
-   Экспорт для отладки
-   ------------------------- */
-window._recount = { render, allItems, barcodeDB, startScanner, stopScanner, autosave };
+/* stop camera on unload */
+window.addEventListener('pagehide', ()=>{ stopCamera(); });
+window.addEventListener('beforeunload', ()=>{ stopCamera(); });
+
+/* expose for debug */
+window._recount = { db, barcodeDB, allItems, startCamera, stopCamera, render };
 
 </script>
 </body>
