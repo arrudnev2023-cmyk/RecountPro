@@ -21,16 +21,18 @@
       --card-bg: linear-gradient(135deg,#1e1e2f,#2a2a40);
       --max-width: 980px;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%;margin:0;background:#000;color:var(--text);font-family:"Segoe UI",system-ui,Arial,Helvetica,sans-serif; -webkit-font-smoothing:antialiased;overflow:hidden}
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html,body{height:100%;margin:0;background:#000;color:var(--text);font-family:"Segoe UI",system-ui,Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden; touch-action: manipulation; -ms-touch-action: manipulation;}
+    /* Prevent double-tap zoom on iOS Safari by disabling gestures */
+    html, body, button, input, select, textarea { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
     #bg{position:fixed;inset:0;z-index:-1;background:#000}
     /* Header */
     #header{position:fixed;left:0;right:0;top:0;z-index:1000;background:rgba(12,12,16,0.72);backdrop-filter:blur(10px);padding:12px;border-radius:0 0 18px 18px;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
     #header h1{margin:0;text-align:center;font-size:1.15rem;color:#fff}
     #search-container{margin-top:8px;max-width:var(--max-width);margin-left:auto;margin-right:auto;position:relative}
-    #search{width:100%;padding:10px 56px 10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(20,20,24,0.6);color:#fff;font-size:15px}
-    #clear-search{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;z-index:3}
-    #voice-or-scan{position:absolute;right:48px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;z-index:3}
+    #search{width:100%;padding:10px 56px 10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(20,20,24,0.6);color:#fff;font-size:15px; touch-action: manipulation;}
+    #clear-search{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;z-index:3; touch-action: manipulation;}
+    #voice-or-scan{position:absolute;right:48px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;z-index:3; touch-action: manipulation;}
     /* Content */
     #content{position:fixed;left:0;right:0;top:96px;bottom:0;overflow:auto;padding:12px;box-sizing:border-box}
     #content.with-keyboard{padding-bottom:34vh}
@@ -41,11 +43,11 @@
     .item.found{box-shadow:0 18px 50px rgba(106,17,203,0.18);transform:translateY(-6px)}
     .field{margin-bottom:8px}
     .label{font-weight:700;color:#dbeafe;margin-right:6px}
-    input[data-code]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#fff;color:#000;font-size:15px}
+    input[data-code]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#fff;color:#000;font-size:15px; touch-action: manipulation;}
     /* Keyboard */
     #custom-keyboard{position:fixed;left:0;right:0;bottom:-40vh;height:34vh;background:#0b0b0d;padding:10px;box-sizing:border-box;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:8px;z-index:3000;transition:bottom .28s}
     #custom-keyboard.show{bottom:0}
-    #custom-keyboard button{border:none;border-radius:8px;background:#222;color:#fff;font-size:20px;cursor:pointer}
+    #custom-keyboard button{border:none;border-radius:8px;background:#222;color:#fff;font-size:20px;cursor:pointer; touch-action: manipulation;}
     #custom-keyboard .done{grid-column:1 / -1;background:linear-gradient(90deg,var(--accent),var(--accent-light));font-weight:800;font-size:18px}
     /* Scanner preview */
     #scannerCard{display:none;max-width:var(--max-width);margin:10px auto;color:#ddd}
@@ -91,7 +93,7 @@
       <div class="preview-wrap camera-1-3" id="previewWrap"><video id="preview" playsinline muted></video></div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
         <select id="deviceSelect" aria-label="Камера"></select>
-        <button id="closeScannerBtn" style="background:none;border:1px solid rgba(255,255,255,0.06);color:#fff;padding:8px;border-radius:8px;cursor:pointer">✕ Закрыть</button>
+        <button id="closeScannerBtn" style="background:none;border:1px solid rgba(255,255,255,0.06);color:#fff;padding:8px;border-radius:8px;cursor:pointer; touch-action: manipulation;">✕ Закрыть</button>
       </div>
       <div id="scanResult"></div>
     </div>
@@ -136,15 +138,66 @@ setInterval(checkIdleTime, 30*60*1000);
 updateActivity();
 
 /* =========================
-   База штрихкодов (пример)
+   Подключение реальной базы штрихкодов (Scaner.html)
+   Попытка загрузить внешнюю страницу/скрипт и получить из неё объект window.scanerDB.
+   Если не найдено — используется локальный пример.
    ========================= */
-const barcodeDB = {
-  "4601234000011": { code: "4601234000011", name: "Молоко 1л", unit: "шт", price: 59.90 },
-  "4601234000028": { code: "4601234000028", name: "Хлеб ржаной", unit: "шт", price: 35.00 },
-  "4601234000035": { code: "4601234000035", name: "Яблоки кг", unit: "кг", price: 120.00 },
-  "4601234000042": { code: "4601234000042", name: "Сыр 200г", unit: "шт", price: 250.00 },
-  "4601234000059": { code: "4601234000059", name: "Кофе 250г", unit: "шт", price: 499.00 }
-};
+let barcodeDB = {}; // будет заполнен
+
+async function loadExternalScaner() {
+  try {
+    // Попробуем загрузить файл как текст и попытаться извлечь JSON внутри <script id="scaner-data" type="application/json">...</script>
+    const resp = await fetch('Scaner.html', { cache: 'no-store' });
+    if (!resp.ok) throw new Error('fetch failed');
+    const text = await resp.text();
+
+    // 1) Попытка: найти <script id="scaner-data" type="application/json">...</script>
+    const jsonMatch = text.match(/<script[^>]*id=["']scaner-data["'][^>]*type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/i);
+    if (jsonMatch && jsonMatch[1]) {
+      try {
+        const parsed = JSON.parse(jsonMatch[1]);
+        if (parsed && typeof parsed === 'object') {
+          barcodeDB = parsed;
+          console.info('Loaded barcodeDB from Scaner.html (embedded JSON).');
+          return;
+        }
+      } catch (e) { /* continue */ }
+    }
+
+    // 2) Попытка: найти JS-скрипт, который присваивает window.scanerDB = {...}
+    const assignMatch = text.match(/window\.scanerDB\s*=\s*({[\s\S]*?});/i);
+    if (assignMatch && assignMatch[1]) {
+      try {
+        // безопасно выполнить JSON.parse-like by evaluating in Function scope
+        const obj = (new Function('return ' + assignMatch[1]))();
+        if (obj && typeof obj === 'object') {
+          barcodeDB = obj;
+          console.info('Loaded barcodeDB from Scaner.html (window.scanerDB assignment).');
+          return;
+        }
+      } catch (e) { /* continue */ }
+    }
+
+    // 3) Попытка: если Scaner.html содержит <script src="..."> с JS, попробуем загрузить как модуль
+    // (не всегда возможно) — пропускаем, т.к. небезопасно автоматически исполнять неизвестный код.
+
+    // Если ничего не найдено — fallback
+    throw new Error('No scaner data found');
+  } catch (e) {
+    console.warn('Не удалось загрузить Scaner.html, используем локальную тестовую базу.', e);
+    // Локальная тестовая база (fallback)
+    barcodeDB = {
+      "4601234000011": { code: "4601234000011", name: "Молоко 1л", unit: "шт", price: 59.90 },
+      "4601234000028": { code: "4601234000028", name: "Хлеб ржаной", unit: "шт", price: 35.00 },
+      "4601234000035": { code: "4601234000035", name: "Яблоки кг", unit: "кг", price: 120.00 },
+      "4601234000042": { code: "4601234000042", name: "Сыр 200г", unit: "шт", price: 250.00 },
+      "4601234000059": { code: "4601234000059", name: "Кофе 250г", unit: "шт", price: 499.00 }
+    };
+  }
+}
+
+// Запускаем загрузку базы сразу
+loadExternalScaner();
 
 /* =========================
    Состояние приложения
@@ -170,7 +223,13 @@ window.addEventListener("DOMContentLoaded", () => {
       sessionValues = session.values || {};
     } catch { allItems = []; sessionValues = {}; }
   } else {
-    allItems = Object.values(barcodeDB).map(b => ({ code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0, docQty: 0 }));
+    // если нет автосейва — инициализируем из barcodeDB (после небольшой задержки, чтобы loadExternalScaner успел)
+    setTimeout(() => {
+      if (!allItems || allItems.length === 0) {
+        allItems = Object.values(barcodeDB).map(b => ({ code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0, docQty: 0 }));
+      }
+      render(allItems);
+    }, 250);
     sessionValues = {};
   }
   render(allItems);
@@ -329,7 +388,7 @@ clearSearchBtn.addEventListener('click', () => {
 });
 
 /* =========================
-   Сканер (ZXing) — предпочтение задней камеры
+   Сканер (ZXing) — предпочтение задней камеры и стабильность
    ========================= */
 let codeReader = null;
 let scanning = false;
@@ -345,10 +404,6 @@ const scanResult = document.getElementById('scanResult');
 
 /**
  * Выбирает устройство, которое, скорее всего, является задней камерой.
- * Логика:
- *  - если в label есть 'back', 'rear', 'environment', 'задн', 'тыл' — выбираем его
- *  - иначе, если есть несколько камер, выбираем последнюю (часто rear)
- *  - иначе возвращаем первый deviceId
  */
 function chooseRearCamera(devices) {
   if (!devices || devices.length === 0) return null;
@@ -360,7 +415,7 @@ function chooseRearCamera(devices) {
       return devices[i].deviceId;
     }
   }
-  // если нет явной метки, часто rear — последний в списке
+  // если нет явной метки, rear — последний в списке
   return devices[devices.length - 1].deviceId;
 }
 
@@ -395,7 +450,9 @@ async function enumerateCamerasAndSelectRear() {
 async function startScanner(){
   if (scanning) return;
   try {
-    codeReader = codeReader || new ZXing.BrowserMultiFormatReader();
+    // всегда создаём новый экземпляр, чтобы избежать проблем с предыдущими сессиями
+    try { if (codeReader) { codeReader.reset(); } } catch(e){}
+    codeReader = new ZXing.BrowserMultiFormatReader();
   } catch (e) {
     scanResult.textContent = 'Сканер недоступен';
     return;
@@ -404,6 +461,7 @@ async function startScanner(){
   // Обновляем список камер и выбираем заднюю
   const selectedRear = await enumerateCamerasAndSelectRear();
 
+  // Если deviceId есть — используем его; иначе пробуем facingMode: environment
   const deviceId = selectedRear || undefined;
   const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { exact: "environment" } } };
 
@@ -426,6 +484,7 @@ async function startScanner(){
         beep();
         handleDetected(result.text);
       }
+      // err игнорируем
     });
   } catch (err) {
     scanning = false;
@@ -634,7 +693,7 @@ for (let i = 0; i < 200; i++) stars.push({ x: Math.random() * canvas.width, y: M
 let comets = [];
 function spawnComet(){ comets.push({ x: -100, y: Math.random() * canvas.height * 0.5, vx: 6 + Math.random() * 2, vy: 2 + Math.random(), life: 0, maxLife: 300 }); }
 let clickParticles = [];
-canvas.addEventListener("click", e => {
+canvas.addEventListener('click', e => {
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left, y = e.clientY - rect.top;
   for (let i = 0; i < 20; i++) clickParticles.push({ x, y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, life: 0, maxLife: 60, r: Math.random() * 2 + 1 });
