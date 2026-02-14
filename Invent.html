@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
 <title>Инвентаризация — Mobile</title>
+<meta name="description" content="Инвентаризация — мобильный интерфейс" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -29,18 +30,18 @@ html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,
 .header{position:fixed;left:0;right:0;top:0;height:var(--header-h);display:flex;align-items:flex-start;justify-content:center;background:#fff;border-bottom:1px solid rgba(11,16,32,0.04);z-index:4000;padding:10px var(--safe-margin);box-shadow:0 6px 18px rgba(16,24,40,0.04);touch-action:none;}
 .header-inner{width:100%;max-width:var(--max-width);display:flex;flex-direction:column;gap:8px;margin:0 auto;}
 .title-row{display:flex;align-items:center;gap:10px;}
-.logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,#7b3be6,#c86cff);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;}
+.logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;}
 .title{font-size:16px;font-weight:700;}
 .search-row{display:flex;gap:8px;align-items:center;}
 .input-wrap{position:relative;flex:1;min-width:0;}
 .input{width:100%;padding:10px 40px 10px 12px;border-radius:10px;border:1px solid rgba(11,16,32,0.06);background:#fff;font-size:15px;outline:none;}
 .clear-x{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--muted);cursor:pointer;}
-.scan-btn{padding:10px 12px;border-radius:10px;border:none;background:linear-gradient(90deg,#7b3be6,#c86cff);color:#fff;font-weight:700;}
+.scan-btn{padding:10px 12px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:#fff;font-weight:700;}
 
 /* Manual small inputs under search */
 .manual-row{display:flex;gap:8px;align-items:center;margin-top:4px;}
 .manual-row input{flex:1;padding:8px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);background:#fff;font-size:14px;min-width:0;}
-.manual-row button{padding:8px 10px;border-radius:8px;border:none;background:#7b3be6;color:#fff;font-weight:700;cursor:pointer;}
+.manual-row button{padding:8px 10px;border-radius:8px;border:none;background:var(--accent-1);color:#fff;font-weight:700;cursor:pointer;}
 
 /* Cards block */
 .cards-block{position:fixed;left:0;right:0;top:calc(var(--header-h) + 6px);bottom:0;max-width:var(--max-width);margin-left:auto;margin-right:auto;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px;display:flex;flex-direction:column;gap:10px;z-index:1000;background:transparent;}
@@ -54,21 +55,21 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block;}
 .results{display:flex;flex-direction:column;gap:10px;}
 .card-item{display:flex;flex-direction:column;padding:12px;border-radius:10px;border:1px solid rgba(11,16,32,0.04);background:linear-gradient(180deg,#fff,#fbfbff);}
 .item-top{display:flex;align-items:center;gap:12px;}
-.avatar{width:56px;height:56px;border-radius:8px;background:linear-gradient(90deg,#7b3be6,#c86cff);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;}
+.avatar{width:56px;height:56px;border-radius:8px;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;}
 .item-meta{display:flex;flex-direction:column;min-width:0;flex:1;}
 .item-name{font-weight:700;color:#0b1020;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .item-code{color:var(--muted);font-size:13px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .qty-row{margin-top:10px;display:flex;gap:8px;align-items:center;}
 .qty-input{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);font-weight:700;font-size:15px;background:#fbfbff;cursor:pointer;touch-action:manipulation;}
-.plus-btn{padding:10px 12px;border-radius:8px;background:linear-gradient(90deg,#7b3be6,#c86cff);color:#fff;border:none;cursor:pointer;font-weight:700;}
+.plus-btn{padding:10px 12px;border-radius:8px;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:#fff;border:none;cursor:pointer;font-weight:700;}
 
-/* Numeric pad full-width */
-.numeric-pad{position:fixed;left:0;width:100vw;max-width:100%;bottom:0;display:none;z-index:4500;background:linear-gradient(180deg,#fff,#f3f4f8);border-top:1px solid rgba(11,16,32,0.06);box-shadow:0 -8px 30px rgba(11,16,32,0.08);padding:8px;border-radius:12px 12px 0 0;transform:translateY(12px) scale(.92);transform-origin:center bottom;opacity:0;transition:transform 260ms cubic-bezier(.2,.9,.2,1),opacity 200ms ease;height:var(--pad-height);box-sizing:border-box;}
+/* Numeric pad positioned under input (absolute) */
+.numeric-pad{position:fixed;left:0;width:100vw;max-width:100%;display:none;z-index:4500;background:linear-gradient(180deg,#fff,#f3f4f8);border-top:1px solid rgba(11,16,32,0.06);box-shadow:0 -8px 30px rgba(11,16,32,0.08);padding:8px;border-radius:12px 12px 0 0;transform:translateY(12px) scale(.92);transform-origin:center bottom;opacity:0;transition:transform 220ms cubic-bezier(.2,.9,.2,1),opacity 160ms ease;height:var(--pad-height);box-sizing:border-box;}
 .numeric-pad.visible{display:block;transform:translateY(0) scale(1);opacity:1;}
 .numeric-pad .inner{height:100%;display:flex;flex-direction:column;justify-content:space-between;}
 .numeric-pad .keys{display:flex;flex-wrap:wrap;gap:8px;}
 .numeric-pad button.key{flex:1 1 30%;padding:12px 8px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);background:#fff;font-size:18px;font-weight:700;min-width:56px;}
-.numeric-pad .key.action{background:linear-gradient(90deg,#7b3be6,#c86cff);color:#fff;border:none;}
+.numeric-pad .key.action{background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:#fff;border:none;}
 .numeric-pad .row-bottom{display:flex;gap:8px;align-items:center;}
 
 /* small */
@@ -165,7 +166,7 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block;}
       <div style="margin-top:8px"><input id="modalName" placeholder="Название" readonly></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
         <button id="modalCancel">Отмена</button>
-        <button id="modalSave" style="background:linear-gradient(90deg,#7b3be6,#c86cff);color:#fff">Сохранить</button>
+        <button id="modalSave" style="background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:#fff">Сохранить</button>
       </div>
     </div>
   </div>
@@ -174,7 +175,7 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block;}
 <!-- ZXing -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 <script>
-/* State */
+/* ===== State ===== */
 const STORAGE_DB = 'barcodeDB';
 const STORAGE_INV = 'inventoryItems';
 let barcodeDB = JSON.parse(localStorage.getItem(STORAGE_DB) || '{}');
@@ -184,7 +185,7 @@ let padTarget = null;
 let isScrolling = false;
 let scrollTimer = null;
 
-/* Elements */
+/* ===== Elements ===== */
 const cardsBlock = document.getElementById('cardsBlock');
 const header = document.querySelector('.header');
 const searchInput = document.getElementById('searchInput');
@@ -210,7 +211,7 @@ const modalName = document.getElementById('modalName');
 const modalCancel = document.getElementById('modalCancel');
 const modalSave = document.getElementById('modalSave');
 
-/* Utils */
+/* ===== Utils ===== */
 function saveDB(){ localStorage.setItem(STORAGE_DB, JSON.stringify(barcodeDB)); }
 function saveInventory(){ localStorage.setItem(STORAGE_INV, JSON.stringify(inventoryItems)); }
 function showToast(text, ms=1200){ scanResult.textContent = text; setTimeout(()=>{ if(scanResult.textContent===text) scanResult.textContent=''; }, ms); }
@@ -218,14 +219,14 @@ function beep(){ try{ const ctx = new (window.AudioContext||window.webkitAudioCo
 function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
 function evaluateExpression(expr){ if(!expr) return 0; const nums = (expr.match(/\d+/g) || []).map(n=>parseInt(n,10)||0); return nums.reduce((s,v)=>s+v,0); }
 
-/* Scroll detection to avoid accidental pad opens */
+/* ===== Scroll detection to avoid accidental pad opens ===== */
 cardsBlock.addEventListener('scroll', ()=>{
   isScrolling = true;
   clearTimeout(scrollTimer);
   scrollTimer = setTimeout(()=>{ isScrolling = false; }, 160);
 }, {passive:true});
 
-/* Render helpers */
+/* ===== Search & render ===== */
 function searchItems(q){
   q = normalize(q);
   if(!q) return [];
@@ -291,29 +292,32 @@ function renderResults(){
     const qtyInput = card.querySelector('.qty-input');
     const plusBtn = card.querySelector('.plus-btn');
 
-    // touch handling: detect tap vs scroll
-    let touchStartY = 0, touchMoved = false, touchStartTime = 0;
-    qtyInput.addEventListener('touchstart', (e)=>{
-      touchMoved = false;
-      touchStartY = e.touches[0].clientY;
-      touchStartTime = Date.now();
-    }, {passive:true});
-    qtyInput.addEventListener('touchmove', (e)=>{
-      if(Math.abs(e.touches[0].clientY - touchStartY) > 8) touchMoved = true;
-    }, {passive:true});
-    qtyInput.addEventListener('touchend', (e)=>{
-      const dt = Date.now() - touchStartTime;
-      if(isScrolling || touchMoved) return;
-      // short tap -> open pad
-      openPadForQty(item.code);
+    // Pointer-based handling (works for touch and mouse). Prevent opening during scroll.
+    let pointerDownY = 0, pointerMoved = false, pointerId = null;
+    card.addEventListener('pointerdown', (e)=>{
+      pointerDownY = e.clientY;
+      pointerMoved = false;
+      pointerId = e.pointerId;
+      card.setPointerCapture(pointerId);
+    });
+    card.addEventListener('pointermove', (e)=>{
+      if(Math.abs(e.clientY - pointerDownY) > 8) pointerMoved = true;
+    });
+    card.addEventListener('pointerup', (e)=>{
+      try{ card.releasePointerCapture(pointerId); }catch(err){}
+      // If user tapped on the qty input area specifically, open pad; if tapped elsewhere on card, scroll to card and open pad as requested
+      const target = e.target;
+      if(isScrolling || pointerMoved) return;
+      // If clicked on qty input or plus button -> open pad
+      if(target.classList.contains('qty-input') || target.classList.contains('plus-btn') || target.closest('.qty-row')){
+        openPadForQty(item.code);
+      } else {
+        // Click on card body: scroll to card and open pad
+        scrollToCardAndOpenPad(item.code);
+      }
     });
 
-    // click fallback for mouse
-    qtyInput.addEventListener('click', (e)=>{
-      if(isScrolling) return;
-      openPadForQty(item.code);
-    });
-
+    // plus button explicit
     plusBtn.addEventListener('click', (ev)=>{
       ev.preventDefault();
       if(isScrolling) return;
@@ -326,7 +330,7 @@ function renderResults(){
   resultsEl.appendChild(frag);
 }
 
-/* Upsert inventory */
+/* ===== Upsert inventory ===== */
 function upsertInventoryExpr(code, name, expr, total, dontRerender=false){
   const idx = inventoryItems.findIndex(it=>it.code===code);
   if(idx>=0){ inventoryItems[idx].qty = total; inventoryItems[idx].expr = expr; inventoryItems[idx].name = name || inventoryItems[idx].name; }
@@ -340,34 +344,71 @@ function upsertInventoryExpr(code, name, expr, total, dontRerender=false){
   if(!dontRerender) renderResults();
 }
 
-/* Numeric pad behavior */
+/* ===== Scroll to card and open pad helper ===== */
+function scrollToCardAndOpenPad(code){
+  const card = document.querySelector(`[data-code="${code}"]`);
+  if(!card) return;
+  // scroll so card top is near header bottom
+  const desiredTop = Math.max(0, card.offsetTop - 12);
+  cardsBlock.scrollTo({top: desiredTop, behavior:'smooth'});
+  // open pad after scroll
+  setTimeout(()=>{ openPadForQty(code); }, 220);
+}
+
+/* ===== Numeric pad behavior: position under input ===== */
 function openPadForQty(code, callbackAfterOpen){
   padTarget = {type:'qty', code};
   const card = document.querySelector(`[data-code="${code}"]`);
   if(!card) return;
-  // scroll card near top
+  // ensure card visible near top
   const desiredTop = Math.max(0, card.offsetTop - 12);
   cardsBlock.scrollTo({top: desiredTop, behavior:'smooth'});
-  // show pad and ensure card fully above pad
+
   setTimeout(()=>{
+    const input = card.querySelector('.qty-input');
+    if(!input) return;
+    // show pad
     numericPad.classList.add('visible');
     numericPad.setAttribute('aria-hidden','false');
+
+    // compute position: place pad so its top is just below input bottom (if fits), otherwise scroll card up so it fits
+    const inputRect = input.getBoundingClientRect();
+    const headerRect = header.getBoundingClientRect();
     const padRect = numericPad.getBoundingClientRect();
     const padHeight = padRect.height || parseInt(getComputedStyle(numericPad).height) || 260;
-    const padTop = window.innerHeight - padHeight;
-    const cardRect = card.getBoundingClientRect();
-    const cardBottom = cardRect.bottom;
-    const margin = 12;
-    if(cardBottom > padTop - margin){
-      const headerRect = header.getBoundingClientRect();
-      const desiredCardTop = headerRect.bottom + 12;
-      const delta = cardRect.top - desiredCardTop;
+    const viewportH = window.innerHeight;
+    // desired pad top = inputRect.bottom + 8
+    let desiredPadTop = inputRect.bottom + 8;
+    // if pad would go beyond viewport bottom, we need to scroll cardsBlock up
+    if(desiredPadTop + padHeight > viewportH){
+      // compute how much to move card up so that inputRect.top becomes headerRect.bottom + 12
+      const desiredInputTop = headerRect.bottom + 12;
+      const delta = inputRect.top - desiredInputTop;
+      // scroll cardsBlock by delta
       cardsBlock.scrollBy({top: delta, behavior:'smooth'});
+      // after scroll, recompute input rect and set pad top
+      setTimeout(()=>{
+        const inputRect2 = input.getBoundingClientRect();
+        desiredPadTop = inputRect2.bottom + 8;
+        // clamp pad top to not exceed viewport
+        if(desiredPadTop + padHeight > viewportH) desiredPadTop = Math.max(headerRect.bottom + 8, viewportH - padHeight - 8);
+        numericPad.style.left = '0px';
+        numericPad.style.width = '100vw';
+        numericPad.style.top = desiredPadTop + 'px';
+      }, 260);
+    } else {
+      numericPad.style.left = '0px';
+      numericPad.style.width = '100vw';
+      numericPad.style.top = desiredPadTop + 'px';
     }
+
     if(typeof callbackAfterOpen === 'function') setTimeout(callbackAfterOpen, 120);
   }, 260);
 }
-function closePad(){ padTarget = null; numericPad.classList.remove('visible'); numericPad.setAttribute('aria-hidden','true'); }
+
+function closePad(){ padTarget = null; numericPad.classList.remove('visible'); numericPad.setAttribute('aria-hidden','true'); numericPad.style.top = ''; }
+
+/* Insert key into pad target */
 function padInsert(ch){
   if(!padTarget) return;
   if(padTarget.type === 'qty'){
@@ -380,15 +421,13 @@ function padInsert(ch){
     const expr = input.value;
     const total = evaluateExpression(expr);
     upsertInventoryExpr(padTarget.code, (barcodeDB[padTarget.code]||''), expr, total, true);
-  } else if(padTarget.type === 'manual'){
-    // not used: header uses system keyboard
   } else if(padTarget.type === 'modal'){
     if(padTarget.field === 'code') modalCode.value = modalCode.value + ch;
     if(padTarget.field === 'name') modalName.value = modalName.value + ch;
   }
 }
 
-/* pad buttons */
+/* pad buttons wiring */
 numericPad.addEventListener('click', (e)=>{
   const btn = e.target.closest('button.key');
   if(!btn) return;
@@ -398,7 +437,7 @@ numericPad.addEventListener('click', (e)=>{
 padBack.addEventListener('click', ()=>{ padInsert('←'); });
 padDone.addEventListener('click', ()=>{ closePad(); });
 
-/* clicking outside pad closes it */
+/* clicking outside pad closes it (but not when interacting with header inputs) */
 document.addEventListener('click', (e)=>{
   if(numericPad.contains(e.target)) return;
   if(e.target.closest('.qty-input')) return;
@@ -440,7 +479,7 @@ modalSave.addEventListener('click', ()=>{
 searchInput.addEventListener('input', ()=>{ renderResults(); });
 clearSearch.addEventListener('click', ()=>{ searchInput.value=''; renderResults(); });
 
-/* Scanner (ZXing) with robust stop */
+/* ===== Scanner (ZXing) with robust stop and immediate handling ===== */
 let codeReader = null;
 let scanning = false;
 let lastDetected = {code:null, ts:0};
@@ -467,13 +506,14 @@ async function startScanner(){
   const deviceId = deviceSelect.value || undefined;
   try{
     scanning = true;
-    await codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
+    // decodeFromVideoDevice returns a Promise; callback will be invoked on detection
+    codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
       if(result && result.text){
         const now = Date.now();
         if(result.text === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
         lastDetected = {code: result.text, ts: now};
         beep();
-        // handle detection then stop scanner and stop camera tracks
+        // handle detection and ensure scanner stops
         handleDetected(result.text);
       }
     });
@@ -489,7 +529,6 @@ async function startScanner(){
 function stopScanner(){
   try{ if(codeReader) codeReader.reset(); }catch(e){}
   scanning = false;
-  // stop video tracks if any
   try{
     const stream = preview.srcObject;
     if(stream && stream.getTracks) stream.getTracks().forEach(t=>t.stop());
@@ -504,7 +543,7 @@ openScannerBtn.addEventListener('click', async ()=>{ await startScanner(); });
 closeScannerBtn.addEventListener('click', ()=>{ stopScanner(); });
 deviceSelect.addEventListener('change', async ()=>{ if(scanning){ try{ codeReader.reset(); }catch(e){} scanning=false; } await startScanner(); });
 
-/* handle detection: stop scanner reliably, then act */
+/* handle detection: robust stop then process */
 function handleDetected(code){
   // stop scanner and camera immediately
   try{ if(codeReader) codeReader.reset(); }catch(e){}
@@ -569,4 +608,3 @@ window._inv = { renderResults, upsertInventoryExpr, inventoryItems, barcodeDB, s
 </script>
 </body>
 </html>
-
