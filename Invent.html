@@ -13,7 +13,7 @@
   --accent-1:#7b3be6;
   --accent-2:#c86cff;
   --accent:linear-gradient(90deg,var(--accent-1),var(--accent-2));
-  --header-h:160px; /* шапка: название + поиск + ручной ввод */
+  --header-h:150px; /* шапка: название + поиск + ручной ввод */
   --gap:10px;
   --card-radius:10px;
   --shadow: 0 8px 20px rgba(16,24,40,0.06);
@@ -78,7 +78,7 @@ html,body{
 .clear-x{ position:absolute; right:8px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:var(--muted); font-weight:700; padding:6px; border-radius:6px; cursor:pointer; }
 .scan-btn{ padding:10px 12px; border-radius:10px; border:none; cursor:pointer; font-weight:700; background:var(--accent); color:#fff; min-width:84px; flex:0 0 auto; }
 
-/* Manual input row (под поиском, в шапке) */
+/* Manual input row (под поиском, в шапке) — уменьшены поля */
 .manual-row{
   display:flex;
   gap:8px;
@@ -87,20 +87,22 @@ html,body{
 }
 .manual-row input{
   flex:1;
-  padding:10px;
-  border-radius:10px;
+  padding:8px;
+  border-radius:8px;
   border:1px solid rgba(11,16,32,0.06);
   background:#fff;
-  font-size:15px;
+  font-size:14px;
+  min-width:0;
 }
 .manual-row button{
-  padding:10px 12px;
-  border-radius:10px;
+  padding:8px 10px;
+  border-radius:8px;
   border:none;
   background:var(--accent-1);
   color:#fff;
   font-weight:700;
   cursor:pointer;
+  flex:0 0 auto;
 }
 
 /* Cards block: fixed under header, scrollable to bottom of screen */
@@ -216,10 +218,10 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
         <button id="openScannerBtn" class="scan-btn" aria-label="Открыть сканер">Сканер</button>
       </div>
 
-      <!-- Manual input moved under search -->
+      <!-- Manual input moved under search (now smaller and uses system keyboard) -->
       <div class="manual-row" role="region" aria-label="Ручной ввод штрихкода">
-        <input id="manualCodeHeader" placeholder="Штрихкод вручную" aria-label="Штрихкод вручную" readonly>
-        <input id="manualNameHeader" placeholder="Название товара" aria-label="Название вручную" readonly>
+        <input id="manualCodeHeader" placeholder="Штрихкод вручную" aria-label="Штрихкод вручную" inputmode="numeric" pattern="[0-9+]*">
+        <input id="manualNameHeader" placeholder="Название товара" aria-label="Название вручную">
         <button id="addManualHeaderBtn">Добавить</button>
       </div>
     </div>
@@ -294,17 +296,18 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 
 <script>
-/* ===== Storage keys and state ===== */
+/* ===== State and storage ===== */
 const STORAGE_DB = 'barcodeDB';
 const STORAGE_INV = 'inventoryItems';
 let barcodeDB = JSON.parse(localStorage.getItem(STORAGE_DB) || '{}');
 let inventoryItems = JSON.parse(localStorage.getItem(STORAGE_INV) || '[]');
 let renderedCards = new Map();
 let padTarget = null; // {type:'qty'|'manual'|'modal', code/field}
+let isScrolling = false;
+let scrollTimer = null;
 
 /* ===== Elements ===== */
 const cardsBlock = document.getElementById('cardsBlock');
-const contentScroll = cardsBlock;
 const header = document.querySelector('.header');
 const searchInput = document.getElementById('searchInput');
 const clearSearch = document.getElementById('clearSearch');
@@ -339,8 +342,16 @@ function saveInventory(){ localStorage.setItem(STORAGE_INV, JSON.stringify(inven
 function showToast(text, ms=1200){ scanResult.textContent = text; setTimeout(()=>{ if(scanResult.textContent===text) scanResult.textContent=''; }, ms); }
 function beep(){ try{ const ctx = new (window.AudioContext||window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value=880; g.gain.value=0.02; o.connect(g); g.connect(ctx.destination); o.start(); setTimeout(()=>{ o.stop(); ctx.close(); },120); }catch(e){} }
 function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
+function evaluateExpression(expr){ if(!expr) return 0; const nums = (expr.match(/\d+/g) || []).map(n=>parseInt(n,10) || 0); return nums.reduce((s,v)=>s+v, 0); }
 
-/* ===== Search & display helpers ===== */
+/* ===== Scroll handling: detect user scroll to avoid accidental pad opens ===== */
+cardsBlock.addEventListener('scroll', ()=>{
+  isScrolling = true;
+  clearTimeout(scrollTimer);
+  scrollTimer = setTimeout(()=>{ isScrolling = false; }, 180);
+}, {passive:true});
+
+/* ===== Render list ===== */
 function searchItems(q){
   q = normalize(q);
   if(!q) return [];
@@ -364,8 +375,8 @@ function getDisplayList(){
   }
   return list;
 }
+function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-/* ===== Render results (incremental) ===== */
 function renderResults(){
   const list = getDisplayList();
   if(list.length === 0){
@@ -416,11 +427,33 @@ function renderResults(){
     const qtyInput = card.querySelector('.qty-input');
     const plusBtn = card.querySelector('.plus-btn');
 
-    qtyInput.addEventListener('click', ()=>{ openPadForQty(item.code); });
-    qtyInput.addEventListener('touchstart', (e)=>{ e.preventDefault(); openPadForQty(item.code); });
+    // Use pointer events to distinguish tap vs scroll; do not open pad while scrolling
+    let pointerDownY = 0;
+    let pointerMoved = false;
+    qtyInput.addEventListener('pointerdown', (e)=>{
+      pointerDownY = e.clientY;
+      pointerMoved = false;
+      qtyInput.setPointerCapture(e.pointerId);
+    });
+    qtyInput.addEventListener('pointermove', (e)=>{
+      if(Math.abs(e.clientY - pointerDownY) > 8) pointerMoved = true;
+    });
+    qtyInput.addEventListener('pointerup', (e)=>{
+      qtyInput.releasePointerCapture(e.pointerId);
+      // If user was scrolling or moved finger, do not open pad
+      if(isScrolling || pointerMoved) return;
+      // Open pad only on deliberate tap
+      openPadForQty(item.code);
+    });
+    // Also support mouse click (desktop)
+    qtyInput.addEventListener('click', (e)=>{
+      if(isScrolling) return;
+      openPadForQty(item.code);
+    });
 
     plusBtn.addEventListener('click', (ev)=>{
       ev.preventDefault();
+      if(isScrolling) return;
       openPadForQty(item.code, ()=>{ padInsert('+'); });
     });
 
@@ -430,68 +463,41 @@ function renderResults(){
 
   resultsEl.appendChild(frag);
 }
-function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function evaluateExpression(expr){ if(!expr) return 0; const nums = (expr.match(/\d+/g) || []).map(n=>parseInt(n,10) || 0); return nums.reduce((s,v)=>s+v, 0); }
 
-/* Upsert inventory */
-function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
-  const idx = inventoryItems.findIndex(it => it.code === code);
-  if(idx >= 0){
-    inventoryItems[idx].qty = total;
-    inventoryItems[idx].expr = expr;
-    inventoryItems[idx].name = name || inventoryItems[idx].name;
-  } else {
-    inventoryItems.unshift({ code, name, qty: total, expr });
-  }
-  saveInventory();
-  const card = renderedCards.get(code);
-  if(card){
-    const inputEl = card.querySelector('.qty-input');
-    if(document.activeElement !== inputEl){
-      inputEl.value = expr;
-    }
-  }
-  if(!dontRerender) renderResults();
-}
-
-/* ===== Custom numeric pad behavior full-width and ensure full visibility ===== */
+/* ===== Numeric pad behavior: full-width, ensure card fully visible above pad ===== */
 function openPadForQty(code, callbackAfterOpen){
   padTarget = { type:'qty', code };
   const card = document.querySelector(`[data-code="${code}"]`);
   if(!card) return;
 
-  // 1) Scroll card into view roughly near top of cardsBlock
+  // 1) Scroll card into view near top of cardsBlock
   const desiredTop = Math.max(0, card.offsetTop - 12);
   contentScroll.scrollTo({ top: desiredTop, behavior: 'smooth' });
 
-  // 2) After scroll, show pad full-width and ensure card is above pad entirely
+  // 2) After scroll, show pad and ensure card is fully above pad
   setTimeout(()=>{
-    const input = card.querySelector('.qty-input');
-    if(!input) return;
-
     // show pad (full width)
     numericPad.classList.add('visible');
     numericPad.setAttribute('aria-hidden','false');
 
-    // measure pad height (actual)
+    // measure pad height
     const padRect = numericPad.getBoundingClientRect();
     const padHeight = padRect.height || parseInt(getComputedStyle(numericPad).getPropertyValue('height')) || 260;
     const padTop = window.innerHeight - padHeight;
 
-    // compute card bottom relative to viewport
+    // measure card rect
     const cardRect = card.getBoundingClientRect();
     const cardBottom = cardRect.bottom;
 
-    // if card bottom is below padTop - margin, scroll so card fully above pad
     const margin = 12;
     if(cardBottom > padTop - margin){
-      // compute how much to scroll within cardsBlock
+      // compute desired card top in viewport (just below header)
       const headerRect = header.getBoundingClientRect();
       const desiredCardTop = headerRect.bottom + 12;
       const delta = cardRect.top - desiredCardTop;
+      // scroll cardsBlock by delta to bring card up
       contentScroll.scrollBy({ top: delta, behavior: 'smooth' });
-      // reposition pad after scroll (pad is anchored to bottom, no reposition needed)
-      setTimeout(()=>{}, 260);
+      // after scroll, nothing else needed because pad is anchored to bottom
     }
 
     if(typeof callbackAfterOpen === 'function') setTimeout(callbackAfterOpen, 120);
@@ -536,7 +542,7 @@ numericPad.addEventListener('click', (e)=>{
 padBack.addEventListener('click', ()=>{ padInsert('←'); });
 padDone.addEventListener('click', ()=>{ closePad(); });
 
-/* clicking outside pad closes it (but not when interacting with card or header manual inputs) */
+/* clicking outside pad closes it (but not when interacting with header manual inputs) */
 document.addEventListener('click', (e)=>{
   if(numericPad.contains(e.target)) return;
   if(e.target.closest('.qty-input')) return;
@@ -545,10 +551,8 @@ document.addEventListener('click', (e)=>{
   closePad();
 });
 
-/* ===== Manual header interactions (readonly fields open pad) ===== */
-manualCodeHeader.addEventListener('click', ()=>{ padTarget = {type:'manual', field:'manualCode'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
-manualNameHeader.addEventListener('click', ()=>{ padTarget = {type:'manual', field:'manualName'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
-
+/* ===== Manual header interactions: use system keyboard (do not open custom pad) ===== */
+/* No pad opening on header inputs; they are regular inputs so system keyboard appears */
 addManualHeaderBtn.addEventListener('click', ()=>{
   const code = (manualCodeHeader.value||'').trim();
   const name = (manualNameHeader.value||'').trim() || (code || 'Новый товар');
@@ -591,7 +595,7 @@ modalName.addEventListener('click', ()=>{ padTarget = {type:'modal', field:'name
 searchInput.addEventListener('input', ()=>{ renderResults(); });
 clearSearch.addEventListener('click', ()=>{ searchInput.value=''; renderResults(); });
 
-/* ===== Scanner (ZXing.BrowserMultiFormatReader.decodeFromVideoDevice) ===== */
+/* ===== Scanner (ZXing) ===== */
 let codeReader = null;
 let scanning = false;
 let lastDetected = {code:null, ts:0};
@@ -629,7 +633,6 @@ async function startScanner(){
         if(result.text === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
         lastDetected = {code: result.text, ts: now};
         beep();
-        // handle detection and immediately stop scanner and hide UI
         handleDetected(result.text);
         try{ codeReader.reset(); }catch(e){}
         scanning = false;
@@ -669,7 +672,6 @@ function handleDetected(code){
     const idx = inventoryItems.findIndex(it=>it.code===code);
     if(idx === -1) upsertInventoryExpr(code, found, '0', 0, true);
     renderResults();
-    // open pad for that card and scroll to it
     openPadForQty(code);
   } else {
     const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить 1 шт.?`);
@@ -690,7 +692,7 @@ function handleDetected(code){
 /* enumerate cameras on load (non-blocking) */
 if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) navigator.mediaDevices.enumerateDevices().then(enumerateCameras).catch(()=>{});
 
-/* Prevent pull-to-refresh on some browsers (extra JS) */
+/* Prevent pull-to-refresh on some browsers */
 (function preventPullToRefresh(){
   let startY = 0;
   let id = null;
@@ -710,12 +712,7 @@ if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) navigator.
   }, {passive:false});
 })();
 
-/* Make header non-draggable on touch (extra safety) */
-['touchstart','touchmove','touchend','touchcancel'].forEach(ev=>{
-  header.addEventListener(ev, (e)=>{ e.stopPropagation(); }, {passive:true});
-});
-
-/* Disable double-tap zoom (prevent quick successive taps) */
+/* Disable double-tap zoom */
 (function preventDoubleTapZoom(){
   let lastTouch = 0;
   document.addEventListener('touchend', function(e){
@@ -725,14 +722,13 @@ if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) navigator.
     }
     lastTouch = now;
   }, {passive:false});
-  // iOS gesturestart (pinch) prevention
   document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, {passive:false});
 })();
 
 /* Initial render */
 renderResults();
 
-/* Expose for debugging if needed */
+/* Expose for debugging */
 window._inv = { renderResults, upsertInventoryExpr, inventoryItems, barcodeDB };
 </script>
 </body>
