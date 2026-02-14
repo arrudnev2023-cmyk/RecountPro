@@ -2,9 +2,8 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8" />
-<!-- Отключаем масштабирование и двойной тап -->
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
-<title>Инвентаризация — мобильное</title>
+<title>Инвентаризация — Mobile</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -21,6 +20,7 @@
   --shadow: 0 8px 20px rgba(16,24,40,0.06);
   --max-width:420px;
   --safe-margin:12px;
+  --pad-scale:0.82; /* reduced keyboard size */
 }
 
 /* Reset & base */
@@ -32,9 +32,8 @@ html,body{
   font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;
   color:#0b1020;
   -webkit-font-smoothing:antialiased;
-  overscroll-behavior-y: none; /* prevent pull-to-refresh */
-  touch-action: pan-y; /* allow vertical scroll only */
-  -ms-touch-action: pan-y;
+  overscroll-behavior-y: none;
+  touch-action: pan-y;
   -webkit-user-select:none; user-select:none;
   -webkit-tap-highlight-color: transparent;
   font-size:15px;
@@ -51,11 +50,11 @@ html,body{
   display:flex;align-items:flex-start;justify-content:center;
   background:linear-gradient(180deg, rgba(255,255,255,0.995), rgba(255,255,255,0.98));
   border-bottom:1px solid rgba(11,16,32,0.04);
-  z-index:2000;
+  z-index:3000;
   padding:10px var(--safe-margin);
   box-shadow: 0 6px 18px rgba(16,24,40,0.04);
   overscroll-behavior: contain;
-  touch-action: none; /* prevent dragging on header */
+  touch-action: none;
 }
 .header-inner{ width:100%; max-width:var(--max-width); display:flex; flex-direction:column; gap:8px; margin:0 auto; }
 
@@ -79,23 +78,24 @@ html,body{
 .clear-x{ position:absolute; right:8px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:var(--muted); font-weight:700; padding:6px; border-radius:6px; cursor:pointer; }
 .scan-btn{ padding:10px 12px; border-radius:10px; border:none; cursor:pointer; font-weight:700; background:var(--accent); color:#fff; min-width:84px; flex:0 0 auto; }
 
-/* Content (single scrollable area) */
-.content{
-  width:100%;
+/* Cards block: fixed under header, scrollable */
+.cards-block{
+  position:fixed;
+  left:0;
+  right:0;
+  top:calc(var(--header-h) + 6px);
+  bottom:calc(var(--footer-h) + 6px);
   max-width:var(--max-width);
-  margin-top: calc(var(--header-h) + 6px);
-  margin-bottom: calc(var(--footer-h) + 6px);
-  height: calc(100vh - var(--header-h) - var(--footer-h) - 12px);
+  margin-left:auto;
+  margin-right:auto;
   overflow:auto;
-  -webkit-overflow-scrolling: touch;
+  -webkit-overflow-scrolling:touch;
   padding:12px;
   display:flex;
   flex-direction:column;
   gap:var(--gap);
-  align-items:stretch;
-  margin-left:auto;
-  margin-right:auto;
-  touch-action: pan-y; /* allow vertical pan inside content */
+  z-index:1000;
+  background:transparent;
 }
 
 /* Card / scanner */
@@ -105,7 +105,7 @@ html,body{
 .preview-wrap.camera-1-3{ height:32vh; min-height:140px; max-height:300px; }
 video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 
-/* Results list */
+/* Results list (cards) */
 .results{ display:flex; flex-direction:column; gap:10px; }
 .card-item{ display:flex; flex-direction:column; padding:12px; border-radius:10px; border:1px solid rgba(11,16,32,0.04); background:linear-gradient(180deg,#fff,#fbfbff); }
 .item-top{ display:flex; align-items:center; gap:12px; }
@@ -124,7 +124,7 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
   display:flex;align-items:center;justify-content:center;
   background:linear-gradient(180deg, rgba(255,255,255,0.995), rgba(255,255,255,0.98));
   border-top:1px solid rgba(11,16,32,0.04);
-  z-index:2000;
+  z-index:3000;
   padding:10px var(--safe-margin);
   box-shadow:0 -6px 18px rgba(16,24,40,0.04);
   touch-action:none;
@@ -134,20 +134,28 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 .manual-input input{ flex:1; padding:10px; border-radius:10px; border:1px solid rgba(11,16,32,0.06); background:#fff; outline:none; min-width:0; cursor:pointer; }
 .manual-input button{ padding:10px 12px; border-radius:10px; border:none; background:var(--accent-1); color:#fff; font-weight:700; cursor:pointer; }
 
-/* Numeric pad (custom) - positioned dynamically under active card */
+/* Numeric pad (custom) - reduced size and animated */
 .numeric-pad{
   position:fixed;
   display:none;
-  z-index:2100;
+  z-index:4000;
   background:linear-gradient(180deg,#fff,#f3f4f8);
   border-top:1px solid rgba(11,16,32,0.06);
   box-shadow:0 -8px 30px rgba(11,16,32,0.08);
-  padding:10px;
+  padding:8px;
   border-radius:10px 10px 0 0;
+  transform: translateY(12px) scale(var(--pad-scale));
+  transform-origin: center bottom;
+  opacity:0;
+  transition: transform 260ms cubic-bezier(.2,.9,.2,1), opacity 200ms ease;
 }
-.numeric-pad.visible{ display:block; }
+.numeric-pad.visible{
+  display:block;
+  transform: translateY(0) scale(1);
+  opacity:1;
+}
 .numeric-pad .row{ display:flex; gap:8px; margin-bottom:8px; }
-.numeric-pad button.key{ flex:1; padding:12px 8px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); background:#fff; font-size:18px; font-weight:700; }
+.numeric-pad button.key{ flex:1; padding:10px 6px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); background:#fff; font-size:16px; font-weight:700; }
 .numeric-pad .key.action{ background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border:none; }
 .numeric-pad .key.wide{ flex:2; }
 
@@ -155,7 +163,7 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 .small{ font-size:13px; color:var(--muted); }
 
 /* modal (hidden by default) */
-.modal-backdrop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:2200; background:rgba(11,16,32,0.45); }
+.modal-backdrop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:4200; background:rgba(11,16,32,0.45); }
 .modal{ width:92%; max-width:420px; background:#fff; border-radius:12px; padding:12px; box-shadow:0 20px 60px rgba(11,16,32,0.25); }
 .modal .row{ display:flex; gap:8px; margin-top:8px; }
 .modal input{ flex:1; padding:8px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); }
@@ -163,7 +171,7 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 /* mobile-only: keep layout phone-like */
 @media (min-width:600px){
   .app{ align-items:center; }
-  .content{ margin-left:auto; margin-right:auto; }
+  .cards-block{ left:50%; transform:translateX(-50%); max-width:420px; }
 }
 </style>
 </head>
@@ -188,10 +196,10 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
     </div>
   </header>
 
-  <!-- Content -->
-  <main class="content" id="content" role="main" aria-label="Список товаров">
+  <!-- Cards block (fixed under header, scrollable) -->
+  <section class="cards-block" id="cardsBlock" aria-label="Блок карточек">
     <!-- Scanner card (hidden by default) -->
-    <section id="scannerCard" class="card" style="display:none" aria-hidden="true">
+    <div id="scannerCard" class="card" style="display:none" aria-hidden="true">
       <div class="preview-wrap camera-1-3" id="previewWrap">
         <video id="preview" playsinline muted></video>
       </div>
@@ -200,16 +208,16 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
         <button id="closeScannerBtn" class="btn ghost" aria-label="Закрыть сканер">✕ Закрыть</button>
       </div>
       <div id="scanResult" class="small" style="margin-top:8px"></div>
-    </section>
+    </div>
 
-    <!-- Results list -->
-    <section id="resultsWrap" class="card" aria-labelledby="resultsTitle">
+    <!-- Cards list -->
+    <div id="resultsWrap" class="card" aria-labelledby="resultsTitle">
       <h3 id="resultsTitle" style="margin:0 0 8px 0">Найденные товары</h3>
       <div id="results" class="results" aria-live="polite">
         <div id="emptyHint" class="small">Пока нет позиций. Сканируйте штрихкод или добавьте вручную.</div>
       </div>
-    </section>
-  </main>
+    </div>
+  </section>
 
   <!-- Footer (strict bottom) -->
   <footer class="footer" id="footer" role="contentinfo" aria-label="Добавление вручную">
@@ -282,7 +290,8 @@ let renderedCards = new Map();
 let padTarget = null; // {type:'qty'|'manual'|'modal', code/field}
 
 /* ===== Elements ===== */
-const content = document.getElementById('content');
+const cardsBlock = document.getElementById('cardsBlock');
+const contentScroll = cardsBlock;
 const header = document.querySelector('.header');
 const footer = document.getElementById('footer');
 const searchInput = document.getElementById('searchInput');
@@ -434,26 +443,51 @@ function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
   if(!dontRerender) renderResults();
 }
 
-/* ===== Custom numeric pad behavior and precise positioning ===== */
+/* ===== Custom numeric pad behavior and precise positioning under the input ===== */
 function openPadForQty(code, callbackAfterOpen){
   padTarget = { type:'qty', code };
   const card = document.querySelector(`[data-code="${code}"]`);
   if(!card) return;
-  // compute desired scroll so card is visible above pad and header
+  // ensure card is visible in cardsBlock: scroll so card top is near top of cardsBlock
   const desiredTop = Math.max(0, card.offsetTop - 12);
-  content.scrollTo({ top: desiredTop, behavior: 'smooth' });
-  // after scroll, position pad under card
+  contentScroll.scrollTo({ top: desiredTop, behavior: 'smooth' });
+
+  // after scroll, compute input rect and position pad directly under input
   setTimeout(()=>{
-    const cardRect = card.getBoundingClientRect();
-    const viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
+    const input = card.querySelector('.qty-input');
+    if(!input) return;
+    const inputRect = input.getBoundingClientRect();
+    const headerRect = header.getBoundingClientRect();
+    const footerRect = footer.getBoundingClientRect();
     const pad = numericPad;
-    const padWidth = Math.min(cardRect.width, viewportWidth - 24);
-    const padLeft = Math.max(12, cardRect.left + (cardRect.width - padWidth)/2);
+
+    // set pad width and left to match input width (clamped)
+    const padWidth = Math.min(inputRect.width, window.innerWidth - 24);
+    const padLeft = Math.max(12, inputRect.left);
     pad.style.width = padWidth + 'px';
     pad.style.left = padLeft + 'px';
-    pad.style.bottom = footer.getBoundingClientRect().height + 'px';
+
+    // show pad with animation and position top just below input
     pad.classList.add('visible');
     pad.setAttribute('aria-hidden','false');
+    pad.style.top = (inputRect.bottom + 8) + 'px';
+
+    // measure pad and check overlap with footer
+    const padRect = pad.getBoundingClientRect();
+    const padBottom = padRect.bottom;
+    if(padBottom > footerRect.top){
+      // scroll cardsBlock up so card is above pad area
+      const targetTop = headerRect.bottom + 12; // desired top position for card
+      const currentCardRect = card.getBoundingClientRect();
+      const delta = currentCardRect.top - targetTop;
+      contentScroll.scrollBy({ top: delta, behavior: 'smooth' });
+      // reposition pad after scroll
+      setTimeout(()=>{
+        const inputRect2 = input.getBoundingClientRect();
+        pad.style.left = Math.max(12, inputRect2.left) + 'px';
+        pad.style.top = (inputRect2.bottom + 8) + 'px';
+      }, 260);
+    }
     if(typeof callbackAfterOpen === 'function') setTimeout(callbackAfterOpen, 120);
   }, 260);
 }
@@ -467,7 +501,7 @@ function openPadForManualField(field){
   const padLeft = rect.left + 8;
   pad.style.width = padWidth + 'px';
   pad.style.left = padLeft + 'px';
-  pad.style.bottom = footer.getBoundingClientRect().height + 'px';
+  pad.style.top = (window.innerHeight - footer.getBoundingClientRect().height - pad.offsetHeight - 6) + 'px';
   pad.classList.add('visible');
   pad.setAttribute('aria-hidden','false');
 }
@@ -482,11 +516,11 @@ function openPadForModalField(field){
     const padLeft = rect.left + 8;
     pad.style.width = padWidth + 'px';
     pad.style.left = padLeft + 'px';
-    pad.style.bottom = footer.getBoundingClientRect().height + 'px';
+    pad.style.top = (rect.bottom + 8) + 'px';
   } else {
     pad.style.width = Math.min(window.innerWidth - 24, 360) + 'px';
     pad.style.left = ((window.innerWidth - parseFloat(pad.style.width)) / 2) + 'px';
-    pad.style.bottom = footer.getBoundingClientRect().height + 'px';
+    pad.style.top = (window.innerHeight - footer.getBoundingClientRect().height - pad.offsetHeight - 6) + 'px';
   }
   pad.classList.add('visible');
   pad.setAttribute('aria-hidden','false');
@@ -527,8 +561,8 @@ numericPad.addEventListener('click', (e)=>{
   const key = btn.getAttribute('data-key');
   if(key) padInsert(key);
 });
-document.getElementById('padBack').addEventListener('click', ()=>{ padInsert('←'); });
-document.getElementById('padDone').addEventListener('click', ()=>{ closePad(); });
+padBack.addEventListener('click', ()=>{ padInsert('←'); });
+padDone.addEventListener('click', ()=>{ closePad(); });
 
 /* clicking outside pad closes it (but not when interacting with card or footer) */
 document.addEventListener('click', (e)=>{
@@ -691,7 +725,7 @@ if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) navigator.
     try{
       const t = Array.from(e.touches).find(tt=>tt.identifier===id) || e.touches[0];
       const currentY = t.clientY;
-      const sc = document.querySelector('.content');
+      const sc = document.querySelector('.cards-block');
       if(sc){
         const atTop = sc.scrollTop <= 0;
         if(atTop && currentY > startY) e.preventDefault();
@@ -730,4 +764,3 @@ window._inv = { renderResults, upsertInventoryExpr, inventoryItems, barcodeDB };
 </script>
 </body>
 </html>
-
