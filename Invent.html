@@ -2,8 +2,9 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Инвентаризация — Mobile</title>
+<!-- Отключаем масштабирование и двойной тап -->
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>Инвентаризация — мобильное</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -13,13 +14,13 @@
   --accent-1:#7b3be6;
   --accent-2:#c86cff;
   --accent:linear-gradient(90deg,var(--accent-1),var(--accent-2));
-  --header-h:104px;
-  --footer-h:84px;
-  --max-w:420px;
+  --header-h:110px;
+  --footer-h:88px;
   --gap:10px;
   --card-radius:10px;
   --shadow: 0 8px 20px rgba(16,24,40,0.06);
-  --ui-scale:0.96;
+  --max-width:420px;
+  --safe-margin:12px;
 }
 
 /* Reset & base */
@@ -32,11 +33,12 @@ html,body{
   color:#0b1020;
   -webkit-font-smoothing:antialiased;
   overscroll-behavior-y: none; /* prevent pull-to-refresh */
-  touch-action: manipulation;
+  touch-action: pan-y; /* allow vertical scroll only */
+  -ms-touch-action: pan-y;
   -webkit-user-select:none; user-select:none;
+  -webkit-tap-highlight-color: transparent;
   font-size:15px;
-  transform-origin:top left;
-  transform: scale(var(--ui-scale));
+  -webkit-text-size-adjust:100%;
 }
 
 /* App layout */
@@ -47,15 +49,15 @@ html,body{
   position:fixed; left:0; right:0; top:0;
   height:var(--header-h);
   display:flex;align-items:flex-start;justify-content:center;
-  background:linear-gradient(180deg, rgba(255,255,255,0.99), rgba(255,255,255,0.98));
+  background:linear-gradient(180deg, rgba(255,255,255,0.995), rgba(255,255,255,0.98));
   border-bottom:1px solid rgba(11,16,32,0.04);
   z-index:2000;
-  padding:10px 12px;
+  padding:10px var(--safe-margin);
   box-shadow: 0 6px 18px rgba(16,24,40,0.04);
   overscroll-behavior: contain;
-  touch-action: none; /* prevent dragging */
+  touch-action: none; /* prevent dragging on header */
 }
-.header-inner{ width:100%; max-width:var(--max-w); display:flex; flex-direction:column; gap:8px; }
+.header-inner{ width:100%; max-width:var(--max-width); display:flex; flex-direction:column; gap:8px; margin:0 auto; }
 
 /* Title row */
 .title-row{ display:flex; align-items:center; gap:10px; }
@@ -67,75 +69,87 @@ html,body{
 .input-wrap{ position:relative; flex:1; min-width:0; }
 .input{
   width:100%;
-  padding:8px 36px 8px 10px;
+  padding:10px 40px 10px 12px;
   border-radius:10px;
   border:1px solid rgba(11,16,32,0.06);
   background:#fff;
   outline:none;
-  font-size:14px;
+  font-size:15px;
 }
 .clear-x{ position:absolute; right:8px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:var(--muted); font-weight:700; padding:6px; border-radius:6px; cursor:pointer; }
-.scan-btn{ padding:8px 10px; border-radius:10px; border:none; cursor:pointer; font-weight:700; background:var(--accent); color:#fff; min-width:72px; flex:0 0 auto; font-size:14px; }
+.scan-btn{ padding:10px 12px; border-radius:10px; border:none; cursor:pointer; font-weight:700; background:var(--accent); color:#fff; min-width:84px; flex:0 0 auto; }
 
 /* Content (single scrollable area) */
 .content{
   width:100%;
-  max-width:var(--max-w);
+  max-width:var(--max-width);
   margin-top: calc(var(--header-h) + 6px);
   margin-bottom: calc(var(--footer-h) + 6px);
   height: calc(100vh - var(--header-h) - var(--footer-h) - 12px);
   overflow:auto;
   -webkit-overflow-scrolling: touch;
-  padding:10px;
+  padding:12px;
   display:flex;
   flex-direction:column;
   gap:var(--gap);
   align-items:stretch;
+  margin-left:auto;
+  margin-right:auto;
+  touch-action: pan-y; /* allow vertical pan inside content */
 }
 
 /* Card / scanner */
-.card{ background:var(--panel); border-radius:var(--card-radius); padding:10px; border:1px solid rgba(11,16,32,0.06); box-shadow:var(--shadow); }
-.preview-wrap{ border-radius:8px; overflow:hidden; background:#000; border:1px solid rgba(11,16,32,0.06); display:none; }
+.card{ background:var(--panel); border-radius:var(--card-radius); padding:12px; border:1px solid rgba(11,16,32,0.06); box-shadow:var(--shadow); }
+.preview-wrap{ border-radius:10px; overflow:hidden; background:#000; border:1px solid rgba(11,16,32,0.06); display:none; }
 .preview-wrap.visible{ display:block; }
-.preview-wrap.camera-1-3{ height:30vh; min-height:120px; max-height:260px; }
+.preview-wrap.camera-1-3{ height:32vh; min-height:140px; max-height:300px; }
 video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 
 /* Results list */
-.results{ display:flex; flex-direction:column; gap:8px; }
-.card-item{ display:flex; flex-direction:column; padding:10px; border-radius:10px; border:1px solid rgba(11,16,32,0.04); background:linear-gradient(180deg,#fff,#fbfbff); }
-.item-top{ display:flex; align-items:center; gap:10px; }
-.avatar{ width:44px; height:44px; border-radius:8px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; flex:0 0 44px; font-size:13px; }
+.results{ display:flex; flex-direction:column; gap:10px; }
+.card-item{ display:flex; flex-direction:column; padding:12px; border-radius:10px; border:1px solid rgba(11,16,32,0.04); background:linear-gradient(180deg,#fff,#fbfbff); }
+.item-top{ display:flex; align-items:center; gap:12px; }
+.avatar{ width:56px; height:56px; border-radius:8px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; flex:0 0 56px; }
 .item-meta{ display:flex; flex-direction:column; min-width:0; flex:1; }
-.item-name{ font-weight:700; color:#0b1020; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px; }
-.item-code{ color:var(--muted); font-size:12px; margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.qty-row{ margin-top:8px; display:flex; gap:8px; align-items:center; }
-.qty-input{ flex:1; padding:8px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); font-weight:700; font-size:14px; background:#fbfbff; cursor:pointer; }
-.plus-btn{ padding:8px 10px; border-radius:8px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border:none; cursor:pointer; font-weight:700; }
+.item-name{ font-weight:700; color:#0b1020; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.item-code{ color:var(--muted); font-size:13px; margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.qty-row{ margin-top:10px; display:flex; gap:8px; align-items:center; }
+.qty-input{ flex:1; padding:10px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); font-weight:700; font-size:15px; background:#fbfbff; cursor:pointer; }
+.plus-btn{ padding:10px 12px; border-radius:8px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border:none; cursor:pointer; font-weight:700; }
 
-/* Footer (fixed) - strictly at bottom */
-.footer{ position:fixed; left:0; right:0; bottom:0; height:var(--footer-h); display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(255,255,255,0.99), rgba(255,255,255,0.98)); border-top:1px solid rgba(11,16,32,0.04); z-index:2000; padding:10px; box-shadow:0 -6px 18px rgba(16,24,40,0.04); touch-action:none; }
-.footer-inner{ width:100%; max-width:var(--max-w); display:flex; gap:8px; align-items:center; }
-.manual-input{ flex:1; display:flex; gap:8px; align-items:center; }
-.manual-input input{ flex:1; padding:8px; border-radius:10px; border:1px solid rgba(11,16,32,0.06); background:#fff; outline:none; min-width:0; cursor:pointer; }
-.manual-input button{ padding:8px 10px; border-radius:10px; border:none; background:var(--accent-1); color:#fff; font-weight:700; cursor:pointer; }
-
-/* Numeric pad (custom) - positioned dynamically */
-.numeric-pad {
-  position: fixed;
-  bottom: calc(var(--footer-h)); /* default; will be adjusted */
-  background: linear-gradient(180deg,#fff,#f3f4f8);
-  border-top: 1px solid rgba(11,16,32,0.06);
-  box-shadow: 0 -8px 30px rgba(11,16,32,0.08);
-  padding: 8px;
-  display: none;
-  z-index: 2100;
-  border-radius: 10px 10px 0 0;
+/* Footer (fixed) - strictly at bottom, full width on phone */
+.footer{
+  position:fixed; left:0; right:0; bottom:0;
+  height:var(--footer-h);
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg, rgba(255,255,255,0.995), rgba(255,255,255,0.98));
+  border-top:1px solid rgba(11,16,32,0.04);
+  z-index:2000;
+  padding:10px var(--safe-margin);
+  box-shadow:0 -6px 18px rgba(16,24,40,0.04);
+  touch-action:none;
 }
-.numeric-pad.visible { display: block; }
-.numeric-pad .row { display:flex; gap:8px; margin-bottom:8px; }
-.numeric-pad button.key { flex:1; padding:10px 6px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); background:#fff; font-size:18px; font-weight:700; }
-.numeric-pad .key.action { background: linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border:none; }
-.numeric-pad .key.wide { flex:2; }
+.footer-inner{ width:100%; max-width:var(--max-width); display:flex; gap:8px; align-items:center; margin:0 auto; }
+.manual-input{ flex:1; display:flex; gap:8px; align-items:center; }
+.manual-input input{ flex:1; padding:10px; border-radius:10px; border:1px solid rgba(11,16,32,0.06); background:#fff; outline:none; min-width:0; cursor:pointer; }
+.manual-input button{ padding:10px 12px; border-radius:10px; border:none; background:var(--accent-1); color:#fff; font-weight:700; cursor:pointer; }
+
+/* Numeric pad (custom) - positioned dynamically under active card */
+.numeric-pad{
+  position:fixed;
+  display:none;
+  z-index:2100;
+  background:linear-gradient(180deg,#fff,#f3f4f8);
+  border-top:1px solid rgba(11,16,32,0.06);
+  box-shadow:0 -8px 30px rgba(11,16,32,0.08);
+  padding:10px;
+  border-radius:10px 10px 0 0;
+}
+.numeric-pad.visible{ display:block; }
+.numeric-pad .row{ display:flex; gap:8px; margin-bottom:8px; }
+.numeric-pad button.key{ flex:1; padding:12px 8px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); background:#fff; font-size:18px; font-weight:700; }
+.numeric-pad .key.action{ background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border:none; }
+.numeric-pad .key.wide{ flex:2; }
 
 /* small */
 .small{ font-size:13px; color:var(--muted); }
@@ -146,9 +160,10 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 .modal .row{ display:flex; gap:8px; margin-top:8px; }
 .modal input{ flex:1; padding:8px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); }
 
-/* responsive tweak */
-@media (max-width:420px){
-  :root{ --header-h:120px; --footer-h:96px; --ui-scale:0.98; }
+/* mobile-only: keep layout phone-like */
+@media (min-width:600px){
+  .app{ align-items:center; }
+  .content{ margin-left:auto; margin-right:auto; }
 }
 </style>
 </head>
@@ -364,7 +379,7 @@ function renderResults(){
     card.dataset.code = item.code;
     card.innerHTML = `
       <div class="item-top">
-        <div class="item-left" style="display:flex;gap:10px;align-items:center;min-width:0">
+        <div class="item-left" style="display:flex;gap:12px;align-items:center;min-width:0">
           <div class="avatar">${escapeHtml(item.name.slice(0,2).toUpperCase())}</div>
           <div class="item-meta">
             <div class="item-name">${escapeHtml(item.name)}</div>
@@ -425,26 +440,17 @@ function openPadForQty(code, callbackAfterOpen){
   const card = document.querySelector(`[data-code="${code}"]`);
   if(!card) return;
   // compute desired scroll so card is visible above pad and header
-  const headerHeight = header.getBoundingClientRect().height;
-  const footerHeight = footer.getBoundingClientRect().height;
-  // position card near top of content with margin
-  const cardOffsetTop = card.offsetTop;
-  const desiredTop = Math.max(0, cardOffsetTop - 12); // small margin
-  // scroll content
+  const desiredTop = Math.max(0, card.offsetTop - 12);
   content.scrollTo({ top: desiredTop, behavior: 'smooth' });
-  // after scroll, position pad under card (delay to allow smooth scroll)
+  // after scroll, position pad under card
   setTimeout(()=>{
     const cardRect = card.getBoundingClientRect();
-    const contentRect = content.getBoundingClientRect();
     const viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
     const pad = numericPad;
-    // pad width: match card width but not exceed viewport minus margins
     const padWidth = Math.min(cardRect.width, viewportWidth - 24);
-    // left: center under card
     const padLeft = Math.max(12, cardRect.left + (cardRect.width - padWidth)/2);
     pad.style.width = padWidth + 'px';
     pad.style.left = padLeft + 'px';
-    // bottom: place pad above footer
     pad.style.bottom = footer.getBoundingClientRect().height + 'px';
     pad.classList.add('visible');
     pad.setAttribute('aria-hidden','false');
@@ -521,8 +527,8 @@ numericPad.addEventListener('click', (e)=>{
   const key = btn.getAttribute('data-key');
   if(key) padInsert(key);
 });
-padBack.addEventListener('click', ()=>{ padInsert('←'); });
-padDone.addEventListener('click', ()=>{ closePad(); });
+document.getElementById('padBack').addEventListener('click', ()=>{ padInsert('←'); });
+document.getElementById('padDone').addEventListener('click', ()=>{ closePad(); });
 
 /* clicking outside pad closes it (but not when interacting with card or footer) */
 document.addEventListener('click', (e)=>{
@@ -537,7 +543,7 @@ document.addEventListener('click', (e)=>{
 manualCode.addEventListener('click', ()=>{ openPadForManualField('manualCode'); padTarget = {type:'manual', field:'manualCode'}; });
 manualName.addEventListener('click', ()=>{ openPadForManualField('manualName'); padTarget = {type:'manual', field:'manualName'}; });
 
-document.getElementById('addManualBtn').addEventListener('click', ()=>{
+addManualBtn.addEventListener('click', ()=>{
   const code = (manualCode.value||'').trim();
   const name = (manualName.value||'').trim() || (code || 'Новый товар');
   const finalCode = code || ('manual-' + Date.now());
@@ -615,7 +621,12 @@ async function startScanner(){
         if(result.text === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
         lastDetected = {code: result.text, ts: now};
         beep();
+        // handle detection and immediately stop scanner and hide UI
         handleDetected(result.text);
+        try{ codeReader.reset(); }catch(e){}
+        scanning = false;
+        previewWrap.classList.remove('visible');
+        scannerCard.style.display = 'none';
       }
     });
     previewWrap.classList.add('visible');
@@ -650,6 +661,7 @@ function handleDetected(code){
     const idx = inventoryItems.findIndex(it=>it.code===code);
     if(idx === -1) upsertInventoryExpr(code, found, '0', 0, true);
     renderResults();
+    // open pad for that card and scroll to it
     openPadForQty(code);
   } else {
     const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить 1 шт.?`);
@@ -696,6 +708,20 @@ if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) navigator.
   footer.addEventListener(ev, (e)=>{ e.stopPropagation(); }, {passive:true});
 });
 
+/* Disable double-tap zoom (prevent quick successive taps) */
+(function preventDoubleTapZoom(){
+  let lastTouch = 0;
+  document.addEventListener('touchend', function(e){
+    const now = Date.now();
+    if (now - lastTouch <= 300) {
+      e.preventDefault();
+    }
+    lastTouch = now;
+  }, {passive:false});
+  // iOS gesturestart (pinch) prevention
+  document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, {passive:false});
+})();
+
 /* Initial render */
 renderResults();
 
@@ -704,3 +730,4 @@ window._inv = { renderResults, upsertInventoryExpr, inventoryItems, barcodeDB };
 </script>
 </body>
 </html>
+
