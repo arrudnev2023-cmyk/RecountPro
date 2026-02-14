@@ -13,14 +13,15 @@
   --accent-1:#7b3be6;
   --accent-2:#c86cff;
   --accent:linear-gradient(90deg,var(--accent-1),var(--accent-2));
-  --header-h:110px;
+  --header-h:160px; /* увеличено, т.к. шапка теперь включает ручной ввод */
   --footer-h:88px;
   --gap:10px;
   --card-radius:10px;
   --shadow: 0 8px 20px rgba(16,24,40,0.06);
   --max-width:420px;
   --safe-margin:12px;
-  --pad-scale:0.82; /* reduced keyboard size */
+  --pad-scale:0.92;
+  --pad-height:260px; /* ориентировочная высота клавиатуры */
 }
 
 /* Reset & base */
@@ -43,14 +44,14 @@ html,body{
 /* App layout */
 .app{height:100vh;display:flex;flex-direction:column;align-items:center;}
 
-/* Header fixed (two rows) */
+/* Header fixed (title + search + manual input) */
 .header{
   position:fixed; left:0; right:0; top:0;
   height:var(--header-h);
   display:flex;align-items:flex-start;justify-content:center;
   background:linear-gradient(180deg, rgba(255,255,255,0.995), rgba(255,255,255,0.98));
   border-bottom:1px solid rgba(11,16,32,0.04);
-  z-index:3000;
+  z-index:4000;
   padding:10px var(--safe-margin);
   box-shadow: 0 6px 18px rgba(16,24,40,0.04);
   overscroll-behavior: contain;
@@ -77,6 +78,31 @@ html,body{
 }
 .clear-x{ position:absolute; right:8px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:var(--muted); font-weight:700; padding:6px; border-radius:6px; cursor:pointer; }
 .scan-btn{ padding:10px 12px; border-radius:10px; border:none; cursor:pointer; font-weight:700; background:var(--accent); color:#fff; min-width:84px; flex:0 0 auto; }
+
+/* Manual input row (под поиском, в шапке) */
+.manual-row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  margin-top:4px;
+}
+.manual-row input{
+  flex:1;
+  padding:10px;
+  border-radius:10px;
+  border:1px solid rgba(11,16,32,0.06);
+  background:#fff;
+  font-size:15px;
+}
+.manual-row button{
+  padding:10px 12px;
+  border-radius:10px;
+  border:none;
+  background:var(--accent-1);
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+}
 
 /* Cards block: fixed under header, scrollable */
 .cards-block{
@@ -117,47 +143,56 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 .qty-input{ flex:1; padding:10px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); font-weight:700; font-size:15px; background:#fbfbff; cursor:pointer; }
 .plus-btn{ padding:10px 12px; border-radius:8px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border:none; cursor:pointer; font-weight:700; }
 
-/* Footer (fixed) - strictly at bottom, full width on phone */
+/* Footer (fixed) - strictly at bottom */
 .footer{
   position:fixed; left:0; right:0; bottom:0;
   height:var(--footer-h);
   display:flex;align-items:center;justify-content:center;
   background:linear-gradient(180deg, rgba(255,255,255,0.995), rgba(255,255,255,0.98));
   border-top:1px solid rgba(11,16,32,0.04);
-  z-index:3000;
+  z-index:4000;
   padding:10px var(--safe-margin);
   box-shadow:0 -6px 18px rgba(16,24,40,0.04);
   touch-action:none;
 }
 .footer-inner{ width:100%; max-width:var(--max-width); display:flex; gap:8px; align-items:center; margin:0 auto; }
-.manual-input{ flex:1; display:flex; gap:8px; align-items:center; }
-.manual-input input{ flex:1; padding:10px; border-radius:10px; border:1px solid rgba(11,16,32,0.06); background:#fff; outline:none; min-width:0; cursor:pointer; }
-.manual-input button{ padding:10px 12px; border-radius:10px; border:none; background:var(--accent-1); color:#fff; font-weight:700; cursor:pointer; }
 
-/* Numeric pad (custom) - reduced size and animated */
+/* Numeric pad (custom) - full width and animated */
 .numeric-pad{
   position:fixed;
+  left:0;
+  width:100vw;
+  max-width:100%;
+  bottom:calc(var(--footer-h));
   display:none;
-  z-index:4000;
+  z-index:4500;
   background:linear-gradient(180deg,#fff,#f3f4f8);
   border-top:1px solid rgba(11,16,32,0.06);
   box-shadow:0 -8px 30px rgba(11,16,32,0.08);
   padding:8px;
-  border-radius:10px 10px 0 0;
+  border-radius:12px 12px 0 0;
   transform: translateY(12px) scale(var(--pad-scale));
   transform-origin: center bottom;
   opacity:0;
   transition: transform 260ms cubic-bezier(.2,.9,.2,1), opacity 200ms ease;
+  height: var(--pad-height);
+  box-sizing: border-box;
 }
 .numeric-pad.visible{
   display:block;
   transform: translateY(0) scale(1);
   opacity:1;
 }
-.numeric-pad .row{ display:flex; gap:8px; margin-bottom:8px; }
-.numeric-pad button.key{ flex:1; padding:10px 6px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); background:#fff; font-size:16px; font-weight:700; }
+.numeric-pad .inner{
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+.numeric-pad .keys{ display:flex; flex-wrap:wrap; gap:8px; }
+.numeric-pad button.key{ flex:1 1 30%; padding:12px 8px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); background:#fff; font-size:18px; font-weight:700; min-width:56px; }
 .numeric-pad .key.action{ background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border:none; }
-.numeric-pad .key.wide{ flex:2; }
+.numeric-pad .row-bottom{ display:flex; gap:8px; align-items:center; }
 
 /* small */
 .small{ font-size:13px; color:var(--muted); }
@@ -172,6 +207,8 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 @media (min-width:600px){
   .app{ align-items:center; }
   .cards-block{ left:50%; transform:translateX(-50%); max-width:420px; }
+  .numeric-pad{ left:50%; transform-origin:center bottom; transform: translateX(-50%) translateY(12px) scale(var(--pad-scale)); width:420px; }
+  .numeric-pad.visible{ transform: translateX(-50%) translateY(0) scale(1); }
 }
 </style>
 </head>
@@ -192,6 +229,13 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
           <button id="clearSearch" class="clear-x" title="Очистить поле" aria-label="Очистить поле">✕</button>
         </div>
         <button id="openScannerBtn" class="scan-btn" aria-label="Открыть сканер">Сканер</button>
+      </div>
+
+      <!-- Manual input moved under search -->
+      <div class="manual-row" role="region" aria-label="Ручной ввод штрихкода">
+        <input id="manualCodeHeader" placeholder="Штрихкод вручную" aria-label="Штрихкод вручную" readonly>
+        <input id="manualNameHeader" placeholder="Название товара" aria-label="Название вручную" readonly>
+        <button id="addManualHeaderBtn">Добавить</button>
       </div>
     </div>
   </header>
@@ -220,42 +264,33 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
   </section>
 
   <!-- Footer (strict bottom) -->
-  <footer class="footer" id="footer" role="contentinfo" aria-label="Добавление вручную">
+  <footer class="footer" id="footer" role="contentinfo" aria-label="Футер">
     <div class="footer-inner">
-      <div class="manual-input">
-        <input id="manualCode" placeholder="Штрихкод (опционально)" aria-label="Штрихкод вручную" readonly>
-        <input id="manualName" placeholder="Название товара" aria-label="Название вручную" readonly>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button id="addManualBtn" class="btn ghost" aria-label="Добавить вручную">Добавить</button>
-      </div>
+      <div class="small">Готово</div>
     </div>
   </footer>
 
-  <!-- Numeric pad -->
+  <!-- Numeric pad full-width -->
   <div id="numericPad" class="numeric-pad" aria-hidden="true">
-    <div class="row">
-      <button class="key" data-key="1">1</button>
-      <button class="key" data-key="2">2</button>
-      <button class="key" data-key="3">3</button>
-    </div>
-    <div class="row">
-      <button class="key" data-key="4">4</button>
-      <button class="key" data-key="5">5</button>
-      <button class="key" data-key="6">6</button>
-    </div>
-    <div class="row">
-      <button class="key" data-key="7">7</button>
-      <button class="key" data-key="8">8</button>
-      <button class="key" data-key="9">9</button>
-    </div>
-    <div class="row">
-      <button class="key" data-key="+">+</button>
-      <button class="key" data-key="0">0</button>
-      <button class="key action" id="padBack">←</button>
-    </div>
-    <div class="row">
-      <button class="key wide action" id="padDone">Готово</button>
+    <div class="inner">
+      <div class="keys" id="padKeys">
+        <button class="key" data-key="1">1</button>
+        <button class="key" data-key="2">2</button>
+        <button class="key" data-key="3">3</button>
+        <button class="key" data-key="4">4</button>
+        <button class="key" data-key="5">5</button>
+        <button class="key" data-key="6">6</button>
+        <button class="key" data-key="7">7</button>
+        <button class="key" data-key="8">8</button>
+        <button class="key" data-key="9">9</button>
+        <button class="key" data-key="+">+</button>
+        <button class="key" data-key="0">0</button>
+        <button class="key action" id="padBack">←</button>
+      </div>
+      <div class="row-bottom">
+        <div style="flex:1"></div>
+        <button class="key wide action" id="padDone" style="flex:0 0 160px">Готово</button>
+      </div>
     </div>
   </div>
 
@@ -307,9 +342,9 @@ const scanResult = document.getElementById('scanResult');
 const resultsEl = document.getElementById('results');
 const emptyHint = document.getElementById('emptyHint');
 
-const manualCode = document.getElementById('manualCode');
-const manualName = document.getElementById('manualName');
-const addManualBtn = document.getElementById('addManualBtn');
+const manualCodeHeader = document.getElementById('manualCodeHeader');
+const manualNameHeader = document.getElementById('manualNameHeader');
+const addManualHeaderBtn = document.getElementById('addManualHeaderBtn');
 
 const numericPad = document.getElementById('numericPad');
 const padBack = document.getElementById('padBack');
@@ -443,87 +478,66 @@ function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
   if(!dontRerender) renderResults();
 }
 
-/* ===== Custom numeric pad behavior and precise positioning under the input ===== */
+/* ===== Custom numeric pad behavior full-width and ensure full visibility ===== */
 function openPadForQty(code, callbackAfterOpen){
   padTarget = { type:'qty', code };
   const card = document.querySelector(`[data-code="${code}"]`);
   if(!card) return;
-  // ensure card is visible in cardsBlock: scroll so card top is near top of cardsBlock
+
+  // 1) Scroll card into view roughly near top of cardsBlock
   const desiredTop = Math.max(0, card.offsetTop - 12);
   contentScroll.scrollTo({ top: desiredTop, behavior: 'smooth' });
 
-  // after scroll, compute input rect and position pad directly under input
+  // 2) After scroll, show pad full-width and ensure card is above pad entirely
   setTimeout(()=>{
     const input = card.querySelector('.qty-input');
     if(!input) return;
-    const inputRect = input.getBoundingClientRect();
-    const headerRect = header.getBoundingClientRect();
+
+    // show pad (full width)
+    numericPad.classList.add('visible');
+    numericPad.setAttribute('aria-hidden','false');
+
+    // measure pad height (actual)
+    const padRect = numericPad.getBoundingClientRect();
+    const padHeight = padRect.height || parseInt(getComputedStyle(numericPad).getPropertyValue('height')) || 260;
     const footerRect = footer.getBoundingClientRect();
-    const pad = numericPad;
+    const padTop = window.innerHeight - footerRect.height - padHeight;
 
-    // set pad width and left to match input width (clamped)
-    const padWidth = Math.min(inputRect.width, window.innerWidth - 24);
-    const padLeft = Math.max(12, inputRect.left);
-    pad.style.width = padWidth + 'px';
-    pad.style.left = padLeft + 'px';
+    // compute card bottom relative to viewport
+    const cardRect = card.getBoundingClientRect();
+    const cardBottom = cardRect.bottom;
 
-    // show pad with animation and position top just below input
-    pad.classList.add('visible');
-    pad.setAttribute('aria-hidden','false');
-    pad.style.top = (inputRect.bottom + 8) + 'px';
-
-    // measure pad and check overlap with footer
-    const padRect = pad.getBoundingClientRect();
-    const padBottom = padRect.bottom;
-    if(padBottom > footerRect.top){
-      // scroll cardsBlock up so card is above pad area
-      const targetTop = headerRect.bottom + 12; // desired top position for card
-      const currentCardRect = card.getBoundingClientRect();
-      const delta = currentCardRect.top - targetTop;
+    // if card bottom is below padTop - margin, scroll so card fully above pad
+    const margin = 12;
+    if(cardBottom > padTop - margin){
+      // compute how much to scroll within cardsBlock
+      // desired card top in viewport: header.bottom + 12
+      const headerRect = header.getBoundingClientRect();
+      const desiredCardTop = headerRect.bottom + 12;
+      const delta = cardRect.top - desiredCardTop;
       contentScroll.scrollBy({ top: delta, behavior: 'smooth' });
-      // reposition pad after scroll
+
+      // after scroll, ensure pad still visible and adjust if needed
       setTimeout(()=>{
-        const inputRect2 = input.getBoundingClientRect();
-        pad.style.left = Math.max(12, inputRect2.left) + 'px';
-        pad.style.top = (inputRect2.bottom + 8) + 'px';
+        // re-measure and set pad bottom (it is fixed full-width)
+        // nothing else needed because pad is full-width anchored to bottom above footer
       }, 260);
     }
+
     if(typeof callbackAfterOpen === 'function') setTimeout(callbackAfterOpen, 120);
   }, 260);
 }
 
 function openPadForManualField(field){
   padTarget = { type:'manual', field };
-  const footerInner = document.querySelector('.footer-inner');
-  const rect = footerInner.getBoundingClientRect();
-  const pad = numericPad;
-  const padWidth = Math.min(rect.width - 16, window.innerWidth - 24);
-  const padLeft = rect.left + 8;
-  pad.style.width = padWidth + 'px';
-  pad.style.left = padLeft + 'px';
-  pad.style.top = (window.innerHeight - footer.getBoundingClientRect().height - pad.offsetHeight - 6) + 'px';
-  pad.classList.add('visible');
-  pad.setAttribute('aria-hidden','false');
+  numericPad.classList.add('visible');
+  numericPad.setAttribute('aria-hidden','false');
 }
 
 function openPadForModalField(field){
   padTarget = { type:'modal', field };
-  const modal = document.querySelector('.modal');
-  const pad = numericPad;
-  if(modal){
-    const rect = modal.getBoundingClientRect();
-    const padWidth = Math.min(rect.width - 16, window.innerWidth - 24);
-    const padLeft = rect.left + 8;
-    pad.style.width = padWidth + 'px';
-    pad.style.left = padLeft + 'px';
-    pad.style.top = (rect.bottom + 8) + 'px';
-  } else {
-    pad.style.width = Math.min(window.innerWidth - 24, 360) + 'px';
-    pad.style.left = ((window.innerWidth - parseFloat(pad.style.width)) / 2) + 'px';
-    pad.style.top = (window.innerHeight - footer.getBoundingClientRect().height - pad.offsetHeight - 6) + 'px';
-  }
-  pad.classList.add('visible');
-  pad.setAttribute('aria-hidden','false');
+  numericPad.classList.add('visible');
+  numericPad.setAttribute('aria-hidden','false');
 }
 
 function closePad(){
@@ -546,8 +560,8 @@ function padInsert(ch){
     const total = evaluateExpression(expr);
     upsertInventoryExpr(padTarget.code, (barcodeDB[padTarget.code] || ''), expr, total, true);
   } else if(padTarget.type === 'manual'){
-    if(padTarget.field === 'manualCode') manualCode.value = manualCode.value + ch;
-    if(padTarget.field === 'manualName') manualName.value = manualName.value + ch;
+    if(padTarget.field === 'manualCode') manualCodeHeader.value = manualCodeHeader.value + ch;
+    if(padTarget.field === 'manualName') manualNameHeader.value = manualNameHeader.value + ch;
   } else if(padTarget.type === 'modal'){
     if(padTarget.field === 'code') modalCode.value = modalCode.value + ch;
     if(padTarget.field === 'name') modalName.value = modalName.value + ch;
@@ -564,29 +578,29 @@ numericPad.addEventListener('click', (e)=>{
 padBack.addEventListener('click', ()=>{ padInsert('←'); });
 padDone.addEventListener('click', ()=>{ closePad(); });
 
-/* clicking outside pad closes it (but not when interacting with card or footer) */
+/* clicking outside pad closes it (but not when interacting with card or header manual inputs) */
 document.addEventListener('click', (e)=>{
   if(numericPad.contains(e.target)) return;
   if(e.target.closest('.qty-input')) return;
-  if(e.target.closest('#manualCode') || e.target.closest('#manualName')) return;
+  if(e.target.closest('#manualCodeHeader') || e.target.closest('#manualNameHeader')) return;
   if(e.target.closest('.modal')) return;
   closePad();
 });
 
-/* ===== Manual footer interactions (readonly fields open pad) ===== */
-manualCode.addEventListener('click', ()=>{ openPadForManualField('manualCode'); padTarget = {type:'manual', field:'manualCode'}; });
-manualName.addEventListener('click', ()=>{ openPadForManualField('manualName'); padTarget = {type:'manual', field:'manualName'}; });
+/* ===== Manual header interactions (readonly fields open pad) ===== */
+manualCodeHeader.addEventListener('click', ()=>{ padTarget = {type:'manual', field:'manualCode'}; openPadForManualField('manualCode'); });
+manualNameHeader.addEventListener('click', ()=>{ padTarget = {type:'manual', field:'manualName'}; openPadForManualField('manualName'); });
 
-addManualBtn.addEventListener('click', ()=>{
-  const code = (manualCode.value||'').trim();
-  const name = (manualName.value||'').trim() || (code || 'Новый товар');
+addManualHeaderBtn.addEventListener('click', ()=>{
+  const code = (manualCodeHeader.value||'').trim();
+  const name = (manualNameHeader.value||'').trim() || (code || 'Новый товар');
   const finalCode = code || ('manual-' + Date.now());
   barcodeDB[finalCode] = name;
   saveDB();
   upsertInventoryExpr(finalCode, name, '0', 0, true);
   renderResults();
-  manualCode.value = '';
-  manualName.value = '';
+  manualCodeHeader.value = '';
+  manualNameHeader.value = '';
   showToast('Добавлено вручную');
 });
 
