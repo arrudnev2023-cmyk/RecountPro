@@ -13,15 +13,15 @@
   --neon1:#7b3be6;
   --neon2:#c86cff;
   --accent:linear-gradient(90deg,var(--neon1),var(--neon2));
-  --header-h:112px;
-  --footer-h:88px;
+  --header-h:112px; /* two-row header */
+  --footer-h:92px;
   --max-w:420px;
   --gap:10px;
   --card-radius:12px;
   --shadow: 0 8px 24px rgba(16,24,40,0.04);
 }
 
-/* Reset */
+/* Reset & base */
 *{box-sizing:border-box}
 html,body{
   height:100%;
@@ -29,21 +29,22 @@ html,body{
   background:var(--bg);
   font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;
   -webkit-font-smoothing:antialiased;
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: none; /* prevent pull-to-refresh on supporting browsers */
   touch-action: manipulation;
+  -webkit-user-select:none; user-select:none;
 }
 
-/* App layout */
+/* App layout: three strict zones */
 .app{height:100vh;display:flex;flex-direction:column;align-items:center;}
 
-/* Header fixed: two rows (title + search) */
+/* Header (fixed) */
 .header{
   position:fixed; left:0; right:0; top:0;
   height:var(--header-h);
   display:flex;align-items:flex-start;justify-content:center;
   background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.96));
   border-bottom:1px solid rgba(11,16,32,0.04);
-  z-index:1300;
+  z-index:1400;
   padding:12px 12px 10px 12px;
   box-shadow: 0 6px 18px rgba(16,24,40,0.04);
   overscroll-behavior: contain;
@@ -70,7 +71,7 @@ html,body{
 .clear-x{ position:absolute; right:8px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:var(--muted); font-weight:700; padding:6px; border-radius:6px; cursor:pointer; }
 .scan-btn{ padding:10px 12px; border-radius:10px; border:none; cursor:pointer; font-weight:700; background:var(--accent); color:#fff; min-width:84px; flex:0 0 auto; }
 
-/* Content: single scrollable area */
+/* Content (single scrollable area) */
 .content{
   width:100%;
   max-width:var(--max-w);
@@ -84,6 +85,7 @@ html,body{
   flex-direction:column;
   gap:var(--gap);
   align-items:stretch;
+  background:transparent;
 }
 
 /* Card / scanner */
@@ -105,15 +107,15 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 .qty-input{ flex:1; padding:10px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); font-weight:700; font-size:15px; }
 .plus-btn{ padding:10px 12px; border-radius:8px; background:linear-gradient(90deg,var(--neon1),var(--neon2)); color:#fff; border:none; cursor:pointer; }
 
-/* Footer fixed */
-.footer{ position:fixed; left:0; right:0; bottom:0; height:var(--footer-h); display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.96)); border-top:1px solid rgba(11,16,32,0.04); z-index:1300; padding:12px; box-shadow:0 -6px 18px rgba(16,24,40,0.04); }
+/* Footer (fixed) */
+.footer{ position:fixed; left:0; right:0; bottom:0; height:var(--footer-h); display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.96)); border-top:1px solid rgba(11,16,32,0.04); z-index:1400; padding:12px; box-shadow:0 -6px 18px rgba(16,24,40,0.04); }
 .footer-inner{ width:100%; max-width:var(--max-w); display:flex; gap:8px; align-items:center; }
 .manual-input{ flex:1; display:flex; gap:8px; align-items:center; }
 .manual-input input{ flex:1; padding:10px; border-radius:10px; border:1px solid rgba(11,16,32,0.06); background:#fff; outline:none; min-width:0; }
 .manual-input button{ padding:10px 12px; border-radius:10px; border:none; background:var(--neon1); color:#fff; font-weight:700; cursor:pointer; }
 
 /* Numeric pad (optional) */
-.numeric-pad { position: fixed; left: 0; right: 0; bottom: var(--footer-h); background: linear-gradient(180deg,#fff,#f3f4f8); border-top: 1px solid rgba(11,16,32,0.06); box-shadow: 0 -8px 30px rgba(11,16,32,0.08); padding: 10px; display: none; z-index: 1350; }
+.numeric-pad { position: fixed; left: 0; right: 0; bottom: var(--footer-h); background: linear-gradient(180deg,#fff,#f3f4f8); border-top: 1px solid rgba(11,16,32,0.06); box-shadow: 0 -8px 30px rgba(11,16,32,0.08); padding: 10px; display: none; z-index: 1450; }
 .numeric-pad.visible { display: block; }
 .numeric-pad .row { display:flex; gap:8px; margin-bottom:8px; }
 .numeric-pad button.key { flex:1; padding:12px 8px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); background:#fff; font-size:18px; font-weight:700; }
@@ -121,7 +123,7 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 .numeric-pad .key.wide { flex:2; }
 
 .small{ font-size:13px; color:var(--muted); }
-@media (max-width:420px){ :root{ --header-h:120px; --footer-h:100px } .logo{ width:40px; height:40px } .input{ font-size:15px } }
+@media (max-width:420px){ :root{ --header-h:120px; --footer_h:100px } .logo{ width:40px; height:40px } .input{ font-size:15px } }
 </style>
 </head>
 <body>
@@ -147,6 +149,7 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 
   <!-- Content -->
   <main class="content" id="content" role="main" aria-label="Список товаров">
+    <!-- Scanner card (hidden by default) -->
     <section id="scannerCard" class="card" style="display:none" aria-hidden="true">
       <div class="preview-wrap camera-1-3" id="previewWrap">
         <video id="preview" playsinline muted></video>
@@ -158,6 +161,7 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
       <div id="scanResult" class="small" style="margin-top:8px"></div>
     </section>
 
+    <!-- Results list -->
     <section id="resultsWrap" class="card" aria-labelledby="resultsTitle">
       <h3 id="resultsTitle" style="margin:0 0 8px 0">Найденные товары</h3>
       <div id="results" class="results" aria-live="polite">
@@ -207,16 +211,19 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
   </div>
 </div>
 
+<script src="https://unpkg.com/@zxing/library@latest"></script>
 <script>
-/* ===== Keys and state ===== */
+/* ===== Storage keys ===== */
 const STORAGE_DB = 'barcodeDB';
 const STORAGE_INV = 'inventoryItems';
+
+/* ===== State ===== */
 let barcodeDB = JSON.parse(localStorage.getItem(STORAGE_DB) || '{}');
 let inventoryItems = JSON.parse(localStorage.getItem(STORAGE_INV) || '[]');
 let renderedCards = new Map();
 let padTargetCode = null;
 
-/* Elements */
+/* ===== Elements ===== */
 const searchInput = document.getElementById('searchInput');
 const clearSearch = document.getElementById('clearSearch');
 const openScannerBtn = document.getElementById('openScannerBtn');
@@ -226,20 +233,36 @@ const preview = document.getElementById('preview');
 const deviceSelect = document.getElementById('deviceSelect');
 const closeScannerBtn = document.getElementById('closeScannerBtn');
 const scanResult = document.getElementById('scanResult');
+
 const resultsEl = document.getElementById('results');
 const emptyHint = document.getElementById('emptyHint');
+
 const manualCode = document.getElementById('manualCode');
 const manualName = document.getElementById('manualName');
 const addManualBtn = document.getElementById('addManualBtn');
+
 const numericPad = document.getElementById('numericPad');
 
-/* Utils */
+/* ===== Utilities ===== */
 function saveDB(){ localStorage.setItem(STORAGE_DB, JSON.stringify(barcodeDB)); }
 function saveInventory(){ localStorage.setItem(STORAGE_INV, JSON.stringify(inventoryItems)); }
-function showToast(msg, ms=1000){ scanResult.textContent = msg; setTimeout(()=>{ if(scanResult.textContent===msg) scanResult.textContent=''; }, ms); }
+function showToast(text, ms=1200){ scanResult.textContent = text; setTimeout(()=>{ if(scanResult.textContent===text) scanResult.textContent=''; }, ms); }
+function beepSound(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = 880;
+    g.gain.value = 0.02;
+    o.connect(g); g.connect(ctx.destination);
+    o.start();
+    setTimeout(()=>{ o.stop(); ctx.close(); }, 120);
+  }catch(e){}
+}
 function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
 
-/* Search & display */
+/* ===== Search & display helpers ===== */
 function searchItems(q){
   q = normalize(q);
   if(!q) return [];
@@ -252,6 +275,7 @@ function searchItems(q){
   }
   return out;
 }
+
 function getDisplayList(){
   const q = searchInput.value.trim();
   const list = [];
@@ -264,13 +288,22 @@ function getDisplayList(){
   return list;
 }
 
-/* Render incremental */
+/* ===== Render results (incremental, preserve inputs & focus) ===== */
 function renderResults(){
   const list = getDisplayList();
-  if(list.length === 0){ resultsEl.innerHTML = ''; emptyHint.style.display = 'block'; renderedCards.clear(); return; }
+  if(list.length === 0){
+    resultsEl.innerHTML = '';
+    emptyHint.style.display = 'block';
+    renderedCards.clear();
+    return;
+  }
   emptyHint.style.display = 'none';
+
   const keep = new Set(list.map(i=>i.code));
-  for(const [code, el] of renderedCards) if(!keep.has(code)){ el.remove(); renderedCards.delete(code); }
+  for(const [code, el] of renderedCards){
+    if(!keep.has(code)){ el.remove(); renderedCards.delete(code); }
+  }
+
   const frag = document.createDocumentFragment();
   for(const item of list){
     if(renderedCards.has(item.code)){
@@ -284,6 +317,7 @@ function renderResults(){
       frag.appendChild(el);
       continue;
     }
+
     const card = document.createElement('div');
     card.className = 'card-item';
     card.dataset.code = item.code;
@@ -297,104 +331,222 @@ function renderResults(){
           </div>
         </div>
       </div>
+
       <div class="qty-row">
         <input inputmode="numeric" pattern="[0-9+ ]*" class="qty-input" type="text" value="${escapeHtml(item.expr || String(item.qty || 0))}" aria-label="Выражение для ${escapeHtml(item.name)}">
         <button class="plus-btn" title="Плюс">+</button>
       </div>
     `;
-    const input = card.querySelector('.qty-input');
-    const plus = card.querySelector('.plus-btn');
-    input.addEventListener('focus', ()=>{ padTargetCode = item.code; openNumericPad(item.code); });
-    input.addEventListener('blur', ()=>{ const expr = input.value; const total = evaluateExpression(expr); upsertInventoryExpr(item.code, item.name, expr, total, true); input.value = normalizeExpression(expr); });
-    input.addEventListener('input', ()=>{ const expr = input.value; const total = evaluateExpression(expr); upsertInventoryExpr(item.code, item.name, expr, total, true); });
-    plus.addEventListener('click', (ev)=>{ ev.preventDefault(); let expr = input.value || ''; expr = expr.trim(); if(/\+\s*$/.test(expr)){ input.focus(); return; } expr = expr === '' ? '0 + ' : expr + ' + '; const total = evaluateExpression(expr); upsertInventoryExpr(item.code, item.name, expr, total, true); input.value = normalizeExpression(expr); input.focus(); setTimeout(()=>{ try{ input.setSelectionRange(input.value.length, input.value.length); }catch(e){} },0); });
+    const qtyInput = card.querySelector('.qty-input');
+    const plusBtn = card.querySelector('.plus-btn');
+
+    qtyInput.addEventListener('focus', ()=>{
+      padTargetCode = item.code;
+      openNumericPad(item.code);
+    });
+    qtyInput.addEventListener('blur', ()=>{
+      const expr = qtyInput.value;
+      const total = evaluateExpression(expr);
+      upsertInventoryExpr(item.code, item.name, expr, total, true);
+      qtyInput.value = normalizeExpression(expr);
+    });
+
+    qtyInput.addEventListener('input', ()=>{
+      const expr = qtyInput.value;
+      const total = evaluateExpression(expr);
+      upsertInventoryExpr(item.code, item.name, expr, total, true);
+    });
+
+    plusBtn.addEventListener('click', (ev)=>{
+      ev.preventDefault();
+      let expr = qtyInput.value || '';
+      expr = expr.trim();
+      if(/\+\s*$/.test(expr)){
+        qtyInput.focus();
+        return;
+      }
+      expr = expr === '' ? '0 + ' : expr + ' + ';
+      const total = evaluateExpression(expr);
+      upsertInventoryExpr(item.code, item.name, expr, total, true);
+      qtyInput.value = normalizeExpression(expr);
+      qtyInput.focus();
+      setTimeout(()=>{ try{ qtyInput.setSelectionRange(qtyInput.value.length, qtyInput.value.length); }catch(e){} }, 0);
+    });
+
     renderedCards.set(item.code, card);
     frag.appendChild(card);
   }
+
   resultsEl.appendChild(frag);
 }
+
+/* helpers */
 function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function normalizeExpression(expr){ if(!expr) return ''; const trailingPlus = /\+\s*$/.test(expr); const parts = (expr.match(/\d+/g) || []); const joined = parts.join(' + '); return trailingPlus ? (joined ? joined + ' + ' : ' + ') : joined; }
-function evaluateExpression(expr){ if(!expr) return 0; const nums = (expr.match(/\d+/g) || []).map(n=>parseInt(n,10)||0); return nums.reduce((s,v)=>s+v,0); }
-function upsertInventoryExpr(code, name, expr, total, dontRerender=false){
+function evaluateExpression(expr){ if(!expr) return 0; const nums = (expr.match(/\d+/g) || []).map(n=>parseInt(n,10) || 0); return nums.reduce((s,v)=>s+v, 0); }
+
+/* Upsert inventory */
+function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
   const idx = inventoryItems.findIndex(it => it.code === code);
-  if(idx >= 0){ inventoryItems[idx].qty = total; inventoryItems[idx].expr = expr; inventoryItems[idx].name = name || inventoryItems[idx].name; }
-  else inventoryItems.unshift({ code, name, qty: total, expr });
+  if(idx >= 0){
+    inventoryItems[idx].qty = total;
+    inventoryItems[idx].expr = expr;
+    inventoryItems[idx].name = name || inventoryItems[idx].name;
+  } else {
+    inventoryItems.unshift({ code, name, qty: total, expr });
+  }
   saveInventory();
   const card = renderedCards.get(code);
-  if(card){ const input = card.querySelector('.qty-input'); if(document.activeElement !== input) input.value = expr; }
+  if(card){
+    const inputEl = card.querySelector('.qty-input');
+    if(document.activeElement !== inputEl){
+      inputEl.value = expr;
+    }
+  }
   if(!dontRerender) renderResults();
 }
 
-/* Numeric pad */
-function openNumericPad(code){ padTargetCode = code; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); setTimeout(()=>{ const card = document.querySelector(`[data-code="${code}"]`); if(card){ const input = card.querySelector('.qty-input'); if(input) try{ input.focus(); }catch(e){} } }, 80); }
-function closeNumericPad(){ padTargetCode = null; numericPad.classList.remove('visible'); numericPad.setAttribute('aria-hidden','true'); try{ document.activeElement && document.activeElement.blur(); }catch(e){} }
-function padInsert(ch){ if(!padTargetCode) return; const card = document.querySelector(`[data-code="${padTargetCode}"]`); if(!card) return; const input = card.querySelector('.qty-input'); if(!input) return; if(ch === '←') input.value = input.value.slice(0,-1); else input.value = (input.value || '') + ch; input.dispatchEvent(new Event('input',{bubbles:true})); try{ input.focus(); }catch(e){} }
-numericPad.addEventListener('click', (e)=>{ const btn = e.target.closest('button.key'); if(!btn) return; const key = btn.getAttribute('data-key'); if(key){ padInsert(key); return; } if(btn.id === 'padBack'){ padInsert('←'); return; } if(btn.id === 'padDone'){ closeNumericPad(); return; } });
-document.addEventListener('click', (e)=>{ if(!numericPad.classList.contains('visible')) return; if(numericPad.contains(e.target)) return; if(e.target.closest('.qty-input')) return; closeNumericPad(); });
+/* Numeric pad integration */
+function openNumericPad(code){
+  padTargetCode = code;
+  numericPad.classList.add('visible');
+  numericPad.setAttribute('aria-hidden','false');
+  setTimeout(()=>{
+    const card = document.querySelector(`[data-code="${code}"]`);
+    if(card){
+      const input = card.querySelector('.qty-input');
+      if(input) try{ input.focus(); }catch(e){}
+    }
+  }, 80);
+}
+function closeNumericPad(){
+  padTargetCode = null;
+  numericPad.classList.remove('visible');
+  numericPad.setAttribute('aria-hidden','true');
+  try{ document.activeElement && document.activeElement.blur(); }catch(e){}
+}
+function padInsert(ch){
+  if(!padTargetCode) return;
+  const card = document.querySelector(`[data-code="${padTargetCode}"]`);
+  if(!card) return;
+  const input = card.querySelector('.qty-input');
+  if(!input) return;
+  if(ch === '←'){
+    input.value = input.value.slice(0, -1);
+  } else {
+    input.value = (input.value || '') + ch;
+  }
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  try{ input.focus(); }catch(e){}
+}
+numericPad.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button.key');
+  if(!btn) return;
+  const key = btn.getAttribute('data-key');
+  if(key){ padInsert(key); return; }
+  if(btn.id === 'padBack'){ padInsert('←'); return; }
+  if(btn.id === 'padDone'){ closeNumericPad(); return; }
+});
+document.addEventListener('click', (e)=>{
+  if(!numericPad.classList.contains('visible')) return;
+  if(numericPad.contains(e.target)) return;
+  if(e.target.closest('.qty-input')) return;
+  closeNumericPad();
+});
 
 /* Search wiring (no autofocus on load) */
 searchInput.addEventListener('input', ()=>{ renderResults(); });
-clearSearch.addEventListener('click', ()=>{ searchInput.value=''; renderResults(); });
+clearSearch.addEventListener('click', ()=>{ searchInput.value = ''; renderResults(); });
 
 /* Manual add */
-addManualBtn.addEventListener('click', ()=>{ const code = (manualCode.value||'').trim(); const name = (manualName.value||'').trim() || (code || 'Новый товар'); const finalCode = code || ('manual-' + Date.now()); barcodeDB[finalCode] = name; saveDB(); upsertInventoryExpr(finalCode, name, '0', 0, true); renderResults(); focusCardInput(finalCode); manualCode.value=''; manualName.value=''; showToast('Добавлено вручную'); });
+addManualBtn.addEventListener('click', ()=>{
+  const code = (manualCode.value || '').trim();
+  const name = (manualName.value || '').trim() || (code || 'Новый товар');
+  const finalCode = code || ('manual-' + Date.now());
+  barcodeDB[finalCode] = name;
+  saveDB();
+  upsertInventoryExpr(finalCode, name, '0', 0, true);
+  renderResults();
+  focusCardInput(finalCode);
+  manualCode.value = '';
+  manualName.value = '';
+  showToast('Добавлено вручную');
+});
 
-/* Focus card input (best-effort native keyboard nudge) */
+/* Focus card input and try to nudge native keyboard (best-effort) */
 function focusCardInput(code){
-  setTimeout(()=>{ const card = renderedCards.get(code) || document.querySelector(`[data-code="${code}"]`); if(!card) return; const input = card.querySelector('.qty-input'); if(!input) return; try{ input.type='tel'; input.setAttribute('inputmode','numeric'); input.focus(); const len = input.value.length; try{ input.setSelectionRange(len,len); }catch(e){} setTimeout(()=>{ try{ input.type='text'; }catch(e){} try{ input.setSelectionRange(len,len); }catch(e){} },120); }catch(e){ try{ input.focus(); }catch(e){} } openNumericPad(code); padTargetCode = code; }, 160);
-renderResults();
+  setTimeout(()=>{
+    const card = renderedCards.get(code) || document.querySelector(`[data-code="${code}"]`);
+    if(!card) return;
+    const input = card.querySelector('.qty-input');
+    if(!input) return;
+    try{
+      input.type = 'tel';
+      input.setAttribute('inputmode','numeric');
+      input.focus();
+      const len = input.value.length;
+      try{ input.setSelectionRange(len, len); }catch(e){}
+      setTimeout(()=>{
+        try{ input.type = 'text'; }catch(e){}
+        try{ input.setSelectionRange(len, len); }catch(e){}
+      }, 120);
+    }catch(e){
+      try{ input.focus(); }catch(e){}
+    }
+    openNumericPad(code);
+    padTargetCode = code;
+  }, 160);
+}
 
-/* Scanner: use ZXing.BrowserMultiFormatReader.decodeFromVideoDevice for reliability */
+/* ===== Scanner using ZXing.BrowserMultiFormatReader.decodeFromVideoDevice ===== */
 let codeReader = null;
-let currentStreamDeviceId = null;
 let scanning = false;
 let lastDetected = {code:null, ts:0};
 const DEBOUNCE_MS = 900;
-
-async function ensureZXing(){
-  if(window.ZXing && window.ZXing.BrowserMultiFormatReader) return;
-  // load library dynamically if not already loaded (script tag in page already included, but keep safe)
-  if(!window.ZXing){
-    await new Promise((res, rej)=>{
-      const s = document.createElement('script');
-      s.src = 'https://unpkg.com/@zxing/library@latest';
-      s.onload = res;
-      s.onerror = rej;
-      document.head.appendChild(s);
-    });
-  }
-}
 
 async function enumerateCameras(){
   try{
     const devices = await navigator.mediaDevices.enumerateDevices();
     const cams = devices.filter(d => d.kind === 'videoinput');
     deviceSelect.innerHTML = '';
-    cams.forEach((c, idx)=>{ const opt = document.createElement('option'); opt.value = c.deviceId; opt.text = c.label || `Камера ${idx+1}`; deviceSelect.appendChild(opt); });
-    if(cams.length && !currentStreamDeviceId) currentStreamDeviceId = cams[0].deviceId;
-    if(currentStreamDeviceId) deviceSelect.value = currentStreamDeviceId;
+    cams.forEach((c, idx)=>{
+      const opt = document.createElement('option');
+      opt.value = c.deviceId;
+      opt.text = c.label || `Камера ${idx+1}`;
+      deviceSelect.appendChild(opt);
+    });
   }catch(e){}
 }
 
-/* Start scanner using BrowserMultiFormatReader.decodeFromVideoDevice */
 async function startScanner(){
   if(scanning) return;
-  try{ await ensureZXing(); }catch(e){ showToast('Не удалось загрузить сканер'); return; }
-  codeReader = codeReader || new ZXing.BrowserMultiFormatReader();
+  if(!window.ZXing || !ZXing.BrowserMultiFormatReader){
+    // ZXing script is included via <script> tag; ensure it's ready
+    if(!window.ZXing) {
+      showToast('Загрузка сканера...');
+      // script tag already present; wait briefly
+      await new Promise(r=>setTimeout(r, 300));
+    }
+  }
+  try{
+    codeReader = codeReader || new ZXing.BrowserMultiFormatReader();
+  }catch(e){
+    showToast('Сканер недоступен');
+    return;
+  }
   await enumerateCameras();
   const deviceId = deviceSelect.value || undefined;
   try{
     scanning = true;
-    // decodeFromVideoDevice will handle camera stream internally and call callback on result
     codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
       if(result && result.text){
         const now = Date.now();
         if(result.text === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
         lastDetected = {code: result.text, ts: now};
+        beepSound();
         handleDetected(result.text);
       }
-      // err can be ignored during continuous scanning; ZXing reports NotFoundException frequently
+      // ignore frequent NotFoundException errors
     });
     previewWrap.classList.add('visible');
     scannerCard.style.display = 'block';
@@ -406,9 +558,7 @@ async function startScanner(){
 }
 
 function stopScanner(){
-  try{
-    if(codeReader) codeReader.reset(); // stops stream and decoding
-  }catch(e){}
+  try{ if(codeReader) codeReader.reset(); }catch(e){}
   scanning = false;
   previewWrap.classList.remove('visible');
   scannerCard.style.display = 'none';
@@ -441,33 +591,49 @@ function handleDetected(code){
   }
 }
 
-/* UI wiring */
-openScannerBtn.addEventListener('click', async ()=>{ await startScanner(); });
+/* UI wiring for scanner */
+openScannerBtn.addEventListener('click', async ()=>{
+  await startScanner();
+});
 closeScannerBtn.addEventListener('click', ()=>{ stopScanner(); });
 
-deviceSelect.addEventListener('change', async ()=>{ // restart scanner on device change
+deviceSelect.addEventListener('change', async ()=>{
   if(scanning){ try{ codeReader.reset(); }catch(e){} scanning=false; }
   await startScanner();
 });
 
-/* enumerate cameras once */
+/* enumerate cameras on load (non-blocking) */
 if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) navigator.mediaDevices.enumerateDevices().then(enumerateCameras).catch(()=>{});
 
-/* Prevent pull-to-refresh on some browsers */
+/* Prevent pull-to-refresh on some browsers (extra JS) */
 (function preventPullToRefresh(){
-  let startY = 0; let id = null;
+  let startY = 0;
+  let id = null;
   document.addEventListener('touchstart', (e)=>{ if(e.touches && e.touches.length===1){ startY = e.touches[0].clientY; id = e.touches[0].identifier; } }, {passive:true});
-  document.addEventListener('touchmove', (e)=>{ try{ const t = Array.from(e.touches).find(tt=>tt.identifier===id) || e.touches[0]; const currentY = t.clientY; const sc = document.querySelector('.content'); if(sc){ const atTop = sc.scrollTop <= 0; if(atTop && currentY > startY) e.preventDefault(); } else { if(window.scrollY <= 0 && currentY > startY) e.preventDefault(); } }catch(err){} }, {passive:false});
+  document.addEventListener('touchmove', (e)=>{
+    try{
+      const t = Array.from(e.touches).find(tt=>tt.identifier===id) || e.touches[0];
+      const currentY = t.clientY;
+      const sc = document.querySelector('.content');
+      if(sc){
+        const atTop = sc.scrollTop <= 0;
+        if(atTop && currentY > startY) e.preventDefault();
+      } else {
+        if(window.scrollY <= 0 && currentY > startY) e.preventDefault();
+      }
+    }catch(err){}
+  }, {passive:false});
 })();
 
 /* Initial render (no autofocus) */
 renderResults();
 
-/* Expose for debugging */
+/* Expose for debugging (optional) */
 window._inv = { renderResults, upsertInventoryExpr, inventoryItems, barcodeDB };
 </script>
 </body>
 </html>
+
 
 
 
