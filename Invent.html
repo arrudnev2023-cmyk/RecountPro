@@ -12,190 +12,77 @@
   --muted:#6b7280;
   --accent-1:#7b3be6;
   --accent-2:#c86cff;
-  --accent:linear-gradient(90deg,var(--accent-1),var(--accent-2));
-  --header-h:150px; /* шапка: название + поиск + ручной ввод */
-  --gap:10px;
-  --card-radius:10px;
-  --shadow: 0 8px 20px rgba(16,24,40,0.06);
+  --header-h:150px;
+  --pad-height:260px;
   --max-width:420px;
   --safe-margin:12px;
-  --pad-scale:0.92;
-  --pad-height:260px;
+  --card-radius:10px;
+  --shadow: 0 8px 20px rgba(16,24,40,0.06);
 }
 
-/* Reset & base */
+/* Base */
 *{box-sizing:border-box}
-html,body{
-  height:100%;
-  margin:0;
-  background:var(--bg);
-  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-  color:#0b1020;
-  -webkit-font-smoothing:antialiased;
-  overscroll-behavior-y: none;
-  touch-action: pan-y;
-  -webkit-user-select:none; user-select:none;
-  -webkit-tap-highlight-color: transparent;
-  font-size:15px;
-  -webkit-text-size-adjust:100%;
-}
-
-/* App layout */
+html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#0b1020;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;touch-action:pan-y;-webkit-text-size-adjust:100%;}
 .app{height:100vh;display:flex;flex-direction:column;align-items:center;}
 
-/* Header fixed (title + search + manual input) */
-.header{
-  position:fixed; left:0; right:0; top:0;
-  height:var(--header-h);
-  display:flex;align-items:flex-start;justify-content:center;
-  background:linear-gradient(180deg, rgba(255,255,255,0.995), rgba(255,255,255,0.98));
-  border-bottom:1px solid rgba(11,16,32,0.04);
-  z-index:4000;
-  padding:10px var(--safe-margin);
-  box-shadow: 0 6px 18px rgba(16,24,40,0.04);
-  overscroll-behavior: contain;
-  touch-action: none;
-}
-.header-inner{ width:100%; max-width:var(--max-width); display:flex; flex-direction:column; gap:8px; margin:0 auto; }
+/* Header */
+.header{position:fixed;left:0;right:0;top:0;height:var(--header-h);display:flex;align-items:flex-start;justify-content:center;background:#fff;border-bottom:1px solid rgba(11,16,32,0.04);z-index:4000;padding:10px var(--safe-margin);box-shadow:0 6px 18px rgba(16,24,40,0.04);touch-action:none;}
+.header-inner{width:100%;max-width:var(--max-width);display:flex;flex-direction:column;gap:8px;margin:0 auto;}
+.title-row{display:flex;align-items:center;gap:10px;}
+.logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,#7b3be6,#c86cff);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;}
+.title{font-size:16px;font-weight:700;}
+.search-row{display:flex;gap:8px;align-items:center;}
+.input-wrap{position:relative;flex:1;min-width:0;}
+.input{width:100%;padding:10px 40px 10px 12px;border-radius:10px;border:1px solid rgba(11,16,32,0.06);background:#fff;font-size:15px;outline:none;}
+.clear-x{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--muted);cursor:pointer;}
+.scan-btn{padding:10px 12px;border-radius:10px;border:none;background:linear-gradient(90deg,#7b3be6,#c86cff);color:#fff;font-weight:700;}
 
-/* Title row */
-.title-row{ display:flex; align-items:center; gap:10px; }
-.logo{ width:44px; height:44px; border-radius:10px; background:var(--accent); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; flex:0 0 44px; font-size:14px; }
-.title{ font-size:16px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* Manual small inputs under search */
+.manual-row{display:flex;gap:8px;align-items:center;margin-top:4px;}
+.manual-row input{flex:1;padding:8px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);background:#fff;font-size:14px;min-width:0;}
+.manual-row button{padding:8px 10px;border-radius:8px;border:none;background:#7b3be6;color:#fff;font-weight:700;cursor:pointer;}
 
-/* Search row */
-.search-row{ display:flex; gap:8px; align-items:center; }
-.input-wrap{ position:relative; flex:1; min-width:0; }
-.input{
-  width:100%;
-  padding:10px 40px 10px 12px;
-  border-radius:10px;
-  border:1px solid rgba(11,16,32,0.06);
-  background:#fff;
-  outline:none;
-  font-size:15px;
-}
-.clear-x{ position:absolute; right:8px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:var(--muted); font-weight:700; padding:6px; border-radius:6px; cursor:pointer; }
-.scan-btn{ padding:10px 12px; border-radius:10px; border:none; cursor:pointer; font-weight:700; background:var(--accent); color:#fff; min-width:84px; flex:0 0 auto; }
+/* Cards block */
+.cards-block{position:fixed;left:0;right:0;top:calc(var(--header-h) + 6px);bottom:0;max-width:var(--max-width);margin-left:auto;margin-right:auto;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px;display:flex;flex-direction:column;gap:10px;z-index:1000;background:transparent;}
 
-/* Manual input row (под поиском, в шапке) — уменьшены поля */
-.manual-row{
-  display:flex;
-  gap:8px;
-  align-items:center;
-  margin-top:4px;
-}
-.manual-row input{
-  flex:1;
-  padding:8px;
-  border-radius:8px;
-  border:1px solid rgba(11,16,32,0.06);
-  background:#fff;
-  font-size:14px;
-  min-width:0;
-}
-.manual-row button{
-  padding:8px 10px;
-  border-radius:8px;
-  border:none;
-  background:var(--accent-1);
-  color:#fff;
-  font-weight:700;
-  cursor:pointer;
-  flex:0 0 auto;
-}
+/* Cards */
+.card{background:var(--panel);border-radius:var(--card-radius);padding:12px;border:1px solid rgba(11,16,32,0.06);box-shadow:var(--shadow);}
+.preview-wrap{border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(11,16,32,0.06);display:none;}
+.preview-wrap.visible{display:block;}
+.preview-wrap.camera-1-3{height:32vh;min-height:140px;max-height:300px;}
+video#preview{width:100%;height:100%;object-fit:cover;display:block;}
+.results{display:flex;flex-direction:column;gap:10px;}
+.card-item{display:flex;flex-direction:column;padding:12px;border-radius:10px;border:1px solid rgba(11,16,32,0.04);background:linear-gradient(180deg,#fff,#fbfbff);}
+.item-top{display:flex;align-items:center;gap:12px;}
+.avatar{width:56px;height:56px;border-radius:8px;background:linear-gradient(90deg,#7b3be6,#c86cff);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;}
+.item-meta{display:flex;flex-direction:column;min-width:0;flex:1;}
+.item-name{font-weight:700;color:#0b1020;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.item-code{color:var(--muted);font-size:13px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.qty-row{margin-top:10px;display:flex;gap:8px;align-items:center;}
+.qty-input{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);font-weight:700;font-size:15px;background:#fbfbff;cursor:pointer;touch-action:manipulation;}
+.plus-btn{padding:10px 12px;border-radius:8px;background:linear-gradient(90deg,#7b3be6,#c86cff);color:#fff;border:none;cursor:pointer;font-weight:700;}
 
-/* Cards block: fixed under header, scrollable to bottom of screen */
-.cards-block{
-  position:fixed;
-  left:0;
-  right:0;
-  top:calc(var(--header-h) + 6px);
-  bottom:0;
-  max-width:var(--max-width);
-  margin-left:auto;
-  margin-right:auto;
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
-  padding:12px;
-  display:flex;
-  flex-direction:column;
-  gap:var(--gap);
-  z-index:1000;
-  background:transparent;
-}
-
-/* Card / scanner */
-.card{ background:var(--panel); border-radius:var(--card-radius); padding:12px; border:1px solid rgba(11,16,32,0.06); box-shadow:var(--shadow); }
-.preview-wrap{ border-radius:10px; overflow:hidden; background:#000; border:1px solid rgba(11,16,32,0.06); display:none; }
-.preview-wrap.visible{ display:block; }
-.preview-wrap.camera-1-3{ height:32vh; min-height:140px; max-height:300px; }
-video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
-
-/* Results list (cards) */
-.results{ display:flex; flex-direction:column; gap:10px; }
-.card-item{ display:flex; flex-direction:column; padding:12px; border-radius:10px; border:1px solid rgba(11,16,32,0.04); background:linear-gradient(180deg,#fff,#fbfbff); }
-.item-top{ display:flex; align-items:center; gap:12px; }
-.avatar{ width:56px; height:56px; border-radius:8px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; flex:0 0 56px; }
-.item-meta{ display:flex; flex-direction:column; min-width:0; flex:1; }
-.item-name{ font-weight:700; color:#0b1020; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.item-code{ color:var(--muted); font-size:13px; margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.qty-row{ margin-top:10px; display:flex; gap:8px; align-items:center; }
-.qty-input{ flex:1; padding:10px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); font-weight:700; font-size:15px; background:#fbfbff; cursor:pointer; }
-.plus-btn{ padding:10px 12px; border-radius:8px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border:none; cursor:pointer; font-weight:700; }
-
-/* Numeric pad (custom) - full width and animated, anchored to bottom */
-.numeric-pad{
-  position:fixed;
-  left:0;
-  width:100vw;
-  max-width:100%;
-  bottom:0;
-  display:none;
-  z-index:4500;
-  background:linear-gradient(180deg,#fff,#f3f4f8);
-  border-top:1px solid rgba(11,16,32,0.06);
-  box-shadow:0 -8px 30px rgba(11,16,32,0.08);
-  padding:8px;
-  border-radius:12px 12px 0 0;
-  transform: translateY(12px) scale(var(--pad-scale));
-  transform-origin: center bottom;
-  opacity:0;
-  transition: transform 260ms cubic-bezier(.2,.9,.2,1), opacity 200ms ease;
-  height: var(--pad-height);
-  box-sizing: border-box;
-}
-.numeric-pad.visible{
-  display:block;
-  transform: translateY(0) scale(1);
-  opacity:1;
-}
-.numeric-pad .inner{
-  height:100%;
-  display:flex;
-  flex-direction:column;
-  justify-content:space-between;
-}
-.numeric-pad .keys{ display:flex; flex-wrap:wrap; gap:8px; }
-.numeric-pad button.key{ flex:1 1 30%; padding:12px 8px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); background:#fff; font-size:18px; font-weight:700; min-width:56px; }
-.numeric-pad .key.action{ background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border:none; }
-.numeric-pad .row-bottom{ display:flex; gap:8px; align-items:center; }
+/* Numeric pad full-width */
+.numeric-pad{position:fixed;left:0;width:100vw;max-width:100%;bottom:0;display:none;z-index:4500;background:linear-gradient(180deg,#fff,#f3f4f8);border-top:1px solid rgba(11,16,32,0.06);box-shadow:0 -8px 30px rgba(11,16,32,0.08);padding:8px;border-radius:12px 12px 0 0;transform:translateY(12px) scale(.92);transform-origin:center bottom;opacity:0;transition:transform 260ms cubic-bezier(.2,.9,.2,1),opacity 200ms ease;height:var(--pad-height);box-sizing:border-box;}
+.numeric-pad.visible{display:block;transform:translateY(0) scale(1);opacity:1;}
+.numeric-pad .inner{height:100%;display:flex;flex-direction:column;justify-content:space-between;}
+.numeric-pad .keys{display:flex;flex-wrap:wrap;gap:8px;}
+.numeric-pad button.key{flex:1 1 30%;padding:12px 8px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);background:#fff;font-size:18px;font-weight:700;min-width:56px;}
+.numeric-pad .key.action{background:linear-gradient(90deg,#7b3be6,#c86cff);color:#fff;border:none;}
+.numeric-pad .row-bottom{display:flex;gap:8px;align-items:center;}
 
 /* small */
-.small{ font-size:13px; color:var(--muted); }
+.small{font-size:13px;color:var(--muted);}
 
-/* modal (hidden by default) */
-.modal-backdrop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:4200; background:rgba(11,16,32,0.45); }
-.modal{ width:92%; max-width:420px; background:#fff; border-radius:12px; padding:12px; box-shadow:0 20px 60px rgba(11,16,32,0.25); }
-.modal .row{ display:flex; gap:8px; margin-top:8px; }
-.modal input{ flex:1; padding:8px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); }
+/* modal */
+.modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:4200;background:rgba(11,16,32,0.45);}
+.modal{width:92%;max-width:420px;background:#fff;border-radius:12px;padding:12px;box-shadow:0 20px 60px rgba(11,16,32,0.25);}
 
-/* mobile-only: keep layout phone-like */
+/* responsive */
 @media (min-width:600px){
-  .app{ align-items:center; }
-  .cards-block{ left:50%; transform:translateX(-50%); max-width:420px; }
-  .numeric-pad{ left:50%; transform-origin:center bottom; transform: translateX(-50%) translateY(12px) scale(var(--pad-scale)); width:420px; }
-  .numeric-pad.visible{ transform: translateX(-50%) translateY(0) scale(1); }
+  .cards-block{left:50%;transform:translateX(-50%);max-width:420px;}
+  .numeric-pad{left:50%;transform-origin:center bottom;transform:translateX(-50%) translateY(12px) scale(.92);width:420px;}
+  .numeric-pad.visible{transform:translateX(-50%) translateY(0) scale(1);}
 }
 </style>
 </head>
@@ -212,36 +99,32 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 
       <div class="search-row" role="search" aria-label="Поиск и сканер">
         <div class="input-wrap">
-          <input id="searchInput" class="input" type="text" placeholder="Поиск по названию или коду" aria-label="Поиск по товарам" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-          <button id="clearSearch" class="clear-x" title="Очистить поле" aria-label="Очистить поле">✕</button>
+          <input id="searchInput" class="input" type="text" placeholder="Поиск по названию или коду" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Поиск">
+          <button id="clearSearch" class="clear-x" title="Очистить">✕</button>
         </div>
         <button id="openScannerBtn" class="scan-btn" aria-label="Открыть сканер">Сканер</button>
       </div>
 
-      <!-- Manual input moved under search (now smaller and uses system keyboard) -->
-      <div class="manual-row" role="region" aria-label="Ручной ввод штрихкода">
-        <input id="manualCodeHeader" placeholder="Штрихкод вручную" aria-label="Штрихкод вручную" inputmode="numeric" pattern="[0-9+]*">
-        <input id="manualNameHeader" placeholder="Название товара" aria-label="Название вручную">
+      <!-- Manual inputs (system keyboard) -->
+      <div class="manual-row" role="region" aria-label="Ручной ввод">
+        <input id="manualCodeHeader" placeholder="Штрихкод вручную" inputmode="numeric" pattern="[0-9+]*" aria-label="Штрихкод">
+        <input id="manualNameHeader" placeholder="Название товара" aria-label="Название">
         <button id="addManualHeaderBtn">Добавить</button>
       </div>
     </div>
   </header>
 
-  <!-- Cards block (fixed under header, scrollable to bottom) -->
-  <section class="cards-block" id="cardsBlock" aria-label="Блок карточек">
-    <!-- Scanner card (hidden by default) -->
+  <!-- Cards block -->
+  <section class="cards-block" id="cardsBlock" aria-label="Карточки">
     <div id="scannerCard" class="card" style="display:none" aria-hidden="true">
-      <div class="preview-wrap camera-1-3" id="previewWrap">
-        <video id="preview" playsinline muted></video>
-      </div>
+      <div class="preview-wrap camera-1-3" id="previewWrap"><video id="preview" playsinline muted></video></div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-        <select id="deviceSelect" class="btn ghost" aria-label="Выбор камеры" style="min-width:80px"></select>
-        <button id="closeScannerBtn" class="btn ghost" aria-label="Закрыть сканер">✕ Закрыть</button>
+        <select id="deviceSelect" style="min-width:80px"></select>
+        <button id="closeScannerBtn" class="btn ghost">✕ Закрыть</button>
       </div>
       <div id="scanResult" class="small" style="margin-top:8px"></div>
     </div>
 
-    <!-- Cards list -->
     <div id="resultsWrap" class="card" aria-labelledby="resultsTitle">
       <h3 id="resultsTitle" style="margin:0 0 8px 0">Найденные товары</h3>
       <div id="results" class="results" aria-live="polite">
@@ -250,7 +133,7 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
     </div>
   </section>
 
-  <!-- Numeric pad full-width -->
+  <!-- Numeric pad -->
   <div id="numericPad" class="numeric-pad" aria-hidden="true">
     <div class="inner">
       <div class="keys" id="padKeys">
@@ -274,39 +157,34 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
     </div>
   </div>
 
-  <!-- Modal for manual text entry (optional) -->
-  <div id="modalBackdrop" class="modal-backdrop" style="display:none;align-items:center;justify-content:center;">
-    <div class="modal" role="dialog" aria-modal="true" aria-label="Ввод вручную">
+  <!-- Modal (optional) -->
+  <div id="modalBackdrop" class="modal-backdrop" style="display:none">
+    <div class="modal" role="dialog" aria-modal="true">
       <div style="font-weight:700">Добавить товар вручную</div>
-      <div class="row" style="margin-top:10px">
-        <input id="modalCode" placeholder="Штрихкод (цифры и +)" readonly>
-      </div>
-      <div class="row">
-        <input id="modalName" placeholder="Название товара (буквы и цифры)" readonly>
-      </div>
+      <div style="margin-top:10px"><input id="modalCode" placeholder="Штрихкод" readonly></div>
+      <div style="margin-top:8px"><input id="modalName" placeholder="Название" readonly></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
-        <button id="modalCancel" class="btn ghost">Отмена</button>
-        <button id="modalSave" class="btn" style="background:var(--accent);color:#fff">Сохранить</button>
+        <button id="modalCancel">Отмена</button>
+        <button id="modalSave" style="background:linear-gradient(90deg,#7b3be6,#c86cff);color:#fff">Сохранить</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ZXing library -->
+<!-- ZXing -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
-
 <script>
-/* ===== State and storage ===== */
+/* State */
 const STORAGE_DB = 'barcodeDB';
 const STORAGE_INV = 'inventoryItems';
 let barcodeDB = JSON.parse(localStorage.getItem(STORAGE_DB) || '{}');
 let inventoryItems = JSON.parse(localStorage.getItem(STORAGE_INV) || '[]');
 let renderedCards = new Map();
-let padTarget = null; // {type:'qty'|'manual'|'modal', code/field}
+let padTarget = null;
 let isScrolling = false;
 let scrollTimer = null;
 
-/* ===== Elements ===== */
+/* Elements */
 const cardsBlock = document.getElementById('cardsBlock');
 const header = document.querySelector('.header');
 const searchInput = document.getElementById('searchInput');
@@ -318,40 +196,36 @@ const preview = document.getElementById('preview');
 const deviceSelect = document.getElementById('deviceSelect');
 const closeScannerBtn = document.getElementById('closeScannerBtn');
 const scanResult = document.getElementById('scanResult');
-
 const resultsEl = document.getElementById('results');
 const emptyHint = document.getElementById('emptyHint');
-
 const manualCodeHeader = document.getElementById('manualCodeHeader');
 const manualNameHeader = document.getElementById('manualNameHeader');
 const addManualHeaderBtn = document.getElementById('addManualHeaderBtn');
-
 const numericPad = document.getElementById('numericPad');
 const padBack = document.getElementById('padBack');
 const padDone = document.getElementById('padDone');
-
 const modalBackdrop = document.getElementById('modalBackdrop');
 const modalCode = document.getElementById('modalCode');
 const modalName = document.getElementById('modalName');
 const modalCancel = document.getElementById('modalCancel');
 const modalSave = document.getElementById('modalSave');
 
-/* ===== Utilities ===== */
+/* Utils */
 function saveDB(){ localStorage.setItem(STORAGE_DB, JSON.stringify(barcodeDB)); }
 function saveInventory(){ localStorage.setItem(STORAGE_INV, JSON.stringify(inventoryItems)); }
 function showToast(text, ms=1200){ scanResult.textContent = text; setTimeout(()=>{ if(scanResult.textContent===text) scanResult.textContent=''; }, ms); }
 function beep(){ try{ const ctx = new (window.AudioContext||window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value=880; g.gain.value=0.02; o.connect(g); g.connect(ctx.destination); o.start(); setTimeout(()=>{ o.stop(); ctx.close(); },120); }catch(e){} }
 function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
-function evaluateExpression(expr){ if(!expr) return 0; const nums = (expr.match(/\d+/g) || []).map(n=>parseInt(n,10) || 0); return nums.reduce((s,v)=>s+v, 0); }
+function evaluateExpression(expr){ if(!expr) return 0; const nums = (expr.match(/\d+/g) || []).map(n=>parseInt(n,10)||0); return nums.reduce((s,v)=>s+v,0); }
 
-/* ===== Scroll handling: detect user scroll to avoid accidental pad opens ===== */
+/* Scroll detection to avoid accidental pad opens */
 cardsBlock.addEventListener('scroll', ()=>{
   isScrolling = true;
   clearTimeout(scrollTimer);
-  scrollTimer = setTimeout(()=>{ isScrolling = false; }, 180);
+  scrollTimer = setTimeout(()=>{ isScrolling = false; }, 160);
 }, {passive:true});
 
-/* ===== Render list ===== */
+/* Render helpers */
 function searchItems(q){
   q = normalize(q);
   if(!q) return [];
@@ -379,19 +253,10 @@ function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 
 function renderResults(){
   const list = getDisplayList();
-  if(list.length === 0){
-    resultsEl.innerHTML = '';
-    emptyHint.style.display = 'block';
-    renderedCards.clear();
-    return;
-  }
-  emptyHint.style.display = 'none';
-
+  if(list.length === 0){ resultsEl.innerHTML=''; emptyHint.style.display='block'; renderedCards.clear(); return; }
+  emptyHint.style.display='none';
   const keep = new Set(list.map(i=>i.code));
-  for(const [code, el] of renderedCards){
-    if(!keep.has(code)){ el.remove(); renderedCards.delete(code); }
-  }
-
+  for(const [code, el] of renderedCards){ if(!keep.has(code)){ el.remove(); renderedCards.delete(code); } }
   const frag = document.createDocumentFragment();
   for(const item of list){
     if(renderedCards.has(item.code)){
@@ -405,7 +270,6 @@ function renderResults(){
       frag.appendChild(el);
       continue;
     }
-
     const card = document.createElement('div');
     card.className = 'card-item';
     card.dataset.code = item.code;
@@ -420,32 +284,31 @@ function renderResults(){
         </div>
       </div>
       <div class="qty-row">
-        <input class="qty-input" type="text" value="${escapeHtml(item.expr || String(item.qty || 0))}" readonly inputmode="none" aria-label="Выражение для ${escapeHtml(item.name)}">
+        <input class="qty-input" type="text" value="${escapeHtml(item.expr || String(item.qty || 0))}" readonly inputmode="none" aria-label="Выражение">
         <button class="plus-btn" title="Плюс">+</button>
       </div>
     `;
     const qtyInput = card.querySelector('.qty-input');
     const plusBtn = card.querySelector('.plus-btn');
 
-    // Use pointer events to distinguish tap vs scroll; do not open pad while scrolling
-    let pointerDownY = 0;
-    let pointerMoved = false;
-    qtyInput.addEventListener('pointerdown', (e)=>{
-      pointerDownY = e.clientY;
-      pointerMoved = false;
-      qtyInput.setPointerCapture(e.pointerId);
-    });
-    qtyInput.addEventListener('pointermove', (e)=>{
-      if(Math.abs(e.clientY - pointerDownY) > 8) pointerMoved = true;
-    });
-    qtyInput.addEventListener('pointerup', (e)=>{
-      qtyInput.releasePointerCapture(e.pointerId);
-      // If user was scrolling or moved finger, do not open pad
-      if(isScrolling || pointerMoved) return;
-      // Open pad only on deliberate tap
+    // touch handling: detect tap vs scroll
+    let touchStartY = 0, touchMoved = false, touchStartTime = 0;
+    qtyInput.addEventListener('touchstart', (e)=>{
+      touchMoved = false;
+      touchStartY = e.touches[0].clientY;
+      touchStartTime = Date.now();
+    }, {passive:true});
+    qtyInput.addEventListener('touchmove', (e)=>{
+      if(Math.abs(e.touches[0].clientY - touchStartY) > 8) touchMoved = true;
+    }, {passive:true});
+    qtyInput.addEventListener('touchend', (e)=>{
+      const dt = Date.now() - touchStartTime;
+      if(isScrolling || touchMoved) return;
+      // short tap -> open pad
       openPadForQty(item.code);
     });
-    // Also support mouse click (desktop)
+
+    // click fallback for mouse
     qtyInput.addEventListener('click', (e)=>{
       if(isScrolling) return;
       openPadForQty(item.code);
@@ -460,57 +323,51 @@ function renderResults(){
     renderedCards.set(item.code, card);
     frag.appendChild(card);
   }
-
   resultsEl.appendChild(frag);
 }
 
-/* ===== Numeric pad behavior: full-width, ensure card fully visible above pad ===== */
+/* Upsert inventory */
+function upsertInventoryExpr(code, name, expr, total, dontRerender=false){
+  const idx = inventoryItems.findIndex(it=>it.code===code);
+  if(idx>=0){ inventoryItems[idx].qty = total; inventoryItems[idx].expr = expr; inventoryItems[idx].name = name || inventoryItems[idx].name; }
+  else inventoryItems.unshift({code,name,qty:total,expr});
+  saveInventory();
+  const card = renderedCards.get(code);
+  if(card){
+    const inputEl = card.querySelector('.qty-input');
+    if(document.activeElement !== inputEl) inputEl.value = expr;
+  }
+  if(!dontRerender) renderResults();
+}
+
+/* Numeric pad behavior */
 function openPadForQty(code, callbackAfterOpen){
-  padTarget = { type:'qty', code };
+  padTarget = {type:'qty', code};
   const card = document.querySelector(`[data-code="${code}"]`);
   if(!card) return;
-
-  // 1) Scroll card into view near top of cardsBlock
+  // scroll card near top
   const desiredTop = Math.max(0, card.offsetTop - 12);
-  contentScroll.scrollTo({ top: desiredTop, behavior: 'smooth' });
-
-  // 2) After scroll, show pad and ensure card is fully above pad
+  cardsBlock.scrollTo({top: desiredTop, behavior:'smooth'});
+  // show pad and ensure card fully above pad
   setTimeout(()=>{
-    // show pad (full width)
     numericPad.classList.add('visible');
     numericPad.setAttribute('aria-hidden','false');
-
-    // measure pad height
     const padRect = numericPad.getBoundingClientRect();
-    const padHeight = padRect.height || parseInt(getComputedStyle(numericPad).getPropertyValue('height')) || 260;
+    const padHeight = padRect.height || parseInt(getComputedStyle(numericPad).height) || 260;
     const padTop = window.innerHeight - padHeight;
-
-    // measure card rect
     const cardRect = card.getBoundingClientRect();
     const cardBottom = cardRect.bottom;
-
     const margin = 12;
     if(cardBottom > padTop - margin){
-      // compute desired card top in viewport (just below header)
       const headerRect = header.getBoundingClientRect();
       const desiredCardTop = headerRect.bottom + 12;
       const delta = cardRect.top - desiredCardTop;
-      // scroll cardsBlock by delta to bring card up
-      contentScroll.scrollBy({ top: delta, behavior: 'smooth' });
-      // after scroll, nothing else needed because pad is anchored to bottom
+      cardsBlock.scrollBy({top: delta, behavior:'smooth'});
     }
-
     if(typeof callbackAfterOpen === 'function') setTimeout(callbackAfterOpen, 120);
   }, 260);
 }
-
-function closePad(){
-  padTarget = null;
-  numericPad.classList.remove('visible');
-  numericPad.setAttribute('aria-hidden','true');
-}
-
-/* Insert key into current pad target */
+function closePad(){ padTarget = null; numericPad.classList.remove('visible'); numericPad.setAttribute('aria-hidden','true'); }
 function padInsert(ch){
   if(!padTarget) return;
   if(padTarget.type === 'qty'){
@@ -522,17 +379,16 @@ function padInsert(ch){
     else input.value = (input.value || '') + ch;
     const expr = input.value;
     const total = evaluateExpression(expr);
-    upsertInventoryExpr(padTarget.code, (barcodeDB[padTarget.code] || ''), expr, total, true);
+    upsertInventoryExpr(padTarget.code, (barcodeDB[padTarget.code]||''), expr, total, true);
   } else if(padTarget.type === 'manual'){
-    if(padTarget.field === 'manualCode') manualCodeHeader.value = manualCodeHeader.value + ch;
-    if(padTarget.field === 'manualName') manualNameHeader.value = manualNameHeader.value + ch;
+    // not used: header uses system keyboard
   } else if(padTarget.type === 'modal'){
     if(padTarget.field === 'code') modalCode.value = modalCode.value + ch;
     if(padTarget.field === 'name') modalName.value = modalName.value + ch;
   }
 }
 
-/* pad buttons wiring */
+/* pad buttons */
 numericPad.addEventListener('click', (e)=>{
   const btn = e.target.closest('button.key');
   if(!btn) return;
@@ -542,7 +398,7 @@ numericPad.addEventListener('click', (e)=>{
 padBack.addEventListener('click', ()=>{ padInsert('←'); });
 padDone.addEventListener('click', ()=>{ closePad(); });
 
-/* clicking outside pad closes it (but not when interacting with header manual inputs) */
+/* clicking outside pad closes it */
 document.addEventListener('click', (e)=>{
   if(numericPad.contains(e.target)) return;
   if(e.target.closest('.qty-input')) return;
@@ -551,8 +407,7 @@ document.addEventListener('click', (e)=>{
   closePad();
 });
 
-/* ===== Manual header interactions: use system keyboard (do not open custom pad) ===== */
-/* No pad opening on header inputs; they are regular inputs so system keyboard appears */
+/* Manual header: system keyboard (no custom pad) */
 addManualHeaderBtn.addEventListener('click', ()=>{
   const code = (manualCodeHeader.value||'').trim();
   const name = (manualNameHeader.value||'').trim() || (code || 'Новый товар');
@@ -566,15 +421,7 @@ addManualHeaderBtn.addEventListener('click', ()=>{
   showToast('Добавлено вручную');
 });
 
-/* ===== Modal manual add (optional) ===== */
-function openManualModal(){
-  modalCode.value = '';
-  modalName.value = '';
-  modalBackdrop.style.display = 'flex';
-  padTarget = {type:'modal', field:'code'};
-  numericPad.classList.add('visible');
-  numericPad.setAttribute('aria-hidden','false');
-}
+/* Modal handlers (optional) */
 modalCancel.addEventListener('click', ()=>{ modalBackdrop.style.display='none'; closePad(); });
 modalSave.addEventListener('click', ()=>{
   const code = (modalCode.value||'').trim();
@@ -588,14 +435,12 @@ modalSave.addEventListener('click', ()=>{
   closePad();
   showToast('Добавлено вручную');
 });
-modalCode.addEventListener('click', ()=>{ padTarget = {type:'modal', field:'code'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
-modalName.addEventListener('click', ()=>{ padTarget = {type:'modal', field:'name'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
 
-/* ===== Search wiring (no autofocus on load) ===== */
+/* Search wiring */
 searchInput.addEventListener('input', ()=>{ renderResults(); });
 clearSearch.addEventListener('click', ()=>{ searchInput.value=''; renderResults(); });
 
-/* ===== Scanner (ZXing) ===== */
+/* Scanner (ZXing) with robust stop */
 let codeReader = null;
 let scanning = false;
 let lastDetected = {code:null, ts:0};
@@ -617,27 +462,19 @@ async function enumerateCameras(){
 
 async function startScanner(){
   if(scanning) return;
-  try{
-    codeReader = codeReader || new ZXing.BrowserMultiFormatReader();
-  }catch(e){
-    showToast('Сканер недоступен');
-    return;
-  }
+  try{ codeReader = codeReader || new ZXing.BrowserMultiFormatReader(); }catch(e){ showToast('Сканер недоступен'); return; }
   await enumerateCameras();
   const deviceId = deviceSelect.value || undefined;
   try{
     scanning = true;
-    codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
+    await codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
       if(result && result.text){
         const now = Date.now();
         if(result.text === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
         lastDetected = {code: result.text, ts: now};
         beep();
+        // handle detection then stop scanner and stop camera tracks
         handleDetected(result.text);
-        try{ codeReader.reset(); }catch(e){}
-        scanning = false;
-        previewWrap.classList.remove('visible');
-        scannerCard.style.display = 'none';
       }
     });
     previewWrap.classList.add('visible');
@@ -648,23 +485,36 @@ async function startScanner(){
     showToast('Ошибка доступа к камере');
   }
 }
+
 function stopScanner(){
   try{ if(codeReader) codeReader.reset(); }catch(e){}
   scanning = false;
+  // stop video tracks if any
+  try{
+    const stream = preview.srcObject;
+    if(stream && stream.getTracks) stream.getTracks().forEach(t=>t.stop());
+  }catch(e){}
+  preview.srcObject = null;
   previewWrap.classList.remove('visible');
   scannerCard.style.display = 'none';
   showToast('Сканер остановлен');
 }
+
 openScannerBtn.addEventListener('click', async ()=>{ await startScanner(); });
 closeScannerBtn.addEventListener('click', ()=>{ stopScanner(); });
+deviceSelect.addEventListener('change', async ()=>{ if(scanning){ try{ codeReader.reset(); }catch(e){} scanning=false; } await startScanner(); });
 
-deviceSelect.addEventListener('change', async ()=>{
-  if(scanning){ try{ codeReader.reset(); }catch(e){} scanning=false; }
-  await startScanner();
-});
-
-/* handle detection */
+/* handle detection: stop scanner reliably, then act */
 function handleDetected(code){
+  // stop scanner and camera immediately
+  try{ if(codeReader) codeReader.reset(); }catch(e){}
+  scanning = false;
+  try{ const stream = preview.srcObject; if(stream && stream.getTracks) stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  preview.srcObject = null;
+  previewWrap.classList.remove('visible');
+  scannerCard.style.display = 'none';
+
+  // process code
   searchInput.value = code;
   const found = barcodeDB[code];
   if(found){
@@ -672,7 +522,8 @@ function handleDetected(code){
     const idx = inventoryItems.findIndex(it=>it.code===code);
     if(idx === -1) upsertInventoryExpr(code, found, '0', 0, true);
     renderResults();
-    openPadForQty(code);
+    // open pad for that card
+    setTimeout(()=>{ openPadForQty(code); }, 220);
   } else {
     const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить 1 шт.?`);
     if(create){
@@ -682,54 +533,40 @@ function handleDetected(code){
         saveDB();
         upsertInventoryExpr(code, barcodeDB[code], '1', 1, true);
         renderResults();
-        openPadForQty(code);
+        setTimeout(()=>{ openPadForQty(code); }, 220);
         showToast('Товар добавлен');
       } else showToast('Название не введено');
     } else showToast('Код не найден');
   }
 }
 
-/* enumerate cameras on load (non-blocking) */
+/* enumerate cameras on load */
 if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) navigator.mediaDevices.enumerateDevices().then(enumerateCameras).catch(()=>{});
 
-/* Prevent pull-to-refresh on some browsers */
-(function preventPullToRefresh(){
-  let startY = 0;
-  let id = null;
-  document.addEventListener('touchstart', (e)=>{ if(e.touches && e.touches.length===1){ startY = e.touches[0].clientY; id = e.touches[0].identifier; } }, {passive:true});
+/* Prevent pull-to-refresh & disable pinch/double-tap zoom */
+(function(){
+  let startY=0, id=null;
+  document.addEventListener('touchstart', (e)=>{ if(e.touches && e.touches.length===1){ startY=e.touches[0].clientY; id=e.touches[0].identifier; } }, {passive:true});
   document.addEventListener('touchmove', (e)=>{
     try{
       const t = Array.from(e.touches).find(tt=>tt.identifier===id) || e.touches[0];
       const currentY = t.clientY;
       const sc = document.querySelector('.cards-block');
-      if(sc){
-        const atTop = sc.scrollTop <= 0;
-        if(atTop && currentY > startY) e.preventDefault();
-      } else {
-        if(window.scrollY <= 0 && currentY > startY) e.preventDefault();
-      }
+      if(sc){ const atTop = sc.scrollTop <= 0; if(atTop && currentY > startY) e.preventDefault(); }
+      else { if(window.scrollY <= 0 && currentY > startY) e.preventDefault(); }
     }catch(err){}
   }, {passive:false});
-})();
-
-/* Disable double-tap zoom */
-(function preventDoubleTapZoom(){
-  let lastTouch = 0;
-  document.addEventListener('touchend', function(e){
-    const now = Date.now();
-    if (now - lastTouch <= 300) {
-      e.preventDefault();
-    }
-    lastTouch = now;
-  }, {passive:false});
+  let lastTouch=0;
+  document.addEventListener('touchend', function(e){ const now = Date.now(); if(now - lastTouch <= 300) e.preventDefault(); lastTouch = now; }, {passive:false});
   document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, {passive:false});
 })();
 
 /* Initial render */
 renderResults();
 
-/* Expose for debugging */
-window._inv = { renderResults, upsertInventoryExpr, inventoryItems, barcodeDB };
+/* Debug */
+window._inv = { renderResults, upsertInventoryExpr, inventoryItems, barcodeDB, stopScanner };
 </script>
 </body>
 </html>
+
