@@ -1,24 +1,28 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Инвентаризация — Invent</title>
+<title>Инвентаризация — Mobile</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f6f7fb;
+  --bg:#f4f6fb;
   --panel:#ffffff;
   --muted:#6b7280;
-  --neon1:#7b3be6;
-  --neon2:#c86cff;
-  --accent:linear-gradient(90deg,var(--neon1),var(--neon2));
-  --header-h:112px; /* two-row header */
-  --footer-h:92px;
+  --accent-1:#7b3be6;
+  --accent-2:#c86cff;
+  --accent:linear-gradient(90deg,var(--accent-1),var(--accent-2));
+  --header-h:96px;
+  --footer-h:84px;
   --max-w:420px;
   --gap:10px;
-  --card-radius:12px;
-  --shadow: 0 8px 24px rgba(16,24,40,0.04);
+  --card-radius:10px;
+  --shadow: 0 8px 20px rgba(16,24,40,0.06);
+  --text: #0b1020;
+  --small:13px;
+  --avatar-size:48px;
+  --ui-scale:0.92; /* slightly smaller to fit screens */
 }
 
 /* Reset & base */
@@ -28,24 +32,28 @@ html,body{
   margin:0;
   background:var(--bg);
   font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  color:var(--text);
   -webkit-font-smoothing:antialiased;
-  overscroll-behavior-y: none; /* prevent pull-to-refresh on supporting browsers */
+  overscroll-behavior-y: none;
   touch-action: manipulation;
   -webkit-user-select:none; user-select:none;
+  font-size:15px;
+  transform-origin:top left;
+  transform: scale(var(--ui-scale));
 }
 
 /* App layout: three strict zones */
 .app{height:100vh;display:flex;flex-direction:column;align-items:center;}
 
-/* Header (fixed) */
+/* Header fixed: two rows (title + search) */
 .header{
   position:fixed; left:0; right:0; top:0;
   height:var(--header-h);
   display:flex;align-items:flex-start;justify-content:center;
-  background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.96));
+  background:linear-gradient(180deg, rgba(255,255,255,0.99), rgba(255,255,255,0.98));
   border-bottom:1px solid rgba(11,16,32,0.04);
-  z-index:1400;
-  padding:12px 12px 10px 12px;
+  z-index:1600;
+  padding:10px 12px;
   box-shadow: 0 6px 18px rgba(16,24,40,0.04);
   overscroll-behavior: contain;
 }
@@ -53,23 +61,23 @@ html,body{
 
 /* Title row */
 .title-row{ display:flex; align-items:center; gap:10px; }
-.logo{ width:44px; height:44px; border-radius:10px; background:var(--accent); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; flex:0 0 44px; }
-.title{ font-size:18px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.logo{ width:var(--avatar-size); height:var(--avatar-size); border-radius:10px; background:var(--accent); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; flex:0 0 var(--avatar-size); font-size:14px; }
+.title{ font-size:16px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* Search row */
 .search-row{ display:flex; gap:8px; align-items:center; }
 .input-wrap{ position:relative; flex:1; min-width:0; }
 .input{
   width:100%;
-  padding:10px 40px 10px 12px;
+  padding:8px 36px 8px 10px;
   border-radius:10px;
   border:1px solid rgba(11,16,32,0.06);
   background:#fff;
   outline:none;
-  font-size:15px;
+  font-size:14px;
 }
 .clear-x{ position:absolute; right:8px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:var(--muted); font-weight:700; padding:6px; border-radius:6px; cursor:pointer; }
-.scan-btn{ padding:10px 12px; border-radius:10px; border:none; cursor:pointer; font-weight:700; background:var(--accent); color:#fff; min-width:84px; flex:0 0 auto; }
+.scan-btn{ padding:8px 10px; border-radius:10px; border:none; cursor:pointer; font-weight:700; background:var(--accent); color:#fff; min-width:72px; flex:0 0 auto; font-size:14px; }
 
 /* Content (single scrollable area) */
 .content{
@@ -80,50 +88,76 @@ html,body{
   height: calc(100vh - var(--header-h) - var(--footer-h) - 12px);
   overflow:auto;
   -webkit-overflow-scrolling: touch;
-  padding:12px;
+  padding:10px;
   display:flex;
   flex-direction:column;
   gap:var(--gap);
   align-items:stretch;
-  background:transparent;
 }
 
 /* Card / scanner */
-.card{ background:var(--panel); border-radius:var(--card-radius); padding:12px; border:1px solid rgba(11,16,32,0.06); box-shadow:var(--shadow); }
-.preview-wrap{ border-radius:10px; overflow:hidden; background:#000; border:1px solid rgba(11,16,32,0.06); display:none; }
+.card{ background:var(--panel); border-radius:var(--card-radius); padding:10px; border:1px solid rgba(11,16,32,0.06); box-shadow:var(--shadow); }
+.preview-wrap{ border-radius:8px; overflow:hidden; background:#000; border:1px solid rgba(11,16,32,0.06); display:none; }
 .preview-wrap.visible{ display:block; }
-.preview-wrap.camera-1-3{ height:33vh; min-height:140px; max-height:300px; }
+.preview-wrap.camera-1-3{ height:30vh; min-height:120px; max-height:260px; }
 video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 
 /* Results list */
-.results{ display:flex; flex-direction:column; gap:10px; }
-.card-item{ display:flex; flex-direction:column; padding:12px; border-radius:10px; border:1px solid rgba(11,16,32,0.04); background:linear-gradient(180deg,#fff,#fbfbff); will-change:transform; }
-.item-top{ display:flex; align-items:center; gap:12px; }
-.avatar{ width:56px; height:56px; border-radius:8px; background:linear-gradient(90deg,var(--neon1),var(--neon2)); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; flex:0 0 56px; }
+.results{ display:flex; flex-direction:column; gap:8px; }
+.card-item{ display:flex; flex-direction:column; padding:10px; border-radius:10px; border:1px solid rgba(11,16,32,0.04); background:linear-gradient(180deg,#fff,#fbfbff); }
+.item-top{ display:flex; align-items:center; gap:10px; }
+.avatar{ width:44px; height:44px; border-radius:8px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; flex:0 0 44px; font-size:13px; }
 .item-meta{ display:flex; flex-direction:column; min-width:0; flex:1; }
-.item-name{ font-weight:700; color:#0b1020; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.item-code{ color:var(--muted); font-size:13px; margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.qty-row{ margin-top:10px; display:flex; gap:8px; align-items:center; }
-.qty-input{ flex:1; padding:10px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); font-weight:700; font-size:15px; }
-.plus-btn{ padding:10px 12px; border-radius:8px; background:linear-gradient(90deg,var(--neon1),var(--neon2)); color:#fff; border:none; cursor:pointer; }
+.item-name{ font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px; }
+.item-code{ color:var(--muted); font-size:12px; margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.qty-row{ margin-top:8px; display:flex; gap:8px; align-items:center; }
+.qty-input{ flex:1; padding:8px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); font-weight:700; font-size:14px; background:#fbfbff; cursor:pointer; }
+.qty-input[readonly]{ cursor:default; }
+.plus-btn{ padding:8px 10px; border-radius:8px; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border:none; cursor:pointer; font-weight:700; }
 
 /* Footer (fixed) */
-.footer{ position:fixed; left:0; right:0; bottom:0; height:var(--footer-h); display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.96)); border-top:1px solid rgba(11,16,32,0.04); z-index:1400; padding:12px; box-shadow:0 -6px 18px rgba(16,24,40,0.04); }
+.footer{ position:fixed; left:0; right:0; bottom:0; height:var(--footer-h); display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(255,255,255,0.99), rgba(255,255,255,0.98)); border-top:1px solid rgba(11,16,32,0.04); z-index:1600; padding:10px; box-shadow:0 -6px 18px rgba(16,24,40,0.04); }
 .footer-inner{ width:100%; max-width:var(--max-w); display:flex; gap:8px; align-items:center; }
 .manual-input{ flex:1; display:flex; gap:8px; align-items:center; }
-.manual-input input{ flex:1; padding:10px; border-radius:10px; border:1px solid rgba(11,16,32,0.06); background:#fff; outline:none; min-width:0; }
-.manual-input button{ padding:10px 12px; border-radius:10px; border:none; background:var(--neon1); color:#fff; font-weight:700; cursor:pointer; }
+.manual-input input{ flex:1; padding:8px; border-radius:10px; border:1px solid rgba(11,16,32,0.06); background:#fff; outline:none; min-width:0; cursor:pointer; }
+.manual-input input[readonly]{ cursor:default; }
+.manual-input button{ padding:8px 10px; border-radius:10px; border:none; background:var(--accent-1); color:#fff; font-weight:700; cursor:pointer; }
 
-/* Numeric pad (optional) */
-.numeric-pad { position: fixed; left: 0; right: 0; bottom: var(--footer-h); background: linear-gradient(180deg,#fff,#f3f4f8); border-top: 1px solid rgba(11,16,32,0.06); box-shadow: 0 -8px 30px rgba(11,16,32,0.08); padding: 10px; display: none; z-index: 1450; }
+/* Numeric pad (custom) */
+.numeric-pad {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--footer-h);
+  background: linear-gradient(180deg,#fff,#f3f4f8);
+  border-top: 1px solid rgba(11,16,32,0.06);
+  box-shadow: 0 -8px 30px rgba(11,16,32,0.08);
+  padding: 8px;
+  display: none;
+  z-index: 1700;
+}
 .numeric-pad.visible { display: block; }
 .numeric-pad .row { display:flex; gap:8px; margin-bottom:8px; }
-.numeric-pad button.key { flex:1; padding:12px 8px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); background:#fff; font-size:18px; font-weight:700; }
-.numeric-pad .key.action { background: linear-gradient(90deg,#7b3be6,#c86cff); color:#fff; border:none; }
+.numeric-pad button.key { flex:1; padding:10px 6px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); background:#fff; font-size:18px; font-weight:700; }
+.numeric-pad .key.action { background: linear-gradient(90deg,var(--accent-1),var(--accent-2)); color:#fff; border:none; }
 .numeric-pad .key.wide { flex:2; }
 
-.small{ font-size:13px; color:var(--muted); }
-@media (max-width:420px){ :root{ --header-h:120px; --footer_h:100px } .logo{ width:40px; height:40px } .input{ font-size:15px } }
+/* Modal for manual text input (if needed) */
+.modal-backdrop{ position:fixed; inset:0; background:rgba(11,16,32,0.45); display:none; z-index:1800; align-items:center; justify-content:center; }
+.modal{ width:92%; max-width:420px; background:#fff; border-radius:12px; padding:12px; box-shadow:0 20px 60px rgba(11,16,32,0.25); }
+.modal .row{ display:flex; gap:8px; margin-top:8px; }
+.modal input{ flex:1; padding:8px; border-radius:8px; border:1px solid rgba(11,16,32,0.06); }
+
+/* small */
+.small{ font-size:var(--small); color:var(--muted); }
+
+/* ensure body doesn't scroll behind fixed zones */
+body > .app { padding-top:0; }
+
+/* responsive tweak */
+@media (max-width:420px){
+  :root{ --header-h:120px; --footer-h:96px; --ui-scale:0.95; }
+}
 </style>
 </head>
 <body>
@@ -139,7 +173,8 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
 
       <div class="search-row" role="search" aria-label="Поиск и сканер">
         <div class="input-wrap">
-          <input id="searchInput" class="input" type="text" placeholder="Поиск по названию или коду" aria-label="Поиск по товарам">
+          <!-- Search remains editable (system keyboard allowed) -->
+          <input id="searchInput" class="input" type="text" placeholder="Поиск по названию или коду" aria-label="Поиск по товарам" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
           <button id="clearSearch" class="clear-x" title="Очистить поле" aria-label="Очистить поле">✕</button>
         </div>
         <button id="openScannerBtn" class="scan-btn" aria-label="Открыть сканер">Сканер</button>
@@ -174,8 +209,9 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
   <footer class="footer" role="contentinfo" aria-label="Добавление вручную">
     <div class="footer-inner">
       <div class="manual-input">
-        <input id="manualCode" placeholder="Штрихкод (опционально)" aria-label="Штрихкод вручную">
-        <input id="manualName" placeholder="Название товара" aria-label="Название вручную">
+        <!-- Make manual inputs readonly to prevent system keyboard; open modal with custom pad instead -->
+        <input id="manualCode" placeholder="Штрихкод (опционально)" aria-label="Штрихкод вручную" readonly>
+        <input id="manualName" placeholder="Название товара" aria-label="Название вручную" readonly>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button id="addManualBtn" class="btn ghost" aria-label="Добавить вручную">Добавить</button>
@@ -209,19 +245,36 @@ video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
       <button class="key wide action" id="padDone">Готово</button>
     </div>
   </div>
+
+  <!-- Modal for manual text entry (uses same custom pad for numbers; text typed via on-screen buttons) -->
+  <div id="modalBackdrop" class="modal-backdrop" style="display:none;align-items:center;justify-content:center;">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Ввод вручную">
+      <div style="font-weight:700">Добавить товар вручную</div>
+      <div class="row" style="margin-top:10px">
+        <input id="modalCode" placeholder="Штрихкод (цифры и +)" readonly>
+      </div>
+      <div class="row">
+        <input id="modalName" placeholder="Название товара (буквы и цифры)" readonly>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+        <button id="modalCancel" class="btn ghost">Отмена</button>
+        <button id="modalSave" class="btn" style="background:var(--accent);color:#fff">Сохранить</button>
+      </div>
+    </div>
+  </div>
 </div>
 
+<!-- ZXing library -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
+
 <script>
-/* ===== Storage keys ===== */
+/* ===== Storage keys and state ===== */
 const STORAGE_DB = 'barcodeDB';
 const STORAGE_INV = 'inventoryItems';
-
-/* ===== State ===== */
 let barcodeDB = JSON.parse(localStorage.getItem(STORAGE_DB) || '{}');
 let inventoryItems = JSON.parse(localStorage.getItem(STORAGE_INV) || '[]');
 let renderedCards = new Map();
-let padTargetCode = null;
+let padTarget = null; // {type:'qty'|'modal'|'manual', code: '...'} or null
 
 /* ===== Elements ===== */
 const searchInput = document.getElementById('searchInput');
@@ -242,24 +295,17 @@ const manualName = document.getElementById('manualName');
 const addManualBtn = document.getElementById('addManualBtn');
 
 const numericPad = document.getElementById('numericPad');
+const modalBackdrop = document.getElementById('modalBackdrop');
+const modalCode = document.getElementById('modalCode');
+const modalName = document.getElementById('modalName');
+const modalCancel = document.getElementById('modalCancel');
+const modalSave = document.getElementById('modalSave');
 
 /* ===== Utilities ===== */
 function saveDB(){ localStorage.setItem(STORAGE_DB, JSON.stringify(barcodeDB)); }
 function saveInventory(){ localStorage.setItem(STORAGE_INV, JSON.stringify(inventoryItems)); }
 function showToast(text, ms=1200){ scanResult.textContent = text; setTimeout(()=>{ if(scanResult.textContent===text) scanResult.textContent=''; }, ms); }
-function beepSound(){
-  try{
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = 'sine';
-    o.frequency.value = 880;
-    g.gain.value = 0.02;
-    o.connect(g); g.connect(ctx.destination);
-    o.start();
-    setTimeout(()=>{ o.stop(); ctx.close(); }, 120);
-  }catch(e){}
-}
+function beep(){ try{ const ctx = new (window.AudioContext||window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value=880; g.gain.value=0.02; o.connect(g); g.connect(ctx.destination); o.start(); setTimeout(()=>{ o.stop(); ctx.close(); },120); }catch(e){} }
 function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
 
 /* ===== Search & display helpers ===== */
@@ -275,7 +321,6 @@ function searchItems(q){
   }
   return out;
 }
-
 function getDisplayList(){
   const q = searchInput.value.trim();
   const list = [];
@@ -288,7 +333,7 @@ function getDisplayList(){
   return list;
 }
 
-/* ===== Render results (incremental, preserve inputs & focus) ===== */
+/* ===== Render results (incremental) ===== */
 function renderResults(){
   const list = getDisplayList();
   if(list.length === 0){
@@ -323,7 +368,7 @@ function renderResults(){
     card.dataset.code = item.code;
     card.innerHTML = `
       <div class="item-top">
-        <div class="item-left">
+        <div class="item-left" style="display:flex;gap:10px;align-items:center;min-width:0">
           <div class="avatar">${escapeHtml(item.name.slice(0,2).toUpperCase())}</div>
           <div class="item-meta">
             <div class="item-name">${escapeHtml(item.name)}</div>
@@ -331,46 +376,22 @@ function renderResults(){
           </div>
         </div>
       </div>
-
       <div class="qty-row">
-        <input inputmode="numeric" pattern="[0-9+ ]*" class="qty-input" type="text" value="${escapeHtml(item.expr || String(item.qty || 0))}" aria-label="Выражение для ${escapeHtml(item.name)}">
+        <input class="qty-input" type="text" value="${escapeHtml(item.expr || String(item.qty || 0))}" readonly inputmode="none" aria-label="Выражение для ${escapeHtml(item.name)}">
         <button class="plus-btn" title="Плюс">+</button>
       </div>
     `;
     const qtyInput = card.querySelector('.qty-input');
     const plusBtn = card.querySelector('.plus-btn');
 
-    qtyInput.addEventListener('focus', ()=>{
-      padTargetCode = item.code;
-      openNumericPad(item.code);
-    });
-    qtyInput.addEventListener('blur', ()=>{
-      const expr = qtyInput.value;
-      const total = evaluateExpression(expr);
-      upsertInventoryExpr(item.code, item.name, expr, total, true);
-      qtyInput.value = normalizeExpression(expr);
-    });
-
-    qtyInput.addEventListener('input', ()=>{
-      const expr = qtyInput.value;
-      const total = evaluateExpression(expr);
-      upsertInventoryExpr(item.code, item.name, expr, total, true);
-    });
+    // prevent system keyboard: readonly + inputmode none; open custom pad on click/touch
+    qtyInput.addEventListener('click', ()=>{ openPadForQty(item.code); });
+    qtyInput.addEventListener('touchstart', (e)=>{ e.preventDefault(); openPadForQty(item.code); });
 
     plusBtn.addEventListener('click', (ev)=>{
       ev.preventDefault();
-      let expr = qtyInput.value || '';
-      expr = expr.trim();
-      if(/\+\s*$/.test(expr)){
-        qtyInput.focus();
-        return;
-      }
-      expr = expr === '' ? '0 + ' : expr + ' + ';
-      const total = evaluateExpression(expr);
-      upsertInventoryExpr(item.code, item.name, expr, total, true);
-      qtyInput.value = normalizeExpression(expr);
-      qtyInput.focus();
-      setTimeout(()=>{ try{ qtyInput.setSelectionRange(qtyInput.value.length, qtyInput.value.length); }catch(e){} }, 0);
+      // add trailing plus via pad logic: open pad and insert plus
+      openPadForQty(item.code, ()=>{ padInsert('+'); });
     });
 
     renderedCards.set(item.code, card);
@@ -379,8 +400,6 @@ function renderResults(){
 
   resultsEl.appendChild(frag);
 }
-
-/* helpers */
 function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function normalizeExpression(expr){ if(!expr) return ''; const trailingPlus = /\+\s*$/.test(expr); const parts = (expr.match(/\d+/g) || []); const joined = parts.join(' + '); return trailingPlus ? (joined ? joined + ' + ' : ' + ') : joined; }
 function evaluateExpression(expr){ if(!expr) return 0; const nums = (expr.match(/\d+/g) || []).map(n=>parseInt(n,10) || 0); return nums.reduce((s,v)=>s+v, 0); }
@@ -406,99 +425,126 @@ function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
   if(!dontRerender) renderResults();
 }
 
-/* Numeric pad integration */
-function openNumericPad(code){
-  padTargetCode = code;
+/* ===== Custom numeric pad logic ===== */
+function openPadForQty(code, callbackAfterOpen){
+  padTarget = { type:'qty', code };
+  // show pad
   numericPad.classList.add('visible');
   numericPad.setAttribute('aria-hidden','false');
-  setTimeout(()=>{
-    const card = document.querySelector(`[data-code="${code}"]`);
-    if(card){
-      const input = card.querySelector('.qty-input');
-      if(input) try{ input.focus(); }catch(e){}
-    }
-  }, 80);
+  // ensure the target input is visible (scroll into view)
+  const card = document.querySelector(`[data-code="${code}"]`);
+  if(card) card.scrollIntoView({behavior:'smooth', block:'center'});
+  if(typeof callbackAfterOpen === 'function') setTimeout(callbackAfterOpen, 220);
 }
-function closeNumericPad(){
-  padTargetCode = null;
+function openPadForModal(field){ // field: 'code' or 'name'
+  padTarget = { type:'modal', field };
+  numericPad.classList.add('visible');
+  numericPad.setAttribute('aria-hidden','false');
+}
+function closePad(){
+  padTarget = null;
   numericPad.classList.remove('visible');
   numericPad.setAttribute('aria-hidden','true');
-  try{ document.activeElement && document.activeElement.blur(); }catch(e){}
 }
 function padInsert(ch){
-  if(!padTargetCode) return;
-  const card = document.querySelector(`[data-code="${padTargetCode}"]`);
-  if(!card) return;
-  const input = card.querySelector('.qty-input');
-  if(!input) return;
-  if(ch === '←'){
-    input.value = input.value.slice(0, -1);
-  } else {
-    input.value = (input.value || '') + ch;
+  if(!padTarget) return;
+  if(padTarget.type === 'qty'){
+    const card = document.querySelector(`[data-code="${padTarget.code}"]`);
+    if(!card) return;
+    const input = card.querySelector('.qty-input');
+    if(!input) return;
+    if(ch === '←') input.value = input.value.slice(0,-1);
+    else input.value = (input.value || '') + ch;
+    // update inventory immediately
+    const expr = input.value;
+    const total = evaluateExpression(expr);
+    upsertInventoryExpr(padTarget.code, (barcodeDB[padTarget.code] || ''), expr, total, true);
+  } else if(padTarget.type === 'modal'){
+    if(padTarget.field === 'code'){
+      modalCode.value = modalCode.value + ch;
+    } else {
+      modalName.value = modalName.value + ch;
+    }
+  } else if(padTarget.type === 'manual'){
+    // manual footer fields
+    if(padTarget.field === 'manualCode') manualCode.value = manualCode.value + ch;
+    if(padTarget.field === 'manualName') manualName.value = manualName.value + ch;
   }
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  try{ input.focus(); }catch(e){}
 }
+document.getElementById('padBack').addEventListener('click', ()=>{ padInsert('←'); });
+document.getElementById('padDone').addEventListener('click', ()=>{ closePad(); });
+
 numericPad.addEventListener('click', (e)=>{
   const btn = e.target.closest('button.key');
   if(!btn) return;
   const key = btn.getAttribute('data-key');
-  if(key){ padInsert(key); return; }
-  if(btn.id === 'padBack'){ padInsert('←'); return; }
-  if(btn.id === 'padDone'){ closeNumericPad(); return; }
-});
-document.addEventListener('click', (e)=>{
-  if(!numericPad.classList.contains('visible')) return;
-  if(numericPad.contains(e.target)) return;
-  if(e.target.closest('.qty-input')) return;
-  closeNumericPad();
+  if(key) padInsert(key);
 });
 
-/* Search wiring (no autofocus on load) */
-searchInput.addEventListener('input', ()=>{ renderResults(); });
-clearSearch.addEventListener('click', ()=>{ searchInput.value = ''; renderResults(); });
+/* Prevent native keyboard in content/footer: inputs are readonly and open custom pad instead */
+manualCode.addEventListener('click', ()=>{ padTarget = {type:'manual', field:'manualCode'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
+manualName.addEventListener('click', ()=>{ padTarget = {type:'manual', field:'manualName'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
 
-/* Manual add */
-addManualBtn.addEventListener('click', ()=>{
-  const code = (manualCode.value || '').trim();
-  const name = (manualName.value || '').trim() || (code || 'Новый товар');
+/* Save manual footer add using current manualCode/manualName values */
+document.getElementById('addManualBtn').addEventListener('click', ()=>{
+  const code = (manualCode.value||'').trim();
+  const name = (manualName.value||'').trim() || (code || 'Новый товар');
   const finalCode = code || ('manual-' + Date.now());
   barcodeDB[finalCode] = name;
   saveDB();
   upsertInventoryExpr(finalCode, name, '0', 0, true);
   renderResults();
-  focusCardInput(finalCode);
+  // clear manual fields
   manualCode.value = '';
   manualName.value = '';
   showToast('Добавлено вручную');
 });
 
-/* Focus card input and try to nudge native keyboard (best-effort) */
-function focusCardInput(code){
-  setTimeout(()=>{
-    const card = renderedCards.get(code) || document.querySelector(`[data-code="${code}"]`);
-    if(!card) return;
-    const input = card.querySelector('.qty-input');
-    if(!input) return;
-    try{
-      input.type = 'tel';
-      input.setAttribute('inputmode','numeric');
-      input.focus();
-      const len = input.value.length;
-      try{ input.setSelectionRange(len, len); }catch(e){}
-      setTimeout(()=>{
-        try{ input.type = 'text'; }catch(e){}
-        try{ input.setSelectionRange(len, len); }catch(e){}
-      }, 120);
-    }catch(e){
-      try{ input.focus(); }catch(e){}
-    }
-    openNumericPad(code);
-    padTargetCode = code;
-  }, 160);
+/* ===== Modal manual add (for text entry) ===== */
+addManualBtn.addEventListener('contextmenu', (e)=>{ e.preventDefault(); openManualModal(); }); // optional: long-press
+// open modal on double click of footer add button (or via explicit call)
+function openManualModal(){
+  modalCode.value = '';
+  modalName.value = '';
+  modalBackdrop.style.display = 'flex';
+  // set pad target to modal code by default
+  padTarget = { type:'modal', field:'code' };
+  numericPad.classList.add('visible');
+  numericPad.setAttribute('aria-hidden','false');
 }
+modalCancel.addEventListener('click', ()=>{ modalBackdrop.style.display='none'; closePad(); });
+modalSave.addEventListener('click', ()=>{
+  const code = (modalCode.value||'').trim();
+  const name = (modalName.value||'').trim() || (code || 'Новый товар');
+  const finalCode = code || ('manual-' + Date.now());
+  barcodeDB[finalCode] = name;
+  saveDB();
+  upsertInventoryExpr(finalCode, name, '0', 0, true);
+  renderResults();
+  modalBackdrop.style.display='none';
+  closePad();
+  showToast('Добавлено вручную');
+});
 
-/* ===== Scanner using ZXing.BrowserMultiFormatReader.decodeFromVideoDevice ===== */
+/* Allow clicking modal inputs to switch pad target */
+modalCode.addEventListener('click', ()=>{ padTarget = {type:'modal', field:'code'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
+modalName.addEventListener('click', ()=>{ padTarget = {type:'modal', field:'name'}; numericPad.classList.add('visible'); numericPad.setAttribute('aria-hidden','false'); });
+
+/* Close pad when tapping outside */
+document.addEventListener('click', (e)=>{
+  if(numericPad.contains(e.target)) return;
+  if(e.target.closest('.qty-input')) return;
+  if(e.target.closest('#manualCode') || e.target.closest('#manualName')) return;
+  // don't close if modal is open and user interacts with it
+  if(modalBackdrop.style.display === 'flex' && e.target.closest('.modal')) return;
+  closePad();
+});
+
+/* ===== Search wiring (no autofocus on load) ===== */
+searchInput.addEventListener('input', ()=>{ renderResults(); });
+clearSearch.addEventListener('click', ()=>{ searchInput.value=''; renderResults(); });
+
+/* ===== Scanner (ZXing.BrowserMultiFormatReader.decodeFromVideoDevice) ===== */
 let codeReader = null;
 let scanning = false;
 let lastDetected = {code:null, ts:0};
@@ -520,14 +566,6 @@ async function enumerateCameras(){
 
 async function startScanner(){
   if(scanning) return;
-  if(!window.ZXing || !ZXing.BrowserMultiFormatReader){
-    // ZXing script is included via <script> tag; ensure it's ready
-    if(!window.ZXing) {
-      showToast('Загрузка сканера...');
-      // script tag already present; wait briefly
-      await new Promise(r=>setTimeout(r, 300));
-    }
-  }
   try{
     codeReader = codeReader || new ZXing.BrowserMultiFormatReader();
   }catch(e){
@@ -543,10 +581,9 @@ async function startScanner(){
         const now = Date.now();
         if(result.text === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
         lastDetected = {code: result.text, ts: now};
-        beepSound();
+        beep();
         handleDetected(result.text);
       }
-      // ignore frequent NotFoundException errors
     });
     previewWrap.classList.add('visible');
     scannerCard.style.display = 'block';
@@ -556,7 +593,6 @@ async function startScanner(){
     showToast('Ошибка доступа к камере');
   }
 }
-
 function stopScanner(){
   try{ if(codeReader) codeReader.reset(); }catch(e){}
   scanning = false;
@@ -564,6 +600,13 @@ function stopScanner(){
   scannerCard.style.display = 'none';
   showToast('Сканер остановлен');
 }
+openScannerBtn.addEventListener('click', async ()=>{ await startScanner(); });
+closeScannerBtn.addEventListener('click', ()=>{ stopScanner(); });
+
+deviceSelect.addEventListener('change', async ()=>{
+  if(scanning){ try{ codeReader.reset(); }catch(e){} scanning=false; }
+  await startScanner();
+});
 
 /* handle detection */
 function handleDetected(code){
@@ -574,7 +617,8 @@ function handleDetected(code){
     const idx = inventoryItems.findIndex(it=>it.code===code);
     if(idx === -1) upsertInventoryExpr(code, found, '0', 0, true);
     renderResults();
-    focusCardInput(code);
+    // open pad for that card
+    openPadForQty(code);
   } else {
     const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить 1 шт.?`);
     if(create){
@@ -584,23 +628,12 @@ function handleDetected(code){
         saveDB();
         upsertInventoryExpr(code, barcodeDB[code], '1', 1, true);
         renderResults();
-        focusCardInput(code);
+        openPadForQty(code);
         showToast('Товар добавлен');
       } else showToast('Название не введено');
     } else showToast('Код не найден');
   }
 }
-
-/* UI wiring for scanner */
-openScannerBtn.addEventListener('click', async ()=>{
-  await startScanner();
-});
-closeScannerBtn.addEventListener('click', ()=>{ stopScanner(); });
-
-deviceSelect.addEventListener('change', async ()=>{
-  if(scanning){ try{ codeReader.reset(); }catch(e){} scanning=false; }
-  await startScanner();
-});
 
 /* enumerate cameras on load (non-blocking) */
 if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) navigator.mediaDevices.enumerateDevices().then(enumerateCameras).catch(()=>{});
@@ -625,19 +658,11 @@ if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) navigator.
   }, {passive:false});
 })();
 
-/* Initial render (no autofocus) */
+/* Initial render */
 renderResults();
 
-/* Expose for debugging (optional) */
+/* Expose for debugging if needed */
 window._inv = { renderResults, upsertInventoryExpr, inventoryItems, barcodeDB };
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
