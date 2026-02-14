@@ -10,8 +10,15 @@
 
   <style>
     :root{
-      --accent:#6d28d9; --accent-light:#a78bfa; --bg:#000; --card:#111;
-      --muted:#9aa3b2; --text:#e6eef8; --radius:12px; --maxw:980px;
+      --accent:#6d28d9;
+      --accent-light:#a78bfa;
+      --bg:#000;
+      --card:#111;
+      --muted:#9aa3b2;
+      --text:#e6eef8;
+      --radius:12px;
+      --maxw:980px;
+      --card-bg: linear-gradient(135deg,#1e1e2f,#2a2a40);
     }
     *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
     html,body{height:100%;margin:0;background:linear-gradient(180deg,#05030a,#0b0710);color:var(--text);font-family:Inter,Segoe UI,system-ui,Arial;overflow:hidden; touch-action: manipulation;}
@@ -33,12 +40,29 @@
     .btn{padding:8px 10px;border-radius:8px;border:none;cursor:pointer;background:#222;color:var(--text)}
     .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-light));color:#07060b;font-weight:700}
     .list{max-width:var(--maxw);margin:12px auto;display:flex;flex-direction:column;gap:8px}
-    .item{padding:10px;border-radius:10px;background:linear-gradient(180deg,#0f0d14,#16121b);display:flex;flex-direction:column;gap:6px;border-left:6px solid transparent}
+
+    /* === Card design restored to original === */
+    .item{
+      max-width:var(--maxw);
+      margin:10px auto;
+      padding:12px;
+      border-radius:12px;
+      background:var(--card-bg);
+      box-shadow:0 8px 30px rgba(0,0,0,0.6);
+      border-left:6px solid transparent;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
     .item.match{border-left-color:#22c55e}
     .item.missing{border-left-color:#ef4444}
     .item.excess{border-left-color:#3b82f6}
     .item.found{box-shadow:0 18px 50px rgba(106,17,203,0.18);transform:translateY(-6px)}
-    input[data-code]{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:#fff;color:#000}
+    .field{margin-bottom:8px}
+    .label{font-weight:700;color:#dbeafe;margin-right:6px}
+    input[data-code]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#fff;color:#000;font-size:15px}
+
+    /* keyboard */
     #custom-keyboard{position:fixed;left:0;right:0;bottom:-40vh;height:34vh;background:#0b0b0d;padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;z-index:3000;transition:bottom .28s}
     #custom-keyboard.show{bottom:0}
     #custom-keyboard button{border:none;border-radius:8px;background:#222;color:#fff;font-size:20px;cursor:pointer}
@@ -126,7 +150,6 @@ const keyboard = document.getElementById('custom-keyboard');
    Utilities
    ========================= */
 function showToast(text, ms = 1200){
-  // simple non-blocking toast using scanResult area for brevity
   scanResult.innerText = text;
   setTimeout(()=>{ if(scanResult.innerText === text) scanResult.innerText = ''; }, ms);
 }
@@ -178,8 +201,8 @@ function render(items){
     div.className = 'item';
     div.dataset.code = item.code;
     div.innerHTML = `
-      <div><strong>${item.code}</strong></div>
-      <div style="font-size:0.95rem;color:var(--muted)">${escapeHtml(item.name)}</div>
+      <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
+      <div class="field"><span class="label">Название:</span> ${escapeHtml(item.name)}</div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
         <div style="flex:1">
           <input type="text" data-code="${item.code}" value="${escapeHtml(value)}" inputmode="none" readonly />
@@ -548,11 +571,6 @@ deviceSelect.addEventListener('change', async ()=>{
   await startCamera();
 });
 torchBtn.addEventListener('click', toggleTorch);
-
-/* =========================
-   Save qty on input done (keyboard 'Готово' will close)
-   ========================= */
-/* (already handled by input event and autosave) */
 
 /* =========================
    Init on load
