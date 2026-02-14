@@ -1,671 +1,664 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
-<title>Инвентаризация — Mobile</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-:root{
-  --bg:#f4f6fb;
-  --panel:#ffffff;
-  --muted:#6b7280;
-  --accent-1:#7b3be6;
-  --accent-2:#c86cff;
-  --header-h:150px;
-  --pad-height:260px;
-  --max-width:420px;
-  --safe-margin:12px;
-  --card-radius:10px;
-  --shadow: 0 8px 20px rgba(16,24,40,0.06);
-  --highlight: 0 0 0 3px rgba(123,59,230,0.12), 0 6px 20px rgba(123,59,230,0.12);
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>RecountPro — Пересчёт</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
+
+  <style>
+    :root {
+      --accent: #6d28d9;
+      --accent-light: #a78bfa;
+      --text: #1f2937;
+      --border: #d1d5db;
+    }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      margin: 0;
+      color: var(--text);
+      overflow: hidden;
+      background: #000;
+    }
+
+    /* Фон canvas */
+    #bg {
+      position: fixed;
+      top:0; left:0;
+      width:100%; height:100%;
+      z-index:-1;
+      background: #000;
+    }
+
+    /* Шапка */
+#header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  background: rgba(20, 20, 20, 0.7);
+  color: #f5f5f5;
+  padding: 0.8rem 1rem;
+  border-radius: 0 0 20px 20px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  animation: fadeInDown 0.4s ease;
+}
+#header h1 { margin: 0; font-size: 1.3rem; text-align: center; font-weight: 600; letter-spacing: 0.5px; }
+
+#search-container { margin-top: 0.6rem; background: rgba(40, 40, 40, 0.6); border-radius: 12px; padding: 0.4rem; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+#search { width: 100%; padding: 0.6rem 3.6rem 0.6rem 0.8rem; font-size: 1rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; box-sizing: border-box; background: rgba(30,30,30,0.8); color: #f5f5f5; transition: border 0.2s ease, background 0.2s ease; }
+#search:focus { border: 1px solid #6a11cb; background: rgba(40,40,40,0.9); outline: none; }
+
+#clear-search { position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 1.2rem; color: #aaa; cursor: pointer; transition: color 0.2s ease; z-index: 2; }
+#clear-search:hover { color: #fff; }
+
+/* Сканер-кнопка (замена голосовой кнопки) */
+#scan-btn {
+  position: absolute;
+  right: 2.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  z-index: 2;
+  color: #ddd;
+}
+#scan-btn.recording svg path { stroke: var(--accent); }
+
+/* Анимация */
+@keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+#content {
+  position: fixed;
+  top: 6.5rem;
+  bottom: 0;
+  left: 0; right: 0;
+  overflow-y: auto;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  z-index: 1;
+  transition: padding-bottom 0.3s ease;
+}
+#content.with-keyboard { padding-bottom: 35vh; }
+
+.item {
+  margin: 0.5rem auto;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  max-width: 600px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: linear-gradient(135deg, #1e1e2f, #2a2a40);
+  color: #fff;
+  border-left: 6px solid transparent;
+}
+.item.match { border-left-color: #22c55e; }
+.item.missing { border-left-color: #ef4444; }
+.item.excess { border-left-color: #3b82f6; }
+.item.found { box-shadow: 0 10px 30px rgba(106,17,203,0.18); transform: translateY(-6px); }
+
+.field { margin-bottom: 0.4rem; font-size: 0.9rem; }
+.label { font-weight: 600; }
+
+input[data-code] {
+  width: 100%;
+  padding: 0.6rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fefefe;
+  color: #000;
+  caret-color: var(--accent, #6a11cb);
 }
 
-/* Reset & base */
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#0b1020;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;touch-action:pan-y;-webkit-text-size-adjust:100%;}
-.app{height:100vh;display:flex;flex-direction:column;align-items:center;}
-
-/* Header */
-.header{position:fixed;left:0;right:0;top:0;height:var(--header-h);display:flex;align-items:flex-start;justify-content:center;background:#fff;border-bottom:1px solid rgba(11,16,32,0.04);z-index:5000;padding:10px var(--safe-margin);box-shadow:0 6px 18px rgba(16,24,40,0.04);touch-action:none;}
-.header-inner{width:100%;max-width:var(--max-width);display:flex;flex-direction:column;gap:8px;margin:0 auto;}
-.title-row{display:flex;align-items:center;gap:10px;}
-.logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;}
-.title{font-size:16px;font-weight:700;}
-.search-row{display:flex;gap:8px;align-items:center;}
-.input-wrap{position:relative;flex:1;min-width:0;}
-.input{width:100%;padding:10px 40px 10px 12px;border-radius:10px;border:1px solid rgba(11,16,32,0.06);background:#fff;font-size:15px;outline:none;}
-.clear-x{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--muted);cursor:pointer;}
-.scan-btn{padding:10px 12px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:#fff;font-weight:700;}
-
-/* Manual small inputs under search */
-.manual-row{display:flex;gap:8px;align-items:center;margin-top:4px;}
-.manual-row input{flex:1;padding:8px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);background:#fff;font-size:14px;min-width:0;}
-.manual-row button{padding:8px 10px;border-radius:8px;border:none;background:var(--accent-1);color:#fff;font-weight:700;cursor:pointer;}
-
-/* Cards block */
-.cards-block{position:fixed;left:0;right:0;top:calc(var(--header-h) + 6px);bottom:0;max-width:var(--max-width);margin-left:auto;margin-right:auto;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px;display:flex;flex-direction:column;gap:10px;z-index:1000;background:transparent;}
-
-/* Cards */
-.card{background:var(--panel);border-radius:var(--card-radius);padding:12px;border:1px solid rgba(11,16,32,0.06);box-shadow:var(--shadow);transition:box-shadow 180ms, transform 180ms;}
-.card.found{box-shadow:var(--highlight);transform:translateY(-4px);}
-.preview-wrap{border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(11,16,32,0.06);display:none;}
-.preview-wrap.visible{display:block;}
-.preview-wrap.camera-1-3{height:32vh;min-height:140px;max-height:300px;}
-video#preview{width:100%;height:100%;object-fit:cover;display:block;}
-.results{display:flex;flex-direction:column;gap:10px;}
-.card-item{display:flex;flex-direction:column;padding:12px;border-radius:10px;border:1px solid rgba(11,16,32,0.04);background:linear-gradient(180deg,#fff,#fbfbff);}
-.item-top{display:flex;align-items:center;gap:12px;}
-.avatar{width:56px;height:56px;border-radius:8px;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;}
-.item-meta{display:flex;flex-direction:column;min-width:0;flex:1;}
-.item-name{font-weight:700;color:#0b1020;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.item-code{color:var(--muted);font-size:13px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.qty-row{margin-top:10px;display:flex;gap:8px;align-items:center;}
-.qty-input{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);font-weight:700;font-size:15px;background:#fbfbff;cursor:pointer;touch-action:manipulation;}
-.plus-btn{padding:10px 12px;border-radius:8px;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:#fff;border:none;cursor:pointer;font-weight:700;}
-
-/* Numeric pad: full-width but positioned under input; 'Готово' full width */
-.numeric-pad{position:fixed;left:0;width:100vw;max-width:100%;display:none;z-index:4500;background:linear-gradient(180deg,#fff,#f3f4f8);border-top:1px solid rgba(11,16,32,0.06);box-shadow:0 -8px 30px rgba(11,16,32,0.08);padding:8px;border-radius:12px 12px 0 0;transform:translateY(12px) scale(.96);transform-origin:center bottom;opacity:0;transition:transform 220ms cubic-bezier(.2,.9,.2,1),opacity 160ms ease;height:var(--pad-height);box-sizing:border-box;}
-.numeric-pad.visible{display:block;transform:translateY(0) scale(1);opacity:1;}
-.numeric-pad .inner{height:100%;display:flex;flex-direction:column;justify-content:space-between;}
-.numeric-pad .keys{display:flex;flex-wrap:wrap;gap:8px;}
-.numeric-pad button.key{flex:1 1 30%;padding:12px 8px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);background:#fff;font-size:18px;font-weight:700;min-width:56px;}
-.numeric-pad .key.action{background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:#fff;border:none;}
-.numeric-pad .row-bottom{display:flex;gap:8px;align-items:center;}
-.numeric-pad .done{width:100%;padding:12px;border-radius:8px;border:none;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:#fff;font-weight:800;font-size:16px;}
-
-/* small */
-.small{font-size:13px;color:var(--muted);}
-
-/* modal */
-.modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:4200;background:rgba(11,16,32,0.45);}
-.modal{width:92%;max-width:420px;background:#fff;border-radius:12px;padding:12px;box-shadow:0 20px 60px rgba(11,16,32,0.25);}
-
-/* responsive */
-@media (min-width:600px){
-  .cards-block{left:50%;transform:translateX(-50%);max-width:420px;}
-  .numeric-pad{left:50%;transform-origin:center bottom;transform:translateX(-50%) translateY(12px) scale(.96);width:420px;}
-  .numeric-pad.visible{transform:translateX(-50%) translateY(0) scale(1);}
+/* Клавиатура */
+#custom-keyboard {
+  position: fixed;
+  bottom: -40vh;
+  left: 0; right: 0;
+  height: 33vh;
+  background: #111;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  z-index: 3000;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 0.5rem;
+  transition: bottom 0.3s ease;
+  -webkit-user-select: none; -ms-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
-</style>
+#custom-keyboard.show { bottom: 0; }
+#custom-keyboard button { width: 100%; height: 100%; font-size: 1.6rem; background: #333; color: #fff; border: none; border-radius: 8px; cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; transition: background 0.15s ease, transform 0.1s ease; }
+#custom-keyboard button:active { background: #555; transform: scale(0.95); }
+#custom-keyboard .done { grid-column: 1 / -1; background: linear-gradient(90deg,var(--accent-1),var(--accent-2)); font-weight:800; font-size:1.1rem; }
+
+/* Scanner preview card */
+#scannerCard { display:none; margin: 0.5rem auto; max-width:600px; }
+.preview-wrap{ border-radius:10px; overflow:hidden; background:#000; border:1px solid rgba(11,16,32,0.06); }
+.preview-wrap.visible{ display:block; }
+.preview-wrap.camera-1-3{ height:32vh; min-height:140px; max-height:300px; }
+video#preview{ width:100%; height:100%; object-fit:cover; display:block; }
+
+/* Menu removed per request; keep minimal debug area */
+#ocr-debug { position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: #0f0; padding: 10px; font-size: 16px; z-index: 99999; max-width: 90vw; white-space: pre-wrap; display:none; }
+
+/* small responsive tweaks */
+@media (min-width: 900px) {
+  #content { padding-left: 1.5rem; padding-right: 1.5rem; }
+}
+  </style>
 </head>
 <body>
-<div class="app" id="app" role="application" aria-label="Инвентаризация">
+  <canvas id="bg"></canvas>
 
-  <!-- Header -->
-  <header class="header" role="banner" aria-label="Шапка">
-    <div class="header-inner">
-      <div class="title-row">
-        <div class="logo" aria-hidden="true">INV</div>
-        <div class="title">Инвентаризация</div>
-      </div>
+  <div id="header">
+    <h1>RecountPro — Пересчёт</h1>
+    <div id="search-container">
+      <div id="search-wrapper" style="position:relative;">
+        <input type="text" id="search" placeholder="Поиск..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Поиск" />
+        <button id="clear-search" type="button" aria-label="Очистить поиск">×</button>
 
-      <div class="search-row" role="search" aria-label="Поиск и сканер">
-        <div class="input-wrap">
-          <input id="searchInput" class="input" type="text" placeholder="Поиск по названию или коду" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Поиск">
-          <button id="clearSearch" class="clear-x" title="Очистить">✕</button>
-        </div>
-        <button id="openScannerBtn" class="scan-btn" aria-label="Открыть сканер">Сканер</button>
-      </div>
-
-      <!-- Manual inputs (system keyboard) -->
-      <div class="manual-row" role="region" aria-label="Ручной ввод">
-        <input id="manualCodeHeader" placeholder="Штрихкод вручную" inputmode="numeric" pattern="[0-9+]*" aria-label="Штрихкод">
-        <input id="manualNameHeader" placeholder="Название товара" aria-label="Название">
-        <button id="addManualHeaderBtn">Добавить</button>
+        <!-- Сканер (замена голосовой кнопки) -->
+        <button id="scan-btn" type="button" aria-label="Открыть сканер" title="Открыть сканер">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M3 7v4a1 1 0 0 0 1 1h4" stroke="#ddd" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 17v-4a1 1 0 0 0-1-1h-4" stroke="#ddd" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="7" y="7" width="10" height="10" rx="2" stroke="#ddd" stroke-width="1.6" fill="none"/>
+            <circle cx="12" cy="12" r="2.2" stroke="#ddd" stroke-width="1.6" fill="none"/>
+          </svg>
+        </button>
       </div>
     </div>
-  </header>
+  </div>
 
-  <!-- Cards block -->
-  <section class="cards-block" id="cardsBlock" aria-label="Карточки">
-    <div id="scannerCard" class="card" style="display:none" aria-hidden="true">
+  <div id="content">
+    <!-- Scanner preview card -->
+    <div id="scannerCard" class="card">
       <div class="preview-wrap camera-1-3" id="previewWrap"><video id="preview" playsinline muted></video></div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
         <select id="deviceSelect" style="min-width:80px"></select>
-        <button id="closeScannerBtn" class="btn ghost">✕ Закрыть</button>
+        <button id="closeScannerBtn" style="background:none;border:none;color:#fff;cursor:pointer">✕ Закрыть</button>
       </div>
-      <div id="scanResult" class="small" style="margin-top:8px"></div>
+      <div id="scanResult" style="color:#ddd;margin-top:8px"></div>
     </div>
 
-    <div id="resultsWrap" class="card" aria-labelledby="resultsTitle">
-      <h3 id="resultsTitle" style="margin:0 0 8px 0">Найденные товары</h3>
-      <div id="results" class="results" aria-live="polite">
-        <div id="emptyHint" class="small">Пока нет позиций. Сканируйте штрихкод или добавьте вручную.</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Numeric pad -->
-  <div id="numericPad" class="numeric-pad" aria-hidden="true">
-    <div class="inner">
-      <div class="keys" id="padKeys">
-        <button class="key" data-key="1">1</button>
-        <button class="key" data-key="2">2</button>
-        <button class="key" data-key="3">3</button>
-        <button class="key" data-key="4">4</button>
-        <button class="key" data-key="5">5</button>
-        <button class="key" data-key="6">6</button>
-        <button class="key" data-key="7">7</button>
-        <button class="key" data-key="8">8</button>
-        <button class="key" data-key="9">9</button>
-        <button class="key" data-key="+">+</button>
-        <button class="key" data-key="0">0</button>
-        <button class="key action" id="padBack">←</button>
-      </div>
-      <div class="row-bottom">
-        <button id="padDone" class="done">Готово</button>
-      </div>
-    </div>
+    <div id="list"></div>
   </div>
 
-  <!-- Modal (optional) -->
-  <div id="modalBackdrop" class="modal-backdrop" style="display:none">
-    <div class="modal" role="dialog" aria-modal="true">
-      <div style="font-weight:700">Добавить товар вручную</div>
-      <div style="margin-top:10px"><input id="modalCode" placeholder="Штрихкод" readonly></div>
-      <div style="margin-top:8px"><input id="modalName" placeholder="Название" readonly></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
-        <button id="modalCancel">Отмена</button>
-        <button id="modalSave" style="background:linear-gradient(90deg,var(--accent-1),var(--accent-2));color:#fff">Сохранить</button>
-      </div>
-    </div>
+  <div id="custom-keyboard">
+    <button>1</button><button>2</button><button>3</button>
+    <button>4</button><button>5</button><button>6</button>
+    <button>7</button><button>8</button><button>9</button>
+    <button>+</button><button>0</button><button id="back">←</button>
+    <button class="done" id="done">Готово</button>
   </div>
-</div>
 
-<script src="https://unpkg.com/@zxing/library@latest"></script>
+  <div id="ocr-debug"></div>
+
 <script>
-/* ===== State ===== */
-const STORAGE_DB = 'barcodeDB';
-const STORAGE_INV = 'inventoryItems';
-let barcodeDB = JSON.parse(localStorage.getItem(STORAGE_DB) || '{}');
-let inventoryItems = JSON.parse(localStorage.getItem(STORAGE_INV) || '[]');
-let renderedCards = new Map();
-let padTarget = null;
-let isScrolling = false;
-let scrollTimer = null;
+/* =========================
+   База штрихкодов (пример)
+   =========================
+   Замените на реальную базу (fetch/локалка) при интеграции.
+*/
+const barcodeDB = {
+  "4601234000011": { code: "4601234000011", name: "Молоко 1л", unit: "шт", price: 59.90 },
+  "4601234000028": { code: "4601234000028", name: "Хлеб ржаной", unit: "шт", price: 35.00 },
+  "4601234000035": { code: "4601234000035", name: "Яблоки кг", unit: "кг", price: 120.00 },
+  "4601234000042": { code: "4601234000042", name: "Сыр 200г", unit: "шт", price: 250.00 },
+  "4601234000059": { code: "4601234000059", name: "Кофе 250г", unit: "шт", price: 499.00 }
+};
 
-/* ===== Elements ===== */
-const cardsBlock = document.getElementById('cardsBlock');
-const header = document.querySelector('.header');
-const searchInput = document.getElementById('searchInput');
-const clearSearch = document.getElementById('clearSearch');
-const openScannerBtn = document.getElementById('openScannerBtn');
-const scannerCard = document.getElementById('scannerCard');
-const previewWrap = document.getElementById('previewWrap');
-const preview = document.getElementById('preview');
-const deviceSelect = document.getElementById('deviceSelect');
-const closeScannerBtn = document.getElementById('closeScannerBtn');
-const scanResult = document.getElementById('scanResult');
-const resultsEl = document.getElementById('results');
-const emptyHint = document.getElementById('emptyHint');
-const manualCodeHeader = document.getElementById('manualCodeHeader');
-const manualNameHeader = document.getElementById('manualNameHeader');
-const addManualHeaderBtn = document.getElementById('addManualHeaderBtn');
-const numericPad = document.getElementById('numericPad');
-const padBack = document.getElementById('padBack');
-const padDone = document.getElementById('padDone');
-const modalBackdrop = document.getElementById('modalBackdrop');
-const modalCode = document.getElementById('modalCode');
-const modalName = document.getElementById('modalName');
-const modalCancel = document.getElementById('modalCancel');
-const modalSave = document.getElementById('modalSave');
+/* =========================
+   Основные переменные
+   ========================= */
+const list = document.getElementById("list");
+const searchInput = document.getElementById("search");
+const keyboard = document.getElementById("custom-keyboard");
+let allItems = [];            // массив объектов {code,name,unit,price,docQty}
+let sessionValues = {};      // сохранённые факты
+let activeInput = null;
 
-/* ===== Utilities ===== */
-function saveDB(){ localStorage.setItem(STORAGE_DB, JSON.stringify(barcodeDB)); }
-function saveInventory(){ localStorage.setItem(STORAGE_INV, JSON.stringify(inventoryItems)); }
-function showToast(text, ms=1200){ scanResult.textContent = text; setTimeout(()=>{ if(scanResult.textContent===text) scanResult.textContent=''; }, ms); }
-function beep(){ try{ const ctx = new (window.AudioContext||window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value=880; g.gain.value=0.02; o.connect(g); g.connect(ctx.destination); o.start(); setTimeout(()=>{ o.stop(); ctx.close(); },120); }catch(e){} }
-function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
-
-/* Levenshtein for fuzzy tolerance */
-function levenshtein(a,b){
-  if(a===b) return 0;
-  const al=a.length, bl=b.length;
-  if(al===0) return bl;
-  if(bl===0) return al;
-  const v0 = new Array(bl+1), v1 = new Array(bl+1);
-  for(let j=0;j<=bl;j++) v0[j]=j;
-  for(let i=0;i<al;i++){
-    v1[0]=i+1;
-    for(let j=0;j<bl;j++){
-      const cost = a[i]===b[j]?0:1;
-      v1[j+1] = Math.min(v1[j]+1, v0[j+1]+1, v0[j]+cost);
-    }
-    for(let j=0;j<=bl;j++) v0[j]=v1[j];
-  }
-  return v1[bl];
+/* Инициализация: берем данные из barcodeDB как "документ" */
+function initFromBarcodeDB() {
+  allItems = Object.values(barcodeDB).map(b => ({
+    code: b.code,
+    name: b.name,
+    unit: b.unit || '',
+    price: b.price || 0,
+    docQty: 0 // по умолчанию 0 — можно заполнить из внешнего источника
+  }));
+  render(allItems);
 }
+initFromBarcodeDB();
 
-/* subsequence check */
-function isSubsequence(s, t){
-  let i=0,j=0;
-  while(i<s.length && j<t.length){
-    if(s[i]===t[j]) i++; j++;
-  }
-  return i===s.length;
-}
-
-/* fuzzy token match: exact substring OR subsequence OR small levenshtein */
-function tokenMatches(token, text){
-  token = normalize(token);
-  text = normalize(text);
-  if(!token) return false;
-  if(text.indexOf(token) !== -1) return true;
-  if(isSubsequence(token, text)) return true;
-  const words = text.split(/\s+/);
-  for(const w of words){
-    const dist = levenshtein(token, w);
-    const threshold = Math.max(1, Math.floor(w.length * 0.35));
-    if(dist <= threshold) return true;
-  }
-  // also compare to code digits
-  const digits = text.replace(/\D/g,'');
-  if(digits && levenshtein(token.replace(/\D/g,''), digits) <= 1) return true;
-  return false;
-}
-
-/* search: tokens must match somewhere in name or code (order irrelevant) */
-function searchItems(q){
-  q = normalize(q);
-  if(!q) return [];
-  const tokens = q.split(/\s+/).filter(Boolean);
-  const out = [];
-  for(const code of Object.keys(barcodeDB)){
-    const name = barcodeDB[code] || '';
-    const hay = (code + ' ' + name).toString();
-    let ok = true;
-    for(const t of tokens){
-      if(!tokenMatches(t, hay)){ ok = false; break; }
-    }
-    if(ok) out.push({code, name});
-  }
-  return out;
-}
-
-/* ===== Render list ===== */
-function getDisplayList(){
-  const q = searchInput.value.trim();
-  const list = [];
-  for(const it of inventoryItems) list.push({code: it.code, name: it.name, expr: it.expr || String(it.qty || 0), qty: it.qty || 0});
-  if(q){
-    const found = searchItems(q);
-    const inv = new Set(inventoryItems.map(i=>i.code));
-    for(const f of found) if(!inv.has(f.code)) list.push({code: f.code, name: f.name, expr:'0', qty:0});
-  }
-  return list;
-}
-
-function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-function renderResults(){
-  const list = getDisplayList();
-  if(list.length === 0){ resultsEl.innerHTML=''; emptyHint.style.display='block'; renderedCards.clear(); return; }
-  emptyHint.style.display='none';
-  const keep = new Set(list.map(i=>i.code));
-  for(const [code, el] of renderedCards){ if(!keep.has(code)){ el.remove(); renderedCards.delete(code); } }
-  const frag = document.createDocumentFragment();
-  for(const item of list){
-    if(renderedCards.has(item.code)){
-      const el = renderedCards.get(item.code);
-      const nameEl = el.querySelector('.item-name');
-      const codeEl = el.querySelector('.item-code');
-      const inputEl = el.querySelector('.qty-input');
-      if(nameEl && nameEl.textContent !== item.name) nameEl.textContent = item.name;
-      if(codeEl && codeEl.textContent !== item.code) codeEl.textContent = item.code;
-      if(document.activeElement !== inputEl) inputEl.value = item.expr || String(item.qty || 0);
-      frag.appendChild(el);
-      continue;
-    }
-
-    const card = document.createElement('div');
-    card.className = 'card-item';
-    card.dataset.code = item.code;
-    card.innerHTML = `
-      <div class="item-top">
-        <div class="item-left" style="display:flex;gap:12px;align-items:center;min-width:0">
-          <div class="avatar">${escapeHtml(item.name.slice(0,2).toUpperCase())}</div>
-          <div class="item-meta">
-            <div class="item-name">${escapeHtml(item.name)}</div>
-            <div class="item-code">${escapeHtml(item.code)}</div>
-          </div>
-        </div>
-      </div>
-      <div class="qty-row">
-        <input class="qty-input" type="text" value="${escapeHtml(item.expr || String(item.qty || 0))}" readonly inputmode="none" aria-label="Выражение">
-        <button class="plus-btn" title="Плюс">+</button>
+/* =========================
+   Рендер карточек (как в вашем коде)
+   ========================= */
+function render(items) {
+  list.innerHTML = '';
+  items.forEach(item => {
+    const value = sessionValues[item.code] || localStorage.getItem("qty_" + item.code) || "";
+    const div = document.createElement("div");
+    div.className = "item";
+    div.dataset.code = item.code;
+    div.innerHTML = `
+      <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
+      <div class="field"><span class="label">Название:</span> ${item.name}</div>
+      <div class="field"><span class="label">Размерность:</span> ${item.unit}</div>
+      <div class="field"><span class="label">Цена:</span> ${item.price.toFixed(2)} ₽</div>
+      <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
+      <div class="field">
+        <span class="label">Фактическое количество:</span>
+        <input type="text" data-code="${item.code}" value="${value}" inputmode="none" readonly />
       </div>
     `;
-    const qtyInput = card.querySelector('.qty-input');
-    const plusBtn = card.querySelector('.plus-btn');
 
-    // pointer handling to avoid opening during scroll
-    let pointerDownY = 0, pointerMoved = false, pointerId = null;
-    card.addEventListener('pointerdown', (e)=>{
-      pointerDownY = e.clientY;
-      pointerMoved = false;
-      pointerId = e.pointerId;
-      try{ card.setPointerCapture(pointerId); }catch(err){}
-    });
-    card.addEventListener('pointermove', (e)=>{
-      if(Math.abs(e.clientY - pointerDownY) > 8) pointerMoved = true;
-    });
-    card.addEventListener('pointerup', (e)=>{
-      try{ card.releasePointerCapture(pointerId); }catch(err){}
-      if(isScrolling || pointerMoved) return;
-      const target = e.target;
-      if(target.classList.contains('qty-input') || target.classList.contains('plus-btn') || target.closest('.qty-row')){
-        openPadForQty(item.code);
+    // начальная окраска при рендере
+    let actual = 0;
+    try { actual = Function("return " + (value || "0").replace(',', '.'))() || 0; } catch {}
+    if (actual === item.docQty) div.classList.add("match");
+    else if (actual < item.docQty) div.classList.add("missing");
+    else if (actual > item.docQty) div.classList.add("excess");
+
+    list.appendChild(div);
+  });
+  attachInputHandlers();
+}
+
+/* =========================
+   Обработчики инпутов и клавиатуры
+   ========================= */
+function attachInputHandlers() {
+  document.querySelectorAll('input[data-code]').forEach(input => {
+    // focus/click открывают кастомную клавиатуру
+    input.addEventListener('focus', () => openKeyboardFor(input));
+    input.addEventListener('click', () => openKeyboardFor(input));
+  });
+
+  // кнопки клавиатуры
+  keyboard.querySelectorAll('button').forEach(btn => {
+    btn.onclick = () => {
+      if (!activeInput) return;
+      const val = btn.textContent;
+      if (val === "←") {
+        activeInput.value = activeInput.value.slice(0, -1);
+      } else if (val === "Готово") {
+        closeKeyboard();
+        return;
       } else {
-        // click on card body: scroll to card and open pad
-        scrollToCardAndOpenPad(item.code);
+        activeInput.value += val;
       }
-    });
+      // триггерим input для обработки
+      activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+  });
 
-    plusBtn.addEventListener('click', (ev)=>{
-      ev.preventDefault();
-      if(isScrolling) return;
-      openPadForQty(item.code, ()=>{ padInsert('+'); });
-    });
+  // done button full width
+  const doneBtn = document.getElementById('done');
+  doneBtn.addEventListener('click', closeKeyboard);
 
-    renderedCards.set(item.code, card);
-    frag.appendChild(card);
-  }
-  resultsEl.appendChild(frag);
-}
+  // back button (redundant)
+  document.getElementById('back').addEventListener('click', () => {
+    if (!activeInput) return;
+    activeInput.value = activeInput.value.slice(0, -1);
+    activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+  });
 
-/* ===== Upsert inventory ===== */
-function upsertInventoryExpr(code, name, expr, total, dontRerender=false){
-  const idx = inventoryItems.findIndex(it=>it.code===code);
-  if(idx>=0){ inventoryItems[idx].qty = total; inventoryItems[idx].expr = expr; inventoryItems[idx].name = name || inventoryItems[idx].name; }
-  else inventoryItems.unshift({code,name,qty:total,expr});
-  saveInventory();
-  const card = renderedCards.get(code);
-  if(card){
-    const inputEl = card.querySelector('.qty-input');
-    if(document.activeElement !== inputEl) inputEl.value = expr;
-  }
-  if(!dontRerender) renderResults();
-}
-
-/* ===== Scroll & pad helpers ===== */
-function scrollToCardAndOpenPad(code){
-  const card = document.querySelector(`[data-code="${code}"]`);
-  if(!card) return;
-  const desiredTop = Math.max(0, card.offsetTop - 12);
-  cardsBlock.scrollTo({top: desiredTop, behavior:'smooth'});
-  setTimeout(()=>{ openPadForQty(code); }, 220);
-}
-
-function openPadForQty(code, callbackAfterOpen){
-  padTarget = {type:'qty', code};
-  const card = document.querySelector(`[data-code="${code}"]`);
-  if(!card) return;
-  // scroll card near top first
-  const desiredTop = Math.max(0, card.offsetTop - 12);
-  cardsBlock.scrollTo({top: desiredTop, behavior:'smooth'});
-
-  setTimeout(()=>{
-    const input = card.querySelector('.qty-input');
-    if(!input) return;
-    // show pad
-    numericPad.classList.add('visible');
-    numericPad.setAttribute('aria-hidden','false');
-
-    // measure pad and input, compute top
-    const padRect = numericPad.getBoundingClientRect();
-    const padHeight = padRect.height || parseInt(getComputedStyle(numericPad).height) || 260;
-    const inputRect = input.getBoundingClientRect();
-    const headerRect = header.getBoundingClientRect();
-    const viewportH = window.innerHeight;
-
-    // desired pad top directly under input
-    let desiredPadTop = inputRect.bottom + 8;
-
-    // if pad would overflow bottom, scroll cardsBlock so input moves up
-    if(desiredPadTop + padHeight > viewportH){
-      const desiredInputTop = headerRect.bottom + 12;
-      const delta = inputRect.top - desiredInputTop;
-      // scroll by delta inside cardsBlock
-      cardsBlock.scrollBy({top: delta, behavior:'smooth'});
-      setTimeout(()=>{
-        const inputRect2 = input.getBoundingClientRect();
-        desiredPadTop = inputRect2.bottom + 8;
-        if(desiredPadTop + padHeight > viewportH) desiredPadTop = Math.max(headerRect.bottom + 8, viewportH - padHeight - 8);
-        numericPad.style.top = desiredPadTop + 'px';
-        numericPad.style.left = '0px';
-        numericPad.style.width = '100vw';
-      }, 260);
-    } else {
-      numericPad.style.top = desiredPadTop + 'px';
-      numericPad.style.left = '0px';
-      numericPad.style.width = '100vw';
+  // клик вне клавиатуры закрывает её
+  document.addEventListener("click", e => {
+    if (!e.target.closest("#custom-keyboard") && !e.target.matches("input[data-code]")) {
+      closeKeyboard();
     }
-
-    // highlight card briefly
-    highlightCard(code);
-
-    if(typeof callbackAfterOpen === 'function') setTimeout(callbackAfterOpen, 120);
-  }, 260);
+  });
 }
 
-function closePad(){
-  padTarget = null;
-  numericPad.classList.remove('visible');
-  numericPad.setAttribute('aria-hidden','true');
-  numericPad.style.top = '';
+function openKeyboardFor(input) {
+  activeInput = input;
+  keyboard.classList.add("show");
+  document.getElementById("content").classList.add("with-keyboard");
+  // плавно скроллим так, чтобы поле было видимо и клавиатура не перекрывала
+  setTimeout(() => {
+    // вычислим видимую область и при необходимости поднимем элемент
+    const rect = input.getBoundingClientRect();
+    const viewportH = window.innerHeight;
+    const padHeight = Math.max(260, Math.round(viewportH * 0.33));
+    const desiredBottom = padHeight + 16; // запас
+    if (rect.bottom > viewportH - desiredBottom) {
+      // сколько нужно прокрутить внутри content
+      const content = document.getElementById('content');
+      const offset = rect.bottom - (viewportH - desiredBottom);
+      content.scrollBy({ top: offset + 12, behavior: 'smooth' });
+    } else {
+      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, 150);
 }
 
-/* highlight card */
-function highlightCard(code){
-  const card = document.querySelector(`[data-code="${code}"]`);
-  if(!card) return;
-  card.classList.add('found');
-  setTimeout(()=>{ card.classList.remove('found'); }, 2200);
+function closeKeyboard() {
+  activeInput = null;
+  keyboard.classList.remove("show");
+  document.getElementById("content").classList.remove("with-keyboard");
 }
 
-/* pad input handling */
-function padInsert(ch){
-  if(!padTarget) return;
-  if(padTarget.type === 'qty'){
-    const card = document.querySelector(`[data-code="${padTarget.code}"]`);
-    if(!card) return;
-    const input = card.querySelector('.qty-input');
-    if(!input) return;
-    if(ch === '←') input.value = input.value.slice(0,-1);
-    else input.value = (input.value || '') + ch;
-    const expr = input.value;
-    const total = evaluateExpression(expr);
-    upsertInventoryExpr(padTarget.code, (barcodeDB[padTarget.code]||''), expr, total, true);
-  } else if(padTarget.type === 'modal'){
-    if(padTarget.field === 'code') modalCode.value = modalCode.value + ch;
-    if(padTarget.field === 'name') modalName.value = modalName.value + ch;
+/* Обработка ввода значений и перекраска карточек */
+list.addEventListener("input", e => {
+  if (e.target.tagName === "INPUT") {
+    const code = e.target.dataset.code;
+    const value = e.target.value;
+    sessionValues[code] = value;
+    localStorage.setItem("qty_" + code, value);
+
+    const raw = value.replace(',', '.').trim();
+    let actual = NaN;
+    try {
+      let safeRaw = raw;
+      if (/[\+\-\*\/]$/.test(safeRaw)) safeRaw = safeRaw.slice(0, -1);
+      if (safeRaw) actual = Function("return " + safeRaw)();
+    } catch { actual = NaN; }
+
+    const item = allItems.find(i => i.code === code);
+    const card = e.target.closest(".item");
+    card.classList.remove("match", "missing", "excess");
+
+    if (!value) {
+      // нейтральный вид
+    } else if (!isNaN(actual)) {
+      if (actual === item.docQty) card.classList.add("match");
+      else if (actual < item.docQty) card.classList.add("missing");
+      else if (actual > item.docQty) card.classList.add("excess");
+    }
+    autosave();
   }
+});
+
+/* =========================
+   Поиск (по названию и коду)
+   - tolerant: разбивает запрос на слова, ищет в любом порядке
+   - также ищет по коду
+   ========================= */
+function normalize(str) {
+  return String(str || "").toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
+}
+function matchesQuery(text, query) {
+  const words = query.split(" ").filter(Boolean);
+  return words.every(w => text.includes(w));
 }
 
-/* pad buttons */
-numericPad.addEventListener('click', (e)=>{
-  const btn = e.target.closest('button.key');
-  if(!btn) return;
-  const key = btn.getAttribute('data-key');
-  if(key) padInsert(key);
+searchInput.addEventListener("input", () => {
+  const q = normalize(searchInput.value);
+  document.querySelectorAll("#list .item").forEach(div => {
+    const code = normalize(div.dataset.code);
+    const item = allItems.find(i => i.code === div.dataset.code);
+    if (!item) { div.classList.add("hidden"); return; }
+    const name = normalize(item.name);
+    const match = (q === "") || matchesQuery(name, q) || matchesQuery(code, q);
+    div.classList.toggle("hidden", !match);
+  });
 });
-padBack.addEventListener('click', ()=>{ padInsert('←'); });
-padDone.addEventListener('click', ()=>{ closePad(); });
-
-/* clicking outside pad closes it (but not header inputs) */
-document.addEventListener('click', (e)=>{
-  if(numericPad.contains(e.target)) return;
-  if(e.target.closest('.qty-input')) return;
-  if(e.target.closest('#manualCodeHeader') || e.target.closest('#manualNameHeader')) return;
-  if(e.target.closest('.modal')) return;
-  closePad();
+document.getElementById("clear-search").addEventListener("click", () => {
+  searchInput.value = '';
+  document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
 });
 
-/* ===== Manual header: system keyboard (no custom pad) ===== */
-addManualHeaderBtn.addEventListener('click', ()=>{
-  const code = (manualCodeHeader.value||'').trim();
-  const name = (manualNameHeader.value||'').trim() || (code || 'Новый товар');
-  const finalCode = code || ('manual-' + Date.now());
-  barcodeDB[finalCode] = name;
-  saveDB();
-  upsertInventoryExpr(finalCode, name, '0', 0, true);
-  renderResults();
-  manualCodeHeader.value = '';
-  manualNameHeader.value = '';
-  showToast('Добавлено вручную');
-});
+/* =========================
+   Autosave / sessions (упрощённо)
+   ========================= */
+function autosave() {
+  const session = { items: allItems, values: sessionValues };
+  const key = "autosave_barcode_db";
+  localStorage.setItem(key, JSON.stringify(session));
+}
+window.addEventListener("beforeunload", autosave);
 
-/* modal handlers (optional) */
-modalCancel.addEventListener('click', ()=>{ modalBackdrop.style.display='none'; closePad(); });
-modalSave.addEventListener('click', ()=>{
-  const code = (modalCode.value||'').trim();
-  const name = (modalName.value||'').trim() || (code || 'Новый товар');
-  const finalCode = code || ('manual-' + Date.now());
-  barcodeDB[finalCode] = name;
-  saveDB();
-  upsertInventoryExpr(finalCode, name, '0', 0, true);
-  renderResults();
-  modalBackdrop.style.display='none';
-  closePad();
-  showToast('Добавлено вручную');
-});
-
-/* search wiring */
-searchInput.addEventListener('input', ()=>{ renderResults(); });
-clearSearch.addEventListener('click', ()=>{ searchInput.value=''; renderResults(); });
-
-/* ===== Scanner (ZXing) robust stop + immediate handling ===== */
+/* =========================
+   Scanner (ZXing) integration
+   - кнопка в шапке открывает превью
+   - при нахождении штрихкода: останавливаем сканер, ищем в barcodeDB
+   - если найдено — подсвечиваем карточку, скроллим и открываем клавиатуру
+   ========================= */
 let codeReader = null;
 let scanning = false;
-let lastDetected = {code:null, ts:0};
+let lastDetected = { code: null, ts: 0 };
 const DEBOUNCE_MS = 900;
 
-async function enumerateCameras(){
-  try{
+const preview = document.getElementById('preview');
+const previewWrap = document.getElementById('previewWrap');
+const scannerCard = document.getElementById('scannerCard');
+const deviceSelect = document.getElementById('deviceSelect');
+const scanBtn = document.getElementById('scan-btn');
+const closeScannerBtn = document.getElementById('closeScannerBtn');
+const scanResult = document.getElementById('scanResult');
+
+async function enumerateCameras() {
+  try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const cams = devices.filter(d => d.kind === 'videoinput');
     deviceSelect.innerHTML = '';
-    cams.forEach((c, idx)=>{
+    cams.forEach((c, idx) => {
       const opt = document.createElement('option');
       opt.value = c.deviceId;
       opt.text = c.label || `Камера ${idx+1}`;
       deviceSelect.appendChild(opt);
     });
-  }catch(e){}
+  } catch (e) {
+    // ignore
+  }
 }
 
-async function startScanner(){
-  if(scanning) return;
-  try{ codeReader = codeReader || new ZXing.BrowserMultiFormatReader(); }catch(e){ showToast('Сканер недоступен'); return; }
+async function startScanner() {
+  if (scanning) return;
+  try {
+    codeReader = codeReader || new ZXing.BrowserMultiFormatReader();
+  } catch (e) {
+    scanResult.textContent = 'Сканер недоступен';
+    return;
+  }
   await enumerateCameras();
   const deviceId = deviceSelect.value || undefined;
-  try{
+  try {
     scanning = true;
+    scanResult.textContent = 'Запуск камеры...';
     codeReader.decodeFromVideoDevice(deviceId, preview, (result, err) => {
-      if(result && result.text){
+      if (result && result.text) {
         const now = Date.now();
-        if(result.text === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
-        lastDetected = {code: result.text, ts: now};
+        if (result.text === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+        lastDetected = { code: result.text, ts: now };
         beep();
         handleDetected(result.text);
       }
     });
     previewWrap.classList.add('visible');
     scannerCard.style.display = 'block';
-    showToast('Сканер запущен');
-  }catch(e){
+    scanBtn.classList.add('recording');
+    scanResult.textContent = 'Сканер запущен';
+  } catch (e) {
     scanning = false;
-    showToast('Ошибка доступа к камере');
+    scanResult.textContent = 'Ошибка доступа к камере';
   }
 }
 
-function stopScanner(){
-  try{ if(codeReader) codeReader.reset(); }catch(e){}
+function stopScanner() {
+  try { if (codeReader) codeReader.reset(); } catch (e) {}
   scanning = false;
-  try{
+  try {
     const stream = preview.srcObject;
-    if(stream && stream.getTracks) stream.getTracks().forEach(t=>t.stop());
-  }catch(e){}
+    if (stream && stream.getTracks) stream.getTracks().forEach(t => t.stop());
+  } catch (e) {}
   preview.srcObject = null;
   previewWrap.classList.remove('visible');
   scannerCard.style.display = 'none';
-  showToast('Сканер остановлен');
+  scanBtn.classList.remove('recording');
+  scanResult.textContent = '';
 }
 
-openScannerBtn.addEventListener('click', async ()=>{ await startScanner(); });
-closeScannerBtn.addEventListener('click', ()=>{ stopScanner(); });
-deviceSelect.addEventListener('change', async ()=>{ if(scanning){ try{ codeReader.reset(); }catch(e){} scanning=false; } await startScanner(); });
+scanBtn.addEventListener('click', async () => {
+  if (!scanning) await startScanner();
+  else stopScanner();
+});
+closeScannerBtn.addEventListener('click', stopScanner);
+deviceSelect.addEventListener('change', async () => { if (scanning) { try { codeReader.reset(); } catch (e) {} scanning = false; } await startScanner(); });
 
-/* handle detection: stop scanner then process */
-function handleDetected(code){
-  // stop scanner and camera immediately
-  try{ if(codeReader) codeReader.reset(); }catch(e){}
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = 880;
+    g.gain.value = 0.02;
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start();
+    setTimeout(() => { o.stop(); ctx.close(); }, 120);
+  } catch (e) {}
+}
+
+function handleDetected(code) {
+  // гарантированно останавливаем сканер и видеопотоки
+  try { if (codeReader) codeReader.reset(); } catch (e) {}
   scanning = false;
-  try{ const stream = preview.srcObject; if(stream && stream.getTracks) stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  try { const stream = preview.srcObject; if (stream && stream.getTracks) stream.getTracks().forEach(t => t.stop()); } catch (e) {}
   preview.srcObject = null;
   previewWrap.classList.remove('visible');
   scannerCard.style.display = 'none';
+  scanBtn.classList.remove('recording');
 
-  // process code
-  searchInput.value = code;
+  scanResult.textContent = `Найден код: ${code}`;
+
+  // ищем в базе
   const found = barcodeDB[code];
-  if(found){
-    showToast('Найден товар в базе');
-    const idx = inventoryItems.findIndex(it=>it.code===code);
-    if(idx === -1) upsertInventoryExpr(code, found, '0', 0, true);
-    renderResults();
-    setTimeout(()=>{ highlightCard(code); openPadForQty(code); }, 220);
+  if (found) {
+    // подсветка карточки, скролл и открытие клавиатуры
+    const card = document.querySelector(`.item[data-code="${found.code}"]`);
+    if (card) {
+      // подсветим
+      card.classList.add('found');
+      setTimeout(() => card.classList.remove('found'), 2200);
+
+      // скроллим и открываем клавиатуру на поле факта
+      const input = card.querySelector('input[data-code]');
+      if (input) {
+        // фокусируем и открываем кастомную клавиатуру
+        setTimeout(() => {
+          input.focus();
+          openKeyboardFor(input);
+        }, 220);
+      }
+    } else {
+      // если карточки нет (например, не загружена) — добавим её в список и рендерим
+      allItems.unshift({ code: found.code, name: found.name, unit: found.unit || '', price: found.price || 0, docQty: 0 });
+      render(allItems);
+      const newCard = document.querySelector(`.item[data-code="${found.code}"]`);
+      if (newCard) {
+        newCard.classList.add('found');
+        setTimeout(() => newCard.classList.remove('found'), 2200);
+        const input = newCard.querySelector('input[data-code]');
+        if (input) setTimeout(() => { input.focus(); openKeyboardFor(input); }, 220);
+      }
+    }
   } else {
-    const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить 1 шт.?`);
-    if(create){
-      const name = prompt('Введите название товара', '') || '';
-      if(name.trim()){
-        barcodeDB[code] = name.trim();
-        saveDB();
-        upsertInventoryExpr(code, barcodeDB[code], '1', 1, true);
-        renderResults();
-        setTimeout(()=>{ highlightCard(code); openPadForQty(code); }, 220);
-        showToast('Товар добавлен');
-      } else showToast('Название не введено');
-    } else showToast('Код не найден');
+    // не найден — предлагаем добавить (простая реализация)
+    if (confirm(`Код ${code} не найден в базе. Добавить как новый товар?`)) {
+      const name = prompt('Введите название товара', '') || `Товар ${code}`;
+      barcodeDB[code] = { code, name, unit: '', price: 0 };
+      allItems.unshift({ code, name, unit: '', price: 0, docQty: 0 });
+      render(allItems);
+      const newCard = document.querySelector(`.item[data-code="${code}"]`);
+      if (newCard) {
+        newCard.classList.add('found');
+        setTimeout(() => newCard.classList.remove('found'), 2200);
+        const input = newCard.querySelector('input[data-code]');
+        if (input) setTimeout(() => { input.focus(); openKeyboardFor(input); }, 220);
+      }
+    }
   }
 }
 
-/* enumerate cameras on load */
-if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) navigator.mediaDevices.enumerateDevices().then(enumerateCameras).catch(()=>{});
+/* enumerate cameras on load (non-blocking) */
+if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+  navigator.mediaDevices.enumerateDevices().then(enumerateCameras).catch(()=>{});
+}
 
-/* Prevent pull-to-refresh & disable pinch/double-tap zoom */
-(function(){
-  let startY=0, id=null;
-  document.addEventListener('touchstart', (e)=>{ if(e.touches && e.touches.length===1){ startY=e.touches[0].clientY; id=e.touches[0].identifier; } }, {passive:true});
-  document.addEventListener('touchmove', (e)=>{
-    try{
-      const t = Array.from(e.touches).find(tt=>tt.identifier===id) || e.touches[0];
-      const currentY = t.clientY;
-      const sc = document.querySelector('.cards-block');
-      if(sc){ const atTop = sc.scrollTop <= 0; if(atTop && currentY > startY) e.preventDefault(); }
-      else { if(window.scrollY <= 0 && currentY > startY) e.preventDefault(); }
-    }catch(err){}
-  }, {passive:false});
-  let lastTouch=0;
-  document.addEventListener('touchend', function(e){ const now = Date.now(); if(now - lastTouch <= 300) e.preventDefault(); lastTouch = now; }, {passive:false});
-  document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, {passive:false});
-})();
+/* =========================
+   Canvas background animation (stars/comets) — как в вашем коде
+   ========================= */
+const canvas = document.getElementById("bg");
+const ctx = canvas.getContext("2d");
+function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
 
-/* Scroll detection to avoid accidental pad opens */
-cardsBlock.addEventListener('scroll', ()=>{
-  isScrolling = true;
-  clearTimeout(scrollTimer);
-  scrollTimer = setTimeout(()=>{ isScrolling = false; }, 160);
-}, {passive:true});
+let stars = [];
+for (let i = 0; i < 200; i++) {
+  stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: Math.random() * 1.5 + 0.5, alpha: Math.random(), speed: Math.random() * 0.2 + 0.05 });
+}
+let comets = [];
+function spawnComet() { comets.push({ x: -100, y: Math.random() * canvas.height * 0.5, vx: 6 + Math.random() * 2, vy: 2 + Math.random(), life: 0, maxLife: 300 }); }
+let clickParticles = [];
+canvas.addEventListener("click", e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  for (let i = 0; i < 20; i++) {
+    clickParticles.push({ x, y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, life: 0, maxLife: 60, r: Math.random() * 2 + 1 });
+  }
+});
+function drawClickParticles() {
+  clickParticles.forEach((p, i) => {
+    ctx.fillStyle = `rgba(255,255,200,${1 - p.life / p.maxLife})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    p.x += p.vx; p.y += p.vy; p.life++;
+    if (p.life > p.maxLife) clickParticles.splice(i, 1);
+  });
+}
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  stars.forEach(s => {
+    s.alpha += (Math.random() - 0.5) * 0.05;
+    if (s.alpha < 0) s.alpha = 0;
+    if (s.alpha > 1) s.alpha = 1;
+    s.y += s.speed;
+    if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; }
+    ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+  });
+  if (Math.random() < 0.005) spawnComet();
+  comets.forEach((c, i) => {
+    let grad = ctx.createLinearGradient(c.x, c.y, c.x - 120, c.y - 60);
+    grad.addColorStop(0, "rgba(255,255,255,0.8)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.strokeStyle = grad; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(c.x - 120, c.y - 60); ctx.stroke();
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(c.x, c.y, 3.5, 0, Math.PI * 2); ctx.fill();
+    c.x += c.vx; c.y += c.vy; c.life++;
+    if (c.x > canvas.width + 150 || c.y > canvas.height + 150 || c.life > c.maxLife) comets.splice(i, 1);
+  });
+  drawClickParticles();
+  requestAnimationFrame(animate);
+}
+animate();
 
-/* Initial render */
-renderResults();
+/* =========================
+   Утилиты: очистка, экспорт и т.д. (упрощённо)
+   ========================= */
+document.getElementById("clear-search").addEventListener("click", () => {
+  searchInput.value = '';
+  document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
+});
 
-/* Expose for debugging if needed */
-window._inv = { renderResults, upsertInventoryExpr, inventoryItems, barcodeDB, stopScanner };
+/* expose for debugging */
+window._recount = { render, allItems, barcodeDB, startScanner, stopScanner };
+
 </script>
 </body>
 </html>
-
