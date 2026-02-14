@@ -13,55 +13,45 @@
   --neon1:#7b3be6;
   --neon2:#c86cff;
   --accent:linear-gradient(90deg,var(--neon1),var(--neon2));
-  --radius:12px;
   --header-h:84px;
   --footer-h:84px;
+  --max-w:420px;
   --gap:12px;
-  --max-width:420px;
+  --card-radius:12px;
+  --shadow: 0 8px 24px rgba(16,24,40,0.04);
 }
 
-/* Basic reset */
+/* Reset & performance hints */
 *{box-sizing:border-box}
 html,body{
   height:100%;
   margin:0;
-  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-  color:#0b1020;
   background:var(--bg);
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;
   -webkit-font-smoothing:antialiased;
   overscroll-behavior-y: none; /* prevent pull-to-refresh on supporting browsers */
   touch-action: manipulation;
 }
 
-/* App layout: header fixed, main scrollable, footer fixed */
+/* App layout: three strict zones */
 .app{height:100vh;display:flex;flex-direction:column;align-items:center;}
 
-/* 1. Header (fixed) */
-.header-fixed{
-  position:fixed;
-  left:0; right:0; top:0;
+/* 1. Header: fixed, non-scrollable, no overscroll */
+.header{
+  position:fixed; left:0; right:0; top:0;
   height:var(--header-h);
-  display:flex; align-items:center; justify-content:center;
+  display:flex;align-items:center;justify-content:center;
   background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.96));
   border-bottom:1px solid rgba(11,16,32,0.04);
   z-index:1200;
   padding:12px;
-  box-shadow:0 6px 20px rgba(16,24,40,0.04);
+  box-shadow: 0 6px 18px rgba(16,24,40,0.04);
+  -webkit-user-select:none; user-select:none;
+  overscroll-behavior: contain;
 }
-.header-inner{
-  width:100%;
-  max-width:var(--max-width);
-  display:flex;
-  gap:10px;
-  align-items:center;
-}
+.header-inner{width:100%;max-width:var(--max-w);display:flex;gap:10px;align-items:center}
 .brand{display:flex;gap:10px;align-items:center;min-width:0}
-.logo{
-  width:44px;height:44px;border-radius:10px;
-  background:var(--neon1);
-  background:var(--accent);
-  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;flex:0 0 44px;
-}
+.logo{width:44px;height:44px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;flex:0 0 44px}
 .title{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .search-row{display:flex;gap:8px;align-items:center;flex:1}
 .input-wrap{position:relative;flex:1}
@@ -77,42 +67,38 @@ html,body{
 .clear-x{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--muted);font-weight:700;padding:6px;border-radius:6px;cursor:pointer}
 .scan-btn{padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;background:var(--accent);color:#fff;min-width:84px;flex:0 0 auto}
 
-/* 2. Main area (scrollable) */
-.main{
+/* 2. Content: single scrollable container between header and footer */
+.content{
+  width:100%;
+  max-width:var(--max-w);
   margin-top:var(--header-h);
   margin-bottom:var(--footer-h);
-  width:100%;
-  display:flex;
-  justify-content:center;
-  -webkit-overflow-scrolling:touch;
-}
-.main-inner{
-  width:100%;
-  max-width:var(--max-width);
-  padding:16px;
+  height: calc(100vh - var(--header-h) - var(--footer-h));
+  overflow:auto;
+  -webkit-overflow-scrolling: touch;
+  padding:12px;
   display:flex;
   flex-direction:column;
   gap:var(--gap);
-  min-height: calc(100vh - var(--header-h) - var(--footer-h));
-  overflow:auto;
+  align-items:stretch;
 }
 
-/* Card / scanner */
-.card{background:var(--panel);border-radius:12px;padding:12px;border:1px solid rgba(11,16,32,0.06);box-shadow:0 8px 24px rgba(16,24,40,0.04)}
+/* Card styles */
+.card{background:var(--panel);border-radius:var(--card-radius);padding:12px;border:1px solid rgba(11,16,32,0.06);box-shadow:var(--shadow)}
 .preview-wrap{border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(11,16,32,0.06);display:none}
 .preview-wrap.visible{display:block}
 .preview-wrap.camera-1-3{height:33vh;min-height:140px;max-height:300px}
 video#preview{width:100%;height:100%;object-fit:cover;display:block}
 
 /* Results list */
-.results{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.results{display:flex;flex-direction:column;gap:10px}
 .card-item{
   display:flex;flex-direction:column;padding:12px;border-radius:10px;border:1px solid rgba(11,16,32,0.04);
   background:linear-gradient(180deg,#fff,#fbfbff);
+  will-change:transform; /* hint for smoother scrolling */
 }
 .item-top{display:flex;align-items:center;gap:12px}
-.item-left{display:flex;gap:12px;align-items:center;min-width:0}
-.avatar{width:56px;height:56px;border-radius:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700}
+.avatar{width:56px;height:56px;border-radius:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex:0 0 56px}
 .item-meta{display:flex;flex-direction:column;min-width:0;flex:1}
 .item-name{font-weight:700;color:#0b1020;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item-code{color:var(--muted);font-size:13px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -120,37 +106,23 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
 .qty-input{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);font-weight:700;font-size:15px}
 .plus-btn{padding:10px 12px;border-radius:8px;background:linear-gradient(90deg,var(--neon1),var(--neon2));color:#fff;border:none;cursor:pointer}
 
-/* 3. Footer (fixed manual add) */
-.footer-fixed{
+/* 3. Footer: fixed, non-scrollable */
+.footer{
   position:fixed; left:0; right:0; bottom:0;
   height:var(--footer-h);
-  display:flex; align-items:center; justify-content:center;
+  display:flex;align-items:center;justify-content:center;
   background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.96));
   border-top:1px solid rgba(11,16,32,0.04);
   z-index:1200;
   padding:12px;
-  box-shadow:0 -6px 20px rgba(16,24,40,0.04);
+  box-shadow:0 -6px 18px rgba(16,24,40,0.04);
 }
-.footer-inner{
-  width:100%;
-  max-width:var(--max-width);
-  display:flex;
-  gap:8px;
-  align-items:center;
-}
+.footer-inner{width:100%;max-width:var(--max-w);display:flex;gap:8px;align-items:center}
 .manual-input{flex:1;display:flex;gap:8px;align-items:center}
-.manual-input input{
-  flex:1;
-  padding:10px;
-  border-radius:10px;
-  border:1px solid rgba(11,16,32,0.06);
-  background:#fff;
-  outline:none;
-  min-width:0;
-}
+.manual-input input{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(11,16,32,0.06);background:#fff;outline:none;min-width:0}
 .manual-input button{padding:10px 12px;border-radius:10px;border:none;background:var(--neon1);color:#fff;font-weight:700;cursor:pointer}
 
-/* Numeric pad (appears above footer) */
+/* Numeric pad (optional) appears above footer */
 .numeric-pad {
   position: fixed;
   left: 0;
@@ -165,15 +137,7 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
 }
 .numeric-pad.visible { display: block; }
 .numeric-pad .row { display:flex; gap:8px; margin-bottom:8px; }
-.numeric-pad button.key {
-  flex:1;
-  padding:12px 8px;
-  border-radius:8px;
-  border:1px solid rgba(11,16,32,0.06);
-  background:#fff;
-  font-size:18px;
-  font-weight:700;
-}
+.numeric-pad button.key { flex:1;padding:12px 8px;border-radius:8px;border:1px solid rgba(11,16,32,0.06);background:#fff;font-size:18px;font-weight:700; }
 .numeric-pad .key.action { background: linear-gradient(90deg,#7b3be6,#c86cff); color:#fff; border:none; }
 .numeric-pad .key.wide { flex:2; }
 
@@ -187,10 +151,10 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
 </style>
 </head>
 <body>
-<div class="app" id="app" role="application" aria-label="Инвентаризация приложение">
+<div class="app" id="app" role="application" aria-label="Инвентаризация">
 
   <!-- Header (fixed) -->
-  <header class="header-fixed" role="banner" aria-label="Шапка и поиск">
+  <header class="header" role="banner" aria-label="Шапка">
     <div class="header-inner">
       <div class="brand" aria-hidden="false">
         <div class="logo">INV</div>
@@ -209,40 +173,35 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
     </div>
   </header>
 
-  <!-- Main (scrollable) -->
-  <main class="main" id="main" role="main" aria-label="Список товаров">
-    <div class="main-inner" id="mainInner">
-      <!-- Scanner card (hidden by default) -->
-      <section id="scannerCard" class="card" style="display:none" aria-hidden="true">
-        <div class="preview-wrap camera-1-3" id="previewWrap">
-          <video id="preview" playsinline muted></video>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-          <select id="deviceSelect" class="btn ghost" aria-label="Выбор камеры" style="min-width:80px"></select>
-          <button id="closeScannerBtn" class="btn ghost" aria-label="Закрыть сканер">✕ Закрыть</button>
-        </div>
-        <div id="scanResult" class="small" style="margin-top:8px"></div>
-      </section>
+  <!-- Content (single scrollable area) -->
+  <main class="content" id="content" role="main" aria-label="Список товаров">
+    <!-- Scanner card (hidden by default) -->
+    <section id="scannerCard" class="card" style="display:none" aria-hidden="true">
+      <div class="preview-wrap camera-1-3" id="previewWrap">
+        <video id="preview" playsinline muted></video>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+        <select id="deviceSelect" class="btn ghost" aria-label="Выбор камеры" style="min-width:80px"></select>
+        <button id="closeScannerBtn" class="btn ghost" aria-label="Закрыть сканер">✕ Закрыть</button>
+      </div>
+      <div id="scanResult" class="small" style="margin-top:8px"></div>
+    </section>
 
-      <!-- Results list -->
-      <section class="card" aria-labelledby="resultsTitle">
-        <h3 id="resultsTitle" style="margin:0 0 8px 0">Найденные товары</h3>
-        <div id="results" class="results" aria-live="polite">
-          <div id="emptyHint" class="small">Пока нет позиций. Сканируйте штрихкод или добавьте вручную.</div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
-          <div class="small">Если код не в базе — сканер предложит создать товар.</div>
-        </div>
-      </section>
-    </div>
+    <!-- Results list -->
+    <section id="resultsWrap" class="card" aria-labelledby="resultsTitle">
+      <h3 id="resultsTitle" style="margin:0 0 8px 0">Найденные товары</h3>
+      <div id="results" class="results" aria-live="polite">
+        <div id="emptyHint" class="small">Пока нет позиций. Сканируйте штрихкод или добавьте вручную.</div>
+      </div>
+    </section>
   </main>
 
-  <!-- Footer (fixed manual add) -->
-  <footer class="footer-fixed" role="contentinfo" aria-label="Добавление товара вручную">
+  <!-- Footer (fixed) -->
+  <footer class="footer" role="contentinfo" aria-label="Добавление вручную">
     <div class="footer-inner">
-      <div class="manual-input" style="flex:1">
-        <input id="manualCode" placeholder="Штрихкод (или оставьте пустым)" aria-label="Штрихкод вручную">
-        <input id="manualName" placeholder="Название товара" aria-label="Название товара вручную" style="margin-left:8px">
+      <div class="manual-input">
+        <input id="manualCode" placeholder="Штрихкод (опционально)" aria-label="Штрихкод вручную">
+        <input id="manualName" placeholder="Название товара" aria-label="Название вручную">
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button id="addManualBtn" class="btn ghost" aria-label="Добавить вручную">Добавить</button>
@@ -250,7 +209,7 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
     </div>
   </footer>
 
-  <!-- Numeric pad -->
+  <!-- Numeric pad (optional) -->
   <div id="numericPad" class="numeric-pad" aria-hidden="true">
     <div class="row">
       <button class="key" data-key="1">1</button>
@@ -278,24 +237,24 @@ video#preview{width:100%;height:100%;object-fit:cover;display:block}
   </div>
 </div>
 
-<script src="https://unpkg.com/@zxing/library@latest"></script>
 <script>
-/* ===== Storage keys ===== */
+/* ===== Minimal, performant JS for three-zone layout + incremental rendering + lazy scanner load ===== */
+
+/* Storage keys */
 const STORAGE_DB = 'barcodeDB';
 const STORAGE_INV = 'inventoryItems';
 
-/* ===== State ===== */
+/* State */
 let barcodeDB = JSON.parse(localStorage.getItem(STORAGE_DB) || '{}');
 let inventoryItems = JSON.parse(localStorage.getItem(STORAGE_INV) || '[]');
-let stream = null;
-let currentDeviceId = null;
-let scanning = false;
-let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
-let reader = null;
-let lastDetected = {code:null, ts:0};
-const DEBOUNCE_MS = 900;
+let renderedCards = new Map();
+let focusedInputCode = null;
+let padTargetCode = null;
 
-/* ===== Elements ===== */
+/* Elements */
+const content = document.getElementById('content');
+const resultsEl = document.getElementById('results');
+const emptyHint = document.getElementById('emptyHint');
 const searchInput = document.getElementById('searchInput');
 const clearSearch = document.getElementById('clearSearch');
 const openScannerBtn = document.getElementById('openScannerBtn');
@@ -305,66 +264,48 @@ const preview = document.getElementById('preview');
 const deviceSelect = document.getElementById('deviceSelect');
 const closeScannerBtn = document.getElementById('closeScannerBtn');
 const scanResult = document.getElementById('scanResult');
-
-const resultsEl = document.getElementById('results');
-const emptyHint = document.getElementById('emptyHint');
-
 const manualCode = document.getElementById('manualCode');
 const manualName = document.getElementById('manualName');
 const addManualBtn = document.getElementById('addManualBtn');
-
 const numericPad = document.getElementById('numericPad');
 
-const renderedCards = new Map();
-let focusedInputCode = null;
-let padTargetCode = null;
-
-/* ===== Utilities ===== */
+/* Performance helpers */
 function saveDB(){ localStorage.setItem(STORAGE_DB, JSON.stringify(barcodeDB)); }
 function saveInventory(){ localStorage.setItem(STORAGE_INV, JSON.stringify(inventoryItems)); }
-function showToast(text, ms=1200){ scanResult.textContent = text; setTimeout(()=>{ if(scanResult.textContent===text) scanResult.textContent=''; }, ms); }
-function beepSound(){ try{ const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value=880; g.gain.value=0.02; o.connect(g); g.connect(ctx.destination); o.start(); setTimeout(()=>{ o.stop(); ctx.close(); },120); }catch(e){} }
-function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
+function showToast(msg, ms=1000){ scanResult.textContent = msg; setTimeout(()=>{ if(scanResult.textContent===msg) scanResult.textContent=''; }, ms); }
 
-/* ===== Search helpers ===== */
-function searchItems(query){
-  const q = normalize(query);
+/* Search (tokens, any order) */
+function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
+function searchItems(q){
+  q = normalize(q);
   if(!q) return [];
   const tokens = q.split(/\s+/).filter(Boolean);
-  const results = [];
+  const out = [];
   for(const code of Object.keys(barcodeDB)){
     const name = normalize(barcodeDB[code]);
     const hay = (code + ' ' + name);
-    const ok = tokens.every(t => hay.indexOf(t) !== -1);
-    if(ok) results.push({ code, name: barcodeDB[code] });
+    if(tokens.every(t => hay.indexOf(t) !== -1)) out.push({code, name: barcodeDB[code]});
   }
-  results.sort((a,b)=> a.name.length - b.name.length);
-  return results;
+  return out;
 }
 
-/* Build display list: inventory items always shown; if search present, append search results not already in inventory */
+/* Build display list: inventory items first, then search matches not in inventory */
 function getDisplayList(){
   const q = searchInput.value.trim();
-  const display = [];
-  for(const it of inventoryItems){
-    display.push({ code: it.code, name: it.name, expr: it.expr || String(it.qty || 0), qty: it.qty || 0, fromInventory: true });
-  }
+  const list = [];
+  for(const it of inventoryItems) list.push({code: it.code, name: it.name, expr: it.expr || String(it.qty || 0), qty: it.qty || 0});
   if(q){
-    const search = searchItems(q);
-    const invCodes = new Set(inventoryItems.map(i=>i.code));
-    for(const s of search){
-      if(!invCodes.has(s.code)){
-        display.push({ code: s.code, name: s.name, expr: '0', qty: 0, fromInventory: false });
-      }
-    }
+    const found = searchItems(q);
+    const inv = new Set(inventoryItems.map(i=>i.code));
+    for(const f of found) if(!inv.has(f.code)) list.push({code: f.code, name: f.name, expr:'0', qty:0});
   }
-  return display;
+  return list;
 }
 
-/* ===== Render results (incremental, preserve inputs & focus) ===== */
+/* Render helpers: incremental, preserve focus */
 function renderResults(){
   const list = getDisplayList();
-  if(!list.length){
+  if(list.length === 0){
     resultsEl.innerHTML = '';
     emptyHint.style.display = 'block';
     renderedCards.clear();
@@ -372,20 +313,36 @@ function renderResults(){
   }
   emptyHint.style.display = 'none';
 
+  // Build a set of codes that should remain
+  const keep = new Set(list.map(i=>i.code));
+
+  // Remove cards that are no longer in list
+  for(const [code, el] of renderedCards){
+    if(!keep.has(code)){
+      el.remove();
+      renderedCards.delete(code);
+    }
+  }
+
+  // Append or update cards in order
+  const frag = document.createDocumentFragment();
   for(const item of list){
     if(renderedCards.has(item.code)){
+      // update name/code/expr if needed, but don't touch input if focused
       const el = renderedCards.get(item.code);
       const nameEl = el.querySelector('.item-name');
       const codeEl = el.querySelector('.item-code');
       const inputEl = el.querySelector('.qty-input');
       if(nameEl && nameEl.textContent !== item.name) nameEl.textContent = item.name;
       if(codeEl && codeEl.textContent !== item.code) codeEl.textContent = item.code;
-      if(focusedInputCode !== item.code){
+      if(document.activeElement !== inputEl){
         inputEl.value = item.expr || String(item.qty || 0);
       }
+      frag.appendChild(el);
       continue;
     }
 
+    // create new card
     const card = document.createElement('div');
     card.className = 'card-item';
     card.dataset.code = item.code;
@@ -399,78 +356,36 @@ function renderResults(){
           </div>
         </div>
       </div>
-
       <div class="qty-row">
         <input inputmode="numeric" pattern="[0-9+ ]*" class="qty-input" type="text" value="${escapeHtml(item.expr || String(item.qty || 0))}" aria-label="Выражение для ${escapeHtml(item.name)}">
         <button class="plus-btn" title="Плюс">+</button>
       </div>
     `;
-    const qtyInput = card.querySelector('.qty-input');
-    const plusBtn = card.querySelector('.plus-btn');
+    // attach minimal listeners
+    const input = card.querySelector('.qty-input');
+    const plus = card.querySelector('.plus-btn');
 
-    qtyInput.addEventListener('focus', ()=>{
-      focusedInputCode = item.code;
-      padTargetCode = item.code;
-      openNumericPad(item.code);
-    });
-    qtyInput.addEventListener('blur', ()=>{
-      focusedInputCode = null;
-      const expr = qtyInput.value;
-      const total = evaluateExpression(expr);
-      upsertInventoryExpr(item.code, item.name, expr, total, true);
-      qtyInput.value = normalizeExpression(expr);
-    });
+    input.addEventListener('focus', ()=>{ focusedInputCode = item.code; padTargetCode = item.code; openNumericPad(item.code); });
+    input.addEventListener('blur', ()=>{ focusedInputCode = null; const expr = input.value; const total = evaluateExpression(expr); upsertInventoryExpr(item.code, item.name, expr, total, true); input.value = normalizeExpression(expr); });
+    input.addEventListener('input', ()=>{ const expr = input.value; const total = evaluateExpression(expr); upsertInventoryExpr(item.code, item.name, expr, total, true); });
 
-    qtyInput.addEventListener('input', ()=>{
-      const expr = qtyInput.value;
-      const total = evaluateExpression(expr);
-      upsertInventoryExpr(item.code, item.name, expr, total, true);
-    });
+    plus.addEventListener('click', (ev)=>{ ev.preventDefault(); let expr = input.value || ''; expr = expr.trim(); if(/\+\s*$/.test(expr)){ input.focus(); return; } expr = expr === '' ? '0 + ' : expr + ' + '; const total = evaluateExpression(expr); upsertInventoryExpr(item.code, item.name, expr, total, true); input.value = normalizeExpression(expr); input.focus(); setTimeout(()=>{ try{ input.setSelectionRange(input.value.length, input.value.length); }catch(e){} },0); });
 
-    plusBtn.addEventListener('click', (ev)=>{
-      ev.preventDefault();
-      let expr = qtyInput.value || '';
-      expr = expr.trim();
-      if(/\+\s*$/.test(expr)){
-        qtyInput.focus();
-        return;
-      }
-      expr = expr === '' ? '0 + ' : expr + ' + ';
-      const total = evaluateExpression(expr);
-      upsertInventoryExpr(item.code, item.name, expr, total, true);
-      qtyInput.value = normalizeExpression(expr);
-      qtyInput.focus();
-      setTimeout(()=>{ try{ qtyInput.setSelectionRange(qtyInput.value.length, qtyInput.value.length); }catch(e){} }, 0);
-    });
-
-    resultsEl.appendChild(card);
     renderedCards.set(item.code, card);
+    frag.appendChild(card);
   }
+
+  // append in order
+  resultsEl.appendChild(frag);
 }
 
-/* Escape HTML for safe insertion into value attribute */
-function escapeHtml(s){
-  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+/* small helpers */
+function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function normalizeExpression(expr){ if(!expr) return ''; const trailingPlus = /\+\s*$/.test(expr); const parts = (expr.match(/\d+/g) || []); const joined = parts.join(' + '); return trailingPlus ? (joined ? joined + ' + ' : ' + ') : joined; }
+function evaluateExpression(expr){ if(!expr) return 0; const nums = (expr.match(/\d+/g) || []).map(n=>parseInt(n,10)||0); return nums.reduce((s,v)=>s+v,0); }
 
-/* Normalize expression: keep digits and pluses, format with spaces; preserve trailing plus */
-function normalizeExpression(expr){
-  if(!expr) return '';
-  const trailingPlus = /\+\s*$/.test(expr);
-  const parts = (expr.match(/\d+/g) || []);
-  const joined = parts.join(' + ');
-  return trailingPlus ? (joined ? joined + ' + ' : ' + ') : joined;
-}
-
-/* Evaluate expression like "5 + 3 + 7" -> 15. Non-numeric tokens ignored. */
-function evaluateExpression(expr){
-  if(!expr) return 0;
-  const nums = (expr.match(/\d+/g) || []).map(n=>parseInt(n,10) || 0);
-  return nums.reduce((s,v)=>s+v, 0);
-}
-
-/* Upsert inventory with expression and computed total */
-function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
+/* Upsert inventory (persist immediately). dontRerender true -> only update data and input value */
+function upsertInventoryExpr(code, name, expr, total, dontRerender=false){
   const idx = inventoryItems.findIndex(it => it.code === code);
   if(idx >= 0){
     inventoryItems[idx].qty = total;
@@ -482,17 +397,68 @@ function upsertInventoryExpr(code, name, expr, total, dontRerender = false){
   saveInventory();
   const card = renderedCards.get(code);
   if(card){
-    const inputEl = card.querySelector('.qty-input');
-    if(document.activeElement !== inputEl){
-      inputEl.value = expr;
-    }
+    const input = card.querySelector('.qty-input');
+    if(document.activeElement !== input) input.value = expr;
   }
-  if(!dontRerender){
-    renderResults();
-  }
+  if(!dontRerender) renderResults();
 }
 
-/* Focus input of a card by code and open numeric pad */
+/* Numeric pad (guaranteed fast local input) */
+function openNumericPad(code){
+  padTargetCode = code;
+  numericPad.classList.add('visible');
+  numericPad.setAttribute('aria-hidden','false');
+  setTimeout(()=>{ const card = document.querySelector(`[data-code="${code}"]`); if(card){ const input = card.querySelector('.qty-input'); if(input) try{ input.focus(); }catch(e){} } }, 80);
+}
+function closeNumericPad(){ padTargetCode = null; numericPad.classList.remove('visible'); numericPad.setAttribute('aria-hidden','true'); try{ document.activeElement && document.activeElement.blur(); }catch(e){} }
+function padInsert(ch){
+  if(!padTargetCode) return;
+  const card = document.querySelector(`[data-code="${padTargetCode}"]`);
+  if(!card) return;
+  const input = card.querySelector('.qty-input');
+  if(!input) return;
+  if(ch === '←'){ input.value = input.value.slice(0,-1); } else { input.value = (input.value || '') + ch; }
+  input.dispatchEvent(new Event('input',{bubbles:true}));
+  try{ input.focus(); }catch(e){}
+}
+
+/* Numeric pad event delegation */
+numericPad.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button.key');
+  if(!btn) return;
+  const key = btn.getAttribute('data-key');
+  if(key){ padInsert(key); return; }
+  if(btn.id === 'padBack'){ padInsert('←'); return; }
+  if(btn.id === 'padDone'){ closeNumericPad(); return; }
+});
+
+/* Prevent closing pad when tapping inputs; close when tapping outside */
+document.addEventListener('click', (e)=>{
+  if(!numericPad.classList.contains('visible')) return;
+  if(numericPad.contains(e.target)) return;
+  if(e.target.closest('.qty-input')) return;
+  closeNumericPad();
+});
+
+/* Search wiring */
+searchInput.addEventListener('input', ()=>{ renderResults(); });
+clearSearch.addEventListener('click', ()=>{ searchInput.value=''; renderResults(); searchInput.focus(); });
+
+/* Manual add */
+addManualBtn.addEventListener('click', ()=>{
+  const code = (manualCode.value||'').trim();
+  const name = (manualName.value||'').trim() || (code || 'Новый товар');
+  const finalCode = code || ('manual-' + Date.now());
+  barcodeDB[finalCode] = name;
+  saveDB();
+  upsertInventoryExpr(finalCode, name, '0', 0, true);
+  renderResults();
+  focusCardInput(finalCode);
+  manualCode.value=''; manualName.value='';
+  showToast('Добавлено вручную');
+});
+
+/* Focus card input and try to nudge native keyboard (best-effort) */
 function focusCardInput(code){
   setTimeout(()=>{
     const card = renderedCards.get(code) || document.querySelector(`[data-code="${code}"]`);
@@ -504,70 +470,35 @@ function focusCardInput(code){
       input.setAttribute('inputmode','numeric');
       input.focus();
       const len = input.value.length;
-      try{ input.setSelectionRange(len, len); }catch(e){}
-      setTimeout(()=>{ try{ input.type = 'text'; }catch(e){} try{ input.setSelectionRange(len, len); }catch(e){} }, 120);
-    }catch(e){
-      try{ input.focus(); }catch(e){}
-    }
+      try{ input.setSelectionRange(len,len); }catch(e){}
+      setTimeout(()=>{ try{ input.type='text'; }catch(e){} try{ input.setSelectionRange(len,len); }catch(e){} },120);
+    }catch(e){ try{ input.focus(); }catch(e){} }
     openNumericPad(code);
     padTargetCode = code;
     focusedInputCode = code;
   }, 160);
 }
 
-/* ===== Numeric pad integration ===== */
-function openNumericPad(code){
-  padTargetCode = code;
-  numericPad.classList.add('visible');
-  numericPad.setAttribute('aria-hidden','false');
-  setTimeout(()=>{
-    const card = document.querySelector(`[data-code="${code}"]`);
-    if(card){
-      const input = card.querySelector('.qty-input');
-      if(input) try{ input.focus(); }catch(e){}
-    }
-  }, 80);
-}
-function closeNumericPad(){
-  padTargetCode = null;
-  numericPad.classList.remove('visible');
-  numericPad.setAttribute('aria-hidden','true');
-  try{ document.activeElement && document.activeElement.blur(); }catch(e){}
-}
-function padInsert(ch){
-  if(!padTargetCode) return;
-  const card = document.querySelector(`[data-code="${padTargetCode}"]`);
-  if(!card) return;
-  const input = card.querySelector('.qty-input');
-  if(!input) return;
-  if(ch === '←'){
-    input.value = input.value.slice(0, -1);
-  } else {
-    input.value = (input.value || '') + ch;
-  }
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  try{ input.focus(); }catch(e){}
+/* Scanner: lazy load ZXing only when opening scanner to keep initial load light */
+let ZXingReader = null;
+let stream = null;
+let scanning = false;
+let scanLoopRunning = false;
+let lastDetected = {code:null, ts:0};
+const DEBOUNCE_MS = 900;
+async function loadZXing(){
+  if(window.ZXing || ZXingReader) return;
+  // load library dynamically
+  await new Promise((res, rej)=>{
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/@zxing/library@latest';
+    s.onload = ()=>{ ZXingReader = window.ZXing || window.ZXing; res(); };
+    s.onerror = rej;
+    document.head.appendChild(s);
+  });
 }
 
-/* pad button handlers */
-numericPad.addEventListener('click', (e)=>{
-  const btn = e.target.closest('button.key');
-  if(!btn) return;
-  const key = btn.getAttribute('data-key');
-  if(key){ padInsert(key); return; }
-  if(btn.id === 'padBack'){ padInsert('←'); return; }
-  if(btn.id === 'padDone'){ closeNumericPad(); return; }
-});
-
-/* Close pad when tapping outside (but not when tapping inputs) */
-document.addEventListener('click', (e)=>{
-  if(!numericPad.classList.contains('visible')) return;
-  if(numericPad.contains(e.target)) return;
-  if(e.target.closest('.qty-input')) return;
-  closeNumericPad();
-});
-
-/* ===== Scanner implementation ===== */
+/* enumerate cameras */
 async function enumerateCameras(){
   try{
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -579,239 +510,157 @@ async function enumerateCameras(){
       opt.text = c.label || `Камера ${idx+1}`;
       deviceSelect.appendChild(opt);
     });
-    if(cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
-    if(currentDeviceId) deviceSelect.value = currentDeviceId;
   }catch(e){}
 }
 
-async function startCamera(){
+/* start camera and scanning */
+async function startScanner(){
   if(scanning) return;
-  stopCamera();
+  try{
+    await loadZXing();
+  }catch(e){
+    showToast('Не удалось загрузить сканер');
+    return;
+  }
   scanning = true;
   await enumerateCameras();
-  const constraints = {
-    audio:false,
-    video:{
-      deviceId: deviceSelect.value || currentDeviceId || undefined,
-      facingMode: { ideal: "environment" },
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
-    }
-  };
   try{
-    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio:false });
     preview.srcObject = stream;
     await preview.play();
-    currentDeviceId = stream.getVideoTracks()[0].getSettings().deviceId || currentDeviceId;
-    deviceSelect.value = currentDeviceId || deviceSelect.value;
-    if(!reader) reader = new ZXing.BrowserMultiFormatReader();
+    // create reader
+    if(!ZXingReader) ZXingReader = window.ZXing;
+    // use simple canvas decode loop (no heavy continuous allocations)
     requestAnimationFrame(scanLoop);
     showToast('Сканер запущен');
-  }catch(err){
-    console.error(err);
-    showToast('Ошибка доступа к камере');
+  }catch(e){
     scanning = false;
+    showToast('Ошибка доступа к камере');
   }
 }
 
-function stopCamera(){
+/* stop camera */
+function stopScanner(){
   scanning = false;
   if(preview.srcObject){
     preview.srcObject.getTracks().forEach(t=>t.stop());
     preview.srcObject = null;
   }
-  if(reader){
-    try{ reader.reset(); }catch(e){}
-  }
   showToast('Сканер остановлен');
 }
 
-function createCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+/* lightweight scan loop: draw to small canvas and try decode using ZXing if available */
+const canvasPool = [];
+function getCanvas(w,h){ for(const c of canvasPool) if(c.width===w && c.height===h) return c; const c=document.createElement('canvas'); c.width=w; c.height=h; canvasPool.push(c); return c; }
 
 async function tryDecodeCanvas(canvas){
-  if(detector){
-    try{
-      const imageData = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
-      const res = await detector.detect(imageData);
-      if(res && res.length) return res[0].rawValue;
-    }catch(e){}
-  }
+  if(!window.ZXing) return null;
   try{
     const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
     const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
     const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
     if(result && result.text) return result.text;
   }catch(e){}
-  const w = canvas.width, h = canvas.height;
-  const temp = createCanvas(w,h);
-  const tctx = temp.getContext('2d');
-  for(const angle of [90,180,270]){
-    tctx.clearRect(0,0,w,h);
-    tctx.save();
-    tctx.translate(w/2,h/2);
-    tctx.rotate(angle*Math.PI/180);
-    tctx.drawImage(canvas, -w/2, -h/2);
-    tctx.restore();
-    try{
-      const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(temp);
-      const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-      const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
-      if(result && result.text) return result.text;
-    }catch(e){}
-  }
   return null;
 }
 
-let canvasPool = [];
-function getCanvas(w,h){
-  for(const c of canvasPool) if(c.width===w && c.height===h) return c;
-  const c = createCanvas(w,h); canvasPool.push(c); return c;
-}
-
-let scanLoopRunning = false;
 async function scanLoop(){
-  if(!scanning) { scanLoopRunning = false; return; }
+  if(!scanning) { scanLoopRunning=false; return; }
   if(scanLoopRunning) return;
   scanLoopRunning = true;
   try{
     while(scanning){
-      const w = preview.videoWidth;
-      const h = preview.videoHeight;
+      const w = preview.videoWidth, h = preview.videoHeight;
       if(w===0 || h===0){ await new Promise(r=>requestAnimationFrame(r)); continue; }
-      const canvas = getCanvas(w,h);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(preview, 0, 0, w, h);
-      const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
-      const sw = Math.floor(w/scale);
-      const sh = Math.floor(h/scale);
-      const small = getCanvas(sw,sh);
-      const sctx = small.getContext('2d');
-      sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
+      const small = getCanvas(Math.floor(w/3), Math.floor(h/3));
+      const ctx = small.getContext('2d');
+      ctx.drawImage(preview, 0, 0, small.width, small.height);
       try{
         const code = await tryDecodeCanvas(small);
-        if(code) {
-          beepSound();
-          hideScannerUI();
-          handleDetected(code);
-          await new Promise(r=>setTimeout(r, 300));
+        if(code){
+          const now = Date.now();
+          if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) { /* ignore */ }
+          else {
+            lastDetected = {code, ts: now};
+            handleDetected(code);
+          }
+          // hide scanner after detection
+          stopScanner();
+          break;
         }
       }catch(e){}
       await new Promise(r=>requestAnimationFrame(r));
     }
-  }finally{ scanLoopRunning = false; }
+  }finally{ scanLoopRunning=false; }
 }
 
-/* When code detected: populate search, create if missing, keep item on screen and focus its input */
+/* handle detection */
 function handleDetected(code){
-  const now = Date.now();
-  if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
-  lastDetected = {code, ts: now};
   searchInput.value = code;
   const found = barcodeDB[code];
   if(found){
     showToast('Найден товар в базе');
     const idx = inventoryItems.findIndex(it=>it.code===code);
-    if(idx === -1){
-      upsertInventoryExpr(code, found, '0', 0, true);
-    }
+    if(idx === -1) upsertInventoryExpr(code, found, '0', 0, true);
     renderResults();
     focusCardInput(code);
   } else {
     const create = confirm(`Код ${code} не найден. Создать товар с этим кодом и добавить 1 шт.?`);
     if(create){
-      const name = prompt('Введите название товара для нового кода', '') || '';
+      const name = prompt('Введите название товара', '') || '';
       if(name.trim()){
         barcodeDB[code] = name.trim();
         saveDB();
         upsertInventoryExpr(code, barcodeDB[code], '1', 1, true);
         renderResults();
         focusCardInput(code);
-        showToast('Товар добавлен и учтён');
-      } else {
-        showToast('Название не введено');
-      }
-    } else {
-      showToast('Код не найден');
-    }
+        showToast('Товар добавлен');
+      } else showToast('Название не введено');
+    } else showToast('Код не найден');
   }
 }
 
-/* ===== UI wiring ===== */
-openScannerBtn.addEventListener('click', ()=>{
+/* UI wiring for scanner open/close */
+openScannerBtn.addEventListener('click', async ()=>{
   scannerCard.style.display = 'block';
-  scannerCard.setAttribute('aria-hidden','false');
   previewWrap.classList.add('visible');
-  startCamera();
+  await startScanner();
 });
-closeScannerBtn.addEventListener('click', ()=>{ hideScannerUI(); });
-function hideScannerUI(){
-  stopCamera();
-  scannerCard.style.display = 'none';
-  scannerCard.setAttribute('aria-hidden','true');
-  previewWrap.classList.remove('visible');
-}
+closeScannerBtn.addEventListener('click', ()=>{ stopScanner(); scannerCard.style.display='none'; previewWrap.classList.remove('visible'); });
 
-deviceSelect.addEventListener('change', async ()=>{ currentDeviceId = deviceSelect.value; await startCamera(); });
+/* enumerate cameras on load (non-blocking) */
+navigator.mediaDevices && navigator.mediaDevices.enumerateDevices && navigator.mediaDevices.enumerateDevices().then(enumerateCameras).catch(()=>{});
 
-searchInput.addEventListener('input', ()=>{ renderResults(); });
-clearSearch.addEventListener('click', ()=>{ searchInput.value = ''; renderResults(); searchInput.focus(); });
-
-addManualBtn.addEventListener('click', ()=>{
-  const code = (manualCode.value || '').trim();
-  const name = (manualName.value || '').trim() || (code || 'Новый товар');
-  const finalCode = code || ('manual-' + Date.now());
-  barcodeDB[finalCode] = name;
-  saveDB();
-  upsertInventoryExpr(finalCode, name, '0', 0, true);
-  renderResults();
-  focusCardInput(finalCode);
-  manualCode.value = '';
-  manualName.value = '';
-  showToast('Добавлено вручную');
-});
-
-/* Prevent pull-to-refresh on mobile (extra JS safety for browsers that ignore overscroll-behavior) */
+/* Prevent document-level pull-to-refresh on some browsers by intercepting touchmove when content at top */
 (function preventPullToRefresh(){
-  let touchStartY = 0;
-  let touchId = null;
-  document.addEventListener('touchstart', function(e){
-    if(e.touches && e.touches.length === 1){
-      touchStartY = e.touches[0].clientY;
-      touchId = e.touches[0].identifier;
-    }
-  }, {passive:true});
-
-  document.addEventListener('touchmove', function(e){
+  let startY = 0;
+  let id = null;
+  document.addEventListener('touchstart', (e)=>{ if(e.touches && e.touches.length===1){ startY = e.touches[0].clientY; id = e.touches[0].identifier; } }, {passive:true});
+  document.addEventListener('touchmove', (e)=>{
     try{
-      const t = Array.from(e.touches).find(tt => tt.identifier === touchId) || e.touches[0];
+      const t = Array.from(e.touches).find(tt=>tt.identifier===id) || e.touches[0];
       const currentY = t.clientY;
-      const scrollable = document.querySelector('.main-inner');
-      // if page is at top of main-inner and user pulls down (currentY > touchStartY) — prevent default
-      if(scrollable){
-        const atTop = scrollable.scrollTop <= 0;
-        if(atTop && currentY > touchStartY){
-          e.preventDefault();
-        }
+      const sc = document.querySelector('.content');
+      if(sc){
+        const atTop = sc.scrollTop <= 0;
+        if(atTop && currentY > startY) e.preventDefault();
       } else {
-        // fallback: if document at top and pulling down, prevent
-        if(window.scrollY <= 0 && currentY > touchStartY){
-          e.preventDefault();
-        }
+        if(window.scrollY <= 0 && currentY > startY) e.preventDefault();
       }
     }catch(err){}
   }, {passive:false});
 })();
 
-/* Close numeric pad when orientation/resize might hide footer */
-window.addEventListener('resize', ()=>{ closeNumericPad(); });
-
-/* Init */
+/* initial render */
 renderResults();
-enumerateCameras();
-navigator.mediaDevices.getUserMedia({video:true}).then(s=>{ s.getTracks().forEach(t=>t.stop()); enumerateCameras(); }).catch(()=>{});
+
+/* expose some helpers for debugging (optional) */
+window._inv = { renderResults, upsertInventoryExpr, inventoryItems, barcodeDB };
+
 </script>
 </body>
 </html>
+
 
 
 
