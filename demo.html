@@ -1613,19 +1613,41 @@ animate();
 
 
 
+
 (function(){
   const ZXING_CDN = 'https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js';
   const DEBOUNCE_MS = 900;
   const TOAST_MS = 1400;
   const VOICE_BTN_ID = 'voice-search-btn';
+
   let _stream = null, _video = null, _deviceSelect = null, _torchBtn = null, _closeBtn = null, _scannerCard = null, _previewWrap = null, _scanResult = null;
   let _reader = null, _zxingLoaded = false, _barcodeDetector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
   let _lastDetected = {code:null, ts:0}, _rafId = null, _canvas = null, _ctx = null, _torchOn = false;
 
   function $id(id){ return document.getElementById(id); }
 
-  // Создаём/находим карточку сканера и привязываем превью
+  /* Inject CSS for scanner card (embedded) */
+  function injectCSS(){
+    if(document.getElementById('scanner-card-styles')) return;
+    const css = `
+#scannerCard { display:none; background: linear-gradient(180deg, rgba(12,12,14,0.98), rgba(20,20,24,0.98)); border-radius:10px; padding:10px; box-shadow:0 20px 60px rgba(0,0,0,0.6); z-index:2200; transition:opacity .18s ease, transform .18s ease; pointer-events:auto; }
+#scannerCard.visible { display:block; opacity:1; }
+#scannerCard .preview-wrap { width:100%; height:260px; background:#000; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+#scannerCard video#preview { width:100%; height:100%; object-fit:cover; display:block; }
+#scannerCard .controls { display:flex; gap:8px; align-items:center; margin-top:8px; }
+#scannerCard button, #scannerCard select { z-index:2300; pointer-events:auto; }
+body.scanner-open { overflow:visible; }
+@media (max-width:720px){ #scannerCard { left:8px !important; right:8px !important; top:auto !important; width:calc(100% - 16px) !important; position:absolute !important; } }
+`;
+    const s = document.createElement('style');
+    s.id = 'scanner-card-styles';
+    s.textContent = css;
+    document.head.appendChild(s);
+  }
+
+  /* Ensure scanner card exists and is placed under search input */
   function ensureScannerCardExists(){
+    injectCSS();
     _scannerCard = $id('scannerCard');
     _previewWrap = $id('previewWrap');
     _video = $id('preview');
@@ -1638,37 +1660,39 @@ animate();
       _scannerCard = document.createElement('div');
       _scannerCard.id = 'scannerCard';
       _scannerCard.innerHTML = `
-        <div id="scannerInner" style="display:flex;flex-direction:column;">
-          <div id="previewWrap" style="width:100%;height:260px;background:#000;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-            <video id="preview" playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
+        <div id="scannerInner">
+          <div class="preview-wrap" id="previewWrap">
+            <video id="preview" playsinline muted></video>
           </div>
-          <div class="controls" style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+          <div class="controls">
             <select id="deviceSelect" style="flex:1"></select>
             <button id="torchBtn" type="button">🔦</button>
             <button id="closeScannerBtn" type="button">Закрыть</button>
             <div id="scanResult" style="min-width:160px;color:#fff;padding-left:8px"></div>
           </div>
         </div>`;
-      document.body.appendChild(_scannerCard);
+      // Insert under search input if exists, else append to body
+      const searchEl = $id('search') || document.querySelector('input[type="search"]') || null;
+      if(searchEl && searchEl.parentNode){
+        // place after search element
+        const parent = searchEl.parentNode;
+        if(searchEl.nextSibling) parent.insertBefore(_scannerCard, searchEl.nextSibling);
+        else parent.appendChild(_scannerCard);
+      } else {
+        document.body.appendChild(_scannerCard);
+      }
+      // refresh refs
       _previewWrap = $id('previewWrap');
       _video = $id('preview');
       _deviceSelect = $id('deviceSelect');
       _torchBtn = $id('torchBtn');
       _closeBtn = $id('closeScannerBtn');
       _scanResult = $id('scanResult');
-
-      // базовые стили (если у вас есть CSS — они будут переопределены)
-      Object.assign(_scannerCard.style, {
-        position: 'absolute',
-        display: 'none',
-        width: 'min(980px, calc(100% - 40px))',
-        maxWidth: '980px',
-        background: 'rgba(10,10,12,0.98)',
-        borderRadius: '10px',
-        padding: '10px',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
-        zIndex: '2000'
-      });
+      // basic inline styles to ensure visibility if CSS missing
+      Object.assign(_scannerCard.style, { position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 'calc(100% + 8px)', width: 'min(980px, calc(100% - 40px))' });
+    } else {
+      // if exists but not placed under search, try to reposition
+      positionScannerUnderSearch();
     }
   }
 
@@ -1686,7 +1710,8 @@ animate();
     if(window.ZXing || window.ZXingBrowser){ _zxingLoaded = true; return Promise.resolve(); }
     return new Promise((resolve,reject)=>{
       const s = document.createElement('script');
-      s.src = ZXING_CDN; s.async = true;
+      s.src = ZXING_CDN;
+      s.async = true;
       s.onload = ()=>{ _zxingLoaded = true; resolve(); };
       s.onerror = (e)=>{ reject(e); };
       document.head.appendChild(s);
@@ -1696,12 +1721,22 @@ animate();
   function ensureCanvas(w=640,h=480){
     if(_canvas && _canvas.width === w && _canvas.height === h) return _canvas;
     if(_canvas){ _canvas.width = w; _canvas.height = h; _ctx = _canvas.getContext('2d'); return _canvas; }
-    _canvas = document.createElement('canvas'); _canvas.width = w; _canvas.height = h; _canvas.style.display = 'none'; document.body.appendChild(_canvas); _ctx = _canvas.getContext('2d'); return _canvas;
+    _canvas = document.createElement('canvas');
+    _canvas.width = w; _canvas.height = h;
+    _canvas.style.display = 'none';
+    document.body.appendChild(_canvas);
+    _ctx = _canvas.getContext('2d');
+    return _canvas;
   }
 
   async function tryBarcodeDetector(image){
     if(!_barcodeDetector) return null;
-    try{ const results = await _barcodeDetector.detect(image); if(results && results.length){ for(const r of results) if(r && r.rawValue) return String(r.rawValue).trim(); } }catch(e){}
+    try{
+      const results = await _barcodeDetector.detect(image);
+      if(results && results.length){
+        for(const r of results) if(r && r.rawValue) return String(r.rawValue).trim();
+      }
+    }catch(e){}
     return null;
   }
 
@@ -1710,20 +1745,42 @@ animate();
     try{
       const ZX = window.ZXing || window.ZXingBrowser;
       if(!ZX) return null;
-      if(!_reader){ try{ _reader = new ZX.BrowserMultiFormatReader(); }catch(e){ _reader = null; } }
+      if(!_reader){
+        try{ _reader = new ZX.BrowserMultiFormatReader(); }catch(e){ _reader = null; }
+      }
       if(!_reader) return null;
-      try{ const res = _reader.decodeFromCanvas(canvas); if(res && (res.text || res.getText)) return String(res.text || res.getText()).trim(); }catch(e){}
+      try{
+        const res = _reader.decodeFromCanvas(canvas);
+        if(res && (res.text || res.getText)) return String(res.text || res.getText()).trim();
+      }catch(e){}
     }catch(e){}
     return null;
   }
 
   async function decodeCanvasWithFallback(canvas){
-    if(_barcodeDetector){ try{ const r = await tryBarcodeDetector(canvas); if(r) return r; }catch(e){} }
-    if(!_zxingLoaded){ try{ await ensureZXing(); }catch(e){} }
+    if(_barcodeDetector){
+      try{ const r = await tryBarcodeDetector(canvas); if(r) return r; }catch(e){}
+    }
+    if(!_zxingLoaded){
+      try{ await ensureZXing(); }catch(e){}
+    }
     if(_zxingLoaded){
-      const r = tryZXingDecodeCanvas(canvas); if(r) return r;
-      const w = canvas.width, h = canvas.height; const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h; const tctx = tmp.getContext('2d'); const angles = [90,180,270];
-      for(const angle of angles){ tctx.clearRect(0,0,w,h); tctx.save(); tctx.translate(w/2,h/2); tctx.rotate(angle*Math.PI/180); tctx.drawImage(canvas,-w/2,-h/2); tctx.restore(); const rr = tryZXingDecodeCanvas(tmp); if(rr) return rr; }
+      const r = tryZXingDecodeCanvas(canvas);
+      if(r) return r;
+      const w = canvas.width, h = canvas.height;
+      const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+      const tctx = tmp.getContext('2d');
+      const angles = [90,180,270];
+      for(const angle of angles){
+        tctx.clearRect(0,0,w,h);
+        tctx.save();
+        tctx.translate(w/2,h/2);
+        tctx.rotate(angle * Math.PI / 180);
+        tctx.drawImage(canvas, -w/2, -h/2);
+        tctx.restore();
+        const rr = tryZXingDecodeCanvas(tmp);
+        if(rr) return rr;
+      }
     }
     return null;
   }
@@ -1734,8 +1791,11 @@ animate();
       const devices = await navigator.mediaDevices.enumerateDevices();
       const cams = devices.filter(d => d.kind === 'videoinput');
       if(!cams || cams.length === 0) return null;
-      for(const c of cams){ const label = (c.label||'').toLowerCase(); if(label.includes('back')||label.includes('rear')||label.includes('environment')||label.includes('задн')||label.includes('тыл')) return c.deviceId; }
-      return cams[cams.length-1].deviceId;
+      for(const c of cams){
+        const label = (c.label || '').toLowerCase();
+        if(label.includes('back') || label.includes('rear') || label.includes('environment') || label.includes('задн') || label.includes('тыл')) return c.deviceId;
+      }
+      return cams[cams.length - 1].deviceId;
     }catch(e){ return null; }
   }
 
@@ -1746,9 +1806,17 @@ animate();
       const cams = devices.filter(d => d.kind === 'videoinput');
       if(!_deviceSelect) return;
       _deviceSelect.innerHTML = '';
-      cams.forEach((c, idx) => { const opt = document.createElement('option'); opt.value = c.deviceId; opt.textContent = c.label || ('Camera ' + (idx+1)); _deviceSelect.appendChild(opt); });
+      cams.forEach((c, idx) => {
+        const opt = document.createElement('option');
+        opt.value = c.deviceId;
+        opt.textContent = c.label || ('Camera ' + (idx+1));
+        _deviceSelect.appendChild(opt);
+      });
       const rear = await getRearCameraDeviceId();
-      if(rear){ const opt = Array.from(_deviceSelect.options).find(o => o.value === rear); if(opt) _deviceSelect.value = rear; }
+      if(rear){
+        const opt = Array.from(_deviceSelect.options).find(o => o.value === rear);
+        if(opt) _deviceSelect.value = rear;
+      }
     }catch(e){}
   }
 
@@ -1765,14 +1833,17 @@ animate();
           if(!(_lastDetected.code === code && (now - _lastDetected.ts) < DEBOUNCE_MS)){
             _lastDetected = { code, ts: now };
             try{ _reader.reset(); }catch(e){}
-            stopScanner(); // выключаем камеру сразу
+            stopScanner(); // выключаем камеру сразу после чтения
             setTimeout(()=>dispatchDetected(code), 120);
           }
         }
       });
       window.scanning = true;
       return true;
-    }catch(e){ try{ if(_reader && typeof _reader.reset === 'function') _reader.reset(); }catch(e){} return false; }
+    }catch(e){
+      try{ if(_reader && typeof _reader.reset === 'function') _reader.reset(); }catch(e){}
+      return false;
+    }
   }
 
   async function startFallbackStream(deviceId){
@@ -1783,36 +1854,54 @@ animate();
       if(!_video){
         const wrap = _previewWrap || _scannerCard || document.body;
         const v = document.createElement('video');
-        v.id = 'preview'; v.setAttribute('playsinline',''); v.muted = true;
-        v.style.width = '100%'; v.style.height = '100%'; v.style.objectFit = 'cover';
+        v.id = 'preview';
+        v.setAttribute('playsinline','');
+        v.muted = true;
+        v.style.width = '100%';
+        v.style.height = '100%';
+        v.style.objectFit = 'cover';
         wrap.insertBefore(v, wrap.firstChild);
         _video = v;
       }
       _video.srcObject = _stream;
       try{ await _video.play(); }catch(e){}
-      // показываем карточку и позиционируем под строкой поиска
       positionScannerUnderSearch();
-      _scannerCard.style.display = 'block';
+      _scannerCard.classList.add('visible');
       document.body.classList.add('scanner-open');
       window.scanning = true;
       _rafId = requestAnimationFrame(scanLoopRAF);
       return true;
     }catch(e){
       if(_stream && _stream.getTracks) _stream.getTracks().forEach(t=>{ try{ t.stop(); }catch(e){} });
-      _stream = null; window.scanning = false; throw e;
+      _stream = null;
+      window.scanning = false;
+      throw e;
     }
   }
 
   async function scanLoopRAF(){
     if(!window.scanning) return;
     try{
-      const vw = _video.videoWidth || 640; const vh = _video.videoHeight || 480; const maxDim = 900;
+      const vw = _video.videoWidth || 640;
+      const vh = _video.videoHeight || 480;
+      const maxDim = 900;
       let sw = vw, sh = vh;
-      if(Math.max(vw,vh) > maxDim){ const scale = maxDim / Math.max(vw,vh); sw = Math.floor(vw*scale); sh = Math.floor(vh*scale); }
-      const canvas = ensureCanvas(sw, sh); _ctx = canvas.getContext('2d'); _ctx.clearRect(0,0,sw,sh); _ctx.drawImage(_video,0,0,sw,sh);
+      if(Math.max(vw, vh) > maxDim){
+        const scale = maxDim / Math.max(vw, vh);
+        sw = Math.floor(vw * scale);
+        sh = Math.floor(vh * scale);
+      }
+      const canvas = ensureCanvas(sw, sh);
+      _ctx = canvas.getContext('2d');
+      _ctx.clearRect(0,0,sw,sh);
+      _ctx.drawImage(_video, 0, 0, sw, sh);
       let code = null;
-      if(_barcodeDetector){ try{ code = await tryBarcodeDetector(canvas); }catch(e){} }
-      if(!code){ try{ code = await decodeCanvasWithFallback(canvas); }catch(e){} }
+      if(_barcodeDetector){
+        try{ code = await tryBarcodeDetector(canvas); }catch(e){}
+      }
+      if(!code){
+        try{ code = await decodeCanvasWithFallback(canvas); }catch(e){}
+      }
       if(code){
         const now = Date.now();
         if(!(_lastDetected.code === code && (now - _lastDetected.ts) < DEBOUNCE_MS)){
@@ -1833,9 +1922,26 @@ animate();
       if(ZX){
         if(!_reader){ try{ _reader = new ZX.BrowserMultiFormatReader(); }catch(e){ _reader = null; } }
         if(_reader){
-          try{ const res = _reader.decodeFromCanvas(canvas); if(res && (res.text || res.getText)) return String(res.text || res.getText()).trim(); }catch(e){
-            const w = canvas.width, h = canvas.height; const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h; const tctx = tmp.getContext('2d'); const angles = [90,180,270];
-            for(const angle of angles){ tctx.clearRect(0,0,w,h); tctx.save(); tctx.translate(w/2,h/2); tctx.rotate(angle*Math.PI/180); tctx.drawImage(canvas,-w/2,-h/2); tctx.restore(); try{ const rr = _reader.decodeFromCanvas(tmp); if(rr && (rr.text || rr.getText)) return String(rr.text || rr.getText()).trim(); }catch(e2){} }
+          try{
+            const res = _reader.decodeFromCanvas(canvas);
+            if(res && (res.text || res.getText)) return String(res.text || res.getText()).trim();
+          }catch(e){
+            const w = canvas.width, h = canvas.height;
+            const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+            const tctx = tmp.getContext('2d');
+            const angles = [90,180,270];
+            for(const angle of angles){
+              tctx.clearRect(0,0,w,h);
+              tctx.save();
+              tctx.translate(w/2,h/2);
+              tctx.rotate(angle * Math.PI / 180);
+              tctx.drawImage(canvas, -w/2, -h/2);
+              tctx.restore();
+              try{
+                const rr = _reader.decodeFromCanvas(tmp);
+                if(rr && (rr.text || rr.getText)) return String(rr.text || rr.getText()).trim();
+              }catch(e2){}
+            }
           }
         }
       }
@@ -1857,42 +1963,45 @@ animate();
     try{ if(_rafId){ cancelAnimationFrame(_rafId); _rafId = null; } }catch(e){}
     try{ if(_video){ try{ _video.pause(); }catch(e){} try{ _video.srcObject = null; }catch(e){} } }catch(e){}
     try{ if(_stream && _stream.getTracks){ _stream.getTracks().forEach(t=>{ try{ t.stop(); }catch(e){} }); } }catch(e){}
-    _stream = null; window.scanning = false; _torchOn = false;
-    try{ if(_scannerCard) _scannerCard.style.display = 'none'; }catch(e){}
+    _stream = null;
+    window.scanning = false;
+    _torchOn = false;
+    if(_scannerCard){ _scannerCard.classList.remove('visible'); _scannerCard.style.display = 'none'; }
     try{ if(_torchBtn) _torchBtn.textContent = '🔦'; }catch(e){}
     document.body.classList.remove('scanner-open');
-    const btn = $id(VOICE_BTN_ID); if(btn){ btn.setAttribute('aria-pressed','false'); btn.classList.remove('recording'); }
+    const btn = $id(VOICE_BTN_ID);
+    if(btn){ btn.setAttribute('aria-pressed','false'); btn.classList.remove('recording'); }
   }
 
-  // Позиционируем карточку под строкой поиска (#search)
+  /* Position scanner card under search input */
   function positionScannerUnderSearch(){
     ensureScannerCardExists();
     const searchEl = $id('search') || document.querySelector('input[type="search"]') || null;
-    if(!searchEl || !_scannerCard) {
-      // fallback: центр экрана
+    if(!searchEl || !_scannerCard){
       Object.assign(_scannerCard.style, { left: '50%', top: '50%', transform: 'translate(-50%,-50%)', position: 'fixed' });
       return;
     }
     const rect = searchEl.getBoundingClientRect();
     const scrollY = window.scrollY || window.pageYOffset;
     const left = Math.max(8, rect.left + window.scrollX);
-    const top = rect.bottom + scrollY + 8; // 8px gap under search
-    const width = Math.min(rect.width, Math.min(window.innerWidth - 16, 980));
+    const top = rect.bottom + scrollY + 8;
+    const width = Math.min(rect.width || 600, Math.min(window.innerWidth - 16, 980));
     Object.assign(_scannerCard.style, {
       position: 'absolute',
       left: left + 'px',
       top: top + 'px',
       transform: 'none',
-      width: width + 'px'
+      width: width + 'px',
+      display: 'block'
     });
   }
 
-  // --- Events wiring
+  /* Wire events for controls and voice button */
   function wireEvents(){
     ensureScannerCardExists();
     const btn = $id(VOICE_BTN_ID);
     if(btn){
-      btn.style.zIndex = '1200';
+      btn.style.zIndex = '2300';
       btn.style.pointerEvents = 'auto';
       btn.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -1916,6 +2025,49 @@ animate();
     window.addEventListener('scroll', ()=>{ if(window.scanning) positionScannerUnderSearch(); }, { passive: true });
   }
 
+  async function startScanner(deviceId){
+    ensureScannerCardExists();
+    positionScannerUnderSearch();
+    _scannerCard.classList.add('visible');
+    try{ await populateDeviceList(); }catch(e){}
+    const rearId = deviceId || (_deviceSelect && _deviceSelect.value) || await getRearCameraDeviceId();
+    let ok = false;
+    try{ ok = await startZXingDecodeFromDevice(rearId); }catch(e){ ok = false; }
+    if(ok){
+      if(_deviceSelect && rearId) _deviceSelect.value = rearId;
+      const btn = $id(VOICE_BTN_ID); if(btn){ btn.setAttribute('aria-pressed','true'); btn.classList.add('recording'); }
+      document.body.classList.add('scanner-open');
+      return true;
+    }
+    try{
+      const started = await startFallbackStream(rearId);
+      if(started){
+        if(_deviceSelect && rearId) _deviceSelect.value = rearId;
+        const btn = $id(VOICE_BTN_ID); if(btn){ btn.setAttribute('aria-pressed','true'); btn.classList.add('recording'); }
+        return true;
+      }
+    }catch(e){
+      showToast('Не удалось открыть камеру. Проверьте разрешения и HTTPS', 2200);
+      stopScanner();
+      return false;
+    }
+    return false;
+  }
+
+  async function toggleTorch(){
+    try{
+      if(!_stream) return;
+      const track = _stream.getVideoTracks()[0];
+      if(!track) return;
+      const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+      if(!capabilities.torch){ showToast('Фонарик не поддерживается камерой', 1200); return; }
+      _torchOn = !_torchOn;
+      await track.applyConstraints({ advanced: [{ torch: _torchOn }] });
+      if(_torchBtn) _torchBtn.textContent = _torchOn ? '🔦 ON' : '🔦';
+    }catch(e){ showToast('Не удалось переключить фонарик', 1200); }
+  }
+
+  /* Init */
   function init(){
     ensureScannerCardExists();
     wireEvents();
@@ -1929,10 +2081,14 @@ animate();
 
   if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', init); } else { init(); }
 
+  /* Expose minimal API */
   window.startScanner = window.startScanner || startScanner;
   window.stopScanner = window.stopScanner || stopScanner;
   window.getRearCameraDeviceId = window.getRearCameraDeviceId || getRearCameraDeviceId;
+
 })();
+
+
 
 
 
