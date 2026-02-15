@@ -1,197 +1,318 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>RecountPro — Меню</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RecountPro — Меню</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <style>
-        :root{
-            --bg-1: #0b0710;
-            --bg-2: #141025;
-            --glass: rgba(255,255,255,0.04);
-            --muted: rgba(255,255,255,0.6);
-            --neon1: #8a2be2;
-            --neon2: #c86cff;
-            --accent: linear-gradient(90deg,var(--neon1),var(--neon2));
-            --card-radius: 16px;
-            --btn-radius: 14px;
-            --shadow: 0 10px 30px rgba(0,0,0,0.6);
-        }
+  <style>
+    :root{
+      --bg-1: #0b0710;
+      --bg-2: #141025;
+      --glass: rgba(255,255,255,0.04);
+      --muted: rgba(255,255,255,0.6);
+      --neon1: #8a2be2;
+      --neon2: #c86cff;
+      --accent: linear-gradient(90deg,var(--neon1),var(--neon2));
+      --card-radius: 16px;
+      --btn-radius: 14px;
+      --shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
 
-        *{box-sizing:border-box}
-        html,body{height:100%;margin:0;padding:0;background:
-            radial-gradient(800px 400px at 10% 10%, rgba(138,43,226,0.08), transparent),
-            radial-gradient(600px 300px at 90% 90%, rgba(200,108,255,0.06), transparent),
-            linear-gradient(180deg,var(--bg-1),var(--bg-2));
-            font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
-            color: #eef0ff;
-            -webkit-font-smoothing:antialiased;
-            -moz-osx-font-smoothing:grayscale;
-        }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;padding:0;background:
+      radial-gradient(800px 400px at 10% 10%, rgba(138,43,226,0.08), transparent),
+      radial-gradient(600px 300px at 90% 90%, rgba(200,108,255,0.06), transparent),
+      linear-gradient(180deg,var(--bg-1),var(--bg-2));
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      color: #eef0ff;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      overflow:hidden;
+    }
 
-        .wrap{
-            min-height:100vh;
-            display:flex;
-            align-items:flex-start;
-            justify-content:center;
-            padding:36px 16px;
-        }
+    /* Canvas background covers whole viewport */
+    #bg{position:fixed;inset:0;z-index:-1;display:block}
 
-        .menu-box{
-            width:100%;
-            max-width:420px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-            border: 1px solid rgba(255,255,255,0.03);
-            border-radius: var(--card-radius);
-            padding:20px;
-            box-shadow: var(--shadow);
-            backdrop-filter: blur(6px);
-            animation: popIn .6s cubic-bezier(.2,.9,.2,1);
-        }
+    .wrap{
+      min-height:100vh;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding:36px 16px;
+    }
 
-        @keyframes popIn{
-            from{opacity:0; transform: translateY(18px) scale(.995)}
-            to{opacity:1; transform: translateY(0) scale(1)}
-        }
+    .menu-box{
+      width:100%;
+      max-width:420px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.03);
+      border-radius: var(--card-radius);
+      padding:20px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(6px);
+      animation: popIn .6s cubic-bezier(.2,.9,.2,1);
+      position:relative;
+    }
 
-        h2{
-            margin:0 0 18px 0;
-            text-align:center;
-            font-size:24px;
-            letter-spacing:0.6px;
-            font-weight:700;
-            color: #fff;
-            text-shadow: 0 6px 30px rgba(138,43,226,0.08);
-        }
+    @keyframes popIn{
+      from{opacity:0; transform: translateY(18px) scale(.995)}
+      to{opacity:1; transform: translateY(0) scale(1)}
+    }
 
-        .subtitle{
-            text-align:center;
-            font-size:13px;
-            color:var(--muted);
-            margin-bottom:18px;
-        }
+    h2{
+      margin:0 0 18px 0;
+      text-align:center;
+      font-size:24px;
+      letter-spacing:0.6px;
+      font-weight:700;
+      color: #fff;
+      text-shadow: 0 6px 30px rgba(138,43,226,0.08);
+    }
 
-        .btn {
-            width:100%;
-            display:inline-flex;
-            align-items:center;
-            justify-content:center;
-            gap:10px;
-            padding:14px 16px;
-            margin:10px 0;
-            border-radius: var(--btn-radius);
-            border: 1px solid rgba(255,255,255,0.06);
-            background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-            color: #fff;
-            font-size:16px;
-            font-weight:600;
-            cursor:pointer;
-            transition: transform .14s ease, box-shadow .14s ease, background .14s ease;
-            box-shadow: 0 6px 18px rgba(2,2,8,0.6);
-            position:relative;
-            overflow:hidden;
-        }
+    .subtitle{
+      text-align:center;
+      font-size:13px;
+      color:var(--muted);
+      margin-bottom:18px;
+    }
 
-        .btn:active{ transform: translateY(1px) }
+    .btn {
+      width:100%;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      padding:14px 16px;
+      margin:10px 0;
+      border-radius: var(--btn-radius);
+      border: 1px solid rgba(255,255,255,0.06);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      color: #fff;
+      font-size:16px;
+      font-weight:600;
+      cursor:pointer;
+      transition: transform .14s ease, box-shadow .14s ease, background .14s ease;
+      box-shadow: 0 6px 18px rgba(2,2,8,0.6);
+      position:relative;
+      overflow:hidden;
+    }
 
-        /* subtle sheen */
-        .btn::before{
-            content:"";
-            position:absolute;
-            left:-60%;
-            top:-60%;
-            width:220%;
-            height:220%;
-            background: linear-gradient(120deg, rgba(255,255,255,0.06), rgba(255,255,255,0));
-            transform: rotate(25deg);
-            transition: all .45s ease;
-            opacity:0;
-        }
+    .btn:active{ transform: translateY(1px) }
 
-        .btn:hover::before{ left:-20%; top:-20%; opacity:1 }
+    .btn::before{
+      content:"";
+      position:absolute;
+      left:-60%;
+      top:-60%;
+      width:220%;
+      height:220%;
+      background: linear-gradient(120deg, rgba(255,255,255,0.06), rgba(255,255,255,0));
+      transform: rotate(25deg);
+      transition: all .45s ease;
+      opacity:0;
+    }
 
-        /* Neon primary style for important actions */
-        .btn.neon{
-            background: var(--accent);
-            color: #0b0710;
-            border: none;
-            box-shadow: 0 10px 40px rgba(138,43,226,0.18), 0 0 30px rgba(200,108,255,0.06) inset;
-        }
-        .btn.neon:hover{
-            transform: translateY(-4px);
-            box-shadow: 0 18px 50px rgba(138,43,226,0.22), 0 0 40px rgba(200,108,255,0.08) inset;
-        }
+    .btn:hover::before{ left:-20%; top:-20%; opacity:1 }
 
-        /* Secondary accent for less prominent actions */
-        .btn.ghost{
-            background: transparent;
-            border: 1px solid rgba(255,255,255,0.06);
-            color: var(--muted);
-            box-shadow: none;
-        }
-        .btn.ghost:hover{
-            background: rgba(255,255,255,0.02);
-            transform: translateY(-2px);
-        }
+    .btn.neon{
+      background: var(--accent);
+      color: #0b0710;
+      border: none;
+      box-shadow: 0 10px 40px rgba(138,43,226,0.18), 0 0 30px rgba(200,108,255,0.06) inset;
+    }
+    .btn.neon:hover{
+      transform: translateY(-4px);
+      box-shadow: 0 18px 50px rgba(138,43,226,0.22), 0 0 40px rgba(200,108,255,0.08) inset;
+    }
 
-        /* Special "Добавить товар" button style */
-        .btn.add{
-            background: linear-gradient(90deg, rgba(138,43,226,0.14), rgba(200,108,255,0.12));
-            border: 1px solid rgba(200,108,255,0.18);
-            color: #fff;
-            box-shadow: 0 8px 30px rgba(138,43,226,0.12);
-        }
-        .btn.add:hover{
-            background: var(--accent);
-            color: #0b0710;
-            transform: translateY(-4px);
-            box-shadow: 0 16px 50px rgba(138,43,226,0.18);
-        }
+    .btn.ghost{
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.06);
+      color: var(--muted);
+      box-shadow: none;
+    }
+    .btn.ghost:hover{
+      background: rgba(255,255,255,0.02);
+      transform: translateY(-2px);
+    }
 
-        /* Link button wrapper to remove default anchor styles */
-        a.link-btn{ display:block; text-decoration:none; }
+    .btn.add{
+      background: linear-gradient(90deg, rgba(138,43,226,0.14), rgba(200,108,255,0.12));
+      border: 1px solid rgba(200,108,255,0.18);
+      color: #fff;
+      box-shadow: 0 8px 30px rgba(138,43,226,0.12);
+    }
+    .btn.add:hover{
+      background: var(--accent);
+      color: #0b0710;
+      transform: translateY(-4px);
+      box-shadow: 0 16px 50px rgba(138,43,226,0.18);
+    }
 
-        /* small responsive tweaks */
-        @media (max-width:420px){
-            .menu-box{ padding:16px }
-            .btn{ padding:12px; font-size:15px }
-        }
-    </style>
+    a.link-btn{ display:block; text-decoration:none; }
+
+    @media (max-width:420px){
+      .menu-box{ padding:16px }
+      .btn{ padding:12px; font-size:15px }
+    }
+  </style>
 </head>
 <body>
-    <div class="wrap">
-        <div class="menu-box" role="navigation" aria-label="Меню RecountPro">
-            <h2>Меню RecountPro</h2>
-            <div class="subtitle">Быстрый доступ к основным разделам</div>
+  <canvas id="bg"></canvas>
 
-            <!-- Ссылка на Baza.html (База товаров) -->
-            <a class="link-btn" href="Baza.html" aria-label="Открыть База товаров">
-                <button class="btn neon" type="button" aria-label="База товаров">База товаров</button>
-            </a>
+  <div class="wrap">
+    <div class="menu-box" role="navigation" aria-label="Меню RecountPro">
+      <h2>Меню RecountPro</h2>
+      <div class="subtitle">Быстрый доступ к основным разделам</div>
 
-            <button class="btn" type="button" aria-label="База товаров без штрихкодов">База товаров без ШК</button>
-            <button class="btn" type="button" aria-label="Аналитика">Аналитика</button>
+      <!-- Ссылка на Baza.html (База товаров) -->
+      <a class="link-btn" href="Baza.html" aria-label="Открыть База товаров">
+        <button class="btn neon" type="button" aria-label="База товаров">База товаров</button>
+      </a>
 
-            <!-- Инвентаризация теперь ведёт на Invent.html -->
-            <a class="link-btn" href="Invent.html" aria-label="Инвентаризация — открыть Invent.html">
-                <button class="btn" type="button" aria-haspopup="true">Инвентаризация</button>
-            </a>
+      <button class="btn" type="button" aria-label="База товаров без штрихкодов">База товаров без ШК</button>
+      <button class="btn" type="button" aria-label="Аналитика">Аналитика</button>
 
-            <button class="btn" type="button" aria-label="Приход и расход">Приход / Расход</button>
+      <!-- Инвентаризация -->
+      <a class="link-btn" href="Invent.html" aria-label="Инвентаризация — открыть Invent.html">
+        <button class="btn" type="button" aria-haspopup="true">Инвентаризация</button>
+      </a>
 
-            <!-- Здесь кнопка "Добавить товар" должна открывать boosty.html -->
-            <a class="link-btn" href="boosty.html" aria-label="Добавить товар — открыть boosty.html">
-                <button class="btn add" type="button">Добавить товар</button>
-            </a>
+      <button class="btn" type="button" aria-label="Приход и расход">Приход / Расход</button>
 
-            <!-- Ссылка на базу штрих-кодов -->
-            <a class="link-btn" href="Scaner.html" aria-label="База штрих-кодов">
-                <button class="btn" type="button">База штрих‑кодов</button>
-            </a>
-        </div>
+      <!-- Добавить товар -->
+      <a class="link-btn" href="boosty.html" aria-label="Добавить товар — открыть boosty.html">
+        <button class="btn add" type="button">Добавить товар</button>
+      </a>
+
+      <!-- Ссылка на базу штрих-кодов -->
+      <a class="link-btn" href="Scaner.html" aria-label="База штрих-кодов">
+        <button class="btn" type="button">База штрих‑кодов</button>
+      </a>
     </div>
+  </div>
+
+  <script>
+    /* Canvas background: stars and occasional comets (same visual style as Invent) */
+    const canvas = document.getElementById('bg');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas(){
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // stars
+    const stars = [];
+    for(let i=0;i<220;i++){
+      stars.push({
+        x: Math.random()*canvas.width,
+        y: Math.random()*canvas.height,
+        r: Math.random()*1.6 + 0.4,
+        alpha: Math.random(),
+        speed: Math.random()*0.25 + 0.02
+      });
+    }
+
+    // comets
+    const comets = [];
+    function spawnComet(){
+      comets.push({
+        x: -100,
+        y: Math.random()*canvas.height*0.5,
+        vx: 6 + Math.random()*3,
+        vy: 1 + Math.random()*2,
+        life: 0,
+        maxLife: 300
+      });
+    }
+
+    // click particles
+    let clickParticles = [];
+    canvas.addEventListener('click', (e)=>{
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      for(let i=0;i<18;i++){
+        clickParticles.push({
+          x, y,
+          vx: (Math.random()-0.5)*4,
+          vy: (Math.random()-0.5)*4,
+          life: 0,
+          maxLife: 60,
+          r: Math.random()*2 + 1
+        });
+      }
+    });
+
+    function drawClickParticles(){
+      for(let i = clickParticles.length-1; i>=0; i--){
+        const p = clickParticles[i];
+        ctx.fillStyle = `rgba(255,255,200,${1 - p.life / p.maxLife})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+        ctx.fill();
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life++;
+        if(p.life > p.maxLife) clickParticles.splice(i,1);
+      }
+    }
+
+    function animate(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      // stars
+      for(let s of stars){
+        s.alpha += (Math.random()-0.5)*0.04;
+        if(s.alpha < 0) s.alpha = 0;
+        if(s.alpha > 1) s.alpha = 1;
+        s.y += s.speed;
+        if(s.y > canvas.height){ s.y = 0; s.x = Math.random()*canvas.width; }
+        ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      // comets
+      if(Math.random() < 0.006) spawnComet();
+      for(let i = comets.length-1; i>=0; i--){
+        const c = comets[i];
+        const grad = ctx.createLinearGradient(c.x, c.y, c.x-120, c.y-60);
+        grad.addColorStop(0, "rgba(255,255,255,0.9)");
+        grad.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(c.x, c.y);
+        ctx.lineTo(c.x-120, c.y-60);
+        ctx.stroke();
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, 3.5, 0, Math.PI*2);
+        ctx.fill();
+        c.x += c.vx;
+        c.y += c.vy;
+        c.life++;
+        if(c.x > canvas.width + 150 || c.y > canvas.height + 150 || c.life > c.maxLife) comets.splice(i,1);
+      }
+
+      drawClickParticles();
+      requestAnimationFrame(animate);
+    }
+    animate();
+
+    // Prevent double-tap zoom on iOS Safari
+    document.addEventListener('touchstart', function preventZoom(e){
+      if(e.touches && e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+
+  </script>
 </body>
 </html>
