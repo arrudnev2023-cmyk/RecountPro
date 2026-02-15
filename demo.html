@@ -1629,10 +1629,12 @@ animate();
 
 
 
+
 (function(){
   const ZXING_CDN = 'https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js';
   const DEBOUNCE_MS = 900;
   const TOAST_MS = 1400;
+  const VOICE_BTN_ID = 'voice-search-btn';
 
   let _stream = null;
   let _video = null;
@@ -1651,54 +1653,74 @@ animate();
   let _ctx = null;
   let _torchOn = false;
 
-  const VOICE_BTN_ID = 'voice-search-btn';
-
   function $id(id){ return document.getElementById(id); }
 
-  function ensureElements(){
-    // try to find elements in the current DOM; if preview is missing, try to find any video inside scannerCard
-    _video = $id('preview') || ( $id('scannerCard') && $id('scannerCard').querySelector('video') ) || null;
-    _deviceSelect = $id('deviceSelect') || null;
-    _torchBtn = $id('torchBtn') || null;
-    _closeBtn = $id('closeScannerBtn') || null;
-    _scannerCard = $id('scannerCard') || null;
-    _previewWrap = $id('previewWrap') || null;
-    _scanResult = $id('scanResult') || null;
-
-    // If scannerCard exists but preview is missing, create and append a video element into previewWrap
-    if(_scannerCard && !_video){
-      try{
-        const wrap = _previewWrap || _scannerCard;
-        const v = document.createElement('video');
-        v.id = 'preview';
-        v.setAttribute('playsinline','');
-        v.muted = true;
-        v.style.width = '100%';
-        v.style.height = '100%';
-        v.style.objectFit = 'cover';
-        wrap.insertBefore(v, wrap.firstChild);
-        _video = v;
-      }catch(e){}
+  // --- UI creation: если на странице нет #scannerCard, создаём минимальный
+  function ensureScannerCardExists(){
+    _scannerCard = $id('scannerCard');
+    if(_scannerCard) {
+      _previewWrap = $id('previewWrap') || _scannerCard.querySelector('.preview-wrap');
+      _video = $id('preview') || _scannerCard.querySelector('video');
+      _deviceSelect = $id('deviceSelect') || _scannerCard.querySelector('select');
+      _torchBtn = $id('torchBtn') || _scannerCard.querySelector('[data-torch]');
+      _closeBtn = $id('closeScannerBtn') || _scannerCard.querySelector('[data-close]');
+      _scanResult = $id('scanResult') || _scannerCard.querySelector('.scan-result');
+      return;
     }
 
-    // Ensure scannerCard is visible layer when opened
-    if(_scannerCard){
-      _scannerCard.style.zIndex = _scannerCard.style.zIndex || '1100';
-    }
+    // build minimal scannerCard and append to body (so оно будет поверх экрана пересчёта)
+    _scannerCard = document.createElement('div');
+    _scannerCard.id = 'scannerCard';
+    _scannerCard.style.display = 'none';
+    _scannerCard.innerHTML = `
+      <div id="scannerInner" style="display:flex;flex-direction:column;height:100%;">
+        <div id="previewWrap" style="flex:1;min-height:220px;background:#000;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+          <video id="preview" playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
+        </div>
+        <div class="controls" style="display:flex;gap:8px;align-items:center;margin-top:10px;">
+          <select id="deviceSelect" style="flex:1"></select>
+          <button id="torchBtn" type="button">🔦</button>
+          <button id="closeScannerBtn" type="button">Закрыть</button>
+          <div id="scanResult" style="min-width:180px;color:#fff;padding-left:8px"></div>
+        </div>
+      </div>
+    `;
+    // append to body so it overlays counting screen
+    document.body.appendChild(_scannerCard);
+
+    // refs
+    _previewWrap = $id('previewWrap');
+    _video = $id('preview');
+    _deviceSelect = $id('deviceSelect');
+    _torchBtn = $id('torchBtn');
+    _closeBtn = $id('closeScannerBtn');
+    _scanResult = $id('scanResult');
+
+    // basic styles to ensure visible overlay (if you already added CSS, these are fallback)
+    _scannerCard.style.position = 'fixed';
+    _scannerCard.style.left = '50%';
+    _scannerCard.style.top = '50%';
+    _scannerCard.style.transform = 'translate(-50%,-50%)';
+    _scannerCard.style.width = 'min(980px, calc(100% - 32px))';
+    _scannerCard.style.height = 'min(72vh, calc(100% - 160px))';
+    _scannerCard.style.background = 'rgba(10,10,12,0.98)';
+    _scannerCard.style.borderRadius = '12px';
+    _scannerCard.style.padding = '12px';
+    _scannerCard.style.zIndex = '1400';
+    _scannerCard.style.boxShadow = '0 30px 80px rgba(0,0,0,0.6)';
   }
 
+  // --- Toast
   function showToast(text, ms = TOAST_MS){
     try{
-      if(!_scanResult){
-        console.log('toast:', text);
-        return;
-      }
+      if(!_scanResult) { console.log('toast:', text); return; }
       _scanResult.textContent = text;
       clearTimeout(_scanResult._hideTimer);
       _scanResult._hideTimer = setTimeout(()=>{ if(_scanResult.textContent === text) _scanResult.textContent = ''; }, ms);
     }catch(e){ console.warn(e); }
   }
 
+  // --- ZXing loader
   function ensureZXing(){
     if(_zxingLoaded) return Promise.resolve();
     if(window.ZXing || window.ZXingBrowser){ _zxingLoaded = true; return Promise.resolve(); }
@@ -1712,6 +1734,7 @@ animate();
     });
   }
 
+  // --- Canvas helper
   function ensureCanvas(w=640,h=480){
     if(_canvas && _canvas.width === w && _canvas.height === h) return _canvas;
     if(_canvas){ _canvas.width = w; _canvas.height = h; _ctx = _canvas.getContext('2d'); return _canvas; }
@@ -1723,6 +1746,7 @@ animate();
     return _canvas;
   }
 
+  // --- Decoders
   async function tryBarcodeDetector(image){
     if(!_barcodeDetector) return null;
     try{
@@ -1779,6 +1803,7 @@ animate();
     return null;
   }
 
+  // --- Devices
   async function getRearCameraDeviceId(){
     try{
       if(!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return null;
@@ -1814,6 +1839,7 @@ animate();
     }catch(e){}
   }
 
+  // --- ZXing video start
   async function startZXingDecodeFromDevice(deviceId){
     try{ await ensureZXing(); }catch(e){ return false; }
     try{
@@ -1840,14 +1866,13 @@ animate();
     }
   }
 
+  // --- Fallback stream + RAF decode
   async function startFallbackStream(deviceId){
     try{
       const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { ideal: 'environment' } } };
       _stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: constraints.video });
-      // ensure preview element exists and is in the scannerCard previewWrap
-      ensureElements();
+      ensureScannerCardExists();
       if(!_video){
-        // create video if still missing
         const wrap = _previewWrap || _scannerCard || document.body;
         const v = document.createElement('video');
         v.id = 'preview';
@@ -1859,14 +1884,9 @@ animate();
         wrap.insertBefore(v, wrap.firstChild);
         _video = v;
       }
-      // attach stream and show UI
       _video.srcObject = _stream;
       try{ await _video.play(); }catch(e){}
-      // ensure scanner card visible on the counting screen
-      if(_scannerCard){
-        _scannerCard.style.display = 'block';
-        document.body.classList.add('scanner-open');
-      }
+      if(_scannerCard){ _scannerCard.style.display = 'block'; document.body.classList.add('scanner-open'); }
       window.scanning = true;
       _rafId = requestAnimationFrame(scanLoopRAF);
       return true;
@@ -1952,6 +1972,7 @@ animate();
     return null;
   }
 
+  // --- Dispatch detected code to app handlers
   function dispatchDetected(code){
     try{
       if(typeof window.handleDetected === 'function') window.handleDetected(String(code));
@@ -1961,6 +1982,7 @@ animate();
     }catch(e){}
   }
 
+  // --- Stop and cleanup
   function stopScanner(){
     try{ if(_reader && typeof _reader.reset === 'function'){ try{ _reader.reset(); }catch(e){} } }catch(e){}
     try{ if(_rafId){ cancelAnimationFrame(_rafId); _rafId = null; } }catch(e){}
@@ -1976,8 +1998,9 @@ animate();
     if(btn){ btn.setAttribute('aria-pressed','false'); btn.classList.remove('recording'); }
   }
 
+  // --- Start scanner (tries ZXing decodeFromVideoDevice first, else fallback)
   async function startScanner(deviceId){
-    ensureElements();
+    ensureScannerCardExists();
     if(_scannerCard) _scannerCard.style.display = 'block';
     try{ await populateDeviceList(); }catch(e){}
     const rearId = deviceId || (_deviceSelect && _deviceSelect.value) || await getRearCameraDeviceId();
@@ -1986,8 +2009,7 @@ animate();
     if(ok){
       if(_deviceSelect && rearId) _deviceSelect.value = rearId;
       const btn = $id(VOICE_BTN_ID); if(btn){ btn.setAttribute('aria-pressed','true'); btn.classList.add('recording'); }
-      // ensure scanner card visible on counting screen
-      if(_scannerCard) { _scannerCard.style.display = 'block'; document.body.classList.add('scanner-open'); }
+      if(_scannerCard){ _scannerCard.style.display = 'block'; document.body.classList.add('scanner-open'); }
       return true;
     }
     try{
@@ -2005,6 +2027,7 @@ animate();
     return false;
   }
 
+  // --- Default name-based handler (оставляем как есть)
   async function defaultHandleDetectedByName(code){
     try{
       if(!code) return;
@@ -2078,6 +2101,7 @@ animate();
 
   if(typeof window.handleDetectedByName !== 'function') window.handleDetectedByName = defaultHandleDetectedByName;
 
+  // --- Torch
   async function toggleTorch(){
     try{
       if(!_stream) return;
@@ -2091,9 +2115,10 @@ animate();
     }catch(e){ showToast('Не удалось переключить фонарик', 1200); }
   }
 
+  // --- Events wiring
   function wireEvents(){
+    ensureScannerCardExists();
     const btn = $id(VOICE_BTN_ID);
-    ensureElements();
     if(btn){
       btn.style.zIndex = '1200';
       btn.style.pointerEvents = 'auto';
@@ -2119,8 +2144,9 @@ animate();
     document.addEventListener('visibilitychange', ()=>{ if(document.hidden){ try{ stopScanner(); }catch(e){} } });
   }
 
+  // --- Init
   function init(){
-    ensureElements();
+    ensureScannerCardExists();
     wireEvents();
     try{ populateDeviceList(); }catch(e){}
     try{
@@ -2132,11 +2158,12 @@ animate();
 
   if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', init); } else { init(); }
 
+  // expose
   window.startScanner = window.startScanner || startScanner;
   window.stopScanner = window.stopScanner || stopScanner;
-  window.startCamera = window.startCamera || startScanner;
-  window.stopCamera = window.stopCamera || stopScanner;
+  window.getRearCameraDeviceId = window.getRearCameraDeviceId || getRearCameraDeviceId;
 })();
+
 
 
 
