@@ -1899,71 +1899,113 @@ recognition.addEventListener('result', (ev) => {
 
 
 </script>
-  <!-- Вставьте этот блок перед </body> — он создаст кнопку на экране, откроет окно сканера под строкой поиска и выключит камеру после успешного считывания -->
-<script>
-/* Вставь этот скрипт один раз перед </body> */
+
+
+  <script>
+/*
+  Полностью самодостаточный скрипт — вставь один раз перед </body>.
+  Что делает:
+  - Создаёт большую иконку‑кнопку слева.
+  - Вставляет окно сканера **внутрь контейнера #counting** (если есть). Окно занимает максимум 1/3 высоты экрана.
+  - Запускает заднюю камеру, показывает превью прямо в этом окне.
+  - При успешном считывании: выключает камеру, закрывает окно, ищет штрихкод в window.barcodeDB / window.db / localStorage,
+    берёт название товара и **вставляет его в строку поиска** (ищет #search, input[type="search"], #searchInput).
+  - Если карточка товара есть на экране (.item[data-code="..."]), подсвечивает её и скроллит к ней.
+  - Фоллбек: BarcodeDetector -> ZXing -> canvas decode loop.
+*/
 (function(){
   const ZXING_CDN = 'https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js';
-  const BTN_ID = 'open-scanner-icon-left';
-  const SCANNER_ID = 'scannerCard';
-  const MAX_Z = 2147483000;
+  const BTN_ID = 'rp-scanner-btn-left';
+  const SCANNER_ID = 'rp-scanner-card';
   const DEBOUNCE_MS = 900;
+  const MAX_Z = 2147483000;
 
-  let _stream=null,_video=null,_scannerCard=null,_previewWrap=null,_deviceSelect=null,_torchBtn=null,_closeBtn=null,_scanResult=null;
-  let _reader=null,_zxingLoaded=false,_barcodeDetector=('BarcodeDetector' in window)? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}):null;
-  let _rafId=null,_canvas=null,_ctx=null,_lastDetected={code:null,ts:0};
+  let _stream = null;
+  let _video = null;
+  let _scannerCard = null;
+  let _deviceSelect = null;
+  let _reader = null;
+  let _zxingLoaded = false;
+  let _barcodeDetector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
+  let _rafId = null;
+  let _canvas = null;
+  let _ctx = null;
+  let _lastDetected = { code: null, ts: 0 };
 
   const $id = id => document.getElementById(id);
 
-  /* --- CSS (встроено) --- */
+  /* --- CSS --- */
   function injectCSS(){
-    if(document.getElementById('scanner-inline-styles')) return;
-    const s=document.createElement('style');
-    s.id='scanner-inline-styles';
-    s.textContent=`
-#${BTN_ID} { position: fixed !important; left: 14px !important; bottom: 18px !important; z-index: ${MAX_Z} !important; width:56px; height:56px; border-radius:12px; background:linear-gradient(180deg,#6d28d9,#4c1d95); display:flex; align-items:center; justify-content:center; box-shadow:0 12px 30px rgba(0,0,0,0.35); border:none; cursor:pointer; padding:0; pointer-events:auto; }
+    if(document.getElementById('rp-scanner-styles')) return;
+    const s = document.createElement('style');
+    s.id = 'rp-scanner-styles';
+    s.textContent = `
+#${BTN_ID} {
+  position: fixed !important;
+  left: 12px !important;
+  bottom: 18px !important;
+  z-index: ${MAX_Z} !important;
+  width:56px; height:56px; border-radius:12px;
+  background: linear-gradient(180deg,#6d28d9,#4c1d95);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 12px 30px rgba(0,0,0,0.35);
+  border:none; cursor:pointer; padding:0; pointer-events:auto;
+}
 #${BTN_ID} svg { width:28px; height:28px; color:#fff; }
-#${BTN_ID}:active{ transform:translateY(1px); }
-#${SCANNER_ID} { display:none; position:absolute; background: linear-gradient(180deg,#0b0b0d,#121214); border-radius:10px; padding:10px; box-shadow:0 20px 60px rgba(0,0,0,0.6); z-index:${MAX_Z-1}; min-width:320px; max-width:980px; pointer-events:auto; }
+#${BTN_ID}:active{ transform: translateY(1px); }
+
+#${SCANNER_ID} {
+  display:none;
+  position:absolute;
+  background: rgba(8,8,10,0.98);
+  border-radius:10px;
+  padding:8px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.6);
+  z-index: ${MAX_Z - 1};
+  pointer-events: auto;
+  overflow: hidden;
+}
 #${SCANNER_ID}.visible { display:block; }
-#${SCANNER_ID} .preview-wrap { width:100%; height:260px; background:#000; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
-#${SCANNER_ID} video#preview { width:100%; height:100%; object-fit:cover; display:block; }
+#${SCANNER_ID} .preview { width:100%; height:100%; background:#000; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+#${SCANNER_ID} video { width:100%; height:100%; object-fit:cover; display:block; }
 #${SCANNER_ID} .controls { display:flex; gap:8px; align-items:center; margin-top:8px; }
 #${SCANNER_ID} button, #${SCANNER_ID} select { z-index:${MAX_Z}; pointer-events:auto; }
 .item.found { box-shadow: 0 8px 28px rgba(34,197,94,0.18) !important; border: 2px solid rgba(34,197,94,0.18) !important; transition: box-shadow .2s, border .2s; }
-@media (max-width:720px){ #${SCANNER_ID} { left:8px !important; right:8px !important; top:auto !important; width:calc(100% - 16px) !important; position:absolute !important; } }
+@media (max-width:720px){
+  #${SCANNER_ID} { left:8px !important; right:8px !important; top:auto !important; width:calc(100% - 16px) !important; position:absolute !important; }
+}
 `;
     document.head.appendChild(s);
   }
 
-  /* --- Кнопка-иконка --- */
-  function createIconButton(){
+  /* --- Button --- */
+  function createButton(){
     let btn = $id(BTN_ID);
     if(btn) return btn;
     btn = document.createElement('button');
     btn.id = BTN_ID;
     btn.type = 'button';
     btn.title = 'Открыть сканер';
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
       <rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6" fill="none"/>
       <path d="M8 12h8" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
     </svg>`;
     Object.assign(btn.style, {
-      position:'fixed', left:'14px', bottom:'18px', zIndex:String(MAX_Z),
-      width:'56px', height:'56px', borderRadius:'12px',
-      background:'linear-gradient(180deg,#6d28d9,#4c1d95)', display:'flex',
-      alignItems:'center', justifyContent:'center', boxShadow:'0 12px 30px rgba(0,0,0,0.35)',
-      border:'none', cursor:'pointer', padding:'0', pointerEvents:'auto'
+      position: 'fixed', left: '12px', bottom: '18px', zIndex: String(MAX_Z),
+      width: '56px', height: '56px', borderRadius: '12px',
+      background: 'linear-gradient(180deg,#6d28d9,#4c1d95)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', boxShadow: '0 12px 30px rgba(0,0,0,0.35)',
+      border: 'none', cursor: 'pointer', padding: '0', pointerEvents: 'auto'
     });
     document.body.appendChild(btn);
-    // если кто-то удалит кнопку — восстановим
+    // восстановление, если удалят
     const mo = new MutationObserver(()=>{ if(!document.body.contains(btn)) document.body.appendChild(btn); });
-    mo.observe(document.body, { childList:true, subtree:true });
+    mo.observe(document.body, { childList: true, subtree: true });
     return btn;
   }
 
-  /* --- UI сканера: вставляем в #counting если есть --- */
+  /* --- Scanner UI (вставляем в #counting) --- */
   function ensureScannerUI(){
     injectCSS();
     _scannerCard = $id(SCANNER_ID);
@@ -1971,23 +2013,21 @@ recognition.addEventListener('result', (ev) => {
       _scannerCard = document.createElement('div');
       _scannerCard.id = SCANNER_ID;
       _scannerCard.innerHTML = `
-        <div class="preview-wrap" id="previewWrap"><video id="preview" playsinline muted></video></div>
+        <div class="preview" id="rp-preview-wrap"><video id="rp-preview" playsinline muted></video></div>
         <div class="controls">
-          <select id="deviceSelect" style="flex:1"></select>
-          <button id="torchBtn" type="button">🔦</button>
-          <button id="closeScannerBtn" type="button">Закрыть</button>
-          <div id="scanResult" style="min-width:160px;color:#fff;padding-left:8px"></div>
+          <select id="rp-device-select" style="flex:1"></select>
+          <button id="rp-torch" type="button">🔦</button>
+          <button id="rp-close" type="button">Закрыть</button>
         </div>`;
       // вставляем в экран пересчёта (#counting) — если нет, fallback на #content -> под поиск -> body
       const container = document.getElementById('counting') || document.getElementById('content') || (document.getElementById('search') && document.getElementById('search').parentNode) || document.body;
       container.appendChild(_scannerCard);
     }
-    _previewWrap = $id('previewWrap');
-    _video = $id('preview');
-    _deviceSelect = $id('deviceSelect');
-    _torchBtn = $id('torchBtn');
-    _closeBtn = $id('closeScannerBtn');
-    _scanResult = $id('scanResult');
+    _previewWrap = $id('rp-preview-wrap');
+    _video = $id('rp-preview');
+    _deviceSelect = $id('rp-device-select');
+    _torchBtn = $id('rp-torch');
+    _closeBtn = $id('rp-close');
     if(_closeBtn) _closeBtn.onclick = stopScanner;
   }
 
@@ -1996,9 +2036,10 @@ recognition.addEventListener('result', (ev) => {
     if(_zxingLoaded) return Promise.resolve();
     if(window.ZXing || window.ZXingBrowser){ _zxingLoaded = true; return Promise.resolve(); }
     return new Promise((resolve,reject)=>{
-      const s=document.createElement('script');
-      s.src = ZXING_CDN; s.async=true;
-      s.onload = ()=>{ _zxingLoaded=true; resolve(); };
+      const s = document.createElement('script');
+      s.src = ZXING_CDN;
+      s.async = true;
+      s.onload = ()=>{ _zxingLoaded = true; resolve(); };
       s.onerror = reject;
       document.head.appendChild(s);
     });
@@ -2007,17 +2048,22 @@ recognition.addEventListener('result', (ev) => {
   function ensureCanvas(w=640,h=480){
     if(_canvas && _canvas.width===w && _canvas.height===h) return _canvas;
     if(_canvas){ _canvas.width=w; _canvas.height=h; _ctx=_canvas.getContext('2d'); return _canvas; }
-    _canvas = document.createElement('canvas'); _canvas.width=w; _canvas.height=h; _canvas.style.display='none'; document.body.appendChild(_canvas); _ctx=_canvas.getContext('2d'); return _canvas;
+    _canvas = document.createElement('canvas');
+    _canvas.width = w; _canvas.height = h;
+    _canvas.style.display = 'none';
+    document.body.appendChild(_canvas);
+    _ctx = _canvas.getContext('2d');
+    return _canvas;
   }
 
   async function getRearCameraDeviceId(){
     try{
       if(!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return null;
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const cams = devices.filter(d=>d.kind==='videoinput');
+      const cams = devices.filter(d => d.kind === 'videoinput');
       if(!cams.length) return null;
       for(const c of cams){
-        const l=(c.label||'').toLowerCase();
+        const l = (c.label||'').toLowerCase();
         if(l.includes('back')||l.includes('rear')||l.includes('environment')||l.includes('задн')||l.includes('тыл')) return c.deviceId;
       }
       return cams[cams.length-1].deviceId;
@@ -2028,11 +2074,19 @@ recognition.addEventListener('result', (ev) => {
     try{
       if(!_deviceSelect) return;
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const cams = devices.filter(d=>d.kind==='videoinput');
-      _deviceSelect.innerHTML='';
-      cams.forEach((c,idx)=>{ const o=document.createElement('option'); o.value=c.deviceId; o.textContent=c.label||('Camera '+(idx+1)); _deviceSelect.appendChild(o); });
+      const cams = devices.filter(d => d.kind === 'videoinput');
+      _deviceSelect.innerHTML = '';
+      cams.forEach((c, idx) => {
+        const o = document.createElement('option');
+        o.value = c.deviceId;
+        o.textContent = c.label || ('Camera ' + (idx+1));
+        _deviceSelect.appendChild(o);
+      });
       const rear = await getRearCameraDeviceId();
-      if(rear){ const opt = Array.from(_deviceSelect.options).find(o=>o.value===rear); if(opt) _deviceSelect.value = rear; }
+      if(rear){
+        const opt = Array.from(_deviceSelect.options).find(o => o.value === rear);
+        if(opt) _deviceSelect.value = rear;
+      }
     }catch(e){}
   }
 
@@ -2043,65 +2097,86 @@ recognition.addEventListener('result', (ev) => {
       const ZX = window.ZXing || window.ZXingBrowser;
       if(!ZX || !ZX.BrowserMultiFormatReader) return false;
       _reader = new ZX.BrowserMultiFormatReader();
-      _reader.decodeFromVideoDevice(deviceId||null, _video, (result, err)=>{
+      _reader.decodeFromVideoDevice(deviceId || null, _video, (result, err) => {
         if(result && result.text){
           const code = String(result.text).trim();
           const now = Date.now();
-          if(!(_lastDetected.code===code && (now-_lastDetected.ts)<DEBOUNCE_MS)){
-            _lastDetected={code,ts:now};
+          if(!(_lastDetected.code === code && (now - _lastDetected.ts) < DEBOUNCE_MS)){
+            _lastDetected = { code, ts: now };
             try{ _reader.reset(); }catch(e){}
             stopScanner();
-            setTimeout(()=>handleDetectedCode(code),120);
+            setTimeout(()=>onBarcodeDetected(code), 120);
           }
         }
       });
       window.scanning = true;
       return true;
-    }catch(e){ try{ if(_reader && typeof _reader.reset==='function') _reader.reset(); }catch(e){} return false; }
+    }catch(e){
+      try{ if(_reader && typeof _reader.reset === 'function') _reader.reset(); }catch(e){}
+      return false;
+    }
   }
 
   /* --- Fallback getUserMedia + RAF decode --- */
   async function startFallbackStream(deviceId){
-    try{
-      const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { ideal: 'environment' } } };
-      _stream = await navigator.mediaDevices.getUserMedia({ audio:false, video: constraints.video });
-      ensureScannerUI();
-      if(!_video){
-        const v=document.createElement('video'); v.id='preview'; v.setAttribute('playsinline',''); v.muted=true; v.style.width='100%'; v.style.height='100%'; v.style.objectFit='cover';
-        _previewWrap.insertBefore(v, _previewWrap.firstChild); _video=v;
-      }
-      _video.srcObject = _stream;
-      try{ await _video.play(); }catch(e){}
-      positionScannerUnderContainer();
-      _scannerCard.classList.add('visible');
-      document.body.classList.add('scanner-open');
-      window.scanning = true;
-      _rafId = requestAnimationFrame(scanLoopRAF);
-      return true;
-    }catch(e){
-      if(_stream && _stream.getTracks) _stream.getTracks().forEach(t=>{ try{ t.stop(); }catch(e){} });
-      _stream=null; window.scanning=false; throw e;
+    const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { ideal: 'environment' } } };
+    _stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: constraints.video });
+    ensureScannerUI();
+    if(!_video){
+      const v = document.createElement('video');
+      v.id = 'rp-preview';
+      v.setAttribute('playsinline','');
+      v.muted = true;
+      v.style.width = '100%';
+      v.style.height = '100%';
+      v.style.objectFit = 'cover';
+      _previewWrap.insertBefore(v, _previewWrap.firstChild);
+      _video = v;
     }
+    _video.srcObject = _stream;
+    try{ await _video.play(); }catch(e){}
+    positionScanner();
+    _scannerCard.classList.add('visible');
+    document.body.classList.add('scanner-open');
+    window.scanning = true;
+    _rafId = requestAnimationFrame(scanLoopRAF);
+    return true;
   }
 
   async function scanLoopRAF(){
     if(!window.scanning) return;
     try{
-      const vw=_video.videoWidth||640, vh=_video.videoHeight||480, maxDim=900;
-      let sw=vw, sh=vh;
-      if(Math.max(vw,vh)>maxDim){ const scale=maxDim/Math.max(vw,vh); sw=Math.floor(vw*scale); sh=Math.floor(vh*scale); }
-      const canvas = ensureCanvas(sw,sh); _ctx = canvas.getContext('2d'); _ctx.clearRect(0,0,sw,sh); _ctx.drawImage(_video,0,0,sw,sh);
+      const vw = _video.videoWidth || 640;
+      const vh = _video.videoHeight || 480;
+      const maxDim = 900;
+      let sw = vw, sh = vh;
+      if(Math.max(vw, vh) > maxDim){
+        const scale = maxDim / Math.max(vw, vh);
+        sw = Math.floor(vw * scale);
+        sh = Math.floor(vh * scale);
+      }
+      const canvas = ensureCanvas(sw, sh);
+      _ctx = canvas.getContext('2d');
+      _ctx.clearRect(0,0,sw,sh);
+      _ctx.drawImage(_video, 0, 0, sw, sh);
       let code = null;
       if(_barcodeDetector){
-        try{ const res = await _barcodeDetector.detect(canvas); if(res && res.length){ for(const r of res) if(r && r.rawValue){ code = String(r.rawValue).trim(); break; } } }catch(e){}
+        try{
+          const res = await _barcodeDetector.detect(canvas);
+          if(res && res.length){
+            for(const r of res) if(r && r.rawValue){ code = String(r.rawValue).trim(); break; }
+          }
+        }catch(e){}
       }
-      if(!code){ try{ code = await decodeCanvasWithZXingFallback(canvas); }catch(e){} }
+      if(!code){
+        try{ code = await decodeCanvasWithZXingFallback(canvas); }catch(e){}
+      }
       if(code){
         const now = Date.now();
-        if(!(_lastDetected.code===code && (now-_lastDetected.ts)<DEBOUNCE_MS)){
-          _lastDetected={code,ts:now};
+        if(!(_lastDetected.code === code && (now - _lastDetected.ts) < DEBOUNCE_MS)){
+          _lastDetected = { code, ts: now };
           stopScanner();
-          setTimeout(()=>handleDetectedCode(code),120);
+          setTimeout(()=>onBarcodeDetected(code), 120);
           return;
         }
       }
@@ -2116,9 +2191,26 @@ recognition.addEventListener('result', (ev) => {
       if(ZX){
         if(!_reader){ try{ _reader = new ZX.BrowserMultiFormatReader(); }catch(e){ _reader = null; } }
         if(_reader){
-          try{ const res = _reader.decodeFromCanvas(canvas); if(res && (res.text||res.getText)) return String(res.text||res.getText()).trim(); }catch(e){}
-          const w=canvas.width,h=canvas.height,tmp=document.createElement('canvas'); tmp.width=w; tmp.height=h; const tctx=tmp.getContext('2d'); const angles=[90,180,270];
-          for(const angle of angles){ tctx.clearRect(0,0,w,h); tctx.save(); tctx.translate(w/2,h/2); tctx.rotate(angle*Math.PI/180); tctx.drawImage(canvas,-w/2,-h/2); tctx.restore(); try{ const rr=_reader.decodeFromCanvas(tmp); if(rr && (rr.text||rr.getText)) return String(rr.text||rr.getText()).trim(); }catch(e){} }
+          try{
+            const res = _reader.decodeFromCanvas(canvas);
+            if(res && (res.text || res.getText)) return String(res.text || res.getText()).trim();
+          }catch(e){}
+          const w = canvas.width, h = canvas.height;
+          const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+          const tctx = tmp.getContext('2d');
+          const angles = [90,180,270];
+          for(const angle of angles){
+            tctx.clearRect(0,0,w,h);
+            tctx.save();
+            tctx.translate(w/2,h/2);
+            tctx.rotate(angle * Math.PI / 180);
+            tctx.drawImage(canvas, -w/2, -h/2);
+            tctx.restore();
+            try{
+              const rr = _reader.decodeFromCanvas(tmp);
+              if(rr && (rr.text || rr.getText)) return String(rr.text || rr.getText()).trim();
+            }catch(e){}
+          }
         }
       }
     }
@@ -2126,31 +2218,40 @@ recognition.addEventListener('result', (ev) => {
   }
 
   function stopScanner(){
-    try{ if(_reader && typeof _reader.reset==='function'){ try{ _reader.reset(); }catch(e){} } }catch(e){}
-    try{ if(_rafId){ cancelAnimationFrame(_rafId); _rafId=null; } }catch(e){}
-    try{ if(_video){ try{ _video.pause(); }catch(e){} try{ _video.srcObject=null; }catch(e){} } }catch(e){}
+    try{ if(_reader && typeof _reader.reset === 'function'){ try{ _reader.reset(); }catch(e){} } }catch(e){}
+    try{ if(_rafId){ cancelAnimationFrame(_rafId); _rafId = null; } }catch(e){}
+    try{ if(_video){ try{ _video.pause(); }catch(e){} try{ _video.srcObject = null; }catch(e){} } }catch(e){}
     try{ if(_stream && _stream.getTracks){ _stream.getTracks().forEach(t=>{ try{ t.stop(); }catch(e){} }); } }catch(e){}
-    _stream=null; window.scanning=false; _scannerCard && _scannerCard.classList.remove('visible'); document.body.classList.remove('scanner-open');
+    _stream = null;
+    window.scanning = false;
+    if(_scannerCard){ _scannerCard.classList.remove('visible'); _scannerCard.style.display = 'none'; }
+    document.body.classList.remove('scanner-open');
   }
 
-  function positionScannerUnderContainer(){
+  /* --- Position scanner inside counting container and size = up to 1/3 viewport height --- */
+  function positionScanner(){
     ensureScannerUI();
     const container = document.getElementById('counting') || document.getElementById('content') || (document.getElementById('search') && document.getElementById('search').parentNode) || document.body;
-    if(!container || container===document.body){
-      Object.assign(_scannerCard.style, { left:'50%', top:'50%', transform:'translate(-50%,-50%)', position:'fixed' });
-      return;
+    const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+    const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+    const height = Math.min(Math.floor(vh / 3), 420); // максимум 1/3 экрана, ограничение по высоте
+    const width = Math.min(container.clientWidth - 16 || vw - 16, 980);
+    if(container === document.body){
+      Object.assign(_scannerCard.style, { left: '50%', top: '12%', transform: 'translateX(-50%)', position: 'fixed', width: width + 'px', height: height + 'px' });
+    } else {
+      const rect = container.getBoundingClientRect();
+      const left = Math.max(8, rect.left + window.scrollX + 8);
+      const top = rect.top + window.scrollY + 8;
+      Object.assign(_scannerCard.style, { position: 'absolute', left: left + 'px', top: top + 'px', transform: 'none', width: width + 'px', height: height + 'px' });
     }
-    const rect = container.getBoundingClientRect();
-    const left = Math.max(8, rect.left + window.scrollX + 8);
-    const top = rect.top + window.scrollY + 8;
-    const width = Math.min(rect.width - 16, 980);
-    Object.assign(_scannerCard.style, { position:'absolute', left: left + 'px', top: top + 'px', transform:'none', width: width + 'px', display:'block' });
+    // ensure video fills preview
+    if(_video){ _video.style.width = '100%'; _video.style.height = '100%'; _video.style.objectFit = 'cover'; }
   }
 
-  /* --- Поиск товара по коду и названию --- */
-  function handleDetectedCode(code){
+  /* --- After barcode detected: lookup and insert into search or highlight card --- */
+  function onBarcodeDetected(code){
     try{
-      if(!code) return;
+      // 1) lookup in barcodeDB / db / localStorage
       let product = null;
       try{
         if(window.barcodeDB && typeof window.barcodeDB === 'object') product = window.barcodeDB[code];
@@ -2160,85 +2261,104 @@ recognition.addEventListener('result', (ev) => {
           if(raw){ try{ const parsed = JSON.parse(raw); if(parsed && parsed[code]) product = parsed[code]; }catch(e){} }
         }
       }catch(e){}
-      if(!product){ alert('Товар не найден в базе'); return; }
-      const name = (product.name || product.title || product || '').toString();
-      if(!name){ alert('В базе нет названия для этого кода'); return; }
-      const normalize = s => String(s||'').toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ').trim();
-      const nameNorm = normalize(name);
-
-      if(Array.isArray(window.allItems)){
-        const it = window.allItems.find(i => normalize(i.name) === nameNorm);
-        if(it){ highlightAndFocus(it.code); return; }
+      if(!product){
+        // если нет в базе — просто вставляем код в поиск
+        insertIntoSearch(code);
+        return;
       }
+      const name = (product.name || product.title || product || '').toString();
+      if(!name){
+        insertIntoSearch(code);
+        return;
+      }
+      // 2) вставляем название в строку поиска (если есть)
+      insertIntoSearch(name);
+      // 3) ищем карточку на экране по названию или по коду и подсвечиваем
+      const normalized = s => String(s||'').toLowerCase().replace(/ё/g,'е').trim();
+      const nameNorm = normalized(name);
+      // try window.allItems
+      if(Array.isArray(window.allItems)){
+        const it = window.allItems.find(i => normalized(i.name) === nameNorm || String(i.code) === String(code));
+        if(it){ highlightCard(it.code); return; }
+      }
+      // try DOM .item
       const cards = document.querySelectorAll('.item');
       for(const c of cards){
         const titleEl = c.querySelector('.title') || c.querySelector('.label') || c.querySelector('.code');
         const text = titleEl ? titleEl.textContent : c.textContent;
-        if(normalize(text) === nameNorm){ highlightAndFocus(c.dataset.code || ''); return; }
+        if(normalized(text) === nameNorm || (c.dataset && c.dataset.code && String(c.dataset.code) === String(code))){
+          highlightCard(c.dataset.code || '');
+          return;
+        }
       }
+      // fuzzy contains
       for(const c of cards){
         const titleEl = c.querySelector('.title') || c.querySelector('.label') || c.querySelector('.code');
         const text = titleEl ? titleEl.textContent : c.textContent;
-        if(String(text||'').toLowerCase().includes(nameNorm)){ highlightAndFocus(c.dataset.code || ''); return; }
+        if(String(text||'').toLowerCase().includes(nameNorm)){
+          highlightCard(c.dataset.code || '');
+          return;
+        }
       }
-      if(confirm(`Товар "${name}" найден в базе, но карточки нет на экране. Добавить в список?`)){
-        if(!Array.isArray(window.allItems)) window.allItems = [];
-        window.allItems.unshift({ code: code, name: name, unit: product.unit || '', price: product.price || 0, docQty: 0 });
-        if(typeof render === 'function'){ try{ render(window.allItems); }catch(e){} }
-      }
-    }catch(err){ console.error(err); alert('Ошибка при обработке штрихкода'); }
+      // если не нашли — ничего больше не делаем (название уже вставлено в поиск)
+    }catch(e){ console.error('onBarcodeDetected error', e); }
   }
 
-  function highlightAndFocus(code){
+  function insertIntoSearch(value){
+    try{
+      const searchEl = document.getElementById('search') || document.querySelector('input[type="search"]') || document.getElementById('searchInput') || document.querySelector('input[name="search"]') || document.querySelector('input[placeholder*="Поиск"]') || null;
+      if(searchEl){
+        searchEl.focus();
+        searchEl.value = value;
+        // триггерим input/change события
+        searchEl.dispatchEvent(new Event('input', { bubbles: true }));
+        searchEl.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      }
+      return false;
+    }catch(e){ return false; }
+  }
+
+  function highlightCard(code){
     try{
       if(!code) return;
       const card = document.querySelector(`.item[data-code="${code}"]`);
       if(card){
         card.classList.add('found');
-        setTimeout(()=>card.classList.remove('found'),2200);
+        setTimeout(()=>card.classList.remove('found'), 2200);
         card.classList.remove('hidden');
-        setTimeout(()=>card.scrollIntoView({ behavior:'smooth', block:'center' }),160);
+        setTimeout(()=>card.scrollIntoView({ behavior:'smooth', block:'center' }), 160);
         const input = card.querySelector('input[data-code]') || card.querySelector('input');
-        if(input){ setTimeout(()=>{ try{ input.focus(); if(typeof openKeyboardFor==='function') openKeyboardFor(input); }catch(e){} },320); }
-        return;
-      }
-      const cards = document.querySelectorAll('.item');
-      for(const c of cards){
-        const titleEl = c.querySelector('.title') || c.querySelector('.label') || c.querySelector('.code');
-        const text = titleEl ? titleEl.textContent : c.textContent;
-        if(String(text||'').includes(String(code)) || (c.dataset.code && c.dataset.code === code)){
-          c.classList.add('found');
-          setTimeout(()=>c.classList.remove('found'),2200);
-          c.classList.remove('hidden');
-          setTimeout(()=>c.scrollIntoView({ behavior:'smooth', block:'center' }),160);
-          const input = c.querySelector('input[data-code]') || c.querySelector('input');
-          if(input){ setTimeout(()=>{ try{ input.focus(); if(typeof openKeyboardFor==='function') openKeyboardFor(input); }catch(e){} },320); }
-          return;
-        }
+        if(input){ setTimeout(()=>{ try{ input.focus(); }catch(e){} }, 320); }
       }
     }catch(e){ console.warn(e); }
   }
 
-  /* --- Инициализация и привязка кнопки --- */
+  /* --- Wire everything --- */
   function wire(){
     injectCSS();
-    const btn = createIconButton();
+    const btn = createButton();
     btn.addEventListener('click', async (ev)=>{
       ev.preventDefault();
       ensureScannerUI();
+      positionScanner();
       try{
         await populateDeviceList();
         const rear = await getRearCameraDeviceId();
         const ok = await startZXingDecodeFromDevice(rear).catch(()=>false);
         if(!ok) await startFallbackStream(rear);
       }catch(err){
-        console.warn('start scanner error', err);
-        alert('Не удалось запустить сканер. Проверьте разрешения и HTTPS.');
+        console.warn('scanner start error', err);
+        alert('Не удалось запустить камеру. Проверьте разрешения и HTTPS.');
       }
+    });
+    // torch toggle
+    document.addEventListener('click', (e)=>{
+      if(e.target && e.target.id === 'rp-torch'){ toggleTorch(); }
     });
     // keep button visible if canvas overlays
     window.addEventListener('resize', ()=>ensureButtonVisible($id(BTN_ID)));
-    window.addEventListener('scroll', ()=>ensureButtonVisible($id(BTN_ID)), { passive:true });
+    window.addEventListener('scroll', ()=>ensureButtonVisible($id(BTN_ID)), { passive: true });
     setTimeout(()=>ensureButtonVisible($id(BTN_ID)), 200);
   }
 
@@ -2266,15 +2386,29 @@ recognition.addEventListener('result', (ev) => {
     }catch(e){}
   }
 
+  async function toggleTorch(){
+    try{
+      if(!_stream) return;
+      const track = _stream.getVideoTracks()[0];
+      if(!track) return;
+      const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+      if(!capabilities.torch){ alert('Фонарик не поддерживается камерой'); return; }
+      _torchOn = !_torchOn;
+      await track.applyConstraints({ advanced: [{ torch: _torchOn }] });
+      const btn = $id('rp-torch');
+      if(btn) btn.textContent = _torchOn ? '🔦 ON' : '🔦';
+    }catch(e){ console.warn(e); alert('Не удалось переключить фонарик'); }
+  }
+
+  // init
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
   else wire();
 
   // expose for debug
-  window.scannerModule = {
-    start: async ()=>{ ensureScannerUI(); await populateDeviceList(); const rear = await getRearCameraDeviceId(); if(!(await startZXingDecodeFromDevice(rear))) await startFallbackStream(rear); },
+  window.rpScanner = {
+    start: async ()=>{ ensureScannerUI(); positionScanner(); await populateDeviceList(); const rear = await getRearCameraDeviceId(); if(!(await startZXingDecodeFromDevice(rear))) await startFallbackStream(rear); },
     stop: stopScanner
   };
-
 })();
 </script>
 
