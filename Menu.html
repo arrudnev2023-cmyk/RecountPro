@@ -33,8 +33,8 @@
       overflow:hidden;
     }
 
-    /* Canvas background covers whole viewport */
-    #bg{position:fixed;inset:0;z-index:-1;display:block}
+    /* Canvas background covers whole viewport and doesn't block interaction */
+    #bg{position:fixed;inset:0;z-index:-2;display:block;pointer-events:none;background:transparent}
 
     .wrap{
       min-height:100vh;
@@ -42,6 +42,8 @@
       align-items:flex-start;
       justify-content:center;
       padding:36px 16px;
+      position:relative;
+      z-index:1;
     }
 
     .menu-box{
@@ -168,7 +170,6 @@
       <h2>Меню RecountPro</h2>
       <div class="subtitle">Быстрый доступ к основным разделам</div>
 
-      <!-- Ссылка на Baza.html (База товаров) -->
       <a class="link-btn" href="Baza.html" aria-label="Открыть База товаров">
         <button class="btn neon" type="button" aria-label="База товаров">База товаров</button>
       </a>
@@ -176,68 +177,79 @@
       <button class="btn" type="button" aria-label="База товаров без штрихкодов">База товаров без ШК</button>
       <button class="btn" type="button" aria-label="Аналитика">Аналитика</button>
 
-      <!-- Инвентаризация -->
       <a class="link-btn" href="Invent.html" aria-label="Инвентаризация — открыть Invent.html">
         <button class="btn" type="button" aria-haspopup="true">Инвентаризация</button>
       </a>
 
       <button class="btn" type="button" aria-label="Приход и расход">Приход / Расход</button>
 
-      <!-- Добавить товар -->
       <a class="link-btn" href="boosty.html" aria-label="Добавить товар — открыть boosty.html">
         <button class="btn add" type="button">Добавить товар</button>
       </a>
 
-      <!-- Ссылка на базу штрих-кодов -->
-      <a class="link-btn" href="Scaner.html" aria-label="База штрих-кодов">
+      <a class="link-btn" href="Scaner.html" aria-label="База штрих‑кодов">
         <button class="btn" type="button">База штрих‑кодов</button>
       </a>
     </div>
   </div>
 
   <script>
-    /* Canvas background: stars and occasional comets (same visual style as Invent) */
+    // Canvas background: stars + brighter, visible comets
     const canvas = document.getElementById('bg');
     const ctx = canvas.getContext('2d');
 
     function resizeCanvas(){
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(window.innerWidth * dpr));
+      canvas.height = Math.max(1, Math.floor(window.innerHeight * dpr));
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // stars
+    // Stars
     const stars = [];
-    for(let i=0;i<220;i++){
+    const STAR_COUNT = Math.max(120, Math.floor((window.innerWidth * window.innerHeight) / 6000));
+    for(let i=0;i<STAR_COUNT;i++){
       stars.push({
-        x: Math.random()*canvas.width,
-        y: Math.random()*canvas.height,
+        x: Math.random()*window.innerWidth,
+        y: Math.random()*window.innerHeight,
         r: Math.random()*1.6 + 0.4,
-        alpha: Math.random(),
-        speed: Math.random()*0.25 + 0.02
+        alpha: Math.random()*0.9 + 0.1,
+        speed: Math.random()*0.25 + 0.02,
+        twinkle: Math.random()*0.02 + 0.005
       });
     }
 
-    // comets
+    // Comets pool
     const comets = [];
+
     function spawnComet(){
+      // spawn from left/top area with varied angles for visibility
+      const startY = Math.random() * window.innerHeight * 0.6;
+      const speed = 6 + Math.random()*6; // faster so visible
+      const angle = (Math.random()*30 - 10) * (Math.PI/180); // slight angle
+      const length = 120 + Math.random()*220;
       comets.push({
-        x: -100,
-        y: Math.random()*canvas.height*0.5,
-        vx: 6 + Math.random()*3,
-        vy: 1 + Math.random()*2,
+        x: -80 - Math.random()*120,
+        y: startY,
+        vx: speed * Math.cos(angle),
+        vy: speed * Math.sin(angle) + 0.6,
         life: 0,
-        maxLife: 300
+        maxLife: 400 + Math.random()*200,
+        length,
+        glow: 0.9 + Math.random()*0.6
       });
     }
 
-    // click particles
+    // Click particles (decorative)
     let clickParticles = [];
     canvas.addEventListener('click', (e)=>{
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const x = (e.clientX - rect.left);
+      const y = (e.clientY - rect.top);
       for(let i=0;i<18;i++){
         clickParticles.push({
           x, y,
@@ -264,49 +276,105 @@
       }
     }
 
+    function drawComet(c){
+      // tail
+      const tailLen = c.length;
+      const tx = c.x - c.vx * (tailLen/ (c.vx||1));
+      const ty = c.y - c.vy * (tailLen/ (c.vy||1));
+      const grad = ctx.createLinearGradient(c.x, c.y, tx, ty);
+      grad.addColorStop(0, `rgba(255,255,255,${0.95 * c.glow})`);
+      grad.addColorStop(0.4, `rgba(200,108,255,${0.45 * c.glow})`);
+      grad.addColorStop(1, `rgba(200,108,255,0)`);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(c.x, c.y);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+
+      // bright head with glow
+      const headRadius = 4 + (c.glow*2);
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(255,255,255,${0.95 * c.glow})`;
+      ctx.arc(c.x, c.y, headRadius, 0, Math.PI*2);
+      ctx.fill();
+
+      // soft outer glow
+      const g = ctx.createRadialGradient(c.x, c.y, headRadius*0.2, c.x, c.y, headRadius*6);
+      g.addColorStop(0, `rgba(200,108,255,${0.18 * c.glow})`);
+      g.addColorStop(1, 'rgba(200,108,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, headRadius*6, 0, Math.PI*2);
+      ctx.fill();
+    }
+
     function animate(){
+      // clear with slight transparent fill to create subtle trails
       ctx.clearRect(0,0,canvas.width,canvas.height);
 
-      // stars
+      // draw stars
       for(let s of stars){
-        s.alpha += (Math.random()-0.5)*0.04;
-        if(s.alpha < 0) s.alpha = 0;
+        s.alpha += (Math.random()-0.5)*s.twinkle;
+        if(s.alpha < 0.05) s.alpha = 0.05;
         if(s.alpha > 1) s.alpha = 1;
         s.y += s.speed;
-        if(s.y > canvas.height){ s.y = 0; s.x = Math.random()*canvas.width; }
+        if(s.y > window.innerHeight){
+          s.y = -2;
+          s.x = Math.random()*window.innerWidth;
+        }
         ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
         ctx.fill();
       }
 
-      // comets
-      if(Math.random() < 0.006) spawnComet();
+      // spawn comets more frequently but controlled
+      if(Math.random() < 0.02) spawnComet(); // ~2% per frame -> visible often
+
+      // draw comets
       for(let i = comets.length-1; i>=0; i--){
         const c = comets[i];
-        const grad = ctx.createLinearGradient(c.x, c.y, c.x-120, c.y-60);
-        grad.addColorStop(0, "rgba(255,255,255,0.9)");
-        grad.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(c.x, c.y);
-        ctx.lineTo(c.x-120, c.y-60);
-        ctx.stroke();
-        ctx.fillStyle = "#fff";
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, 3.5, 0, Math.PI*2);
-        ctx.fill();
+        drawComet(c);
         c.x += c.vx;
         c.y += c.vy;
         c.life++;
-        if(c.x > canvas.width + 150 || c.y > canvas.height + 150 || c.life > c.maxLife) comets.splice(i,1);
+        // fade out by reducing glow
+        c.glow *= 0.9995;
+        if(c.x > window.innerWidth + 200 || c.y > window.innerHeight + 200 || c.life > c.maxLife){
+          comets.splice(i,1);
+        }
       }
 
       drawClickParticles();
       requestAnimationFrame(animate);
     }
+
+    // Start animation loop
     animate();
+
+    // Rebuild stars on resize to keep density consistent
+    let resizeTimeout;
+    window.addEventListener('resize', ()=>{
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(()=>{
+        resizeCanvas();
+        // rebuild stars to match new size
+        stars.length = 0;
+        const newCount = Math.max(120, Math.floor((window.innerWidth * window.innerHeight) / 6000));
+        for(let i=0;i<newCount;i++){
+          stars.push({
+            x: Math.random()*window.innerWidth,
+            y: Math.random()*window.innerHeight,
+            r: Math.random()*1.6 + 0.4,
+            alpha: Math.random()*0.9 + 0.1,
+            speed: Math.random()*0.25 + 0.02,
+            twinkle: Math.random()*0.02 + 0.005
+          });
+        }
+      }, 120);
+    });
 
     // Prevent double-tap zoom on iOS Safari
     document.addEventListener('touchstart', function preventZoom(e){
