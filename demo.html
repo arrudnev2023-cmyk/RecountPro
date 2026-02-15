@@ -456,15 +456,71 @@ input[data-code] {
          autocapitalize="off" spellcheck="false" aria-label="Поиск" />
   <button id="clear-search" type="button" aria-label="Очистить поиск">×</button>
 
+
+        
   <!-- Кнопка голосового поиска -->
-  <button id="voice-search-btn" type="button" aria-label="Голосовой поиск" aria-pressed="false"
-          style="position:absolute; right:2.6rem; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:4px;">
-    <svg id="voice-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z" stroke="#aaa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M19 11v1a7 7 0 0 1-14 0v-1" stroke="#aaa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M12 19v3" stroke="#aaa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  </button>
+ <button id="voice-search-btn" type="button" aria-label="Голосовой поиск" aria-pressed="false"
+        style="position:absolute; right:2.6rem; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:4px;">
+  <svg id="voice-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z" stroke="#aaa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M19 11v1a7 7 0 0 1-14 0v-1" stroke="#aaa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M12 19v3" stroke="#aaa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</button>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('voice-search-btn');
+  if (!btn) return;
+
+  async function openScannerWithRear() {
+    try {
+      btn.setAttribute('aria-pressed', 'true');
+      btn.classList.add('recording');
+      let rearId = null;
+      if (typeof window.getRearCameraDeviceId === 'function') {
+        try { rearId = await window.getRearCameraDeviceId(); } catch (e) { rearId = null; }
+      }
+      if (typeof startScanner === 'function') {
+        await startScanner(rearId);
+      } else if (typeof window.startScanner === 'function') {
+        await window.startScanner(rearId);
+      }
+    } catch (e) {
+      btn.setAttribute('aria-pressed', 'false');
+      btn.classList.remove('recording');
+      console.warn(e);
+    }
+  }
+
+  btn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (window.scanning) {
+      try { if (typeof stopScanner === 'function') stopScanner(); else if (typeof window.stopScanner === 'function') window.stopScanner(); } catch (e) {}
+      btn.setAttribute('aria-pressed', 'false');
+      btn.classList.remove('recording');
+      return;
+    }
+    await openScannerWithRear();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key && e.key.toLowerCase() === 'm') {
+      btn.click();
+    }
+  });
+
+  const syncState = () => {
+    const running = !!window.scanning;
+    if (running) { btn.setAttribute('aria-pressed', 'true'); btn.classList.add('recording'); }
+    else { btn.setAttribute('aria-pressed', 'false'); btn.classList.remove('recording'); }
+  };
+  setInterval(syncState, 600);
+});
+</script>
+
+
+        
 </div>
 
     </div>
