@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+  <title>База товаров — RecountPro</title>
+
+  <!-- ZXing (kept for parity with other screens, not required here) -->
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
+
+  <style>
+    :root{
+      --accent:#6d28d9;
+      --accent-light:#a78bfa;
+      --bg:#000;
+      --card-bg: linear-gradient(135deg,#1e1e2f,#2a2a40);
+      --muted:#9aa3b2;
+      --text:#e6eef8;
+      --maxw:980px;
+      --radius:12px;
+    }
+    *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#05030a,#0b0710);color:var(--text);font-family:Inter,Segoe UI,system-ui,Arial;overflow:hidden; touch-action: manipulation;}
+    /* prevent double-tap zoom */
+    html,body,button,input,select,textarea{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+    #bg{position:fixed;inset:0;z-index:-1;background:#000}
+    header{position:fixed;left:0;right:0;top:0;padding:12px;background:rgba(10,10,12,0.72);backdrop-filter:blur(8px);z-index:1000;border-radius:0 0 14px 14px}
+    header h1{margin:0;text-align:center;font-size:1.15rem}
+    #search-wrap{max-width:var(--maxw);margin:10px auto;position:relative}
+    #search{width:100%;padding:10px 56px 10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(20,20,24,0.6);color:var(--text);font-size:15px}
+    #clear-search{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer}
+    #content{position:fixed;left:0;right:0;top:96px;bottom:0;overflow:auto;padding:12px;box-sizing:border-box}
+    .list{max-width:var(--maxw);margin:0 auto;display:flex;flex-direction:column;gap:10px;padding-bottom:28px}
+    /* Full-width cards (edge-to-edge within max container) */
+    .item{
+      width:100%;
+      margin:0;
+      padding:12px;
+      border-radius:12px;
+      background:var(--card-bg);
+      box-shadow:0 8px 30px rgba(0,0,0,0.6);
+      border-left:6px solid transparent;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .item.match{border-left-color:#22c55e}
+    .item.missing{border-left-color:#ef4444}
+    .item.excess{border-left-color:#3b82f6}
+    .item.found{box-shadow:0 18px 50px rgba(106,17,203,0.18);transform:translateY(-6px)}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .title{font-weight:700;font-size:1rem}
+    .code{color:var(--muted);font-size:0.95rem}
+    .qty{font-weight:700;color:var(--text);min-width:80px;text-align:right}
+    .meta{display:flex;gap:12px;align-items:center}
+    .small{font-size:13px;color:var(--muted)}
+    .hidden{display:none!important}
+    @media(min-width:900px){ #content{padding-left:24px;padding-right:24px} }
+  </style>
+</head>
+<body>
+  <canvas id="bg"></canvas>
+
+  <header>
+    <h1>База товаров — RecountPro</h1>
+    <div id="search-wrap">
+      <input id="search" placeholder="Поиск по названию или штрих‑коду..." autocomplete="off" />
+      <button id="clear-search" title="Очистить">×</button>
+    </div>
+  </header>
+
+  <main id="content">
+    <div class="list" id="list"></div>
+  </main>
+
+<script>
+/* =========================
+   Purpose:
+   - Screen shows product database (title, barcode, quantity)
+   - Design matches RecountPro "cosmos" style
+   - Search by name or barcode hides non-matching cards (same behavior as recount screen)
+   - Quantities are read-only and come from localStorage keys "qty_<code>" (populated by recount screen)
+   - No editing of quantities on this screen
+   ========================= */
+
+/* Load DB from localStorage key 'barcodeDB' (same as Scaner.html) */
+function loadBarcodeDB(){
+  try{
+    const raw = localStorage.getItem('barcodeDB');
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && typeof parsed === 'object') return parsed;
+    }
+  }catch(e){}
+  // fallback minimal sample
+  return {
+    "4601234000011": { code: "4601234000011", name: "Молоко 1л", unit: "шт", price: 59.90 },
+    "4601234000028": { code: "4601234000028", name: "Хлеб ржаной", unit: "шт", price: 35.00 },
+    "4601234000035": { code: "4601234000035", name: "Яблоки кг", unit: "кг", price: 120.00 },
+    "4601234000042": { code: "4601234000042", name: "Сыр 200г", unit: "шт", price: 250.00 },
+    "4601234000059": { code: "4601234000059", name: "Кофе 250г", unit: "шт", price: 499.00 }
+  };
+}
+
+/* Utilities */
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function normalize(s){ return String(s||'').toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ').trim(); }
+function matchesQuery(text, query){ const words = query.split(' ').filter(Boolean); return words.every(w => text.includes(w)); }
+
+/* Build items array from DB */
+let barcodeDB = loadBarcodeDB();
+let items = Object.keys(barcodeDB).map(k => {
+  const b = barcodeDB[k];
+  return { code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0 };
+});
+
+/* Render list: title first, then barcode, then quantity (read-only) */
+const listEl = document.getElementById('list');
+
+function getQtyForCode(code){
+  // Prefer session autosave qty if present, otherwise localStorage 'qty_<code>' else 0
+  const sessionKey = 'autosave_session_' + (window.localkaData && window.localkaData.docId ? window.localkaData.docId : 'loc_' + new Date().toISOString().slice(0,10));
+  try{
+    const sessionRaw = localStorage.getItem(sessionKey);
+    if(sessionRaw){
+      const session = JSON.parse(sessionRaw);
+      if(session && session.values && session.values[code] !== undefined) return session.values[code];
+    }
+  }catch(e){}
+  const v = localStorage.getItem('qty_' + code);
+  if(v !== null && v !== undefined) return v;
+  return '0';
+}
+
+function renderList(list){
+  listEl.innerHTML = '';
+  if(!list || list.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'item';
+    empty.innerHTML = `<div class="row"><div class="title small">База пуста</div></div>`;
+    listEl.appendChild(empty);
+    return;
+  }
+
+  list.forEach(item => {
+    const qty = getQtyForCode(item.code);
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.dataset.code = item.code;
+    div.innerHTML = `
+      <div class="row">
+        <div style="flex:1">
+          <div class="title">${escapeHtml(item.name)}</div>
+          <div class="code small">${escapeHtml(item.code)}</div>
+        </div>
+        <div class="meta">
+          <div class="qty">${escapeHtml(String(qty))}</div>
+        </div>
+      </div>
+    `;
+    listEl.appendChild(div);
+  });
+}
+
+/* Initial render */
+renderList(items);
+
+/* Search behavior: hide non-matching cards (same logic as recount screen) */
+const searchInput = document.getElementById('search');
+const clearBtn = document.getElementById('clear-search');
+
+searchInput.addEventListener('input', () => {
+  const q = normalize(searchInput.value);
+  document.querySelectorAll('#list .item').forEach(div => {
+    const code = normalize(div.dataset.code);
+    const item = items.find(i => i.code === div.dataset.code);
+    if(!item){ div.classList.add('hidden'); return; }
+    const name = normalize(item.name);
+    const match = (q === '') || matchesQuery(name, q) || matchesQuery(code, q);
+    div.classList.toggle('hidden', !match);
+  });
+});
+
+clearBtn.addEventListener('click', () => {
+  searchInput.value = '';
+  document.querySelectorAll('#list .item').forEach(div => div.classList.remove('hidden'));
+});
+
+/* Keep list updated when quantities change in other screen:
+   Listen to storage events (other tab/window) and periodically refresh from localStorage.
+*/
+window.addEventListener('storage', (e) => {
+  if(e.key && (e.key.startsWith('qty_') || e.key === 'barcodeDB' || e.key && e.key.startsWith('autosave_session_'))){
+    // reload DB if changed
+    barcodeDB = loadBarcodeDB();
+    items = Object.keys(barcodeDB).map(k => {
+      const b = barcodeDB[k];
+      return { code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0 };
+    });
+    renderList(items);
+  }
+});
+
+/* Also refresh every 2 seconds to reflect realtime counts from recount screen */
+setInterval(() => {
+  // only update quantities display without re-creating DOM if possible
+  document.querySelectorAll('#list .item').forEach(div => {
+    const code = div.dataset.code;
+    const qty = getQtyForCode(code);
+    const qtyEl = div.querySelector('.qty');
+    if(qtyEl && qtyEl.textContent !== String(qty)) qtyEl.textContent = String(qty);
+  });
+}, 2000);
+
+/* Expose for debug */
+window._productDB = { barcodeDB, items, renderList };
+
+</script>
+</body>
+</html>
