@@ -1628,6 +1628,7 @@ animate();
 
 
 
+
 (function(){
   const ZXING_CDN = 'https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js';
   const DEBOUNCE_MS = 900;
@@ -1650,33 +1651,52 @@ animate();
   let _ctx = null;
   let _torchOn = false;
 
-  const voiceBtnId = 'voice-search-btn';
-  const scanBtn = () => document.getElementById(voiceBtnId);
-  const deviceSelectEl = () => document.getElementById('deviceSelect');
-  const torchBtnEl = () => document.getElementById('torchBtn');
-  const closeScannerBtnEl = () => document.getElementById('closeScannerBtn');
-  const scannerCardEl = () => document.getElementById('scannerCard');
-  const previewEl = () => document.getElementById('preview');
-  const previewWrapEl = () => document.getElementById('previewWrap');
-  const scanResultEl = () => document.getElementById('scanResult');
+  const VOICE_BTN_ID = 'voice-search-btn';
+
+  function $id(id){ return document.getElementById(id); }
 
   function ensureElements(){
-    _video = previewEl();
-    _deviceSelect = deviceSelectEl();
-    _torchBtn = torchBtnEl();
-    _closeBtn = closeScannerBtnEl();
-    _scannerCard = scannerCardEl();
-    _previewWrap = previewWrapEl();
-    _scanResult = scanResultEl();
+    // try to find elements in the current DOM; if preview is missing, try to find any video inside scannerCard
+    _video = $id('preview') || ( $id('scannerCard') && $id('scannerCard').querySelector('video') ) || null;
+    _deviceSelect = $id('deviceSelect') || null;
+    _torchBtn = $id('torchBtn') || null;
+    _closeBtn = $id('closeScannerBtn') || null;
+    _scannerCard = $id('scannerCard') || null;
+    _previewWrap = $id('previewWrap') || null;
+    _scanResult = $id('scanResult') || null;
+
+    // If scannerCard exists but preview is missing, create and append a video element into previewWrap
+    if(_scannerCard && !_video){
+      try{
+        const wrap = _previewWrap || _scannerCard;
+        const v = document.createElement('video');
+        v.id = 'preview';
+        v.setAttribute('playsinline','');
+        v.muted = true;
+        v.style.width = '100%';
+        v.style.height = '100%';
+        v.style.objectFit = 'cover';
+        wrap.insertBefore(v, wrap.firstChild);
+        _video = v;
+      }catch(e){}
+    }
+
+    // Ensure scannerCard is visible layer when opened
+    if(_scannerCard){
+      _scannerCard.style.zIndex = _scannerCard.style.zIndex || '1100';
+    }
   }
 
   function showToast(text, ms = TOAST_MS){
     try{
-      if(!_scanResult) return;
+      if(!_scanResult){
+        console.log('toast:', text);
+        return;
+      }
       _scanResult.textContent = text;
       clearTimeout(_scanResult._hideTimer);
       _scanResult._hideTimer = setTimeout(()=>{ if(_scanResult.textContent === text) _scanResult.textContent = ''; }, ms);
-    }catch(e){}
+    }catch(e){ console.warn(e); }
   }
 
   function ensureZXing(){
@@ -1824,8 +1844,29 @@ animate();
     try{
       const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { ideal: 'environment' } } };
       _stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: constraints.video });
+      // ensure preview element exists and is in the scannerCard previewWrap
+      ensureElements();
+      if(!_video){
+        // create video if still missing
+        const wrap = _previewWrap || _scannerCard || document.body;
+        const v = document.createElement('video');
+        v.id = 'preview';
+        v.setAttribute('playsinline','');
+        v.muted = true;
+        v.style.width = '100%';
+        v.style.height = '100%';
+        v.style.objectFit = 'cover';
+        wrap.insertBefore(v, wrap.firstChild);
+        _video = v;
+      }
+      // attach stream and show UI
       _video.srcObject = _stream;
-      await _video.play();
+      try{ await _video.play(); }catch(e){}
+      // ensure scanner card visible on the counting screen
+      if(_scannerCard){
+        _scannerCard.style.display = 'block';
+        document.body.classList.add('scanner-open');
+      }
       window.scanning = true;
       _rafId = requestAnimationFrame(scanLoopRAF);
       return true;
@@ -1930,7 +1971,8 @@ animate();
     _torchOn = false;
     try{ if(_scannerCard) _scannerCard.style.display = 'none'; }catch(e){}
     try{ if(_torchBtn) _torchBtn.textContent = '🔦'; }catch(e){}
-    const btn = scanBtn();
+    document.body.classList.remove('scanner-open');
+    const btn = $id(VOICE_BTN_ID);
     if(btn){ btn.setAttribute('aria-pressed','false'); btn.classList.remove('recording'); }
   }
 
@@ -1943,14 +1985,16 @@ animate();
     try{ ok = await startZXingDecodeFromDevice(rearId); }catch(e){ ok = false; }
     if(ok){
       if(_deviceSelect && rearId) _deviceSelect.value = rearId;
-      const btn = scanBtn(); if(btn){ btn.setAttribute('aria-pressed','true'); btn.classList.add('recording'); }
+      const btn = $id(VOICE_BTN_ID); if(btn){ btn.setAttribute('aria-pressed','true'); btn.classList.add('recording'); }
+      // ensure scanner card visible on counting screen
+      if(_scannerCard) { _scannerCard.style.display = 'block'; document.body.classList.add('scanner-open'); }
       return true;
     }
     try{
       const started = await startFallbackStream(rearId);
       if(started){
         if(_deviceSelect && rearId) _deviceSelect.value = rearId;
-        const btn = scanBtn(); if(btn){ btn.setAttribute('aria-pressed','true'); btn.classList.add('recording'); }
+        const btn = $id(VOICE_BTN_ID); if(btn){ btn.setAttribute('aria-pressed','true'); btn.classList.add('recording'); }
         return true;
       }
     }catch(e){
@@ -2048,7 +2092,8 @@ animate();
   }
 
   function wireEvents(){
-    const btn = scanBtn();
+    const btn = $id(VOICE_BTN_ID);
+    ensureElements();
     if(btn){
       btn.style.zIndex = '1200';
       btn.style.pointerEvents = 'auto';
@@ -2092,6 +2137,7 @@ animate();
   window.startCamera = window.startCamera || startScanner;
   window.stopCamera = window.stopCamera || stopScanner;
 })();
+
 
 
 
