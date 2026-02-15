@@ -1496,55 +1496,28 @@ function animate() {
 }
 animate();
   // Голосовой поиск для поля #search с предобработкой, фуззи-поиском и авто-заменой
-(function() {
-  const searchInput = document.getElementById('search');
-  const voiceBtn = document.getElementById('voice-search-btn');
+/* Demo-ready script
+   - Completely removes/ignores SpeechRecognition logic
+   - Rebinds #voice-search-btn to toggle your scanner (startCamera/startScanner / stopCamera/stopScanner)
+   - On barcode detection (window.handleDetected or window.handleDetectedByName), looks up barcodeDB[code].name
+     and finds the matching card on the current recount screen by name (exact then fuzzy).
+   - If found: stops scanner, highlights card (.found), scrolls to it, focuses its input and opens keyboard (openKeyboardFor).
+   - If not found: offers to add to allItems and calls render(allItems) if available.
+   - Safe fallbacks and no external dependencies; paste into demo.html after your scanner code.
+*/
 
-  // Если элемент поиска отсутствует — ничего не делаем
-  if (!searchInput) return;
-
-  // Поддержка SpeechRecognition (включая префикс webkit)
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition || !voiceBtn) {
-    if (voiceBtn) voiceBtn.style.display = 'none';
-    return;
-  }
-
-  // ------------------ Утилиты и предобработка ------------------
-  const NUMBER_WORDS = {
-    "ноль":"0","один":"1","два":"2","три":"3","четыре":"4","пять":"5",
-    "шесть":"6","семь":"7","восемь":"8","девять":"9","десять":"10",
-    "одна":"1","две":"2","третий":"3","первый":"1","второй":"2"
-  };
-
-  function preprocessFinalText(s) {
-    if (!s) return "";
-    let t = String(s).toLowerCase().trim();
-
-    // заменяем слова‑числительные на цифры
-    t = t.replace(/\b([а-яё]+)\b/gi, (m) => {
-      const w = m.toLowerCase();
-      return NUMBER_WORDS[w] !== undefined ? NUMBER_WORDS[w] : m;
-    });
-
-    // удаляем служебные слова, которые мешают поиску
-    t = t.replace(/\b(шт|штук|бут|бутылка|бутылки|бутылок|упак|упаковка|литр|л)\b/gi, ' ');
-
-    // убираем лишние символы, схлопываем пробелы
-    t = t.replace(/[^0-9a-zа-яё\s\-]/gi, ' ').replace(/\s+/g, ' ').trim();
-
-    return t;
+(function () {
+  /* -------------------------
+     Helpers: normalization, levenshtein, similarity
+     ------------------------- */
+  function normalizeName(s) {
+    return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
   }
 
   function normForCompare(s) {
-    return String(s || '')
-      .toLowerCase()
-      .replace(/ё/g, 'е')
-      .replace(/[^a-z0-9а-яё]/gi, '')
-      .trim();
+    return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-z0-9а-яё]/gi, '').trim();
   }
 
-  // Левенштейн
   function levenshtein(a, b) {
     a = String(a); b = String(b);
     if (a === b) return 0;
@@ -1565,336 +1538,294 @@ animate();
   }
 
   function similarityScore(a, b) {
-    a = String(a || '');
-    b = String(b || '');
-    a = a.toLowerCase().replace(/ё/g, 'е').replace(/[^a-z0-9а-яё]/gi, '');
-    b = b.toLowerCase().replace(/ё/g, 'е').replace(/[^a-z0-9а-яё]/gi, '');
+    a = String(a || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-z0-9а-яё]/gi, '');
+    b = String(b || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-z0-9а-яё]/gi, '');
     if (!a || !b) return 0;
     const dist = levenshtein(a, b);
     const maxLen = Math.max(a.length, b.length);
     return Math.max(0, 1 - dist / maxLen);
   }
 
-  function findClosestMatches(query, items, limit = 6) {
-    const qRaw = preprocessFinalText(query);
-    if (!qRaw) return [];
-    const qTokens = qRaw.split(/\s+/).filter(Boolean);
+  /* Lightweight fuzzy matcher used only as fallback */
+  function findClosestByName(query, items, limit = 1) {
+    if (!query) return [];
+    const q = String(query).trim();
+    const scored = (items || []).map(it => {
+      const name = String(it.name || '');
+      const score = similarityScore(q, name);
+      return { item: it, score };
+    }).filter(r => r.score > 0.18).sort((a, b) => b.score - a.score).slice(0, limit);
+    return scored;
+  }
 
-    // Вспомогательные преобразования для устойчивости к ошибкам ASR
-    function stripVowels(s) {
-      return String(s || '').toLowerCase().replace(/[аеёиоуыэюя]/g, '');
-    }
-    function oToA(s) {
-      return String(s || '').toLowerCase().replace(/о/g, 'а');
-    }
-    // Фонетическая нормализация: сводим созвучные/озвончённые-приглушённые пары к одной форме
-    function phoneticNormalize(s) {
-      if (!s) return s;
-      let t = String(s).toLowerCase();
-      // Убираем диакритику и лишние символы
-      t = t.replace(/ё/g, 'е');
-      // пары: (в,ф), (б,п), (г,к), (д,т), (з,с), (ж,ш), (ч,щ)
-      t = t.replace(/[ф]/g, 'в');
-      t = t.replace(/[п]/g, 'б');
-      t = t.replace(/[к]/g, 'г');
-      t = t.replace(/[т]/g, 'д');
-      t = t.replace(/[с]/g, 'з');
-      t = t.replace(/[ш]/g, 'ж');
-      t = t.replace(/[щ]/g, 'ч');
-      // иногда путают 'в' и 'ф' в конце слова — уже учтено
-      // схлопываем пробелы и неалфавит
-      t = t.replace(/[^а-я0-9]/g, '');
-      return t;
-    }
-
-    // Простая локальная транслитерация латиницы в кириллицу (только если в запросе латиница)
-    // НЕ выполняем обратную транслитерацию (кириллица -> латиница) нигде
-    function latinToCyrillicLocal(s) {
-      if (!s) return s;
-      let t = String(s).toLowerCase().trim();
-      if (!/[a-z]/i.test(t)) return t;
-      const map = [
-        ['shch','щ'], ['sch','щ'], ['yo','ё'], ['yu','ю'], ['ya','я'],
-        ['zh','ж'], ['kh','х'], ['ch','ч'], ['sh','ш'], ['ts','ц'],
-        ['ye','е'], ['yi','й'],
-        ['a','а'], ['b','б'], ['c','к'], ['d','д'], ['e','е'], ['f','ф'],
-        ['g','г'], ['h','х'], ['i','и'], ['j','й'], ['k','к'], ['l','л'],
-        ['m','м'], ['n','н'], ['o','о'], ['p','п'], ['q','к'], ['r','р'],
-        ['s','с'], ['t','т'], ['u','у'], ['v','в'], ['w','в'], ['x','кс'],
-        ['y','й'], ['z','з']
-      ];
-      t = t.replace(/[^a-z0-9\s\.\-]/gi, ' ').replace(/\s+/g, ' ').trim();
-      for (const [k, v] of map) {
-        const re = new RegExp(k, 'gi');
-        t = t.replace(re, v);
+  /* -------------------------
+     Barcode DB loader
+     ------------------------- */
+  function loadBarcodeDB() {
+    try {
+      const raw = localStorage.getItem('barcodeDB');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') return parsed;
       }
-      return t.replace(/\s+/g, ' ').trim();
+    } catch (e) { /* ignore */ }
+    if (window.barcodeDB && typeof window.barcodeDB === 'object') return window.barcodeDB;
+    return {};
+  }
+
+  /* -------------------------
+     Find card DOM by name (exact then fuzzy)
+     ------------------------- */
+  function findCardByName(name) {
+    const nameNorm = normalizeName(name);
+    if (!nameNorm) return null;
+
+    // 1) Try to find via allItems to get code
+    try {
+      if (Array.isArray(window.allItems)) {
+        const it = window.allItems.find(i => normalizeName(i.name) === nameNorm);
+        if (it) {
+          const card = document.querySelector(`.item[data-code="${it.code}"]`);
+          if (card) return card;
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    // 2) Try exact match on DOM titles
+    const cards = document.querySelectorAll('.item');
+    for (const c of cards) {
+      const titleEl = c.querySelector('.title') || c.querySelector('.label') || c.querySelector('.code');
+      const text = titleEl ? titleEl.textContent : c.textContent;
+      if (normalizeName(text) === nameNorm) return c;
     }
 
-    const qLatin = /[a-z]/i.test(qRaw);
-    const qCyrFromLatin = qLatin ? latinToCyrillicLocal(qRaw) : null;
-    const qNoVowels = stripVowels(qRaw);
-    const qOtoA = oToA(qRaw);
-    const qNoVowelsCyr = qCyrFromLatin ? stripVowels(qCyrFromLatin) : null;
-    const qOtoACyr = qCyrFromLatin ? oToA(qCyrFromLatin) : null;
-    const qPhonetic = phoneticNormalize(qRaw);
-    const qPhoneticCyr = qCyrFromLatin ? phoneticNormalize(qCyrFromLatin) : null;
-
-    const results = (items || []).map(item => {
-      const name = String(item.name || '');
-      const code = String(item.code || '');
-      const nameNorm = normForCompare(name);
-      const codeNorm = normForCompare(code);
-
-      const nameTokens = preprocessFinalText(name).split(/\s+/).filter(Boolean);
-
-      // token overlap (учитываем и транслит-версию запроса)
-      let tokenMatches = 0;
-      qTokens.forEach(t => {
-        if (nameTokens.some(nt => nt.includes(t) || t.includes(nt))) tokenMatches++;
-        if (codeNorm.includes(t) || t.includes(codeNorm)) tokenMatches += 0.8;
+    // 3) Fuzzy: build items list from allItems or DOM and use simple similarity
+    let items = [];
+    if (Array.isArray(window.allItems)) {
+      items = window.allItems.map(i => ({ code: i.code, name: i.name }));
+    } else {
+      items = Array.from(cards).map(c => {
+        const t = c.querySelector('.title') ? c.querySelector('.title').textContent : c.textContent;
+        return { code: c.dataset.code || '', name: t || '' };
       });
-      if (qCyrFromLatin) {
-        const qTokensCyr = qCyrFromLatin.split(/\s+/).filter(Boolean);
-        qTokensCyr.forEach(t => {
-          if (nameTokens.some(nt => nt.includes(t) || t.includes(nt))) tokenMatches += 0.9;
-          if (codeNorm.includes(t) || t.includes(codeNorm)) tokenMatches += 0.6;
-        });
+    }
+    const matches = findClosestByName(nameNorm, items, 1);
+    if (matches && matches.length) {
+      const code = matches[0].item.code;
+      const card = document.querySelector(`.item[data-code="${code}"]`);
+      if (card) return card;
+    }
+
+    return null;
+  }
+
+  /* -------------------------
+     handleDetectedByName: main logic when barcode is decoded
+     ------------------------- */
+  async function handleDetectedByName(code) {
+    try {
+      if (!code) return;
+      // debounce quick repeats
+      const now = Date.now();
+      if (window._lastScan && window._lastScan.code === code && (now - window._lastScan.ts) < 900) return;
+      window._lastScan = { code, ts: now };
+
+      const db = loadBarcodeDB();
+      const product = db[code];
+      if (!product) {
+        // stop scanner if available
+        try { if (typeof stopCamera === 'function') stopCamera(); } catch (e) {}
+        try { if (typeof stopScanner === 'function') stopScanner(); } catch (e) {}
+        alert(`Штрихкод ${code} не найден в базе штрихкодов.`);
+        return;
       }
-      const tokenScore = tokenMatches / Math.max(qTokens.length, 1);
 
-      // substring bonus (проверяем и компактную версию и транслит)
-      const compactQ = qRaw.replace(/\s+/g, '');
-      const compactQCyr = qCyrFromLatin ? qCyrFromLatin.replace(/\s+/g, '') : null;
-      const substrBonus = (nameNorm.includes(compactQ) || codeNorm.includes(compactQ) || (compactQCyr && nameNorm.includes(compactQCyr))) ? 0.25 : 0;
+      const name = product.name || product.title || '';
+      if (!name) {
+        try { if (typeof stopCamera === 'function') stopCamera(); } catch (e) {}
+        try { if (typeof stopScanner === 'function') stopScanner(); } catch (e) {}
+        alert('В базе штрихкодов нет названия для этого кода.');
+        return;
+      }
 
-      // similarity: обычная + варианты (без гласных, o->a, транслит)
-      const simCandidates = [];
-      simCandidates.push(similarityScore(qRaw, name));
-      if (qCyrFromLatin) simCandidates.push(similarityScore(qCyrFromLatin, name));
-      simCandidates.push(similarityScore(qNoVowels, stripVowels(name)));
-      if (qNoVowelsCyr) simCandidates.push(similarityScore(qNoVowelsCyr, stripVowels(name)));
-      simCandidates.push(similarityScore(qOtoA, oToA(name)));
-      if (qOtoACyr) simCandidates.push(similarityScore(qOtoACyr, oToA(name)));
-      // добавляем фонетическую похожесть (сводим созвучные буквы)
+      // find card
+      const card = findCardByName(name);
+
+      // stop scanner
+      try { if (typeof stopCamera === 'function') stopCamera(); } catch (e) {}
+      try { if (typeof stopScanner === 'function') stopScanner(); } catch (e) {}
+      try { window.scanning = false; } catch (e) {}
+
+      if (card) {
+        card.classList.add('found');
+        setTimeout(() => card.classList.remove('found'), 2200);
+        card.classList.remove('hidden');
+        setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 160);
+
+        const input = card.querySelector('input[data-code]');
+        if (input) {
+          setTimeout(() => {
+            try { input.focus(); } catch (e) {}
+            if (typeof openKeyboardFor === 'function') {
+              try { openKeyboardFor(input); } catch (e) {}
+            }
+          }, 320);
+        }
+        return;
+      }
+
+      // not found on screen — offer to add
+      const add = confirm(`Товар "${name}" найден в базе штрихкодов, но карточки нет на экране. Добавить в список?`);
+      if (add) {
+        if (!Array.isArray(window.allItems)) window.allItems = [];
+        window.allItems.unshift({ code: code, name: name, unit: product.unit || '', price: product.price || 0, docQty: 0 });
+        if (typeof render === 'function') {
+          try { render(window.allItems); } catch (e) { console.error('render error', e); }
+        }
+        setTimeout(() => {
+          const newCard = document.querySelector(`.item[data-code="${code}"]`);
+          if (newCard) {
+            newCard.classList.add('found');
+            setTimeout(() => newCard.classList.remove('found'), 2200);
+            newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const input = newCard.querySelector('input[data-code]');
+            if (input) {
+              try { input.focus(); } catch (e) {}
+              if (typeof openKeyboardFor === 'function') {
+                try { openKeyboardFor(input); } catch (e) {}
+              }
+            }
+          }
+        }, 260);
+      }
+    } catch (err) {
+      console.error('handleDetectedByName error', err);
+      try { if (typeof stopCamera === 'function') stopCamera(); } catch (e) {}
+      try { if (typeof stopScanner === 'function') stopScanner(); } catch (e) {}
+      alert('Ошибка при обработке сканирования. Смотрите консоль.');
+    }
+  }
+
+  /* -------------------------
+     Expose and attach detection hook
+     - If your scanner already calls window.handleDetected(code), we wrap it.
+     - Otherwise we define window.handleDetected to call handleDetectedByName.
+     ------------------------- */
+  (function attachDetectedHook() {
+    if (typeof window.handleDetected === 'function') {
+      const orig = window.handleDetected;
+      window.handleDetected = function (code) {
+        try { handleDetectedByName(code); } catch (e) { console.error(e); }
+        try { orig(code); } catch (e) { /* ignore orig errors */ }
+      };
+    } else {
+      window.handleDetected = function (code) { handleDetectedByName(code); };
+    }
+    // alias
+    window.handleDetectedByName = window.handleDetectedByName || function (c) { handleDetectedByName(c); };
+  })();
+
+  /* -------------------------
+     Replace voice button behavior with scanner toggle
+     - Completely removes speech recognition usage
+     ------------------------- */
+  (function replaceVoiceButton() {
+    const btn = document.getElementById('voice-search-btn');
+    if (!btn) return;
+
+    // stop any lingering recognition if present
+    try {
+      if (window.recognition && typeof window.recognition.stop === 'function') {
+        try { window.recognition.stop(); } catch (e) {}
+        window.recognition = null;
+      }
+      if (window._speechRecognitionInstance && typeof window._speechRecognitionInstance.stop === 'function') {
+        try { window._speechRecognitionInstance.stop(); } catch (e) {}
+        window._speechRecognitionInstance = null;
+      }
+    } catch (e) { /* ignore */ }
+
+    // replace node to remove old listeners
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+
+    function setBtnActive(on) {
       try {
-        simCandidates.push(similarityScore(qPhonetic, phoneticNormalize(name)));
-        if (qPhoneticCyr) simCandidates.push(similarityScore(qPhoneticCyr, phoneticNormalize(name)));
-      } catch (e) {
-        // ignore
+        newBtn.setAttribute('aria-pressed', String(!!on));
+        if (on) newBtn.classList.add('recording'); else newBtn.classList.remove('recording');
+      } catch (e) {}
+    }
+
+    function isScannerRunning() {
+      if (typeof window.scanning === 'boolean') return window.scanning;
+      try {
+        const pv = document.getElementById('preview');
+        if (pv && pv.srcObject) return true;
+      } catch (e) {}
+      return false;
+    }
+
+    async function startScanner() {
+      if (typeof window.startCamera === 'function') {
+        await window.startCamera();
+        return true;
       }
-      const simName = Math.max(...simCandidates, 0);
-
-      const simCode = Math.max(similarityScore(qRaw, code), qCyrFromLatin ? similarityScore(qCyrFromLatin, code) : 0);
-
-      // numeric bonus
-      let numBonus = 0;
-      const qNumMatch = (qRaw + (qCyrFromLatin || '')).match(/\b(\d+)\b/);
-      if (qNumMatch) {
-        const qnum = qNumMatch[1];
-        if (String(item.name).includes(qnum) || String(item.code).includes(qnum)) numBonus = 0.35;
+      if (typeof window.startScanner === 'function') {
+        await window.startScanner();
+        return true;
       }
+      return false;
+    }
 
-      const score = Math.max(simName, simCode) * 0.55 + tokenScore * 0.30 + substrBonus + numBonus;
+    function stopScanner() {
+      try { if (typeof window.stopCamera === 'function') window.stopCamera(); } catch (e) {}
+      try { if (typeof window.stopScanner === 'function') window.stopScanner(); } catch (e) {}
+    }
 
-      return { item, score, tokenScore, simName, simCode };
+    newBtn.addEventListener('click', async function (ev) {
+      ev.preventDefault();
+      const running = isScannerRunning();
+      if (running) {
+        stopScanner();
+        try { window.scanning = false; } catch (e) {}
+        setBtnActive(false);
+        return;
+      }
+      const ok = await (async () => {
+        try {
+          const started = await startScanner();
+          return !!started;
+        } catch (e) {
+          console.error('startScanner error', e);
+          return false;
+        }
+      })();
+      if (!ok) {
+        alert('Сканер не подключён: в проекте не найдены функции startCamera/startScanner.');
+        setBtnActive(false);
+        return;
+      }
+      try { window.scanning = true; } catch (e) {}
+      setBtnActive(true);
+    }, { passive: true });
+
+    // hotkey Ctrl+Shift+M
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key && e.key.toLowerCase() === 'm') {
+        const el = document.getElementById('voice-search-btn') || newBtn;
+        if (el) el.click();
+      }
     });
 
-    const filtered = results
-      .filter(r => r.score > 0.12)
-      .sort((a,b) => b.score - a.score)
-      .slice(0, limit)
-      .map(r => ({ item: r.item, score: r.score }));
+    // sync visual state periodically
+    setInterval(() => {
+      try { setBtnActive(isScannerRunning()); } catch (e) {}
+    }, 600);
+  })();
 
-    return filtered;
-  }
-
-  // ------------------ SpeechRecognition setup ------------------
-  const recognition = new SpeechRecognition();
-  recognition.lang = 'ru-RU'; // Жёстко ставим русский язык для распознавания
-  recognition.interimResults = true;
-  recognition.maxAlternatives = 1;
-  recognition.continuous = false;
-
-  let isRecording = false;
-
-  function setRecordingState(on) {
-    isRecording = !!on;
-    voiceBtn.setAttribute('aria-pressed', String(isRecording));
-    if (isRecording) {
-      voiceBtn.classList.add('recording');
-      voiceBtn.setAttribute('title', 'Говорите, запись идёт');
-    } else {
-      voiceBtn.classList.remove('recording');
-      voiceBtn.setAttribute('title', 'Голосовой поиск');
-    }
-  }
-
-  voiceBtn.addEventListener('click', () => {
-    if (!isRecording) {
-      try {
-        recognition.start();
-        setRecordingState(true);
-      } catch (err) {
-        console.error('SpeechRecognition start error', err);
-        alert('Не удалось запустить голосовой ввод');
-      }
-    } else {
-      recognition.stop();
-      setRecordingState(false);
-    }
-  });
-
-  // Обработчик результатов: умная автозамена с подстановкой базового имени (чтобы не скрывать варианты)
-recognition.addEventListener('result', (ev) => {
-  let interim = '';
-  let final = '';
-  for (let i = 0; i < ev.results.length; i++) {
-    const res = ev.results[i];
-    if (res.isFinal) final += res[0].transcript;
-    else interim += res[0].transcript;
-  }
-
-  const displayText = (final || interim).trim();
-  // Показываем промежуточный/финальный текст пользователю
-  searchInput.value = displayText;
-  searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-
-  if (!final || !final.trim()) return;
-
-  const finalText = final.trim();
-  const pre = preprocessFinalText(finalText);
-
-  // 1) Проверяем точное совпадение (нормализованное)
-  const items = Array.isArray(allItems) ? allItems : [];
-  const normQuery = normForCompare(pre);
-  const exactMatches = items.filter(it => normForCompare(it.name || '') === normQuery);
-
-  if (exactMatches.length > 0) {
-    // Есть точное совпадение — НЕ подставляем полное имя в поле, оставляем то, что сказал пользователь,
-    // но открываем карточку (если есть функция openItem)
-    searchInput.value = finalText;
-    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-    try {
-      if (typeof window.openItem === 'function') {
-        window.openItem(exactMatches[0]);
-      } else if (typeof window.openFirstItemIfNeeded === 'function') {
-        window.openFirstItemIfNeeded([exactMatches[0]]);
-      } else if (typeof window.renderItems === 'function') {
-        window.renderItems([exactMatches[0]]);
-      }
-    } catch (e) {
-      console.error('Error opening exact match item', e);
-    }
-    const box = document.getElementById('voice-suggestions');
-    if (box) box.style.display = 'none';
-    console.info(`Exact match for "${finalText}" → opened "${exactMatches[0].name}"`);
-    return;
-  }
-
-  // 2) Нет точного совпадения — ищем ближайшие совпадения
-  const matches = findClosestMatches(pre, items, 8);
-
-  if (!matches || matches.length === 0) {
-    // Ничего похожего не найдено — оставляем распознанный текст
-    searchInput.value = finalText;
-    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-    const box = document.getElementById('voice-suggestions');
-    if (box) box.style.display = 'none';
-    console.info(`No fuzzy matches for "${finalText}" — kept query.`);
-    return;
-  }
-
-  // 3) Если есть похожие — берём лучший и (НЕ подставляем полное имя) — открываем карточку по лучшему совпадению
-  const best = matches[0];
-
-  // Вспомогательная функция: извлечь базовое имя (удалить суффиксы/варианты)
-  function extractBaseName(name) {
-    if (!name) return name;
-    let s = String(name).trim();
-
-    // Удаляем части в скобках и после тире/двоеточия/слеша
-    s = s.replace(/\(.*?\)/g, ' ');
-    s = s.split(/[-–—:\/]/)[0];
-
-    // Удаляем слова-метки типа "карта", "версия", "выпуск", "часть", "№" и всё после них
-    s = s.replace(/\b(карта|версия|выпуск|часть|часть|номер|№|редакция|издание|версия)\b.*$/i, '');
-
-    // Удаляем конечные числа/романы (например "3", "III") в конце
-    s = s.replace(/\b[0-9ivx]+\s*$/i, '');
-
-    // Схлопываем пробелы и обрезаем
-    s = s.replace(/\s+/g, ' ').trim();
-
-    return s;
-  }
-
-  const baseName = extractBaseName(best.item.name || best.item.title || best.item.code || finalText);
-
-  // Порог, при котором считаем, что найденный лучший матч релевантен
-  const AUTO_BASENAME_THRESHOLD = 0.35; // можно поднять до 0.45 при ложных срабатываниях
-
-  if (best.score >= AUTO_BASENAME_THRESHOLD && baseName) {
-    // НЕ подставляем базовое имя в поле — оставляем ровно то, что сказал пользователь,
-    // но открываем карточку/показываем результат по лучшему совпадению
-    searchInput.value = finalText;
-    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-    try {
-      if (typeof window.openItem === 'function') {
-        window.openItem(best.item);
-      } else if (typeof window.openFirstItemIfNeeded === 'function') {
-        window.openFirstItemIfNeeded([best.item]);
-      } else if (typeof window.renderItems === 'function') {
-        window.renderItems([best.item]);
-      }
-    } catch (e) {
-      console.error('Error opening best match item', e);
-    }
-    const box = document.getElementById('voice-suggestions');
-    if (box) box.style.display = 'none';
-    console.info(`Fuzzy match for "${finalText}" → opened "${best.item.name}" (score ${(best.score*100).toFixed(0)}%)`);
-    return;
-  }
-
-  // Если лучший матч слишком слабый — оставляем распознанный текст
-  searchInput.value = finalText;
-  searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-  const box = document.getElementById('voice-suggestions');
-  if (box) box.style.display = 'none';
-  console.info(`Fuzzy match too weak for "${finalText}" — kept query.`);
-});
-
-
-  recognition.addEventListener('end', () => {
-    setRecordingState(false);
-  });
-
-  recognition.addEventListener('error', (e) => {
-    console.error('SpeechRecognition error', e);
-    setRecordingState(false);
-    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-      alert('Доступ к микрофону запрещён. Разрешите доступ в настройках браузера.');
-    } else {
-      alert('Ошибка голосового ввода: ' + (e.error || 'unknown'));
-    }
-  });
-
-  // Быстрый хоткей: Ctrl+Shift+M
-  document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'm') {
-      voiceBtn.click();
-    }
-  });
-
+  // end of module
 })();
 
-
-  // Быстрый хоткей: Ctrl+Shift+M
-  document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'm') {
-      voiceBtn.click();
-    }
-  });
 
 
 
