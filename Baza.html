@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <title>База товаров — RecountPro</title>
 
-  <!-- ZXing (kept for parity with other screens, not required here) -->
+  <!-- ZXing (для надёжного декодирования) -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
   <style>
@@ -21,17 +21,21 @@
     }
     *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
     html,body{height:100%;margin:0;background:linear-gradient(180deg,#05030a,#0b0710);color:var(--text);font-family:Inter,Segoe UI,system-ui,Arial;overflow:hidden; touch-action: manipulation;}
-    /* prevent double-tap zoom */
-    html,body,button,input,select,textarea{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
-    #bg{position:fixed;inset:0;z-index:-1;background:#000}
     header{position:fixed;left:0;right:0;top:0;padding:12px;background:rgba(10,10,12,0.72);backdrop-filter:blur(8px);z-index:1000;border-radius:0 0 14px 14px}
     header h1{margin:0;text-align:center;font-size:1.15rem}
     #search-wrap{max-width:var(--maxw);margin:10px auto;position:relative}
     #search{width:100%;padding:10px 56px 10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(20,20,24,0.6);color:var(--text);font-size:15px}
+    #scan-btn{position:absolute;right:44px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer}
     #clear-search{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer}
     #content{position:fixed;left:0;right:0;top:96px;bottom:0;overflow:auto;padding:12px;box-sizing:border-box}
-    .list{max-width:var(--maxw);margin:0 auto;display:flex;flex-direction:column;gap:10px;padding-bottom:28px}
-    /* Full-width cards (edge-to-edge within max container) */
+    .card{max-width:var(--maxw);margin:10px auto;padding:12px;border-radius:12px;background:linear-gradient(135deg,#121018,#1b1724);box-shadow:0 10px 30px rgba(0,0,0,0.6)}
+    .preview-wrap{border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,0.03)}
+    .preview-wrap.camera-1-3{height:34vh;min-height:140px}
+    video#preview{width:100%;height:100%;object-fit:cover;display:block}
+    .controls{display:flex;gap:8px;align-items:center;margin-top:10px}
+    .btn{padding:8px 10px;border-radius:8px;border:none;cursor:pointer;background:#222;color:var(--text)}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-light));color:#07060b;font-weight:700}
+    .list{max-width:var(--maxw);margin:12px auto;display:flex;flex-direction:column;gap:10px;padding-bottom:28px}
     .item{
       width:100%;
       margin:0;
@@ -65,65 +69,111 @@
     <h1>База товаров — RecountPro</h1>
     <div id="search-wrap">
       <input id="search" placeholder="Поиск по названию или штрих‑коду..." autocomplete="off" />
+      <button id="scan-btn" title="Открыть сканер">📷</button>
       <button id="clear-search" title="Очистить">×</button>
     </div>
   </header>
 
   <main id="content">
-    <div class="list" id="list"></div>
+    <!-- Scanner area (hidden until opened) -->
+    <div class="card" id="scannerCard" style="display:none">
+      <div class="preview-wrap camera-1-3" id="previewWrap"><video id="preview" playsinline muted></video></div>
+      <div class="controls">
+        <select id="deviceSelect" class="btn" style="min-width:160px"></select>
+        <button id="torchBtn" class="btn">🔦</button>
+        <button id="closeScannerBtn" class="btn">Закрыть</button>
+        <div id="scanResult" style="margin-left:auto;color:var(--muted)"></div>
+      </div>
+    </div>
+
+    <!-- Products list -->
+    <div id="list" class="list"></div>
   </main>
 
 <script>
 /* =========================
-   Purpose:
-   - Screen shows product database (title, barcode, quantity)
-   - Design matches RecountPro "cosmos" style
-   - Search by name or barcode hides non-matching cards (same behavior as recount screen)
-   - Quantities are read-only and come from localStorage keys "qty_<code>" (populated by recount screen)
-   - No editing of quantities on this screen
+   Baza.html — полный рабочий экран базы товаров с интегрированным сканером
+   - тянет названия из localStorage 'barcodeDB' (как Scaner.html)
+   - показывает количество из autosave session values или localStorage 'qty_<code>'
+   - поиск по названию и коду как в Invent.html
+   - встроенный сканер: предпочитает заднюю камеру, автоматически закрывается при считывании,
+     при нахождении товара подсвечивает карточку и скроллит к ней
    ========================= */
 
-/* Load DB from localStorage key 'barcodeDB' (same as Scaner.html) */
-function loadBarcodeDB(){
-  try{
-    const raw = localStorage.getItem('barcodeDB');
-    if(raw){
-      const parsed = JSON.parse(raw);
-      if(parsed && typeof parsed === 'object') return parsed;
-    }
-  }catch(e){}
-  // fallback minimal sample
-  return {
-    "4601234000011": { code: "4601234000011", name: "Молоко 1л", unit: "шт", price: 59.90 },
-    "4601234000028": { code: "4601234000028", name: "Хлеб ржаной", unit: "шт", price: 35.00 },
-    "4601234000035": { code: "4601234000035", name: "Яблоки кг", unit: "кг", price: 120.00 },
-    "4601234000042": { code: "4601234000042", name: "Сыр 200г", unit: "шт", price: 250.00 },
-    "4601234000059": { code: "4601234000059", name: "Кофе 250г", unit: "шт", price: 499.00 }
-  };
-}
+/* State */
+let barcodeDB = {}; // code -> {code,name,unit,price}
+let items = [];     // array of {code,name,unit,price}
+let scanStream = null;
+let currentDeviceId = null;
+let scanning = false;
+let reader = null;
+let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
+let canvasPool = [];
+let scanLoopRunning = false;
+let lastDetected = {code:null, ts:0};
+const DEBOUNCE_MS = 900;
+
+/* Elements */
+const listEl = document.getElementById('list');
+const searchEl = document.getElementById('search');
+const scanBtn = document.getElementById('scan-btn');
+const clearSearchBtn = document.getElementById('clear-search');
+
+const scannerCard = document.getElementById('scannerCard');
+const preview = document.getElementById('preview');
+const previewWrap = document.getElementById('previewWrap');
+const deviceSelect = document.getElementById('deviceSelect');
+const closeScannerBtn = document.getElementById('closeScannerBtn');
+const torchBtn = document.getElementById('torchBtn');
+const scanResult = document.getElementById('scanResult');
 
 /* Utilities */
 function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function normalize(s){ return String(s||'').toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ').trim(); }
 function matchesQuery(text, query){ const words = query.split(' ').filter(Boolean); return words.every(w => text.includes(w)); }
+function showToast(text, ms=1200){ scanResult.innerText = text; setTimeout(()=>{ if(scanResult.innerText===text) scanResult.innerText=''; }, ms); }
 
-/* Build items array from DB */
-let barcodeDB = loadBarcodeDB();
-let items = Object.keys(barcodeDB).map(k => {
-  const b = barcodeDB[k];
-  return { code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0 };
-});
-
-/* Render list: title first, then barcode, then quantity (read-only) */
-const listEl = document.getElementById('list');
-
-function getQtyForCode(code){
-  // Prefer session autosave qty if present, otherwise localStorage 'qty_<code>' else 0
-  const sessionKey = 'autosave_session_' + (window.localkaData && window.localkaData.docId ? window.localkaData.docId : 'loc_' + new Date().toISOString().slice(0,10));
+/* Load DB from localStorage (Scaner.html writes here) */
+function loadBarcodeDB(){
   try{
-    const sessionRaw = localStorage.getItem(sessionKey);
-    if(sessionRaw){
-      const session = JSON.parse(sessionRaw);
+    const raw = localStorage.getItem('barcodeDB');
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && typeof parsed === 'object'){
+        barcodeDB = parsed;
+        return;
+      }
+    }
+  }catch(e){}
+  // fallback sample
+  barcodeDB = {
+    "4601234000011": { code: "4601234000011", name: "Молоко 1л", unit: "шт", price: 59.90 },
+    "4601234000028": { code: "4601234000028", name: "Хлеб ржаной", unit: "шт", price: 35.00 },
+    "4601234000035": { code: "4601234000035", name: "Яблоки кг", unit: "кг", price: 120.00 }
+  };
+}
+
+/* Build items array */
+function buildItems(){
+  items = Object.keys(barcodeDB).map(k => {
+    const b = barcodeDB[k];
+    return { code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0 };
+  });
+}
+
+/* Get quantity for code:
+   - prefer autosave session values (same key as Invent autosave)
+   - fallback to localStorage 'qty_<code>'
+   - fallback to '0'
+*/
+function getQtyForCode(code){
+  try{
+    // try autosave session (same logic as Invent)
+    const currentLocalkaId = (window.localkaData && window.localkaData.docId) ? window.localkaData.docId : 'loc_' + new Date().toISOString().slice(0,10);
+    const sessionKey = 'autosave_session_' + currentLocalkaId;
+    const raw = localStorage.getItem(sessionKey);
+    if(raw){
+      const session = JSON.parse(raw);
       if(session && session.values && session.values[code] !== undefined) return session.values[code];
     }
   }catch(e){}
@@ -132,6 +182,7 @@ function getQtyForCode(code){
   return '0';
 }
 
+/* Render list (title first, then code, then qty) */
 function renderList(list){
   listEl.innerHTML = '';
   if(!list || list.length === 0){
@@ -141,8 +192,7 @@ function renderList(list){
     listEl.appendChild(empty);
     return;
   }
-
-  list.forEach(item => {
+  list.forEach(item=>{
     const qty = getQtyForCode(item.code);
     const div = document.createElement('div');
     div.className = 'item';
@@ -162,16 +212,10 @@ function renderList(list){
   });
 }
 
-/* Initial render */
-renderList(items);
-
-/* Search behavior: hide non-matching cards (same logic as recount screen) */
-const searchInput = document.getElementById('search');
-const clearBtn = document.getElementById('clear-search');
-
-searchInput.addEventListener('input', () => {
-  const q = normalize(searchInput.value);
-  document.querySelectorAll('#list .item').forEach(div => {
+/* Search: hide non-matching cards (same logic as Invent) */
+searchEl.addEventListener('input', ()=>{
+  const q = normalize(searchEl.value);
+  document.querySelectorAll('#list .item').forEach(div=>{
     const code = normalize(div.dataset.code);
     const item = items.find(i => i.code === div.dataset.code);
     if(!item){ div.classList.add('hidden'); return; }
@@ -180,40 +224,290 @@ searchInput.addEventListener('input', () => {
     div.classList.toggle('hidden', !match);
   });
 });
-
-clearBtn.addEventListener('click', () => {
-  searchInput.value = '';
-  document.querySelectorAll('#list .item').forEach(div => div.classList.remove('hidden'));
+clearSearchBtn.addEventListener('click', ()=>{
+  searchEl.value = '';
+  document.querySelectorAll('#list .item').forEach(d => d.classList.remove('hidden'));
 });
 
-/* Keep list updated when quantities change in other screen:
-   Listen to storage events (other tab/window) and periodically refresh from localStorage.
+/* Keep quantities updated:
+   - listen to storage events (other tab writes)
+   - periodic refresh to reflect changes from Invent screen
 */
-window.addEventListener('storage', (e) => {
-  if(e.key && (e.key.startsWith('qty_') || e.key === 'barcodeDB' || e.key && e.key.startsWith('autosave_session_'))){
-    // reload DB if changed
-    barcodeDB = loadBarcodeDB();
-    items = Object.keys(barcodeDB).map(k => {
-      const b = barcodeDB[k];
-      return { code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0 };
-    });
+window.addEventListener('storage', (e)=>{
+  if(!e.key) return;
+  if(e.key.startsWith('qty_') || e.key === 'barcodeDB' || e.key.startsWith('autosave_session_')){
+    loadBarcodeDB();
+    buildItems();
     renderList(items);
   }
 });
-
-/* Also refresh every 2 seconds to reflect realtime counts from recount screen */
-setInterval(() => {
-  // only update quantities display without re-creating DOM if possible
-  document.querySelectorAll('#list .item').forEach(div => {
+setInterval(()=>{
+  document.querySelectorAll('#list .item').forEach(div=>{
     const code = div.dataset.code;
     const qty = getQtyForCode(code);
     const qtyEl = div.querySelector('.qty');
     if(qtyEl && qtyEl.textContent !== String(qty)) qtyEl.textContent = String(qty);
   });
-}, 2000);
+}, 1500);
+
+/* -------------------------
+   Scanner: enumerate cameras, prefer rear
+   ------------------------- */
+async function enumerateCameras(){
+  try{
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d => d.kind === 'videoinput');
+    deviceSelect.innerHTML = '';
+    cams.forEach((c, idx)=>{
+      const opt = document.createElement('option');
+      opt.value = c.deviceId;
+      opt.text = c.label || `Камера ${idx+1}`;
+      deviceSelect.appendChild(opt);
+    });
+    if(cams.length === 0){
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.text = 'Камера не найдена';
+      deviceSelect.appendChild(opt);
+      return null;
+    }
+    // choose rear: look for labels or pick last
+    const labels = cams.map(c => (c.label||'').toLowerCase());
+    for(let i=0;i<cams.length;i++){
+      const l = labels[i];
+      if(!l) continue;
+      if(l.includes('back') || l.includes('rear') || l.includes('environment') || l.includes('задн') || l.includes('тыл')){
+        deviceSelect.value = cams[i].deviceId;
+        return cams[i].deviceId;
+      }
+    }
+    deviceSelect.value = cams[cams.length-1].deviceId;
+    return deviceSelect.value;
+  }catch(e){
+    console.warn('enumerateCameras error', e);
+    return null;
+  }
+}
+
+/* Canvas helpers */
+function createCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+function getCanvas(w,h){
+  for(const c of canvasPool) if(c.width===w && c.height===h) return c;
+  const c = createCanvas(w,h); canvasPool.push(c); return c;
+}
+
+/* tryDecodeCanvas: BarcodeDetector -> ZXing -> rotated ZXing */
+async function tryDecodeCanvas(canvas){
+  if(detector){
+    try{
+      const imageData = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+      const res = await detector.detect(imageData);
+      if(res && res.length) return res[0].rawValue;
+    }catch(e){}
+  }
+  try{
+    const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+    const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+    if(result && result.text) return result.text;
+  }catch(e){}
+  // rotated attempts
+  const w = canvas.width, h = canvas.height;
+  const temp = getCanvas(w,h);
+  const tctx = temp.getContext('2d');
+  for(const angle of [90,180,270]){
+    tctx.clearRect(0,0,w,h);
+    tctx.save();
+    tctx.translate(w/2,h/2);
+    tctx.rotate(angle*Math.PI/180);
+    tctx.drawImage(canvas, -w/2, -h/2);
+    tctx.restore();
+    try{
+      const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(temp);
+      const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+      const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+      if(result && result.text) return result.text;
+    }catch(e){}
+  }
+  return null;
+}
+
+/* Main scanning loop */
+async function scanLoop(){
+  if(!scanning) { scanLoopRunning = false; return; }
+  if(scanLoopRunning) return;
+  scanLoopRunning = true;
+  try{
+    while(scanning){
+      const w = preview.videoWidth;
+      const h = preview.videoHeight;
+      if(w===0 || h===0){
+        await new Promise(r => requestAnimationFrame(r));
+        continue;
+      }
+      const canvas = getCanvas(w,h);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(preview, 0, 0, w, h);
+
+      const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
+      const sw = Math.floor(w/scale);
+      const sh = Math.floor(h/scale);
+      const small = getCanvas(sw,sh);
+      const sctx = small.getContext('2d');
+      sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
+
+      try{
+        const code = await tryDecodeCanvas(small);
+        if(code){
+          handleDetected(code);
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }catch(e){}
+      await new Promise(r => requestAnimationFrame(r));
+    }
+  }finally{
+    scanLoopRunning = false;
+  }
+}
+
+/* Start / stop camera */
+async function startCamera(){
+  if(scanning) return;
+  stopCamera();
+  scanning = true;
+  await enumerateCameras();
+  const deviceId = deviceSelect.value || currentDeviceId || undefined;
+  const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: { facingMode: { ideal: 'environment' } } };
+  try{
+    scanStream = await navigator.mediaDevices.getUserMedia({ audio:false, video: constraints.video });
+    preview.srcObject = scanStream;
+    await preview.play();
+    try{ currentDeviceId = scanStream.getVideoTracks()[0].getSettings().deviceId || currentDeviceId; }catch(e){}
+    if(!reader) reader = new ZXing.BrowserMultiFormatReader();
+    scannerCard.style.display = 'block';
+    showToast('Сканер включён');
+    requestAnimationFrame(scanLoop);
+  }catch(err){
+    console.error('startCamera error', err);
+    showToast('Ошибка доступа к камере');
+    scanning = false;
+  }
+}
+
+function stopCamera(){
+  scanning = false;
+  try{
+    if(scanStream && scanStream.getTracks) scanStream.getTracks().forEach(t => t.stop());
+  }catch(e){}
+  scanStream = null;
+  try{ if(reader) reader.reset(); }catch(e){}
+  preview.srcObject = null;
+  scannerCard.style.display = 'none';
+  showToast('Сканер остановлен');
+}
+
+/* Torch toggle (best-effort) */
+let torchOn = false;
+async function toggleTorch(){
+  if(!scanStream) return showToast('Сначала включите сканер');
+  const track = scanStream.getVideoTracks()[0];
+  try{
+    await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
+    torchOn = !torchOn;
+    torchBtn.textContent = torchOn ? '🔦 ON' : '🔦';
+  }catch(e){
+    showToast('Torch не поддерживается');
+  }
+}
+
+/* On detection: stop scanner, highlight item, scroll to it */
+function handleDetected(code){
+  const now = Date.now();
+  if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+  lastDetected = { code, ts: now };
+  try{ navigator.vibrate?.(60); }catch(e){}
+  showToast(`Найден код: ${code}`, 1600);
+
+  // auto-stop
+  try{ if(reader) reader.reset(); }catch(e){}
+  scanning = false;
+  try{ if(scanStream && scanStream.getTracks) scanStream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  preview.srcObject = null;
+  scannerCard.style.display = 'none';
+
+  // refresh DB (in case Scaner.html updated it)
+  loadBarcodeDB();
+  buildItems();
+  renderList(items);
+
+  // find item
+  const card = document.querySelector(`.item[data-code="${code}"]`);
+  if(card){
+    card.classList.add('found');
+    card.classList.remove('hidden');
+    setTimeout(()=>card.classList.remove('found'), 2200);
+    setTimeout(()=>card.scrollIntoView({ behavior:'smooth', block:'center' }), 160);
+  } else {
+    // if not found, offer to add (simple prompt)
+    const create = confirm(`Код ${code} не найден в базе. Добавить как новый товар?`);
+    if(create){
+      const name = prompt('Введите название товара', '') || `Товар ${code}`;
+      barcodeDB[code] = { code, name, unit:'', price:0 };
+      localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
+      loadBarcodeDB();
+      buildItems();
+      renderList(items);
+      const newCard = document.querySelector(`.item[data-code="${code}"]`);
+      if(newCard){
+        newCard.classList.add('found');
+        setTimeout(()=>newCard.classList.remove('found'), 2200);
+        setTimeout(()=>newCard.scrollIntoView({ behavior:'smooth', block:'center' }), 160);
+      }
+    }
+  }
+}
+
+/* Wire UI */
+scanBtn.addEventListener('click', async ()=>{
+  if(!scanning) await startCamera();
+  else stopCamera();
+});
+closeScannerBtn.addEventListener('click', stopCamera);
+deviceSelect.addEventListener('change', async ()=>{
+  currentDeviceId = deviceSelect.value;
+  if(scanning){
+    try{ reader.reset(); }catch(e){}
+    scanning = false;
+  }
+  await startCamera();
+});
+torchBtn.addEventListener('click', toggleTorch);
+
+/* Init */
+window.addEventListener('DOMContentLoaded', async ()=>{
+  loadBarcodeDB();
+  buildItems();
+  renderList(items);
+
+  // enumerate cameras (non-blocking)
+  if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices){
+    try{ await enumerateCameras(); }catch(e){}
+  }
+
+  // warm permission to get labels on some devices
+  try{
+    const s = await navigator.mediaDevices.getUserMedia({ video:true });
+    s.getTracks().forEach(t=>t.stop());
+    await enumerateCameras();
+  }catch(e){ /* ignore */ }
+});
+
+/* stop camera on unload */
+window.addEventListener('pagehide', ()=>{ stopCamera(); });
+window.addEventListener('beforeunload', ()=>{ stopCamera(); });
 
 /* Expose for debug */
-window._productDB = { barcodeDB, items, renderList };
+window._baza = { loadBarcodeDB, barcodeDB, items, startCamera, stopCamera, renderList };
 
 </script>
 </body>
