@@ -140,38 +140,90 @@
     /* Голосовой поиск: индикатор записи */
 #voice-search-btn {
   position: absolute;
-  right: 2.6rem; /* согласуется с правкой #clear-search */
+  right: 2.6rem;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
   padding: 4px;
-  z-index: 2;
+  z-index: 1200;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
 }
+
 #voice-search-btn[aria-pressed="true"] #voice-icon path {
   stroke: var(--accent);
   transition: stroke 0.15s ease;
 }
+
 #voice-search-btn.recording #voice-icon {
   animation: pulse 1s infinite;
 }
+
 @keyframes pulse {
   0% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.08); opacity: 0.85; }
   100% { transform: scale(1); opacity: 1; }
 }
 
-
 #clear-search:hover {
   color: #fff;
 }
 
-/* Анимация появления */
+/* Scanner card visibility controlled by body.scanner-open */
+#scannerCard {
+  display: none;
+  opacity: 0;
+  transform: translateY(-8px) scale(0.995);
+  transition: opacity 220ms ease, transform 220ms ease;
+  will-change: opacity, transform;
+  z-index: 1100;
+}
+
+/* When scanner is active, add class scanner-open to body */
+body.scanner-open #scannerCard {
+  display: block;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  animation: fadeInDown 220ms ease both;
+}
+
+/* Make preview area more prominent when scanner open */
+body.scanner-open #previewWrap {
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  border-color: rgba(255,255,255,0.06);
+}
+
+/* Small responsive tweak so scanner card sits above header on small screens */
+@media (max-width: 720px) {
+  #scannerCard {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    top: 84px;
+    bottom: 12px;
+    max-width: none;
+    margin: 0;
+    border-radius: 12px;
+  }
+}
+
+/* Accessibility: visible focus for voice button */
+#voice-search-btn:focus {
+  outline: 2px solid rgba(167,139,250,0.28);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Fade-in animation */
 @keyframes fadeInDown {
   from { opacity: 0; transform: translateY(-20px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
 
 
     /* Контент (карточки) */
