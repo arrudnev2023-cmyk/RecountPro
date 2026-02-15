@@ -1901,37 +1901,22 @@ recognition.addEventListener('result', (ev) => {
 </script>
 
 <script>
-/*
-  Оптимизированный сканер: вставь один раз перед </body>.
-  Быстрый, надёжный, использует BarcodeDetector + ZXing fallback,
-  requestVideoFrameCallback / ImageCapture, центрированный crop,
-  предпочтение задней камеры, high FPS/HD constraints.
-*/
 (function(){
   const ZXING_CDN = 'https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js';
-  const BTN_ID = 'rp-fast-scanner-btn';
-  const OVERLAY_ID = 'rp-fast-scanner-overlay';
-  const VIDEO_ID = 'rp-fast-scanner-video';
-  const DEBOUNCE_MS = 800;
-  const CROP_RATIO = 0.6; // центральная область 60% по ширине/высоте
-  const PREFERRED_WIDTH = 1280;
-  const PREFERRED_HEIGHT = 720;
-  const PREFERRED_FPS = 30;
+  const BTN_ID = 'scanner-btn-left-simple';
+  const OVERLAY_ID = 'scanner-overlay-simple';
+  const VIDEO_ID = 'scanner-video-simple';
+  const DEBOUNCE_MS = 900;
 
-  let _stream = null, _video = null, _reader = null, _zxingLoaded = false;
-  let _imageCapture = null, _canvas = null, _ctx = null;
-  let _last = { code: null, ts: 0 }, _rafId = null;
-  const hasBarcodeDetector = ('BarcodeDetector' in window);
+  let _stream = null, _video = null, _reader = null, _zxingLoaded = false, _rafId = null;
 
-  // --- helpers ---
+  // --- Helpers ---
   const $id = id => document.getElementById(id);
-  function el(tag, props){ const e = document.createElement(tag); Object.assign(e, props||{}); return e; }
 
-  // --- inject styles ---
-  function injectStyles(){
-    if(document.getElementById('rp-fast-scanner-styles')) return;
+  function injectCSS(){
+    if(document.getElementById('scanner-simple-styles')) return;
     const s = document.createElement('style');
-    s.id = 'rp-fast-scanner-styles';
+    s.id = 'scanner-simple-styles';
     s.textContent = `
 #${BTN_ID}{position:fixed;left:12px;bottom:18px;z-index:2147483647;width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg,#6d28d9,#4c1d95);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer}
 #${OVERLAY_ID}{position:fixed;left:50%;top:80px;transform:translateX(-50%);width:min(980px,calc(100% - 32px));height:33vh;max-height:420px;background:rgba(6,6,8,0.98);border-radius:12px;box-shadow:0 30px 80px rgba(0,0,0,0.7);z-index:2147483647;display:none;overflow:hidden}
@@ -1946,267 +1931,35 @@ recognition.addEventListener('result', (ev) => {
     document.head.appendChild(s);
   }
 
-  // --- UI create ---
   function createButton(){
-    injectStyles();
+    injectCSS();
     let btn = $id(BTN_ID);
     if(btn) return btn;
-    btn = el('button',{ id: BTN_ID, title: 'Открыть сканер' });
+    btn = document.createElement('button');
+    btn.id = BTN_ID;
+    btn.title = 'Открыть сканер';
     btn.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/><path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    Object.assign(btn.style, { position:'fixed', left:'12px', bottom:'18px', zIndex:String(2147483647) });
     document.body.appendChild(btn);
-    // restore if removed
     const mo = new MutationObserver(()=>{ if(!document.body.contains(btn)) document.body.appendChild(btn); });
     mo.observe(document.body, { childList:true, subtree:true });
     return btn;
   }
 
   function createOverlay(){
-    injectStyles();
+    injectCSS();
     let ov = $id(OVERLAY_ID);
     if(ov) return ov;
-    ov = el('div',{ id: OVERLAY_ID });
+    ov = document.createElement('div');
+    ov.id = OVERLAY_ID;
     ov.innerHTML = `<div class="preview"><video id="${VIDEO_ID}" playsinline muted></video></div>
-      <div class="controls"><button id="rp-fast-close">Закрыть</button><button id="rp-fast-torch">🔦</button></div>`;
+      <div class="controls"><button id="scanner-close">Закрыть</button></div>`;
     document.body.appendChild(ov);
-    ov.querySelector('#rp-fast-close').addEventListener('click', stopAll);
-    ov.querySelector('#rp-fast-torch').addEventListener('click', toggleTorch);
+    ov.querySelector('#scanner-close').addEventListener('click', stopScanner);
     return ov;
   }
 
-  // --- camera/device helpers ---
-  async function getDevices(){
-    if(!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return [];
-    const devs = await navigator.mediaDevices.enumerateDevices();
-    return devs.filter(d => d.kind === 'videoinput');
-  }
-
-  async function getRearCameraDeviceId(){
-    try{
-      const cams = await getDevices();
-      if(!cams.length) return null;
-      for(const c of cams){
-        const l = (c.label||'').toLowerCase();
-        if(l.includes('back')||l.includes('rear')||l.includes('environment')||l.includes('задн')||l.includes('тыл')) return c.deviceId;
-      }
-      return cams[cams.length-1].deviceId;
-    }catch(e){ return null; }
-  }
-
-  // --- optimized start ---
-  async function startOptimized(deviceId){
-    try{
-      // stop any previous
-      stopAll();
-
-      // constraints: prefer HD + FPS
-      const constraints = {
-        audio: false,
-        video: deviceId ? { deviceId: { exact: deviceId }, width: { ideal: PREFERRED_WIDTH }, height: { ideal: PREFERRED_HEIGHT }, frameRate: { ideal: PREFERRED_FPS } }
-                        : { facingMode: { ideal: 'environment' }, width: { ideal: PREFERRED_WIDTH }, height: { ideal: PREFERRED_HEIGHT }, frameRate: { ideal: PREFERRED_FPS } }
-      };
-
-      _stream = await navigator.mediaDevices.getUserMedia(constraints);
-      createOverlay();
-      _video = $id(VIDEO_ID);
-      _video.srcObject = _stream;
-      await _video.play().catch(()=>{});
-
-      // ImageCapture if available (fast frame grab)
-      try{
-        const track = _stream.getVideoTracks()[0];
-        if(window.ImageCapture && track){
-          _imageCapture = new ImageCapture(track);
-        } else {
-          _imageCapture = null;
-        }
-      }catch(e){ _imageCapture = null; }
-
-      // try ZXing decodeFromVideoDevice first (very fast native loop)
-      try{
-        await ensureZXing();
-        const ZX = window.ZXing || window.ZXingBrowser;
-        if(ZX && ZX.BrowserMultiFormatReader){
-          _reader = new ZX.BrowserMultiFormatReader();
-          // decodeFromVideoDevice uses internal fast loop; pass null to use current stream
-          _reader.decodeFromVideoDevice(deviceId || null, _video, (result, err) => {
-            if(result && result.text){
-              const code = String(result.text).trim();
-              const now = Date.now();
-              if(!(_last.code === code && (now - _last.ts) < DEBOUNCE_MS)){
-                _last = { code, ts: now };
-                try{ _reader.reset(); }catch(e){}
-                stopAll();
-                onDetected(code);
-              }
-            }
-          });
-          window.scanning = true;
-          // ensure overlay visible
-          $id(OVERLAY_ID).classList.add('visible');
-          return;
-        }
-      }catch(e){ /* ignore and fallback */ }
-
-      // else use requestVideoFrameCallback or RAF with ImageCapture/BarcodeDetector
-      window.scanning = true;
-      $id(OVERLAY_ID).classList.add('visible');
-
-      if(_video.requestVideoFrameCallback){
-        // modern fast API
-        const frameCb = async (now, metadata) => {
-          if(!window.scanning) return;
-          try{
-            // prefer ImageCapture.grabFrame if available
-            let bitmap = null;
-            if(_imageCapture && typeof _imageCapture.grabFrame === 'function'){
-              try{ bitmap = await _imageCapture.grabFrame(); }catch(e){ bitmap = null; }
-            }
-            if(!bitmap){
-              // create ImageBitmap from video element (fast)
-              try{ bitmap = await createImageBitmap(_video); }catch(e){ bitmap = null; }
-            }
-            if(bitmap){
-              // crop center region to speed up detection
-              const cw = Math.max(1, Math.floor(bitmap.width * CROP_RATIO));
-              const ch = Math.max(1, Math.floor(bitmap.height * CROP_RATIO));
-              const sx = Math.floor((bitmap.width - cw) / 2);
-              const sy = Math.floor((bitmap.height - ch) / 2);
-              // use BarcodeDetector if available (native)
-              if(barcodeDetector){
-                try{
-                  // BarcodeDetector accepts ImageBitmap or canvas
-                  const crop = await createImageBitmap(bitmap, sx, sy, cw, ch);
-                  const res = await barcodeDetector.detect(crop);
-                  crop.close();
-                  if(res && res.length){
-                    const code = String(res[0].rawValue).trim();
-                    const nowTs = Date.now();
-                    if(!(_last.code === code && (nowTs - _last.ts) < DEBOUNCE_MS)){
-                      _last = { code, ts: nowTs };
-                      bitmap.close();
-                      stopAll();
-                      onDetected(code);
-                      return;
-                    }
-                  }
-                }catch(e){}
-              } else {
-                // ZXing fallback: draw cropped bitmap to small canvas and decode
-                try{
-                  const canvas = ensureSmallCanvas(cw, ch);
-                  _ctx.clearRect(0,0,canvas.width, canvas.height);
-                  _ctx.drawImage(bitmap, sx, sy, cw, ch, 0, 0, canvas.width, canvas.height);
-                  // try ZXing decodeFromCanvas if loaded
-                  if(window.ZXing || window.ZXingBrowser){
-                    try{
-                      if(!_reader) _reader = new (window.ZXing || window.ZXingBrowser).BrowserMultiFormatReader();
-                      const r = _reader.decodeFromCanvas(canvas);
-                      if(r && (r.text || r.getText)){
-                        const code = String(r.text || r.getText()).trim();
-                        const nowTs = Date.now();
-                        if(!(_last.code === code && (nowTs - _last.ts) < DEBOUNCE_MS)){
-                          _last = { code, ts: nowTs };
-                          bitmap.close();
-                          stopAll();
-                          onDetected(code);
-                          return;
-                        }
-                      }
-                    }catch(e){}
-                  }
-                }catch(e){}
-              }
-              bitmap.close();
-            }
-          }catch(e){}
-          try{ _video.requestVideoFrameCallback(frameCb); }catch(e){ /* ignore */ }
-        };
-        try{ _video.requestVideoFrameCallback(frameCb); }catch(e){ /* fallback to RAF */ requestAnimationFrame(rafLoop); }
-      } else {
-        // fallback RAF loop
-        requestAnimationFrame(rafLoop);
-      }
-    }catch(err){
-      console.error('startOptimized error', err);
-      alert('Не удалось открыть камеру. Проверьте разрешения и HTTPS.');
-    }
-  }
-
-  // small canvas for ZXing fallback (downscale to speed)
-  function ensureSmallCanvas(w,h){
-    if(!_canvas){ _canvas = document.createElement('canvas'); _canvas.style.display='none'; document.body.appendChild(_canvas); _ctx = _canvas.getContext('2d'); }
-    // downscale to max 640x480 to speed decode
-    const maxW = 640, maxH = 480;
-    const scale = Math.min(1, Math.min(maxW / w, maxH / h));
-    _canvas.width = Math.max(1, Math.floor(w * scale));
-    _canvas.height = Math.max(1, Math.floor(h * scale));
-    return _canvas;
-  }
-
-  async function rafLoop(){
-    if(!window.scanning || !_video) return;
-    try{
-      // use ImageCapture if available
-      let bitmap = null;
-      if(_imageCapture && typeof _imageCapture.grabFrame === 'function'){
-        try{ bitmap = await _imageCapture.grabFrame(); }catch(e){ bitmap = null; }
-      }
-      if(!bitmap){
-        try{ bitmap = await createImageBitmap(_video); }catch(e){ bitmap = null; }
-      }
-      if(bitmap){
-        const cw = Math.max(1, Math.floor(bitmap.width * CROP_RATIO));
-        const ch = Math.max(1, Math.floor(bitmap.height * CROP_RATIO));
-        const sx = Math.floor((bitmap.width - cw) / 2);
-        const sy = Math.floor((bitmap.height - ch) / 2);
-        if(barcodeDetector){
-          try{
-            const crop = await createImageBitmap(bitmap, sx, sy, cw, ch);
-            const res = await barcodeDetector.detect(crop);
-            crop.close();
-            if(res && res.length){
-              const code = String(res[0].rawValue).trim();
-              const nowTs = Date.now();
-              if(!(_last.code === code && (nowTs - _last.ts) < DEBOUNCE_MS)){
-                _last = { code, ts: nowTs };
-                bitmap.close();
-                stopAll();
-                onDetected(code);
-                return;
-              }
-            }
-          }catch(e){}
-        } else {
-          try{
-            const canvas = ensureSmallCanvas(cw, ch);
-            _ctx.clearRect(0,0,canvas.width, canvas.height);
-            _ctx.drawImage(bitmap, sx, sy, cw, ch, 0, 0, canvas.width, canvas.height);
-            if(window.ZXing || window.ZXingBrowser){
-              try{
-                if(!_reader) _reader = new (window.ZXing || window.ZXingBrowser).BrowserMultiFormatReader();
-                const r = _reader.decodeFromCanvas(canvas);
-                if(r && (r.text || r.getText)){
-                  const code = String(r.text || r.getText()).trim();
-                  const nowTs = Date.now();
-                  if(!(_last.code === code && (nowTs - _last.ts) < DEBOUNCE_MS)){
-                    _last = { code, ts: nowTs };
-                    bitmap.close();
-                    stopAll();
-                    onDetected(code);
-                    return;
-                  }
-                }
-              }catch(e){}
-            }
-          }catch(e){}
-        }
-        bitmap.close();
-      }
-    }catch(e){}
-    _rafId = requestAnimationFrame(rafLoop);
-  }
-
-  // ensure ZXing lib loaded
+  // --- ZXing loader ---
   function ensureZXing(){
     if(_zxingLoaded) return Promise.resolve();
     if(window.ZXing || window.ZXingBrowser){ _zxingLoaded = true; return Promise.resolve(); }
@@ -2219,8 +1972,109 @@ recognition.addEventListener('result', (ev) => {
     });
   }
 
-  // stop everything
-  function stopAll(){
+  // --- Start camera and decode (simple reliable flow) ---
+  async function startScanner(){
+    createOverlay();
+    const ov = $id(OVERLAY_ID);
+    ov.classList.add('visible');
+    try{
+      const constraints = { video: { facingMode: { ideal: 'environment' } }, audio: false };
+      _stream = await navigator.mediaDevices.getUserMedia(constraints);
+      _video = $id(VIDEO_ID);
+      _video.srcObject = _stream;
+      await _video.play().catch(()=>{});
+      // try ZXing decodeFromVideoDevice (fast) if available
+      try{
+        await ensureZXing();
+        const ZX = window.ZXing || window.ZXingBrowser;
+        if(ZX && ZX.BrowserMultiFormatReader){
+          _reader = new ZX.BrowserMultiFormatReader();
+          _reader.decodeFromVideoDevice(null, _video, (result, err) => {
+            if(result && result.text){
+              const code = String(result.text).trim();
+              const now = Date.now();
+              if(!(_last.code === code && (now - _last.ts) < DEBOUNCE_MS)){
+                _last = { code, ts: now };
+                try{ _reader.reset(); }catch(e){}
+                stopScanner();
+                onDetected(code);
+              }
+            }
+          });
+          window.scanning = true;
+          return;
+        }
+      }catch(e){}
+      // fallback: RAF loop with canvas (reliable)
+      window.scanning = true;
+      _rafId = requestAnimationFrame(loopDecode);
+    }catch(err){
+      console.error('startScanner error', err);
+      alert('Не удалось открыть камеру. Проверьте разрешения и HTTPS.');
+      ov.classList.remove('visible');
+    }
+  }
+
+  function loopDecode(){
+    if(!window.scanning || !_video) return;
+    try{
+      const vw = _video.videoWidth || 640;
+      const vh = _video.videoHeight || 480;
+      const canvas = document.createElement('canvas');
+      canvas.width = vw;
+      canvas.height = vh;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(_video, 0, 0, vw, vh);
+      // try BarcodeDetector if available
+      if('BarcodeDetector' in window){
+        try{
+          const detector = new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]});
+          detector.detect(canvas).then(results=>{
+            if(results && results.length){
+              const code = String(results[0].rawValue).trim();
+              const now = Date.now();
+              if(!(_last.code === code && (now - _last.ts) < DEBOUNCE_MS)){
+                _last = { code, ts: now };
+                stopScanner();
+                onDetected(code);
+              }
+            } else {
+              _rafId = requestAnimationFrame(loopDecode);
+            }
+          }).catch(()=>{ _rafId = requestAnimationFrame(loopDecode); });
+          return;
+        }catch(e){}
+      }
+      // ZXing fallback via canvas
+      (async ()=>{
+        try{
+          await ensureZXing();
+          const ZX = window.ZXing || window.ZXingBrowser;
+          if(ZX){
+            if(!_reader) _reader = new ZX.BrowserMultiFormatReader();
+            try{
+              const res = _reader.decodeFromCanvas(canvas);
+              if(res && (res.text || res.getText)){
+                const code = String(res.text || res.getText()).trim();
+                const now = Date.now();
+                if(!(_last.code === code && (now - _last.ts) < DEBOUNCE_MS)){
+                  _last = { code, ts: now };
+                  stopScanner();
+                  onDetected(code);
+                  return;
+                }
+              }
+            }catch(e){}
+          }
+        }catch(e){}
+        _rafId = requestAnimationFrame(loopDecode);
+      })();
+    }catch(e){
+      _rafId = requestAnimationFrame(loopDecode);
+    }
+  }
+
+  function stopScanner(){
     try{ if(_reader && typeof _reader.reset === 'function'){ try{ _reader.reset(); }catch(e){} } }catch(e){}
     try{ if(_rafId){ cancelAnimationFrame(_rafId); _rafId = null; } }catch(e){}
     try{ if(_video){ _video.pause(); _video.srcObject = null; } }catch(e){}
@@ -2229,22 +2083,27 @@ recognition.addEventListener('result', (ev) => {
     const ov = $id(OVERLAY_ID); if(ov) ov.classList.remove('visible');
   }
 
-  // torch toggle
-  async function toggleTorch(){
+  // --- Fix mojibake: try windows-1251 decode if no Cyrillic present ---
+  function fixEncodingIfNeeded(s){
     try{
-      if(!_stream) return alert('Камера не запущена');
-      const track = _stream.getVideoTracks()[0];
-      if(!track) return;
-      const caps = track.getCapabilities ? track.getCapabilities() : {};
-      if(!caps.torch) return alert('Фонарик не поддерживается камерой');
-      const on = !track._torchOn;
-      await track.applyConstraints({ advanced: [{ torch: on }] });
-      track._torchOn = on;
-      const btn = document.querySelector('#' + OVERLAY_ID + ' #rp-fast-torch'); if(btn) btn.textContent = on ? '🔦 ON' : '🔦';
-    }catch(e){ console.warn(e); alert('Не удалось переключить фонарик'); }
+      if(!s || typeof s !== 'string') return s;
+      // if already contains Cyrillic, return
+      if(/[А-Яа-яЁё]/.test(s)) return s;
+      // try decode from windows-1251: map each char code to byte then decode
+      if(typeof TextDecoder === 'function'){
+        try{
+          const bytes = new Uint8Array([...s].map(ch => ch.charCodeAt(0) & 0xFF));
+          const dec = new TextDecoder('windows-1251');
+          const decoded = dec.decode(bytes);
+          if(/[А-Яа-яЁё]/.test(decoded)) return decoded;
+        }catch(e){}
+      }
+      // fallback: return original
+      return s;
+    }catch(e){ return s; }
   }
 
-  // --- onDetected: lookup in DB and insert name into search / highlight card ---
+  // --- On detected: lookup and insert name / highlight ---
   function onDetected(code){
     try{
       // lookup in barcodeDB / db / localStorage
@@ -2258,14 +2117,16 @@ recognition.addEventListener('result', (ev) => {
         }
       }catch(e){ console.warn('lookup error', e); }
 
-      // if app has handler, call it
+      // if app handler exists, call it
       if(typeof window.handleDetectedByName === 'function'){ window.handleDetectedByName(String(code)); return; }
       if(typeof window.handleDetected === 'function'){ window.handleDetected(String(code)); return; }
 
-      const name = product && (product.name || product.title || product) ? (product.name || product.title || product).toString() : null;
+      const rawName = product && (product.name || product.title || product) ? (product.name || product.title || product).toString() : null;
+      const name = fixEncodingIfNeeded(rawName) || null;
+
       if(name){
         insertIntoSearch(name);
-        highlightCardByCode(code, name);
+        highlightCard(code, name);
       } else {
         insertIntoSearch(code);
       }
@@ -2286,9 +2147,8 @@ recognition.addEventListener('result', (ev) => {
     }catch(e){ return false; }
   }
 
-  function highlightCardByCode(code, name){
+  function highlightCard(code, name){
     try{
-      if(!code && !name) return;
       if(code){
         const card = document.querySelector(`.item[data-code="${code}"]`);
         if(card){
@@ -2321,26 +2181,17 @@ recognition.addEventListener('result', (ev) => {
     }catch(e){ console.warn(e); }
   }
 
-  // --- init wiring ---
-  async function init(){
-    injectStyles();
+  // --- Init wiring ---
+  function init(){
+    injectCSS();
     const btn = createButton();
-    btn.addEventListener('click', async (e)=>{
-      e.preventDefault();
-      createOverlay();
-      // choose rear camera if possible
-      const rear = await getRearCameraDeviceId();
-      await startOptimized(rear);
-    });
-    // keep overlay on top
-    const mo = new MutationObserver(()=>{ const ov = $id(OVERLAY_ID); if(ov) ov.style.zIndex = String(2147483647); });
-    mo.observe(document.body, { childList:true, subtree:true });
+    btn.addEventListener('click', (e)=>{ e.preventDefault(); startScanner(); });
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 
   // expose for debug
-  window.rpFastScanner = { start: async ()=>{ const rear = await getRearCameraDeviceId(); await startOptimized(rear); }, stop: stopAll };
+  window.simpleScanner = { start: startScanner, stop: stopScanner };
 
 })();
 </script>
