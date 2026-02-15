@@ -1495,31 +1495,348 @@ function animate() {
   requestAnimationFrame(animate);
 }
 animate();
-  // Голосовой поиск для поля #search с предобработкой, фуззи-поиском и авто-заменой
-/* Demo-ready script
-   - Completely removes/ignores SpeechRecognition logic
-   - Rebinds #voice-search-btn to toggle your scanner (startCamera/startScanner / stopCamera/stopScanner)
-   - On barcode detection (window.handleDetected or window.handleDetectedByName), looks up barcodeDB[code].name
-     and finds the matching card on the current recount screen by name (exact then fuzzy).
-   - If found: stops scanner, highlights card (.found), scrolls to it, focuses its input and opens keyboard (openKeyboardFor).
-   - If not found: offers to add to allItems and calls render(allItems) if available.
-   - Safe fallbacks and no external dependencies; paste into demo.html after your scanner code.
+
+
+
+
+  
+ <!-- Вставьте этот блок вместо вашего текущего JS (перед </body>) -->
+<script>
+/*
+  Полный модуль: доступ к камере, сканер штрихкодов и привязка к кнопке #voice-search-btn.
+  - Предоставляет глобальные функции: startCamera(), stopCamera(), startScanner(), stopScanner().
+  - Декодирует штрихкоды через BarcodeDetector (если доступен) или через ZXing (fallback).
+  - При декоде вызывает window.handleDetected(code) (если определён) или встроенную логику поиска по названию.
+  - Кнопка #voice-search-btn переключает сканер (включить/выключить).
+  - Скрипт самодостаточен: вставьте его в demo.html перед </body>.
+  - Требование: страница должна быть по HTTPS для доступа к камере.
 */
 
 (function () {
-  /* -------------------------
-     Helpers: normalization, levenshtein, similarity
-     ------------------------- */
-  function normalizeName(s) {
+  /* ===========================
+     Конфигурация и состояние
+     =========================== */
+  const SCAN_INTERVAL_MS = 80;
+  const DEBOUNCE_MS = 900;
+  const ZXING_CDN = 'https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js';
+
+  let _stream = null;
+  let _video = null;
+  let _canvas = null;
+  let _ctx = null;
+  let _scanTimer = null;
+  let _barcodeDetector = null;
+  let _zxingLoaded = false;
+  let _zxingReader = null;
+  let _lastDetected = { code: null, ts: 0 };
+
+  // expose scanning flag
+  window.scanning = false;
+
+  /* ===========================
+     Утилиты: video / canvas
+     =========================== */
+  function ensureVideoElement() {
+    if (_video) return _video;
+    _video = document.createElement('video');
+    _video.setAttribute('playsinline', 'true');
+    _video.muted = true;
+    _video.style.width = '0';
+    _video.style.height = '0';
+    _video.style.position = 'fixed';
+    _video.style.left = '-9999px';
+    _video.style.top = '-9999px';
+    document.body.appendChild(_video);
+    return _video;
+  }
+
+  function ensureCanvas(w = 640, h = 480) {
+    if (_canvas) return _canvas;
+    _canvas = document.createElement('canvas');
+    _canvas.width = w;
+    _canvas.height = h;
+    _canvas.style.display = 'none';
+    document.body.appendChild(_canvas);
+    _ctx = _canvas.getContext('2d');
+    return _canvas;
+  }
+
+  /* ===========================
+     ZXing loader (fallback)
+     =========================== */
+  function ensureZXing() {
+    if (_zxingLoaded) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      if (window.ZXing || window.ZXingBrowser) {
+        _zxingLoaded = true;
+        return resolve();
+      }
+      const s = document.createElement('script');
+      s.src = ZXING_CDN;
+      s.async = true;
+      s.onload = () => {
+        _zxingLoaded = true;
+        resolve();
+      };
+      s.onerror = (e) => {
+        console.warn('ZXing load failed', e);
+        reject(e);
+      };
+      document.head.appendChild(s);
+    });
+  }
+
+  /* ===========================
+     BarcodeDetector wrapper
+     =========================== */
+  async function tryBarcodeDetector(image) {
+    if (!_barcodeDetector) return null;
+    try {
+      const results = await _barcodeDetector.detect(image);
+      if (results && results.length) {
+        for (const r of results) {
+          if (r && r.rawValue) return String(r.rawValue).trim();
+        }
+      }
+    } catch (e) {
+      // ignore device-specific errors
+      console.warn('BarcodeDetector error', e);
+    }
+    return null;
+  }
+
+  /* ===========================
+     ZXing decode wrapper
+     =========================== */
+  function tryZXingDecode(canvas) {
+    if (!_zxingLoaded) return null;
+    try {
+      const ZX = window.ZXing || window.ZXingBrowser;
+      if (!ZX) return null;
+      if (!_zxingReader) {
+        try {
+          _zxingReader = new ZX.BrowserMultiFormatReader();
+        } catch (e) {
+          try { _zxingReader = new ZX.BrowserBarcodeReader(); } catch (e2) { _zxingReader = null; }
+        }
+      }
+      if (!_zxingReader) return null;
+      try {
+        // decodeFromCanvas may throw; wrap in try/catch
+        const result = _zxingReader.decodeFromCanvas(canvas);
+        if (result && (result.text || result.getText)) return String(result.text || result.getText()).trim();
+      } catch (e) {
+        // ignore decode errors
+      }
+    } catch (e) {
+      console.warn('ZXing decode error', e);
+    }
+    return null;
+  }
+
+  async function decodeCanvas(canvas) {
+    // try BarcodeDetector first
+    if (_barcodeDetector) {
+      const r = await tryBarcodeDetector(canvas);
+      if (r) return r;
+    }
+
+    // ensure ZXing loaded
+    if (!_zxingLoaded) {
+      try { await ensureZXing(); } catch (e) { /* ignore */ }
+    }
+
+    if (_zxingLoaded) {
+      // try direct decode
+      const r = tryZXingDecode(canvas);
+      if (r) return r;
+
+      // try rotated variants
+      const w = canvas.width, h = canvas.height;
+      const tmp = document.createElement('canvas');
+      tmp.width = w; tmp.height = h;
+      const tctx = tmp.getContext('2d');
+      const angles = [90, 180, 270];
+      for (const angle of angles) {
+        tctx.clearRect(0, 0, w, h);
+        tctx.save();
+        tctx.translate(w / 2, h / 2);
+        tctx.rotate(angle * Math.PI / 180);
+        tctx.drawImage(canvas, -w / 2, -h / 2);
+        tctx.restore();
+        const rr = tryZXingDecode(tmp);
+        if (rr) return rr;
+      }
+    }
+
+    return null;
+  }
+
+  /* ===========================
+     Camera selection
+     =========================== */
+  async function getCameraConstraints() {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        return { video: { facingMode: { ideal: 'environment' } } };
+      }
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter(d => d.kind === 'videoinput');
+      if (!cams || cams.length === 0) return { video: { facingMode: { ideal: 'environment' } } };
+
+      // try to find back camera by label
+      for (const c of cams) {
+        const label = (c.label || '').toLowerCase();
+        if (label.includes('back') || label.includes('rear') || label.includes('environment') || label.includes('задн') || label.includes('тыл')) {
+          return { video: { deviceId: { exact: c.deviceId } } };
+        }
+      }
+      // fallback: last camera
+      const last = cams[cams.length - 1];
+      return { video: { deviceId: { exact: last.deviceId } } };
+    } catch (e) {
+      return { video: { facingMode: { ideal: 'environment' } } };
+    }
+  }
+
+  /* ===========================
+     Scan loop
+     =========================== */
+  async function scanLoop() {
+    if (!window.scanning) return;
+    if (!_video || _video.readyState < 2) {
+      _scanTimer = setTimeout(scanLoop, SCAN_INTERVAL_MS);
+      return;
+    }
+
+    try {
+      const vw = _video.videoWidth || 640;
+      const vh = _video.videoHeight || 480;
+      const maxDim = 900;
+      let sw = vw, sh = vh;
+      if (Math.max(vw, vh) > maxDim) {
+        const scale = maxDim / Math.max(vw, vh);
+        sw = Math.floor(vw * scale);
+        sh = Math.floor(vh * scale);
+      }
+      const canvas = ensureCanvas(sw, sh);
+      _ctx = canvas.getContext('2d');
+      _ctx.drawImage(_video, 0, 0, sw, sh);
+
+      let code = null;
+      if (_barcodeDetector) {
+        code = await tryBarcodeDetector(canvas);
+      }
+      if (!code) {
+        if (!_zxingLoaded) {
+          try { await ensureZXing(); } catch (e) { /* ignore */ }
+        }
+        if (_zxingLoaded) {
+          code = await decodeCanvas(canvas);
+        }
+      }
+
+      if (code) {
+        const now = Date.now();
+        if (!(_lastDetected.code === code && (now - _lastDetected.ts) < DEBOUNCE_MS)) {
+          _lastDetected = { code, ts: now };
+          try {
+            if (typeof window.handleDetected === 'function') {
+              window.handleDetected(String(code));
+            } else if (typeof window.handleDetectedByName === 'function') {
+              window.handleDetectedByName(String(code));
+            } else {
+              // default fallback: try built-in handler below (if defined later)
+              if (typeof handleDetectedByName === 'function') handleDetectedByName(String(code));
+              else console.info('Decoded barcode:', code);
+            }
+          } catch (e) {
+            console.error('Error calling handleDetected', e);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('scanLoop error', err);
+    } finally {
+      if (window.scanning) _scanTimer = setTimeout(scanLoop, SCAN_INTERVAL_MS);
+    }
+  }
+
+  /* ===========================
+     startCamera / stopCamera
+     =========================== */
+  window.startCamera = window.startCamera || (async function startCamera() {
+    if (window.scanning) return;
+    // prepare BarcodeDetector if available
+    try {
+      if ('BarcodeDetector' in window) {
+        try {
+          _barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'itf'] });
+        } catch (e) {
+          _barcodeDetector = null;
+        }
+      }
+    } catch (e) {
+      _barcodeDetector = null;
+    }
+
+    const video = ensureVideoElement();
+    try {
+      const constraints = await getCameraConstraints();
+      _stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: constraints.video });
+      video.srcObject = _stream;
+      await video.play();
+      window.scanning = true;
+      if (_scanTimer) clearTimeout(_scanTimer);
+      _scanTimer = setTimeout(scanLoop, 120);
+      return true;
+    } catch (err) {
+      console.error('startCamera getUserMedia error', err);
+      try { if (_stream && _stream.getTracks) _stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+      _stream = null;
+      window.scanning = false;
+      throw err;
+    }
+  });
+
+  window.stopCamera = window.stopCamera || (function stopCamera() {
+    try {
+      if (_scanTimer) { clearTimeout(_scanTimer); _scanTimer = null; }
+      if (_video) {
+        try { _video.pause(); } catch (e) {}
+        try { _video.srcObject = null; } catch (e) {}
+      }
+      if (_stream && _stream.getTracks) {
+        _stream.getTracks().forEach(t => { try { t.stop(); } catch (e) {} });
+      }
+    } catch (e) {
+      console.warn('stopCamera error', e);
+    } finally {
+      _stream = null;
+      window.scanning = false;
+    }
+  });
+
+  // aliases
+  window.startScanner = window.startScanner || window.startCamera;
+  window.stopScanner = window.stopScanner || window.stopCamera;
+
+  // cleanup on unload
+  window.addEventListener('pagehide', () => { try { window.stopCamera(); } catch (e) {} });
+  window.addEventListener('beforeunload', () => { try { window.stopCamera(); } catch (e) {} });
+
+  /* ===========================
+     Поиск карточки по названию и поведение при детекте
+     =========================== */
+
+  // Нормализация имени
+  function normalizeNameForSearch(s) {
     return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
   }
 
-  function normForCompare(s) {
-    return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-z0-9а-яё]/gi, '').trim();
-  }
-
+  // Простая функция похожести (Левенштейн)
   function levenshtein(a, b) {
-    a = String(a); b = String(b);
+    a = String(a || ''); b = String(b || '');
     if (a === b) return 0;
     const al = a.length, bl = b.length;
     if (al === 0) return bl;
@@ -1536,7 +1853,6 @@ animate();
     }
     return v1[bl];
   }
-
   function similarityScore(a, b) {
     a = String(a || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-z0-9а-яё]/gi, '');
     b = String(b || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-z0-9а-яё]/gi, '');
@@ -1546,21 +1862,18 @@ animate();
     return Math.max(0, 1 - dist / maxLen);
   }
 
-  /* Lightweight fuzzy matcher used only as fallback */
-  function findClosestByName(query, items, limit = 1) {
-    if (!query) return [];
-    const q = String(query).trim();
-    const scored = (items || []).map(it => {
+  function findClosestByName(query, items) {
+    if (!query) return null;
+    const q = normalizeNameForSearch(query);
+    let best = null;
+    for (const it of (items || [])) {
       const name = String(it.name || '');
-      const score = similarityScore(q, name);
-      return { item: it, score };
-    }).filter(r => r.score > 0.18).sort((a, b) => b.score - a.score).slice(0, limit);
-    return scored;
+      const score = similarityScore(q, normalizeNameForSearch(name));
+      if (!best || score > best.score) best = { item: it, score };
+    }
+    return best;
   }
 
-  /* -------------------------
-     Barcode DB loader
-     ------------------------- */
   function loadBarcodeDB() {
     try {
       const raw = localStorage.getItem('barcodeDB');
@@ -1568,38 +1881,35 @@ animate();
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object') return parsed;
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) {}
     if (window.barcodeDB && typeof window.barcodeDB === 'object') return window.barcodeDB;
     return {};
   }
 
-  /* -------------------------
-     Find card DOM by name (exact then fuzzy)
-     ------------------------- */
   function findCardByName(name) {
-    const nameNorm = normalizeName(name);
+    const nameNorm = normalizeNameForSearch(name);
     if (!nameNorm) return null;
 
-    // 1) Try to find via allItems to get code
+    // try allItems first
     try {
       if (Array.isArray(window.allItems)) {
-        const it = window.allItems.find(i => normalizeName(i.name) === nameNorm);
+        const it = window.allItems.find(i => normalizeNameForSearch(i.name) === nameNorm);
         if (it) {
           const card = document.querySelector(`.item[data-code="${it.code}"]`);
           if (card) return card;
         }
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) {}
 
-    // 2) Try exact match on DOM titles
+    // try DOM exact
     const cards = document.querySelectorAll('.item');
     for (const c of cards) {
       const titleEl = c.querySelector('.title') || c.querySelector('.label') || c.querySelector('.code');
       const text = titleEl ? titleEl.textContent : c.textContent;
-      if (normalizeName(text) === nameNorm) return c;
+      if (normalizeNameForSearch(text) === nameNorm) return c;
     }
 
-    // 3) Fuzzy: build items list from allItems or DOM and use simple similarity
+    // fuzzy via allItems or DOM
     let items = [];
     if (Array.isArray(window.allItems)) {
       items = window.allItems.map(i => ({ code: i.code, name: i.name }));
@@ -1609,41 +1919,35 @@ animate();
         return { code: c.dataset.code || '', name: t || '' };
       });
     }
-    const matches = findClosestByName(nameNorm, items, 1);
-    if (matches && matches.length) {
-      const code = matches[0].item.code;
-      const card = document.querySelector(`.item[data-code="${code}"]`);
+    const best = findClosestByName(nameNorm, items);
+    if (best && best.item && best.item.code) {
+      const card = document.querySelector(`.item[data-code="${best.item.code}"]`);
       if (card) return card;
     }
-
     return null;
   }
 
-  /* -------------------------
-     handleDetectedByName: main logic when barcode is decoded
-     ------------------------- */
   async function handleDetectedByName(code) {
     try {
       if (!code) return;
-      // debounce quick repeats
       const now = Date.now();
-      if (window._lastScan && window._lastScan.code === code && (now - window._lastScan.ts) < 900) return;
-      window._lastScan = { code, ts: now };
+      if (_lastDetected.code === code && (now - _lastDetected.ts) < DEBOUNCE_MS) return;
+      _lastDetected = { code, ts: now };
 
       const db = loadBarcodeDB();
       const product = db[code];
       if (!product) {
-        // stop scanner if available
-        try { if (typeof stopCamera === 'function') stopCamera(); } catch (e) {}
-        try { if (typeof stopScanner === 'function') stopScanner(); } catch (e) {}
+        // stop scanner and notify
+        try { window.stopCamera && window.stopCamera(); } catch (e) {}
+        try { window.stopScanner && window.stopScanner(); } catch (e) {}
         alert(`Штрихкод ${code} не найден в базе штрихкодов.`);
         return;
       }
 
       const name = product.name || product.title || '';
       if (!name) {
-        try { if (typeof stopCamera === 'function') stopCamera(); } catch (e) {}
-        try { if (typeof stopScanner === 'function') stopScanner(); } catch (e) {}
+        try { window.stopCamera && window.stopCamera(); } catch (e) {}
+        try { window.stopScanner && window.stopScanner(); } catch (e) {}
         alert('В базе штрихкодов нет названия для этого кода.');
         return;
       }
@@ -1652,8 +1956,8 @@ animate();
       const card = findCardByName(name);
 
       // stop scanner
-      try { if (typeof stopCamera === 'function') stopCamera(); } catch (e) {}
-      try { if (typeof stopScanner === 'function') stopScanner(); } catch (e) {}
+      try { window.stopCamera && window.stopCamera(); } catch (e) {}
+      try { window.stopScanner && window.stopScanner(); } catch (e) {}
       try { window.scanning = false; } catch (e) {}
 
       if (card) {
@@ -1700,17 +2004,13 @@ animate();
       }
     } catch (err) {
       console.error('handleDetectedByName error', err);
-      try { if (typeof stopCamera === 'function') stopCamera(); } catch (e) {}
-      try { if (typeof stopScanner === 'function') stopScanner(); } catch (e) {}
+      try { window.stopCamera && window.stopCamera(); } catch (e) {}
+      try { window.stopScanner && window.stopScanner(); } catch (e) {}
       alert('Ошибка при обработке сканирования. Смотрите консоль.');
     }
   }
 
-  /* -------------------------
-     Expose and attach detection hook
-     - If your scanner already calls window.handleDetected(code), we wrap it.
-     - Otherwise we define window.handleDetected to call handleDetectedByName.
-     ------------------------- */
+  // Expose handler globally (wrap existing if present)
   (function attachDetectedHook() {
     if (typeof window.handleDetected === 'function') {
       const orig = window.handleDetected;
@@ -1721,19 +2021,17 @@ animate();
     } else {
       window.handleDetected = function (code) { handleDetectedByName(code); };
     }
-    // alias
     window.handleDetectedByName = window.handleDetectedByName || function (c) { handleDetectedByName(c); };
   })();
 
-  /* -------------------------
-     Replace voice button behavior with scanner toggle
-     - Completely removes speech recognition usage
-     ------------------------- */
+  /* ===========================
+     Привязка кнопки #voice-search-btn (переключатель сканера)
+     =========================== */
   (function replaceVoiceButton() {
     const btn = document.getElementById('voice-search-btn');
     if (!btn) return;
 
-    // stop any lingering recognition if present
+    // stop any lingering speech recognition references
     try {
       if (window.recognition && typeof window.recognition.stop === 'function') {
         try { window.recognition.stop(); } catch (e) {}
@@ -1743,7 +2041,7 @@ animate();
         try { window._speechRecognitionInstance.stop(); } catch (e) {}
         window._speechRecognitionInstance = null;
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) {}
 
     // replace node to remove old listeners
     const newBtn = btn.cloneNode(true);
@@ -1765,7 +2063,7 @@ animate();
       return false;
     }
 
-    async function startScanner() {
+    async function startScannerWrapper() {
       if (typeof window.startCamera === 'function') {
         await window.startCamera();
         return true;
@@ -1777,7 +2075,7 @@ animate();
       return false;
     }
 
-    function stopScanner() {
+    function stopScannerWrapper() {
       try { if (typeof window.stopCamera === 'function') window.stopCamera(); } catch (e) {}
       try { if (typeof window.stopScanner === 'function') window.stopScanner(); } catch (e) {}
     }
@@ -1786,14 +2084,14 @@ animate();
       ev.preventDefault();
       const running = isScannerRunning();
       if (running) {
-        stopScanner();
+        stopScannerWrapper();
         try { window.scanning = false; } catch (e) {}
         setBtnActive(false);
         return;
       }
       const ok = await (async () => {
         try {
-          const started = await startScanner();
+          const started = await startScannerWrapper();
           return !!started;
         } catch (e) {
           console.error('startScanner error', e);
@@ -1823,8 +2121,13 @@ animate();
     }, 600);
   })();
 
-  // end of module
+  /* ===========================
+     Консольный лог
+     =========================== */
+  console.info('Scanner module loaded: startCamera/stopCamera and startScanner/stopScanner available.');
 })();
+
+
 
 
 
