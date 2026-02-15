@@ -1901,52 +1901,56 @@ recognition.addEventListener('result', (ev) => {
 </script>
 
 <script>
+/* Вставь один раз перед </body> */
 (function(){
   const ZXING_CDN = 'https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js';
-  const BTN_ID = 'scanner-btn-left-simple';
-  const OVERLAY_ID = 'scanner-overlay-simple';
-  const VIDEO_ID = 'scanner-video-simple';
+  const BTN_ID = 'open-scanner-icon-left';
+  const OVERLAY_ID = 'scannerCard';
+  const VIDEO_ID = 'scannerPreview';
   const DEBOUNCE_MS = 900;
 
-  let _stream = null, _video = null, _reader = null, _zxingLoaded = false, _rafId = null;
+  let _stream = null, _video = null, _reader = null, _rafId = null, _last = {code:null, ts:0};
 
-  // --- Helpers ---
-  const $id = id => document.getElementById(id);
+  function $id(id){ return document.getElementById(id); }
 
+  /* CSS */
   function injectCSS(){
-    if(document.getElementById('scanner-simple-styles')) return;
+    if(document.getElementById('scanner-styles')) return;
     const s = document.createElement('style');
-    s.id = 'scanner-simple-styles';
+    s.id = 'scanner-styles';
     s.textContent = `
 #${BTN_ID}{position:fixed;left:12px;bottom:18px;z-index:2147483647;width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg,#6d28d9,#4c1d95);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer}
-#${OVERLAY_ID}{position:fixed;left:50%;top:80px;transform:translateX(-50%);width:min(980px,calc(100% - 32px));height:33vh;max-height:420px;background:rgba(6,6,8,0.98);border-radius:12px;box-shadow:0 30px 80px rgba(0,0,0,0.7);z-index:2147483647;display:none;overflow:hidden}
+#${OVERLAY_ID}{display:none;position:absolute;background:rgba(8,8,10,0.98);border-radius:10px;padding:6px;box-shadow:0 20px 60px rgba(0,0,0,0.6);z-index:2147483646;pointer-events:auto;overflow:hidden}
 #${OVERLAY_ID}.visible{display:block}
-#${OVERLAY_ID} .preview{width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center}
+#${OVERLAY_ID} .preview{width:100%;height:100%;background:#000;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center}
 #${OVERLAY_ID} video{width:100%;height:100%;object-fit:cover;display:block}
-#${OVERLAY_ID} .controls{position:absolute;right:10px;top:8px;display:flex;gap:8px;z-index:2147483648}
+#${OVERLAY_ID} .controls{display:flex;gap:8px;align-items:center;position:absolute;right:8px;top:8px;z-index:2147483647}
 #${OVERLAY_ID} button{background:rgba(255,255,255,0.06);color:#fff;border:none;padding:6px 8px;border-radius:8px;cursor:pointer}
 .item.found{box-shadow:0 8px 28px rgba(34,197,94,0.18)!important;border:2px solid rgba(34,197,94,0.18)!important;transition:box-shadow .2s,border .2s}
-@media (max-width:720px){#${OVERLAY_ID}{left:8px;right:8px;top:12px;width:calc(100% - 16px)}}
+@media (max-width:720px){ #${OVERLAY_ID}{left:8px !important; right:8px !important; top:auto !important; width:calc(100% - 16px) !important; position:absolute !important;} }
 `;
     document.head.appendChild(s);
   }
 
+  /* UI */
   function createButton(){
     injectCSS();
     let btn = $id(BTN_ID);
     if(btn) return btn;
     btn = document.createElement('button');
     btn.id = BTN_ID;
+    btn.type = 'button';
     btn.title = 'Открыть сканер';
-    btn.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/><path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>';
-    Object.assign(btn.style, { position:'fixed', left:'12px', bottom:'18px', zIndex:String(2147483647) });
+    btn.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/><path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+    Object.assign(btn.style, { position:'fixed', left:'12px', bottom:'18px', zIndex: String(2147483647) });
     document.body.appendChild(btn);
+    // restore if removed
     const mo = new MutationObserver(()=>{ if(!document.body.contains(btn)) document.body.appendChild(btn); });
     mo.observe(document.body, { childList:true, subtree:true });
     return btn;
   }
 
-  function createOverlay(){
+  function ensureOverlay(){
     injectCSS();
     let ov = $id(OVERLAY_ID);
     if(ov) return ov;
@@ -1955,26 +1959,56 @@ recognition.addEventListener('result', (ev) => {
     ov.innerHTML = `<div class="preview"><video id="${VIDEO_ID}" playsinline muted></video></div>
       <div class="controls"><button id="scanner-close">Закрыть</button></div>`;
     document.body.appendChild(ov);
-    ov.querySelector('#scanner-close').addEventListener('click', stopScanner);
+    $id('scanner-close').addEventListener('click', ()=>{ stopScanner(); });
     return ov;
   }
 
-  // --- ZXing loader ---
+  /* Position overlay strictly centered under search */
+  function positionUnderSearch(){
+    ensureOverlay();
+    const ov = $id(OVERLAY_ID);
+    const searchEl = document.getElementById('search') || document.querySelector('input[type="search"]') || document.querySelector('#searchInput') || document.querySelector('input[placeholder*="Поиск"]');
+    const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+    const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+    const height = Math.min(Math.floor(vh / 3), 420);
+    const width = Math.min(980, Math.max(320, Math.floor(vw * 0.9)));
+    if(searchEl && searchEl.getBoundingClientRect){
+      const rect = searchEl.getBoundingClientRect();
+      const left = rect.left + window.scrollX + (rect.width - width)/2;
+      const top = rect.bottom + window.scrollY + 8;
+      ov.style.position = 'absolute';
+      ov.style.left = Math.max(8, left) + 'px';
+      ov.style.top = Math.max(8, top) + 'px';
+      ov.style.width = width + 'px';
+      ov.style.height = height + 'px';
+      ov.style.transform = 'none';
+    } else {
+      // fallback center fixed
+      ov.style.position = 'fixed';
+      ov.style.left = '50%';
+      ov.style.top = '12%';
+      ov.style.transform = 'translateX(-50%)';
+      ov.style.width = width + 'px';
+      ov.style.height = height + 'px';
+    }
+  }
+
+  /* ZXing loader */
   function ensureZXing(){
-    if(_zxingLoaded) return Promise.resolve();
-    if(window.ZXing || window.ZXingBrowser){ _zxingLoaded = true; return Promise.resolve(); }
+    if(window.ZXing || window.ZXingBrowser) return Promise.resolve();
     return new Promise((res, rej)=>{
       const s = document.createElement('script');
       s.src = ZXING_CDN; s.async = true;
-      s.onload = ()=>{ _zxingLoaded = true; res(); };
-      s.onerror = rej;
+      s.onload = ()=>res();
+      s.onerror = ()=>rej();
       document.head.appendChild(s);
     });
   }
 
-  // --- Start camera and decode (simple reliable flow) ---
+  /* Start camera and decoding */
   async function startScanner(){
-    createOverlay();
+    ensureOverlay();
+    positionUnderSearch();
     const ov = $id(OVERLAY_ID);
     ov.classList.add('visible');
     try{
@@ -1983,7 +2017,40 @@ recognition.addEventListener('result', (ev) => {
       _video = $id(VIDEO_ID);
       _video.srcObject = _stream;
       await _video.play().catch(()=>{});
-      // try ZXing decodeFromVideoDevice (fast) if available
+      // try BarcodeDetector first
+      if('BarcodeDetector' in window){
+        try{
+          const detector = new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]});
+          // use RAF loop but detect on cropped canvas to speed up
+          _rafId = requestAnimationFrame(function loop(){
+            if(!_stream) return;
+            try{
+              const vw = _video.videoWidth || 640, vh = _video.videoHeight || 480;
+              const cw = Math.floor(vw * 0.6), ch = Math.floor(vh * 0.6);
+              const sx = Math.floor((vw - cw)/2), sy = Math.floor((vh - ch)/2);
+              const canvas = document.createElement('canvas');
+              canvas.width = cw; canvas.height = ch;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(_video, sx, sy, cw, ch, 0, 0, cw, ch);
+              detector.detect(canvas).then(results=>{
+                if(results && results.length){
+                  const code = String(results[0].rawValue).trim();
+                  const now = Date.now();
+                  if(!(_last.code === code && (now - _last.ts) < DEBOUNCE_MS)){
+                    _last = { code, ts: now };
+                    stopScanner();
+                    handleDetected(code);
+                  }
+                } else {
+                  _rafId = requestAnimationFrame(loop);
+                }
+              }).catch(()=>{ _rafId = requestAnimationFrame(loop); });
+            }catch(e){ _rafId = requestAnimationFrame(loop); }
+          });
+          return;
+        }catch(e){}
+      }
+      // try ZXing decodeFromVideoDevice
       try{
         await ensureZXing();
         const ZX = window.ZXing || window.ZXingBrowser;
@@ -1997,80 +2064,53 @@ recognition.addEventListener('result', (ev) => {
                 _last = { code, ts: now };
                 try{ _reader.reset(); }catch(e){}
                 stopScanner();
-                onDetected(code);
+                handleDetected(code);
               }
             }
           });
-          window.scanning = true;
           return;
         }
       }catch(e){}
-      // fallback: RAF loop with canvas (reliable)
-      window.scanning = true;
-      _rafId = requestAnimationFrame(loopDecode);
-    }catch(err){
-      console.error('startScanner error', err);
-      alert('Не удалось открыть камеру. Проверьте разрешения и HTTPS.');
-      ov.classList.remove('visible');
-    }
-  }
-
-  function loopDecode(){
-    if(!window.scanning || !_video) return;
-    try{
-      const vw = _video.videoWidth || 640;
-      const vh = _video.videoHeight || 480;
-      const canvas = document.createElement('canvas');
-      canvas.width = vw;
-      canvas.height = vh;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(_video, 0, 0, vw, vh);
-      // try BarcodeDetector if available
-      if('BarcodeDetector' in window){
+      // final fallback: canvas decode loop with ZXing if available
+      _rafId = requestAnimationFrame(function loop2(){
+        if(!_stream) return;
         try{
-          const detector = new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]});
-          detector.detect(canvas).then(results=>{
-            if(results && results.length){
-              const code = String(results[0].rawValue).trim();
-              const now = Date.now();
-              if(!(_last.code === code && (now - _last.ts) < DEBOUNCE_MS)){
-                _last = { code, ts: now };
-                stopScanner();
-                onDetected(code);
-              }
-            } else {
-              _rafId = requestAnimationFrame(loopDecode);
-            }
-          }).catch(()=>{ _rafId = requestAnimationFrame(loopDecode); });
-          return;
-        }catch(e){}
-      }
-      // ZXing fallback via canvas
-      (async ()=>{
-        try{
-          await ensureZXing();
-          const ZX = window.ZXing || window.ZXingBrowser;
-          if(ZX){
-            if(!_reader) _reader = new ZX.BrowserMultiFormatReader();
+          const vw = _video.videoWidth || 640, vh = _video.videoHeight || 480;
+          const cw = Math.floor(vw * 0.6), ch = Math.floor(vh * 0.6);
+          const sx = Math.floor((vw - cw)/2), sy = Math.floor((vh - ch)/2);
+          const canvas = document.createElement('canvas');
+          canvas.width = cw; canvas.height = ch;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(_video, sx, sy, cw, ch, 0, 0, cw, ch);
+          (async ()=>{
             try{
-              const res = _reader.decodeFromCanvas(canvas);
-              if(res && (res.text || res.getText)){
-                const code = String(res.text || res.getText()).trim();
-                const now = Date.now();
-                if(!(_last.code === code && (now - _last.ts) < DEBOUNCE_MS)){
-                  _last = { code, ts: now };
-                  stopScanner();
-                  onDetected(code);
-                  return;
-                }
+              await ensureZXing();
+              const ZX = window.ZXing || window.ZXingBrowser;
+              if(ZX){
+                if(!_reader) _reader = new ZX.BrowserMultiFormatReader();
+                try{
+                  const res = _reader.decodeFromCanvas(canvas);
+                  if(res && (res.text || res.getText)){
+                    const code = String(res.text || res.getText()).trim();
+                    const now = Date.now();
+                    if(!(_last.code === code && (now - _last.ts) < DEBOUNCE_MS)){
+                      _last = { code, ts: now };
+                      stopScanner();
+                      handleDetected(code);
+                      return;
+                    }
+                  }
+                }catch(e){}
               }
             }catch(e){}
-          }
-        }catch(e){}
-        _rafId = requestAnimationFrame(loopDecode);
-      })();
-    }catch(e){
-      _rafId = requestAnimationFrame(loopDecode);
+            _rafId = requestAnimationFrame(loop2);
+          })();
+        }catch(e){ _rafId = requestAnimationFrame(loop2); }
+      });
+    }catch(err){
+      console.error('camera error', err);
+      alert('Не удалось открыть камеру. Проверьте разрешения и HTTPS.');
+      ov.classList.remove('visible');
     }
   }
 
@@ -2079,17 +2119,15 @@ recognition.addEventListener('result', (ev) => {
     try{ if(_rafId){ cancelAnimationFrame(_rafId); _rafId = null; } }catch(e){}
     try{ if(_video){ _video.pause(); _video.srcObject = null; } }catch(e){}
     try{ if(_stream && _stream.getTracks){ _stream.getTracks().forEach(t=>{ try{ t.stop(); }catch(e){} }); } }catch(e){}
-    _stream = null; window.scanning = false;
+    _stream = null;
     const ov = $id(OVERLAY_ID); if(ov) ov.classList.remove('visible');
   }
 
-  // --- Fix mojibake: try windows-1251 decode if no Cyrillic present ---
+  /* Fix mojibake (windows-1251) if needed */
   function fixEncodingIfNeeded(s){
     try{
       if(!s || typeof s !== 'string') return s;
-      // if already contains Cyrillic, return
       if(/[А-Яа-яЁё]/.test(s)) return s;
-      // try decode from windows-1251: map each char code to byte then decode
       if(typeof TextDecoder === 'function'){
         try{
           const bytes = new Uint8Array([...s].map(ch => ch.charCodeAt(0) & 0xFF));
@@ -2098,15 +2136,13 @@ recognition.addEventListener('result', (ev) => {
           if(/[А-Яа-яЁё]/.test(decoded)) return decoded;
         }catch(e){}
       }
-      // fallback: return original
       return s;
     }catch(e){ return s; }
   }
 
-  // --- On detected: lookup and insert name / highlight ---
-  function onDetected(code){
+  /* Lookup and insert name / highlight */
+  function handleDetected(code){
     try{
-      // lookup in barcodeDB / db / localStorage
       let product = null;
       try{
         if(window.barcodeDB && typeof window.barcodeDB === 'object') product = window.barcodeDB[code];
@@ -2117,30 +2153,28 @@ recognition.addEventListener('result', (ev) => {
         }
       }catch(e){ console.warn('lookup error', e); }
 
-      // if app handler exists, call it
       if(typeof window.handleDetectedByName === 'function'){ window.handleDetectedByName(String(code)); return; }
       if(typeof window.handleDetected === 'function'){ window.handleDetected(String(code)); return; }
 
       const rawName = product && (product.name || product.title || product) ? (product.name || product.title || product).toString() : null;
       const name = fixEncodingIfNeeded(rawName) || null;
-
       if(name){
         insertIntoSearch(name);
         highlightCard(code, name);
       } else {
         insertIntoSearch(code);
       }
-    }catch(e){ console.error('onDetected', e); }
+    }catch(e){ console.error(e); }
   }
 
   function insertIntoSearch(value){
     try{
-      const search = document.getElementById('search') || document.querySelector('input[type="search"]') || document.getElementById('searchInput') || document.querySelector('input[name="search"]') || document.querySelector('input[placeholder*="Поиск"]');
-      if(search){
-        search.focus();
-        search.value = value;
-        search.dispatchEvent(new Event('input', { bubbles: true }));
-        search.dispatchEvent(new Event('change', { bubbles: true }));
+      const searchEl = document.getElementById('search') || document.querySelector('input[type="search"]') || document.getElementById('searchInput') || document.querySelector('input[placeholder*="Поиск"]');
+      if(searchEl){
+        searchEl.focus();
+        searchEl.value = value;
+        searchEl.dispatchEvent(new Event('input', { bubbles: true }));
+        searchEl.dispatchEvent(new Event('change', { bubbles: true }));
         return true;
       }
       return false;
@@ -2181,20 +2215,23 @@ recognition.addEventListener('result', (ev) => {
     }catch(e){ console.warn(e); }
   }
 
-  // --- Init wiring ---
+  /* Init */
   function init(){
-    injectCSS();
     const btn = createButton();
-    btn.addEventListener('click', (e)=>{ e.preventDefault(); startScanner(); });
+    btn.addEventListener('click', (e)=>{ e.preventDefault(); positionUnderSearch(); startScanner(); });
+    // reposition overlay on resize/scroll to keep it under search
+    window.addEventListener('resize', ()=>{ try{ positionUnderSearch(); }catch(e){} });
+    window.addEventListener('scroll', ()=>{ try{ positionUnderSearch(); }catch(e){} }, { passive:true });
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 
   // expose for debug
-  window.simpleScanner = { start: startScanner, stop: stopScanner };
+  window.rpScanner = { start: startScanner, stop: stopScanner, position: positionUnderSearch };
 
 })();
 </script>
+
 
 
 </body>
