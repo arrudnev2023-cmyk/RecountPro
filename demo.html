@@ -1901,41 +1901,86 @@ recognition.addEventListener('result', (ev) => {
 </script>
   <!-- Вставьте этот блок перед </body> — он создаст кнопку на экране, откроет окно сканера под строкой поиска и выключит камеру после успешного считывания -->
 <script>
+/* Универсальный однострочный модуль сканера:
+   - создаёт иконку-кнопку слева;
+   - вставляет окно сканера в #counting (fallback: #content -> под поиск -> body);
+   - запускает заднюю камеру, читает штрихкод (BarcodeDetector + ZXing fallback);
+   - выключает камеру сразу после чтения;
+   - ищет товар в barcodeDB/db/localStorage и по названию на экране, подсвечивает карточку.
+   Вставь этот блок один раз перед </body>.
+*/
 (function(){
   const ZXING_CDN = 'https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js';
   const BTN_ID = 'open-scanner-icon-left';
+  const SCANNER_ID = 'scannerCard';
   const MAX_Z = 2147483000;
   const DEBOUNCE_MS = 900;
   const TOAST_MS = 1400;
 
-  let _stream = null, _video = null, _scannerCard = null, _previewWrap = null, _deviceSelect = null, _torchBtn = null, _closeBtn = null, _scanResult = null;
-  let _reader = null, _zxingLoaded = false, _barcodeDetector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
-  let _rafId = null, _canvas = null, _ctx = null, _lastDetected = {code:null, ts:0}, _torchOn = false;
+  let _stream=null,_video=null,_scannerCard=null,_previewWrap=null,_deviceSelect=null,_torchBtn=null,_closeBtn=null,_scanResult=null;
+  let _reader=null,_zxingLoaded=false,_barcodeDetector=('BarcodeDetector' in window)? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}):null;
+  let _rafId=null,_canvas=null,_ctx=null,_lastDetected={code:null,ts:0},_torchOn=false;
 
   const $id = id => document.getElementById(id);
 
-  /* Inject CSS for icon button and scanner card */
+  /* --- Inject CSS --- */
   function injectCSS(){
     if(document.getElementById('scanner-inline-styles')) return;
-    const s = document.createElement('style');
-    s.id = 'scanner-inline-styles';
-    s.textContent = `
-#${BTN_ID} { position: fixed !important; left: 14px !important; bottom: 18px !important; z-index: ${MAX_Z} !important; width:56px; height:56px; border-radius:12px; background:linear-gradient(180deg,#6d28d9,#4c1d95); display:flex; align-items:center; justify-content:center; box-shadow:0 12px 30px rgba(0,0,0,0.35); border:none; cursor:pointer; padding:0; }
+    const s=document.createElement('style');
+    s.id='scanner-inline-styles';
+    s.textContent=`
+/* Icon button */
+#${BTN_ID} {
+  position: fixed !important;
+  left: 14px !important;
+  bottom: 18px !important;
+  z-index: ${MAX_Z} !important;
+  width:56px;
+  height:56px;
+  border-radius:12px;
+  background:linear-gradient(180deg,#6d28d9,#4c1d95);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 12px 30px rgba(0,0,0,0.35);
+  border:none;
+  cursor:pointer;
+  padding:0;
+  pointer-events:auto;
+}
 #${BTN_ID} svg { width:28px; height:28px; color:#fff; }
-#${BTN_ID}:active{ transform: translateY(1px); }
-#scannerCard { display:none; position:absolute; background: linear-gradient(180deg,#0b0b0d,#121214); border-radius:10px; padding:10px; box-shadow:0 20px 60px rgba(0,0,0,0.6); z-index:${MAX_Z-1}; }
-#scannerCard.visible { display:block; }
-#scannerCard .preview-wrap { width:100%; height:260px; background:#000; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
-#scannerCard video#preview { width:100%; height:100%; object-fit:cover; display:block; }
-#scannerCard .controls { display:flex; gap:8px; align-items:center; margin-top:8px; }
-#scannerCard button, #scannerCard select { z-index:${MAX_Z}; pointer-events:auto; }
+#${BTN_ID}:active{ transform:translateY(1px); }
+
+/* Scanner card */
+#${SCANNER_ID} {
+  display:none;
+  position:absolute;
+  background: linear-gradient(180deg,#0b0b0d,#121214);
+  border-radius:10px;
+  padding:10px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.6);
+  z-index:${MAX_Z-1};
+  min-width:320px;
+  max-width:980px;
+}
+#${SCANNER_ID}.visible { display:block; }
+#${SCANNER_ID} .preview-wrap { width:100%; height:260px; background:#000; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+#${SCANNER_ID} video#preview { width:100%; height:100%; object-fit:cover; display:block; }
+#${SCANNER_ID} .controls { display:flex; gap:8px; align-items:center; margin-top:8px; }
+#${SCANNER_ID} button, #${SCANNER_ID} select { z-index:${MAX_Z}; pointer-events:auto; }
+
+/* Highlight found item */
 .item.found { box-shadow: 0 8px 28px rgba(34,197,94,0.18) !important; border: 2px solid rgba(34,197,94,0.18) !important; transition: box-shadow .2s, border .2s; }
-@media (max-width:720px){ #scannerCard { left:8px !important; right:8px !important; top:auto !important; width:calc(100% - 16px) !important; position:absolute !important; } }
+
+/* Mobile */
+@media (max-width:720px){
+  #${SCANNER_ID} { left:8px !important; right:8px !important; top:auto !important; width:calc(100% - 16px) !important; position:absolute !important; }
+}
 `;
     document.head.appendChild(s);
   }
 
-  /* Create icon button (SVG) */
+  /* --- Create icon button --- */
   function createIconButton(){
     let btn = $id(BTN_ID);
     if(btn) return btn;
@@ -1948,65 +1993,27 @@ recognition.addEventListener('result', (ev) => {
       <rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6" fill="none"/>
       <path d="M8 12h8" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
     </svg>`;
-    // inline styles to survive page CSS
     Object.assign(btn.style, {
-      position: 'fixed',
-      left: '14px',
-      bottom: '18px',
-      zIndex: String(MAX_Z),
-      width: '56px',
-      height: '56px',
-      borderRadius: '12px',
-      background: 'linear-gradient(180deg,#6d28d9,#4c1d95)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      boxShadow: '0 12px 30px rgba(0,0,0,0.35)',
-      border: 'none',
-      cursor: 'pointer',
-      padding: '0',
-      pointerEvents: 'auto'
+      position:'fixed', left:'14px', bottom:'18px', zIndex:String(MAX_Z),
+      width:'56px', height:'56px', borderRadius:'12px',
+      background:'linear-gradient(180deg,#6d28d9,#4c1d95)', display:'flex',
+      alignItems:'center', justifyContent:'center', boxShadow:'0 12px 30px rgba(0,0,0,0.35)',
+      border:'none', cursor:'pointer', padding:'0', pointerEvents:'auto'
     });
     document.body.appendChild(btn);
-    // ensure not covered by canvas: nudge if needed
-    setTimeout(()=>ensureButtonVisible(btn), 120);
-    // observe removal and re-add
+    // keep visible if removed
     const mo = new MutationObserver(()=>{ if(!document.body.contains(btn)) document.body.appendChild(btn); });
-    mo.observe(document.body, { childList: true, subtree: true });
+    mo.observe(document.body, { childList:true, subtree:true });
     return btn;
   }
 
-  function ensureButtonVisible(btn){
-    try{
-      const rect = btn.getBoundingClientRect();
-      const cx = Math.max(2, Math.floor(rect.left + rect.width/2));
-      const cy = Math.max(2, Math.floor(rect.top + rect.height/2));
-      const el = document.elementFromPoint(cx, cy);
-      if(el && (el === btn || btn.contains(el))) return;
-      // try offsets
-      const offsets = [[0,-70],[70,0],[0,70],[-70,0],[70,-70]];
-      for(const [dx,dy] of offsets){
-        const nx = Math.min(window.innerWidth-10, Math.max(6, cx + dx));
-        const ny = Math.min(window.innerHeight-10, Math.max(6, cy + dy));
-        const el2 = document.elementFromPoint(nx, ny);
-        if(!el2 || el2 === btn || btn.contains(el2)){
-          btn.style.left = Math.max(6, nx - rect.width/2) + 'px';
-          btn.style.bottom = Math.max(6, window.innerHeight - (ny + rect.height/2)) + 'px';
-          return;
-        }
-      }
-      btn.style.zIndex = String(MAX_Z);
-      btn.style.pointerEvents = 'auto';
-    }catch(e){}
-  }
-
-  /* Scanner UI creation and placement */
+  /* --- Ensure scanner UI exists and insert into counting container --- */
   function ensureScannerUI(){
     injectCSS();
-    _scannerCard = $id('scannerCard');
+    _scannerCard = $id(SCANNER_ID);
     if(!_scannerCard){
       _scannerCard = document.createElement('div');
-      _scannerCard.id = 'scannerCard';
+      _scannerCard.id = SCANNER_ID;
       _scannerCard.innerHTML = `
         <div class="preview-wrap" id="previewWrap"><video id="preview" playsinline muted></video></div>
         <div class="controls">
@@ -2015,13 +2022,10 @@ recognition.addEventListener('result', (ev) => {
           <button id="closeScannerBtn" type="button">Закрыть</button>
           <div id="scanResult" style="min-width:160px;color:#fff;padding-left:8px"></div>
         </div>`;
-      const searchEl = document.getElementById('search') || document.querySelector('input[type="search"]') || null;
-      if(searchEl && searchEl.parentNode){
-        if(searchEl.nextSibling) searchEl.parentNode.insertBefore(_scannerCard, searchEl.nextSibling);
-        else searchEl.parentNode.appendChild(_scannerCard);
-      } else {
-        document.body.appendChild(_scannerCard);
-      }
+      // insert into counting container if exists, else fallback
+      const container = document.getElementById('counting') || document.getElementById('content') || document.getElementById('search')?.parentNode || document.body;
+      if(container && container.appendChild) container.appendChild(_scannerCard);
+      else document.body.appendChild(_scannerCard);
     }
     _previewWrap = $id('previewWrap');
     _video = $id('preview');
@@ -2029,19 +2033,17 @@ recognition.addEventListener('result', (ev) => {
     _torchBtn = $id('torchBtn');
     _closeBtn = $id('closeScannerBtn');
     _scanResult = $id('scanResult');
-    // wire close
     if(_closeBtn) _closeBtn.onclick = stopScanner;
   }
 
-  /* ZXing loader */
+  /* --- ZXing loader --- */
   function ensureZXing(){
     if(_zxingLoaded) return Promise.resolve();
     if(window.ZXing || window.ZXingBrowser){ _zxingLoaded = true; return Promise.resolve(); }
     return new Promise((resolve,reject)=>{
-      const s = document.createElement('script');
-      s.src = ZXING_CDN;
-      s.async = true;
-      s.onload = ()=>{ _zxingLoaded = true; resolve(); };
+      const s=document.createElement('script');
+      s.src = ZXING_CDN; s.async=true;
+      s.onload = ()=>{ _zxingLoaded=true; resolve(); };
       s.onerror = reject;
       document.head.appendChild(s);
     });
@@ -2051,8 +2053,7 @@ recognition.addEventListener('result', (ev) => {
     if(_canvas && _canvas.width===w && _canvas.height===h) return _canvas;
     if(_canvas){ _canvas.width=w; _canvas.height=h; _ctx=_canvas.getContext('2d'); return _canvas; }
     _canvas = document.createElement('canvas');
-    _canvas.width = w; _canvas.height = h;
-    _canvas.style.display = 'none';
+    _canvas.width=w; _canvas.height=h; _canvas.style.display='none';
     document.body.appendChild(_canvas);
     _ctx = _canvas.getContext('2d');
     return _canvas;
@@ -2077,7 +2078,7 @@ recognition.addEventListener('result', (ev) => {
       if(!_deviceSelect) return;
       const devices = await navigator.mediaDevices.enumerateDevices();
       const cams = devices.filter(d=>d.kind==='videoinput');
-      _deviceSelect.innerHTML = '';
+      _deviceSelect.innerHTML='';
       cams.forEach((c,idx)=>{ const o=document.createElement('option'); o.value=c.deviceId; o.textContent=c.label||('Camera '+(idx+1)); _deviceSelect.appendChild(o); });
       const rear = await getRearCameraDeviceId();
       if(rear){ const opt = Array.from(_deviceSelect.options).find(o=>o.value===rear); if(opt) _deviceSelect.value = rear; }
@@ -2099,7 +2100,7 @@ recognition.addEventListener('result', (ev) => {
             _lastDetected={code,ts:now};
             try{ _reader.reset(); }catch(e){}
             stopScanner();
-            setTimeout(()=>handleDetectedCode(code), 120);
+            setTimeout(()=>handleDetectedCode(code),120);
           }
         }
       });
@@ -2120,7 +2121,7 @@ recognition.addEventListener('result', (ev) => {
       }
       _video.srcObject = _stream;
       try{ await _video.play(); }catch(e){}
-      positionScannerUnderSearch();
+      positionScannerUnderContainer();
       _scannerCard.classList.add('visible');
       document.body.classList.add('scanner-open');
       window.scanning = true;
@@ -2128,7 +2129,7 @@ recognition.addEventListener('result', (ev) => {
       return true;
     }catch(e){
       if(_stream && _stream.getTracks) _stream.getTracks().forEach(t=>{ try{ t.stop(); }catch(e){} });
-      _stream = null; window.scanning = false; throw e;
+      _stream=null; window.scanning=false; throw e;
     }
   }
 
@@ -2149,7 +2150,7 @@ recognition.addEventListener('result', (ev) => {
         if(!(_lastDetected.code===code && (now-_lastDetected.ts)<DEBOUNCE_MS)){
           _lastDetected={code,ts:now};
           stopScanner();
-          setTimeout(()=>handleDetectedCode(code), 120);
+          setTimeout(()=>handleDetectedCode(code),120);
           return;
         }
       }
@@ -2183,19 +2184,23 @@ recognition.addEventListener('result', (ev) => {
     document.body.classList.remove('scanner-open');
   }
 
-  function positionScannerUnderSearch(){
+  function positionScannerUnderContainer(){
     ensureScannerUI();
-    const searchEl = document.getElementById('search') || document.querySelector('input[type="search"]') || null;
-    if(!searchEl || !_scannerCard){ Object.assign(_scannerCard.style, { left:'50%', top:'50%', transform:'translate(-50%,-50%)', position:'fixed' }); return; }
-    const rect = searchEl.getBoundingClientRect();
-    const scrollY = window.scrollY || window.pageYOffset;
-    const left = Math.max(8, rect.left + window.scrollX);
-    const top = rect.bottom + scrollY + 8;
-    const width = Math.min(rect.width || 600, Math.min(window.innerWidth - 16, 980));
+    // prefer #counting (экран пересчёта), fallback to #content -> under search -> body
+    const container = document.getElementById('counting') || document.getElementById('content') || document.getElementById('search')?.parentNode || document.body;
+    if(!container || container===document.body){
+      Object.assign(_scannerCard.style, { left:'50%', top:'50%', transform:'translate(-50%,-50%)', position:'fixed' });
+      return;
+    }
+    // position relative to container: place at top of container (below its header) or after search input inside container
+    const rect = container.getBoundingClientRect();
+    const left = Math.max(8, rect.left + window.scrollX + 8);
+    const top = rect.top + window.scrollY + 8;
+    const width = Math.min(rect.width - 16, 980);
     Object.assign(_scannerCard.style, { position:'absolute', left: left + 'px', top: top + 'px', transform:'none', width: width + 'px', display:'block' });
   }
 
-  /* Lookup and highlight logic */
+  /* Lookup and highlight logic (barcode -> product -> find on screen by name) */
   function handleDetectedCode(code){
     try{
       if(!code) return;
@@ -2214,31 +2219,31 @@ recognition.addEventListener('result', (ev) => {
       const normalize = s => String(s||'').toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ').trim();
       const nameNorm = normalize(name);
 
-      // try window.allItems exact
+      // 1) try window.allItems exact match
       if(Array.isArray(window.allItems)){
         const it = window.allItems.find(i => normalize(i.name) === nameNorm);
         if(it){ highlightAndFocus(it.code); return; }
       }
-      // try DOM exact
+      // 2) try DOM exact match
       const cards = document.querySelectorAll('.item');
       for(const c of cards){
         const titleEl = c.querySelector('.title') || c.querySelector('.label') || c.querySelector('.code');
         const text = titleEl ? titleEl.textContent : c.textContent;
         if(normalize(text) === nameNorm){ highlightAndFocus(c.dataset.code || ''); return; }
       }
-      // fuzzy contains
+      // 3) fuzzy contains
       for(const c of cards){
         const titleEl = c.querySelector('.title') || c.querySelector('.label') || c.querySelector('.code');
         const text = titleEl ? titleEl.textContent : c.textContent;
         if(String(text||'').toLowerCase().includes(nameNorm)){ highlightAndFocus(c.dataset.code || ''); return; }
       }
-      // fallback: offer to add
+      // 4) fallback: offer to add
       if(confirm(`Товар "${name}" найден в базе, но карточки нет на экране. Добавить в список?`)){
         if(!Array.isArray(window.allItems)) window.allItems = [];
         window.allItems.unshift({ code: code, name: name, unit: product.unit || '', price: product.price || 0, docQty: 0 });
         if(typeof render === 'function'){ try{ render(window.allItems); }catch(e){} }
       }
-    }catch(e){ console.error(e); alert('Ошибка при обработке штрихкода'); }
+    }catch(err){ console.error('handleDetectedCode error', err); alert('Ошибка при обработке штрихкода'); }
   }
 
   function highlightAndFocus(code){
@@ -2247,11 +2252,11 @@ recognition.addEventListener('result', (ev) => {
       const card = document.querySelector(`.item[data-code="${code}"]`);
       if(card){
         card.classList.add('found');
-        setTimeout(()=>card.classList.remove('found'), 2200);
+        setTimeout(()=>card.classList.remove('found'),2200);
         card.classList.remove('hidden');
-        setTimeout(()=>card.scrollIntoView({ behavior:'smooth', block:'center' }), 160);
+        setTimeout(()=>card.scrollIntoView({ behavior:'smooth', block:'center' }),160);
         const input = card.querySelector('input[data-code]') || card.querySelector('input');
-        if(input){ setTimeout(()=>{ try{ input.focus(); if(typeof openKeyboardFor==='function') openKeyboardFor(input); }catch(e){} }, 320); }
+        if(input){ setTimeout(()=>{ try{ input.focus(); if(typeof openKeyboardFor==='function') openKeyboardFor(input); }catch(e){} },320); }
         return;
       }
       // try contains
@@ -2261,18 +2266,18 @@ recognition.addEventListener('result', (ev) => {
         const text = titleEl ? titleEl.textContent : c.textContent;
         if(String(text||'').includes(String(code)) || (c.dataset.code && c.dataset.code === code)){
           c.classList.add('found');
-          setTimeout(()=>c.classList.remove('found'), 2200);
+          setTimeout(()=>c.classList.remove('found'),2200);
           c.classList.remove('hidden');
-          setTimeout(()=>c.scrollIntoView({ behavior:'smooth', block:'center' }), 160);
+          setTimeout(()=>c.scrollIntoView({ behavior:'smooth', block:'center' }),160);
           const input = c.querySelector('input[data-code]') || c.querySelector('input');
-          if(input){ setTimeout(()=>{ try{ input.focus(); if(typeof openKeyboardFor==='function') openKeyboardFor(input); }catch(e){} }, 320); }
+          if(input){ setTimeout(()=>{ try{ input.focus(); if(typeof openKeyboardFor==='function') openKeyboardFor(input); }catch(e){} },320); }
           return;
         }
       }
     }catch(e){ console.warn(e); }
   }
 
-  /* Wire button click to start scanner */
+  /* Wire button -> start scanner */
   function wire(){
     injectCSS();
     const btn = createIconButton();
@@ -2290,16 +2295,41 @@ recognition.addEventListener('result', (ev) => {
       }
     });
     // keep button visible if canvas overlays
-    window.addEventListener('resize', ()=>ensureButtonVisible(btn));
-    window.addEventListener('scroll', ()=>ensureButtonVisible(btn), { passive: true });
+    window.addEventListener('resize', ()=>ensureButtonVisible($id(BTN_ID)));
+    window.addEventListener('scroll', ()=>ensureButtonVisible($id(BTN_ID)), { passive:true });
+  }
+
+  function ensureButtonVisible(btn){
+    try{
+      if(!btn) return;
+      const rect = btn.getBoundingClientRect();
+      const cx = Math.max(2, Math.floor(rect.left + rect.width/2));
+      const cy = Math.max(2, Math.floor(rect.top + rect.height/2));
+      const el = document.elementFromPoint(cx, cy);
+      if(el && (el === btn || btn.contains(el))) return;
+      // try offsets
+      const offsets = [[0,-70],[70,0],[0,70],[-70,0],[70,-70]];
+      for(const [dx,dy] of offsets){
+        const nx = Math.min(window.innerWidth-10, Math.max(6, cx + dx));
+        const ny = Math.min(window.innerHeight-10, Math.max(6, cy + dy));
+        const el2 = document.elementFromPoint(nx, ny);
+        if(!el2 || el2 === btn || btn.contains(el2)){
+          btn.style.left = Math.max(6, nx - rect.width/2) + 'px';
+          btn.style.bottom = Math.max(6, window.innerHeight - (ny + rect.height/2)) + 'px';
+          return;
+        }
+      }
+      btn.style.zIndex = String(MAX_Z);
+      btn.style.pointerEvents = 'auto';
+    }catch(e){}
   }
 
   // init
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
   else wire();
 
-  // expose for debugging
-  window._scannerDebug = { start: async ()=>{ ensureScannerUI(); await populateDeviceList(); const rear = await getRearCameraDeviceId(); if(!(await startZXingDecodeFromDevice(rear))) await startFallbackStream(rear); }, stop: stopScanner };
+  // expose for debug
+  window.scannerModule = { start: async ()=>{ ensureScannerUI(); await populateDeviceList(); const rear = await getRearCameraDeviceId(); if(!(await startZXingDecodeFromDevice(rear))) await startFallbackStream(rear); }, stop: stopScanner };
 
 })();
 </script>
