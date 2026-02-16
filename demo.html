@@ -1904,14 +1904,15 @@ recognition.addEventListener('result', (ev) => {
 </script>
 
 <script>
-/* Rotation‑robust scanner: вставь один раз перед </body> */
+/* Rotation‑robust scanner: полностью готовый блок */
 (function(){
   const ZXING_CDN = 'https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js';
   const BTN_ID = 'rot-scanner-btn';
   const OVERLAY_ID = 'rot-scanner-overlay';
   const VIDEO_ID = 'rot-scanner-video';
   const DEBOUNCE_MS = 800;
-  const CROP_RATIO = 0.6; // центральная область
+  const CROP_RATIO = 0.6;
+
   let _stream = null, _video = null, _reader = null, _zxingLoaded = false, _last = {code:null, ts:0}, _raf = null;
 
   function $id(id){ return document.getElementById(id); }
@@ -1929,8 +1930,6 @@ recognition.addEventListener('result', (ev) => {
 #${OVERLAY_ID} video{width:100%;height:100%;object-fit:cover;display:block}
 #${OVERLAY_ID} .controls{position:absolute;right:8px;top:8px;display:flex;gap:8px;z-index:2147483647}
 #${OVERLAY_ID} button{background:rgba(255,255,255,0.06);color:#fff;border:none;padding:6px 8px;border-radius:8px;cursor:pointer}
-.item.found{box-shadow:0 8px 28px rgba(34,197,94,0.18)!important;border:2px solid rgba(34,197,94,0.18)!important;transition:box-shadow .2s,border .2s}
-@media (max-width:720px){#${OVERLAY_ID}{left:8px;right:8px;top:12px;width:calc(100% - 16px)}}
 `;
     document.head.appendChild(s);
   }
@@ -1945,8 +1944,6 @@ recognition.addEventListener('result', (ev) => {
     btn.title = 'Открыть сканер';
     btn.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/><path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>';
     document.body.appendChild(btn);
-    const mo = new MutationObserver(()=>{ if(!document.body.contains(btn)) document.body.appendChild(btn); });
-    mo.observe(document.body, { childList:true, subtree:true });
     return btn;
   }
 
@@ -1956,23 +1953,24 @@ recognition.addEventListener('result', (ev) => {
     if(ov) return ov;
     ov = document.createElement('div');
     ov.id = OVERLAY_ID;
-    ov.innerHTML = `<div class="preview"><video id="${VIDEO_ID}" playsinline muted></video></div>
+    ov.innerHTML = `
+      <div class="preview"><video id="${VIDEO_ID}" playsinline muted></video></div>
       <div class="controls"><button id="rot-close">Закрыть</button></div>`;
     document.body.appendChild(ov);
     $id('rot-close').addEventListener('click', stopScanner);
     return ov;
   }
 
-  /* Position overlay centered under search */
   function positionUnderSearch(){
     ensureOverlay();
     const ov = $id(OVERLAY_ID);
-    const searchEl = document.getElementById('search') || document.querySelector('input[type="search"]') || document.querySelector('#searchInput') || document.querySelector('input[placeholder*="Поиск"]');
-    const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-    const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+    const searchEl = document.getElementById('search');
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
     const height = Math.min(Math.floor(vh / 3), 420);
     const width = Math.min(980, Math.max(320, Math.floor(vw * 0.9)));
-    if(searchEl && searchEl.getBoundingClientRect){
+
+    if(searchEl){
       const rect = searchEl.getBoundingClientRect();
       const left = rect.left + window.scrollX + (rect.width - width)/2;
       const top = rect.bottom + window.scrollY + 8;
@@ -1992,19 +1990,17 @@ recognition.addEventListener('result', (ev) => {
     }
   }
 
-  /* ZXing loader */
   function ensureZXing(){
     if(window.ZXing || window.ZXingBrowser){ _zxingLoaded = true; return Promise.resolve(); }
     return new Promise((res, rej)=>{
       const s = document.createElement('script');
-      s.src = ZXING_CDN; s.async = true;
+      s.src = ZXING_CDN;
       s.onload = ()=>{ _zxingLoaded = true; res(); };
       s.onerror = rej;
       document.head.appendChild(s);
     });
   }
 
-  /* Utility: rotate ImageBitmap or canvas by angle and return ImageBitmap */
   async function rotateImageBitmap(bitmap, angle){
     const w = bitmap.width, h = bitmap.height;
     const canvas = document.createElement('canvas');
@@ -2016,16 +2012,13 @@ recognition.addEventListener('result', (ev) => {
     ctx.rotate(angle * Math.PI / 180);
     ctx.drawImage(bitmap, -w/2, -h/2);
     ctx.restore();
-    const rotated = await createImageBitmap(canvas);
-    return rotated;
+    return await createImageBitmap(canvas);
   }
 
-  /* Try BarcodeDetector on original and rotated bitmaps */
   async function tryBarcodeDetectorOnBitmap(bitmap){
     if(!('BarcodeDetector' in window)) return null;
     try{
       const detector = new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]});
-      // try 0,90,180,270
       const angles = [0,90,180,270];
       for(const a of angles){
         let bmp = bitmap;
@@ -2045,14 +2038,11 @@ recognition.addEventListener('result', (ev) => {
     return null;
   }
 
-  /* ZXing fallback: try decodeFromCanvas on rotated canvases */
   async function tryZXingOnCanvas(canvas){
     try{
       await ensureZXing();
       const ZX = window.ZXing || window.ZXingBrowser;
-      if(!ZX) return null;
       if(!_reader) _reader = new ZX.BrowserMultiFormatReader();
-      // try rotations by drawing rotated versions into temp canvas
       const angles = [0,90,180,270];
       for(const a of angles){
         const tmp = document.createElement('canvas');
@@ -2073,29 +2063,25 @@ recognition.addEventListener('result', (ev) => {
     return null;
   }
 
-  /* Main loop: grab frame, crop center, try detectors with rotations */
   async function frameLoop(){
     if(!_video || !_stream) return;
     try{
-      // grab ImageBitmap if possible (fast)
       let bitmap = null;
       try{
         bitmap = await createImageBitmap(_video);
       }catch(e){
-        // fallback: draw to canvas
         const vw = _video.videoWidth || 640, vh = _video.videoHeight || 480;
         const c = document.createElement('canvas'); c.width = vw; c.height = vh;
         const ctx = c.getContext('2d'); ctx.drawImage(_video, 0, 0, vw, vh);
         bitmap = await createImageBitmap(c);
       }
-      // crop center
-      const cw = Math.max(64, Math.floor(bitmap.width * CROP_RATIO));
-      const ch = Math.max(64, Math.floor(bitmap.height * CROP_RATIO));
+
+      const cw = Math.floor(bitmap.width * CROP_RATIO);
+      const ch = Math.floor(bitmap.height * CROP_RATIO);
       const sx = Math.floor((bitmap.width - cw)/2), sy = Math.floor((bitmap.height - ch)/2);
       const crop = await createImageBitmap(bitmap, sx, sy, cw, ch);
       bitmap.close();
 
-      // 1) try BarcodeDetector on crop with rotations
       const code1 = await tryBarcodeDetectorOnBitmap(crop);
       crop.close();
       if(code1){
@@ -2108,8 +2094,6 @@ recognition.addEventListener('result', (ev) => {
         }
       }
 
-      // 2) ZXing fallback: draw crop to canvas and try rotated decode
-      // draw crop to canvas
       const canvas = document.createElement('canvas'); canvas.width = cw; canvas.height = ch;
       const ctx = canvas.getContext('2d'); ctx.drawImage(await createImageBitmap(_video), sx, sy, cw, ch, 0, 0, cw, ch);
       const code2 = await tryZXingOnCanvas(canvas);
@@ -2123,11 +2107,9 @@ recognition.addEventListener('result', (ev) => {
         }
       }
     }catch(e){}
-    // schedule next
     _raf = requestAnimationFrame(frameLoop);
   }
 
-  /* Start scanner */
   async function startScanner(){
     ensureOverlay();
     positionUnderSearch();
@@ -2139,136 +2121,69 @@ recognition.addEventListener('result', (ev) => {
       _video = $id(VIDEO_ID);
       _video.srcObject = _stream;
       await _video.play().catch(()=>{});
-      // start frame loop using requestVideoFrameCallback if available for lower latency
-      if(_video.requestVideoFrameCallback){
-        const cb = () => { if(!_stream) return; frameLoop(); };
-        try{ _video.requestVideoFrameCallback(()=>{ frameLoop(); }); }catch(e){ _raf = requestAnimationFrame(frameLoop); }
-      } else {
-        _raf = requestAnimationFrame(frameLoop);
-      }
+      _raf = requestAnimationFrame(frameLoop);
     }catch(err){
-      console.error('camera start error', err);
-      alert('Не удалось открыть камеру. Проверьте разрешения и HTTPS.');
+      alert('Не удалось открыть камеру');
       ov.classList.remove('visible');
     }
   }
 
-  /* Stop scanner */
   function stopScanner(){
     try{ if(_raf){ cancelAnimationFrame(_raf); _raf = null; } }catch(e){}
     try{ if(_video){ _video.pause(); _video.srcObject = null; } }catch(e){}
-    try{ if(_stream && _stream.getTracks){ _stream.getTracks().forEach(t=>{ try{ t.stop(); }catch(e){} }); } }catch(e){}
+    try{ if(_stream){ _stream.getTracks().forEach(t=>t.stop()); } }catch(e){}
     _stream = null;
     const ov = $id(OVERLAY_ID); if(ov) ov.classList.remove('visible');
   }
 
-  /* Fix mojibake */
-  function fixEncodingIfNeeded(s){
-    try{
-      if(!s || typeof s !== 'string') return s;
-      if(/[А-Яа-яЁё]/.test(s)) return s;
-      if(typeof TextDecoder === 'function'){
-        try{
-          const bytes = new Uint8Array([...s].map(ch => ch.charCodeAt(0) & 0xFF));
-          const dec = new TextDecoder('windows-1251');
-          const decoded = dec.decode(bytes);
-          if(/[А-Яа-яЁё]/.test(decoded)) return decoded;
-        }catch(e){}
-      }
-      return s;
-    }catch(e){ return s; }
-  }
-
-  /* On detected: lookup and insert name / highlight */
-  function handleDetected(code){
-    try{
-      let product = null;
-      try{
-        if(window.barcodeDB && typeof window.barcodeDB === 'object') product = window.barcodeDB[code];
-        else if(window.db && window.db[code]){ const name = window.db[code]; product = (typeof name === 'string') ? { code, name } : name; }
-        else {
-          const raw = localStorage.getItem('barcodeDB');
-          if(raw){ const parsed = JSON.parse(raw); if(parsed && parsed[code]) product = parsed[code]; }
-        }
-      }catch(e){ console.warn('lookup error', e); }
-
-      if(typeof window.handleDetectedByName === 'function'){ window.handleDetectedByName(String(code)); return; }
-      if(typeof window.handleDetected === 'function'){ window.handleDetected(String(code)); return; }
-
-      const rawName = product && (product.name || product.title || product) ? (product.name || product.title || product).toString() : null;
-      const name = fixEncodingIfNeeded(rawName) || null;
-      if(name){
-        insertIntoSearch(name);
-        highlightCard(code, name);
-      } else {
-        insertIntoSearch(code);
-      }
-    }catch(e){ console.error(e); }
-  }
-
+  /* ВСТАВКА НАЗВАНИЯ В ПОИСК — ТВОЁ ТРЕБОВАНИЕ */
   function insertIntoSearch(value){
-    try{
-      const searchEl = document.getElementById('search') || document.querySelector('input[type="search"]') || document.querySelector('#searchInput') || document.querySelector('input[placeholder*="Поиск"]');
-      if(searchEl){
-        searchEl.focus();
-        searchEl.value = value;
-        searchEl.dispatchEvent(new Event('input', { bubbles: true }));
-        searchEl.dispatchEvent(new Event('change', { bubbles: true }));
-        return true;
-      }
-      return false;
-    }catch(e){ return false; }
+    const searchEl = document.getElementById('search');
+    if(!searchEl) return;
+    searchEl.value = value;
+    searchEl.dispatchEvent(new Event('input', { bubbles: true }));
+    searchEl.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  function highlightCard(code, name){
+  /* ГЛАВНАЯ ЛОГИКА: поиск в базе + вставка в поиск */
+  function handleDetected(code){
+    let name = null;
+
     try{
-      if(code){
-        const card = document.querySelector(`.item[data-code="${code}"]`);
-        if(card){
-          card.classList.add('found');
-          setTimeout(()=>card.classList.remove('found'), 2200);
-          card.classList.remove('hidden');
-          card.scrollIntoView({ behavior:'smooth', block:'center' });
-          const input = card.querySelector('input[data-code]') || card.querySelector('input');
-          if(input) setTimeout(()=>input.focus(), 300);
-          return;
+      if(window.barcodeDB && window.barcodeDB[code]) name = window.barcodeDB[code];
+      else if(window.db && window.db[code]) name = window.db[code];
+      else {
+        const raw = localStorage.getItem('barcodeDB');
+        if(raw){
+          const parsed = JSON.parse(raw);
+          if(parsed[code]) name = parsed[code];
         }
       }
-      if(name){
-        const nameNorm = String(name||'').toLowerCase();
-        const cards = document.querySelectorAll('.item');
-        for(const c of cards){
-          const titleEl = c.querySelector('.title') || c.querySelector('.label') || c.querySelector('.code');
-          const text = titleEl ? titleEl.textContent : c.textContent;
-          if(String(text||'').toLowerCase().includes(nameNorm)){
-            c.classList.add('found');
-            setTimeout(()=>c.classList.remove('found'), 2200);
-            c.classList.remove('hidden');
-            c.scrollIntoView({ behavior:'smooth', block:'center' });
-            const input = c.querySelector('input[data-code]') || c.querySelector('input');
-            if(input) setTimeout(()=>input.focus(), 300);
-            return;
-          }
-        }
-      }
-    }catch(e){ console.warn(e); }
+    }catch(e){}
+
+    if(!name){
+      insertIntoSearch(code);
+      return;
+    }
+
+    insertIntoSearch(name);
   }
 
-  /* Init */
   function init(){
     const btn = createButton();
     btn.addEventListener('click', async (e)=>{ e.preventDefault(); positionUnderSearch(); await startScanner(); });
-    window.addEventListener('resize', ()=>{ try{ positionUnderSearch(); }catch(e){} });
-    window.addEventListener('scroll', ()=>{ try{ positionUnderSearch(); }catch(e){} }, { passive:true });
+    window.addEventListener('resize', ()=>{ positionUnderSearch(); });
+    window.addEventListener('scroll', ()=>{ positionUnderSearch(); }, { passive:true });
   }
 
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 
-  // expose
   window.rotScanner = { start: startScanner, stop: stopScanner };
 
 })();
 </script>
+
 
 
 
