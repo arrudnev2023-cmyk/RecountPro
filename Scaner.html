@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>База штрих‑кодов — Dark Neon</title>
+<title>База штрих‑кодов</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
@@ -80,6 +80,12 @@ tbody td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.02)}
 .small{font-size:13px;color:var(--muted)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:rgba(10,8,14,0.9);color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:9999}
 
+/* Bulk import modal */
+#bulkImportModal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9998}
+.modal-backdrop{position:absolute;inset:0;background:rgba(5,4,8,0.6);backdrop-filter:blur(4px)}
+.modal-card{position:relative;z-index:9999;max-width:720px;width:92%;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 20px 60px rgba(0,0,0,0.6)}
+#bulkImportTextarea{width:100%;height:260px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));color:#eae9f8;font-size:14px;outline:none;resize:vertical}
+
 /* responsive */
 @media (max-width:420px){ .container{padding:12px} .logo{width:40px;height:40px} }
 </style>
@@ -98,6 +104,8 @@ tbody td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.02)}
     <div style="display:flex;gap:8px;align-items:center">
       <button id="exportBtn" class="btn ghost" aria-label="Экспорт">Экспорт</button>
       <button id="importBtn" class="btn ghost" aria-label="Импорт">Импорт</button>
+      <button id="bulkImportBtn" class="btn ghost" aria-label="Массовый импорт">Массовый импорт</button>
+      <button id="clearDBBtn" class="btn ghost" aria-label="Очистить базу">Очистить базу</button>
     </div>
   </header>
 
@@ -152,11 +160,25 @@ tbody td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.02)}
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+<!-- Bulk import modal (вставлен перед закрывающим body) -->
+<div id="bulkImportModal" aria-hidden="true">
+  <div class="modal-backdrop" id="bulkImportBackdrop"></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="bulkImportTitle">
+    <h3 id="bulkImportTitle" style="margin:0 0 8px 0">Массовый импорт штрих‑кодов</h3>
+    <p class="small" style="margin:0 0 8px 0">Вставь список в формате JSON или в виде строк: <code>"4660001609068": "Название"</code></p>
+    <textarea id="bulkImportTextarea" placeholder='"4660001609068": "Название товара"' aria-label="Поле для массового импорта"></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button id="bulkImportApply" class="btn primary" style="flex:1">Импортировать</button>
+      <button id="bulkImportCancel" class="btn ghost" style="width:120px">Отмена</button>
+    </div>
+    <div id="bulkImportResult" class="small" style="margin-top:8px;color:var(--muted)"></div>
+  </div>
+</div>
+
 <!-- ZXing fallback -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 
 <script>
-/* ===== State ===== */
 let db = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
 let stream = null;
 let currentDeviceId = null;
@@ -183,6 +205,9 @@ const tableBody = document.querySelector('#table tbody');
 const exportBtn = document.getElementById('exportBtn');
 const importBtn = document.getElementById('importBtn');
 const toast = document.getElementById('toast');
+
+const bulkImportBtn = document.getElementById('bulkImportBtn');
+const clearDBBtn = document.getElementById('clearDBBtn');
 
 /* ===== Utilities ===== */
 function showToast(text, ms = 1400){
@@ -271,7 +296,6 @@ function stopCamera(){
   showToast('Сканер остановлен');
 }
 
-/* Torch */
 let torchOn = false;
 async function toggleTorch(){
   if(!stream) return showToast('Сначала включите сканер');
@@ -438,6 +462,122 @@ importBtn.addEventListener('click', ()=>{
   input.click();
 });
 
+/* ===== Bulk import UI & logic ===== */
+const bulkModal = document.getElementById('bulkImportModal');
+const bulkBackdrop = document.getElementById('bulkImportBackdrop');
+const bulkTextarea = document.getElementById('bulkImportTextarea');
+const bulkApply = document.getElementById('bulkImportApply');
+const bulkCancel = document.getElementById('bulkImportCancel');
+const bulkResult = document.getElementById('bulkImportResult');
+
+function openBulkImportModal(){
+  bulkTextarea.value = '';
+  bulkResult.textContent = '';
+  bulkModal.style.display = 'flex';
+  bulkModal.setAttribute('aria-hidden','false');
+  setTimeout(()=>bulkTextarea.focus(), 80);
+}
+function closeBulkImportModal(){
+  bulkModal.style.display = 'none';
+  bulkModal.setAttribute('aria-hidden','true');
+}
+
+/* Парсер: поддерживает JSON-объект или строки вида "code": "name" */
+function parseBulkImport(text){
+  const out = {};
+  let trimmed = text.trim();
+  if(!trimmed) return out;
+
+  // Попробуем распарсить как JSON целиком
+  try{
+    const maybe = JSON.parse(trimmed);
+    if(maybe && typeof maybe === 'object'){
+      for(const k in maybe) if(Object.prototype.hasOwnProperty.call(maybe,k)){
+        const key = String(k).trim();
+        const val = String(maybe[k]).trim();
+        if(key) out[key] = val;
+      }
+      return out;
+    }
+  }catch(e){ /* не JSON, продолжим */ }
+
+  // Разбиваем по строкам и ищем пары через регулярку
+  const lines = trimmed.split(/\r?\n/);
+  const re = /["']?([\dA-Za-z\-_.]+)["']?\s*[:=]\s*["'](.+?)["']\s*$/;
+  for(let line of lines){
+    line = line.trim();
+    if(!line) continue;
+    // Попробуем найти "key": "value"
+    const m = line.match(re);
+    if(m){
+      const key = m[1].trim();
+      const val = m[2].trim();
+      if(key) out[key] = val;
+      continue;
+    }
+    // Альтернативный формат: "key": value без кавычек у value
+    const re2 = /["']?([\dA-Za-z\-_.]+)["']?\s*[:=]\s*(.+)$/;
+    const m2 = line.match(re2);
+    if(m2){
+      const key = m2[1].trim();
+      let val = m2[2].trim();
+      // убираем возможные кавычки вокруг значения
+      val = val.replace(/^["']|["']$/g,'').trim();
+      if(key) out[key] = val;
+      continue;
+    }
+    // Если строка сама по себе — возможно "key" "value" через таб/запятую
+    const parts = line.split(/\s{2,}|,\s*|\t/).filter(Boolean);
+    if(parts.length >= 2){
+      const key = parts[0].replace(/["']/g,'').trim();
+      const val = parts.slice(1).join(' ').replace(/["']/g,'').trim();
+      if(key) out[key] = val;
+    }
+  }
+  return out;
+}
+
+/* Обработчик кнопки Импорт в модале */
+bulkApply.addEventListener('click', ()=>{
+  const text = bulkTextarea.value;
+  const parsed = parseBulkImport(text);
+  const keys = Object.keys(parsed);
+  if(!keys.length){
+    bulkResult.textContent = 'Не найдено пар штрих‑код → название. Проверь формат.';
+    return;
+  }
+  let added = 0, updated = 0;
+  for(const k of keys){
+    const v = parsed[k];
+    if(!k) continue;
+    if(db[k] === undefined){ db[k] = v; added++; }
+    else if(db[k] !== v){ db[k] = v; updated++; }
+  }
+  saveDB();
+  bulkResult.textContent = `Импортировано: ${added} новых, обновлено: ${updated}. Всего в базе: ${Object.keys(db).length}.`;
+  showToast(`Импорт: ${added} добавлено, ${updated} обновлено`, 2200);
+  setTimeout(()=>{ closeBulkImportModal(); }, 900);
+});
+
+/* Открытие/закрытие модала */
+bulkImportBtn.addEventListener('click', openBulkImportModal);
+bulkCancel.addEventListener('click', closeBulkImportModal);
+bulkBackdrop.addEventListener('click', closeBulkImportModal);
+
+/* Поддержка Ctrl+Enter для быстрого импорта */
+bulkTextarea.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ bulkApply.click(); }
+});
+
+/* ===== Clear DB button ===== */
+clearDBBtn.addEventListener('click', ()=>{
+  const ok = confirm('Подтвердите: удалить все записи из базы штрих‑кодов? Это действие необратимо.');
+  if(!ok) return;
+  db = {};
+  saveDB();
+  showToast('База очищена', 1600);
+});
+
 /* Init */
 renderTable();
 enumerateCameras();
@@ -452,5 +592,3 @@ window.addEventListener('beforeunload', ()=>{ stopCamera(); });
 </script>
 </body>
 </html>
-
-
