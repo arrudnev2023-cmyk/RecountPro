@@ -1904,10 +1904,10 @@ recognition.addEventListener('result', (ev) => {
 </script>
 
 
+
+
+<!-- TOAST -->
 <script>
-/* ============================================================
-   DARK NEON TOAST
-============================================================ */
 (function(){
   const toast = document.createElement('div');
   toast.id = 'scanner-toast';
@@ -1941,10 +1941,8 @@ recognition.addEventListener('result', (ev) => {
 })();
 </script>
 
+<!-- SCANNER -->
 <script>
-/* ============================================================
-   SUPER SCANNER 2.0 (усиленный контраст + широкий crop)
-============================================================ */
 (function(){
   const BTN_ID = 'rot-scanner-btn';
   const OVERLAY_ID = 'rot-scanner-overlay';
@@ -1957,9 +1955,7 @@ recognition.addEventListener('result', (ev) => {
       ? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]})
       : null;
 
-  /* ===========================
-     CSS
-  =========================== */
+  /* CSS */
   function injectCSS(){
     if(document.getElementById('rot-scanner-styles')) return;
     const s = document.createElement('style');
@@ -1982,26 +1978,45 @@ recognition.addEventListener('result', (ev) => {
 }
 #${OVERLAY_ID}.visible{display:block}
 #${OVERLAY_ID} .preview{
+  position:relative;
   width:100%;height:100%;background:#000;border-radius:6px;
-  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
 }
 #${OVERLAY_ID} video{
   width:100%;height:100%;object-fit:contain;display:block;
 }
 #${OVERLAY_ID} .controls{
-  position:absolute;right:8px;top:8px;display:flex;gap:8px;
+  position:absolute;right:8px;top:8px;display:flex;gap:8px;z-index:3;
 }
 #${OVERLAY_ID} button{
   background:rgba(255,255,255,0.06);color:#fff;border:none;
   padding:6px 8px;border-radius:8px;cursor:pointer;
 }
+#${OVERLAY_ID} .crosshair{
+  position:absolute;left:50%;top:50%;
+  width:100%;height:100%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+  z-index:2;
+}
+#${OVERLAY_ID} .crosshair::before,
+#${OVERLAY_ID} .crosshair::after{
+  content:"";
+  position:absolute;
+  left:50%;top:50%;
+  background:rgba(255,0,0,0.8);
+}
+#${OVERLAY_ID} .crosshair::before{
+  width:70%;height:1.5px;transform:translate(-50%,-50%);
+}
+#${OVERLAY_ID} .crosshair::after{
+  width:1.5px;height:70%;transform:translate(-50%,-50%);
+}
 `;
     document.head.appendChild(s);
   }
 
-  /* ===========================
-     UI
-  =========================== */
+  /* UI */
   function createButton(){
     injectCSS();
     let btn = document.getElementById(BTN_ID);
@@ -2026,7 +2041,10 @@ recognition.addEventListener('result', (ev) => {
     ov = document.createElement('div');
     ov.id = OVERLAY_ID;
     ov.innerHTML = `
-      <div class="preview"><video id="${VIDEO_ID}" playsinline muted></video></div>
+      <div class="preview">
+        <video id="${VIDEO_ID}" playsinline muted></video>
+        <div class="crosshair"></div>
+      </div>
       <div class="controls"><button id="rot-close">Закрыть</button></div>`;
     document.body.appendChild(ov);
 
@@ -2034,9 +2052,7 @@ recognition.addEventListener('result', (ev) => {
     return ov;
   }
 
-  /* ===========================
-     ZXing loader
-  =========================== */
+  /* ZXing */
   async function ensureZXing(){
     if(ZX) return;
     await new Promise((res)=>{
@@ -2047,57 +2063,28 @@ recognition.addEventListener('result', (ev) => {
     });
   }
 
-  /* ===========================
-     CANVAS HELPERS + CONTRAST BOOST
-  =========================== */
+  /* Canvas helpers */
   function createCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
 
-  function boostContrast(canvas){
-    const ctx = canvas.getContext('2d');
-    const img = ctx.getImageData(0,0,canvas.width,canvas.height);
-    const data = img.data;
-    const factor = 1.4; // усиление контраста
-    const mid = 128;
-
-    for(let i=0;i<data.length;i+=4){
-      for(let k=0;k<3;k++){
-        let v = data[i+k];
-        v = (v - mid) * factor + mid;
-        if(v < 0) v = 0;
-        if(v > 255) v = 255;
-        data[i+k] = v;
-      }
-    }
-    ctx.putImageData(img,0,0);
-  }
-
-  /* ===========================
-     DECODING
-  =========================== */
+  /* Decode one canvas */
   async function tryDecode(canvas){
+    const ctx = canvas.getContext('2d');
+
     // 1) BarcodeDetector
     if(detector){
       try{
-        const img = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+        const img = ctx.getImageData(0,0,canvas.width,canvas.height);
         const res = await detector.detect(img);
         if(res && res.length) return res[0].rawValue;
       }catch(e){}
     }
 
-    // 2) ZXing обычный
-    try{
-      const src = new ZX.HTMLCanvasElementLuminanceSource(canvas);
-      const bmp = new ZX.BinaryBitmap(new ZX.HybridBinarizer(src));
-      const r = new ZX.MultiFormatReader().decode(bmp);
-      if(r && r.text) return r.text;
-    }catch(e){}
-
-    // 3) ZXing с поворотами + усиленный контраст
+    // 2) ZXing + повороты
     const w = canvas.width, h = canvas.height;
     const temp = createCanvas(w,h);
     const tctx = temp.getContext('2d');
-
     const angles = [0,90,180,270];
+
     for(const angle of angles){
       tctx.save();
       tctx.clearRect(0,0,w,h);
@@ -2105,8 +2092,6 @@ recognition.addEventListener('result', (ev) => {
       tctx.rotate(angle*Math.PI/180);
       tctx.drawImage(canvas, -w/2, -h/2);
       tctx.restore();
-
-      boostContrast(temp);
 
       try{
         const src = new ZX.HTMLCanvasElementLuminanceSource(temp);
@@ -2119,6 +2104,7 @@ recognition.addEventListener('result', (ev) => {
     return null;
   }
 
+  /* Scan loop */
   async function scanLoop(){
     const video = document.getElementById(VIDEO_ID);
     const canvas = createCanvas(1,1);
@@ -2132,9 +2118,9 @@ recognition.addEventListener('result', (ev) => {
         continue;
       }
 
-      // широкий центральный crop: 90% кадра
-      const cropW = Math.floor(w * 0.9);
-      const cropH = Math.floor(h * 0.9);
+      // центральный широкий crop (под крест)
+      const cropW = Math.floor(w * 0.8);
+      const cropH = Math.floor(h * 0.8);
       const sx = Math.floor((w - cropW)/2);
       const sy = Math.floor((h - cropH)/2);
 
@@ -2152,9 +2138,7 @@ recognition.addEventListener('result', (ev) => {
     }
   }
 
-  /* ===========================
-     START / STOP
-  =========================== */
+  /* Start / stop */
   async function startScanner(){
     await ensureZXing();
     ensureOverlay();
@@ -2194,9 +2178,7 @@ recognition.addEventListener('result', (ev) => {
     if(ov) ov.classList.remove('visible');
   }
 
-  /* ===========================
-     SEARCH INSERT
-  =========================== */
+  /* Search insert */
   function insertIntoSearch(value){
     const searchEl = document.getElementById('search');
     if(!searchEl) return;
@@ -2205,14 +2187,11 @@ recognition.addEventListener('result', (ev) => {
     searchEl.dispatchEvent(new Event('change',{bubbles:true}));
   }
 
-  /* ===========================
-     MAIN LOGIC
-  =========================== */
+  /* Main logic */
   function handleDetected(code){
     stopScanner();
 
     let name = null;
-
     try{
       const raw = localStorage.getItem('barcodeDB');
       if(raw){
@@ -2249,9 +2228,7 @@ recognition.addEventListener('result', (ev) => {
     showScannerToast("Товар найден");
   }
 
-  /* ===========================
-     INIT
-  =========================== */
+  /* Init */
   function init(){
     const btn = createButton();
     btn.addEventListener('click', ()=> startScanner());
@@ -2264,7 +2241,6 @@ recognition.addEventListener('result', (ev) => {
 
 })();
 </script>
-
 
 
 
