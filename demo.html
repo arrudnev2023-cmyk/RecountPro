@@ -1903,10 +1903,12 @@ recognition.addEventListener('result', (ev) => {
 
 </script>
 
+
+
 <script>
-/* ===========================
+/* ============================================================
    DARK NEON TOAST
-=========================== */
+============================================================ */
 (function(){
   const toast = document.createElement('div');
   toast.id = 'scanner-toast';
@@ -1942,21 +1944,22 @@ recognition.addEventListener('result', (ev) => {
 
 <script>
 /* ============================================================
-   ROTATION‑ROBUST BARCODE SCANNER + DB LOOKUP + SEARCH INSERT
-   (полный готовый блок, можно вставлять как есть)
+   HYBRID SCANNER (old engine + new UI)
 ============================================================ */
 (function(){
-  const ZXING_CDN = 'https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js';
   const BTN_ID = 'rot-scanner-btn';
   const OVERLAY_ID = 'rot-scanner-overlay';
   const VIDEO_ID = 'rot-scanner-video';
-  const DEBOUNCE_MS = 800;
-  const CROP_RATIO = 0.6;
 
-  let _stream = null, _video = null, _reader = null, _zxingLoaded = false;
-  let _last = {code:null, ts:0}, _raf = null;
+  let scanning = false;
+  let stream = null;
+  let lastDetected = {code:null, ts:0};
+  const DEBOUNCE_MS = 900;
 
-  function $id(id){ return document.getElementById(id); }
+  let ZX = null;
+  let detector = ('BarcodeDetector' in window)
+      ? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]})
+      : null;
 
   /* ===========================
      CSS
@@ -2003,12 +2006,11 @@ recognition.addEventListener('result', (ev) => {
   =========================== */
   function createButton(){
     injectCSS();
-    let btn = $id(BTN_ID);
+    let btn = document.getElementById(BTN_ID);
     if(btn) return btn;
 
     btn = document.createElement('button');
     btn.id = BTN_ID;
-    btn.title = 'Открыть сканер';
     btn.innerHTML = `
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
         <rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/>
@@ -2020,7 +2022,7 @@ recognition.addEventListener('result', (ev) => {
 
   function ensureOverlay(){
     injectCSS();
-    let ov = $id(OVERLAY_ID);
+    let ov = document.getElementById(OVERLAY_ID);
     if(ov) return ov;
 
     ov = document.createElement('div');
@@ -2030,13 +2032,12 @@ recognition.addEventListener('result', (ev) => {
       <div class="controls"><button id="rot-close">Закрыть</button></div>`;
     document.body.appendChild(ov);
 
-    $id('rot-close').addEventListener('click', stopScanner);
+    document.getElementById('rot-close').addEventListener('click', stopScanner);
     return ov;
   }
 
   function positionUnderSearch(){
-    ensureOverlay();
-    const ov = $id(OVERLAY_ID);
+    const ov = ensureOverlay();
     const searchEl = document.getElementById('search');
 
     const vw = window.innerWidth;
@@ -2054,7 +2055,6 @@ recognition.addEventListener('result', (ev) => {
       ov.style.top = Math.max(8, top) + 'px';
       ov.style.width = width + 'px';
       ov.style.height = height + 'px';
-      ov.style.transform = 'none';
     } else {
       ov.style.position = 'fixed';
       ov.style.left = '50%';
@@ -2068,220 +2068,166 @@ recognition.addEventListener('result', (ev) => {
   /* ===========================
      ZXing loader
   =========================== */
-  function ensureZXing(){
-    if(window.ZXing || window.ZXingBrowser){ _zxingLoaded = true; return Promise.resolve(); }
-    return new Promise((res, rej)=>{
+  async function ensureZXing(){
+    if(ZX) return;
+    await new Promise((res)=>{
       const s = document.createElement('script');
-      s.src = ZXING_CDN;
-      s.onload = ()=>{ _zxingLoaded = true; res(); };
-      s.onerror = rej;
+      s.src = "https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js";
+      s.onload = ()=>{ ZX = window.ZXing; res(); };
       document.head.appendChild(s);
     });
   }
 
   /* ===========================
-     ROTATION DECODING
+     DECODING ENGINE (your old working one)
   =========================== */
-  async function rotateImageBitmap(bitmap, angle){
-    const w = bitmap.width, h = bitmap.height;
-    const canvas = document.createElement('canvas');
-    if(angle % 180 === 0){ canvas.width = w; canvas.height = h; }
-    else { canvas.width = h; canvas.height = w; }
+  function createCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
 
-    const ctx = canvas.getContext('2d');
-    ctx.save();
-    ctx.translate(canvas.width/2, canvas.height/2);
-    ctx.rotate(angle * Math.PI / 180);
-    ctx.drawImage(bitmap, -w/2, -h/2);
-    ctx.restore();
-
-    return await createImageBitmap(canvas);
-  }
-
-  async function tryBarcodeDetectorOnBitmap(bitmap){
-    if(!('BarcodeDetector' in window)) return null;
-
-    try{
-      const detector = new BarcodeDetector({
-        formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]
-      });
-
-      const angles = [0,90,180,270];
-      for(const a of angles){
-        let bmp = bitmap;
-        if(a !== 0){
-          try{ bmp = await rotateImageBitmap(bitmap, a); }catch(e){ bmp = null; }
-        }
-        if(!bmp) continue;
-
-        try{
-          const res = await detector.detect(bmp);
-          if(a !== 0) bmp.close();
-          if(res && res.length) return String(res[0].rawValue).trim();
-        }catch(e){
-          if(a !== 0 && bmp) bmp.close();
-        }
-      }
-    }catch(e){}
-
-    return null;
-  }
-
-  async function tryZXingOnCanvas(canvas){
-    try{
-      await ensureZXing();
-      const ZX = window.ZXing || window.ZXingBrowser;
-      if(!_reader) _reader = new ZX.BrowserMultiFormatReader();
-
-      const angles = [0,90,180,270];
-      for(const a of angles){
-        const tmp = document.createElement('canvas');
-        if(a % 180 === 0){ tmp.width = canvas.width; tmp.height = canvas.height; }
-        else { tmp.width = canvas.height; tmp.height = canvas.width; }
-
-        const ctx = tmp.getContext('2d');
-        ctx.save();
-        ctx.translate(tmp.width/2, tmp.height/2);
-        ctx.rotate(a * Math.PI / 180);
-        ctx.drawImage(canvas, -canvas.width/2, -canvas.height/2);
-        ctx.restore();
-
-        try{
-          const res = _reader.decodeFromCanvas(tmp);
-          if(res && (res.text || res.getText))
-            return String(res.text || res.getText).trim();
-        }catch(e){}
-      }
-    }catch(e){}
-
-    return null;
-  }
-
-  /* ===========================
-     FRAME LOOP
-  =========================== */
-  async function frameLoop(){
-    if(!_video || !_stream) return;
-
-    try{
-      let bitmap = null;
+  async function tryDecodeCanvas(canvas){
+    if(detector){
       try{
-        bitmap = await createImageBitmap(_video);
-      }catch(e){
-        const vw = _video.videoWidth || 640;
-        const vh = _video.videoHeight || 480;
-        const c = document.createElement('canvas');
-        c.width = vw; c.height = vh;
-        c.getContext('2d').drawImage(_video, 0, 0, vw, vh);
-        bitmap = await createImageBitmap(c);
-      }
+        const imageData = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+        const res = await detector.detect(imageData);
+        if(res && res.length) return res[0].rawValue;
+      }catch(e){}
+    }
 
-      const cw = Math.floor(bitmap.width * CROP_RATIO);
-      const ch = Math.floor(bitmap.height * CROP_RATIO);
-      const sx = Math.floor((bitmap.width - cw)/2);
-      const sy = Math.floor((bitmap.height - ch)/2);
-
-      const crop = await createImageBitmap(bitmap, sx, sy, cw, ch);
-      bitmap.close();
-
-      const code1 = await tryBarcodeDetectorOnBitmap(crop);
-      crop.close();
-
-      if(code1){
-        const now = Date.now();
-        if(!(_last.code === code1 && (now - _last.ts) < DEBOUNCE_MS)){
-          _last = { code: code1, ts: now };
-          stopScanner();
-          handleDetected(code1);
-          return;
-        }
-      }
-
-      const canvas = document.createElement('canvas');
-      canvas.width = cw; canvas.height = ch;
-      canvas.getContext('2d').drawImage(await createImageBitmap(_video), sx, sy, cw, ch, 0, 0, cw, ch);
-
-      const code2 = await tryZXingOnCanvas(canvas);
-      if(code2){
-        const now = Date.now();
-        if(!(_last.code === code2 && (now - _last.ts) < DEBOUNCE_MS)){
-          _last = { code: code2, ts: now };
-          stopScanner();
-          handleDetected(code2);
-          return;
-        }
-      }
-
+    try{
+      const luminanceSource = new ZX.HTMLCanvasElementLuminanceSource(canvas);
+      const binaryBitmap = new ZX.BinaryBitmap(new ZX.HybridBinarizer(luminanceSource));
+      const result = new ZX.MultiFormatReader().decode(binaryBitmap);
+      if(result && result.text) return result.text;
     }catch(e){}
 
-    _raf = requestAnimationFrame(frameLoop);
+    const w = canvas.width, h = canvas.height;
+    const temp = createCanvas(w,h);
+    const tctx = temp.getContext('2d');
+
+    for(let angle of [90,180,270]){
+      tctx.clearRect(0,0,w,h);
+      tctx.save();
+      tctx.translate(w/2,h/2);
+      tctx.rotate(angle*Math.PI/180);
+      tctx.drawImage(canvas, -w/2, -h/2);
+      tctx.restore();
+
+      try{
+        const luminanceSource = new ZX.HTMLCanvasElementLuminanceSource(temp);
+        const binaryBitmap = new ZX.BinaryBitmap(new ZX.HybridBinarizer(luminanceSource));
+        const result = new ZX.MultiFormatReader().decode(binaryBitmap);
+        if(result && result.text) return result.text;
+      }catch(e){}
+    }
+
+    return null;
+  }
+
+  let canvasPool = [];
+  function getCanvas(w,h){
+    for(let c of canvasPool) if(c.width===w && c.height===h) return c;
+    const c = createCanvas(w,h); canvasPool.push(c); return c;
+  }
+
+  async function scanLoop(){
+    if(!scanning) return;
+
+    const video = document.getElementById(VIDEO_ID);
+
+    while(scanning){
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      if(w===0 || h===0){
+        await new Promise(r => requestAnimationFrame(r));
+        continue;
+      }
+
+      const canvas = getCanvas(w,h);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, w, h);
+
+      const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
+      const sw = Math.floor(w/scale);
+      const sh = Math.floor(h/scale);
+      const small = getCanvas(sw,sh);
+      const sctx = small.getContext('2d');
+      sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
+
+      try{
+        const code = await tryDecodeCanvas(small);
+        if(code){
+          handleDetected(code);
+          return;
+        }
+      }catch(e){}
+
+      await new Promise(r => requestAnimationFrame(r));
+    }
   }
 
   /* ===========================
      START / STOP
   =========================== */
   async function startScanner(){
+    await ensureZXing();
     ensureOverlay();
     positionUnderSearch();
 
-    const ov = $id(OVERLAY_ID);
+    const ov = document.getElementById(OVERLAY_ID);
     ov.classList.add('visible');
 
     try{
-      const constraints = {
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{
+          facingMode:{ideal:"environment"},
+          width:{ideal:1280},
+          height:{ideal:720}
         },
-        audio: false
-      };
+        audio:false
+      });
 
-      _stream = await navigator.mediaDevices.getUserMedia(constraints);
-      _video = $id(VIDEO_ID);
-      _video.srcObject = _stream;
-      await _video.play().catch(()=>{});
+      const video = document.getElementById(VIDEO_ID);
+      video.srcObject = stream;
+      await video.play();
 
-      _raf = requestAnimationFrame(frameLoop);
+      scanning = true;
+      scanLoop();
 
-    }catch(err){
+    }catch(e){
       showScannerToast("Не удалось открыть камеру");
-      ov.classList.remove('visible');
     }
   }
 
   function stopScanner(){
-    try{ if(_raf){ cancelAnimationFrame(_raf); _raf = null; } }catch(e){}
-    try{ if(_video){ _video.pause(); _video.srcObject = null; } }catch(e){}
-    try{ if(_stream){ _stream.getTracks().forEach(t=>t.stop()); } }catch(e){}
-
-    _stream = null;
-    const ov = $id(OVERLAY_ID);
+    scanning = false;
+    if(stream){
+      stream.getTracks().forEach(t=>t.stop());
+      stream = null;
+    }
+    const ov = document.getElementById(OVERLAY_ID);
     if(ov) ov.classList.remove('visible');
   }
 
   /* ===========================
-     INSERT INTO SEARCH
+     SEARCH INSERT
   =========================== */
   function insertIntoSearch(value){
     const searchEl = document.getElementById('search');
     if(!searchEl) return;
-
     searchEl.value = value;
-    searchEl.dispatchEvent(new Event('input', { bubbles: true }));
-    searchEl.dispatchEvent(new Event('change', { bubbles: true }));
+    searchEl.dispatchEvent(new Event('input',{bubbles:true}));
+    searchEl.dispatchEvent(new Event('change',{bubbles:true}));
   }
 
   /* ===========================
      MAIN LOGIC
   =========================== */
   function handleDetected(code){
+    stopScanner();
+
     let name = null;
 
-    // 1) ищем в базе
     try{
       if(window.barcodeDB && window.barcodeDB[code]) name = window.barcodeDB[code];
-      else if(window.db && window.db[code]) name = window.db[code];
       else {
         const raw = localStorage.getItem('barcodeDB');
         if(raw){
@@ -2291,36 +2237,31 @@ recognition.addEventListener('result', (ev) => {
       }
     }catch(e){}
 
-    // 2) нет в базе
     if(!name){
-      insertIntoSearch("");
       showScannerToast("Штрих‑кода нет в базе");
       return;
     }
 
-    // 3) вставляем название
     insertIntoSearch(name);
 
-    // 4) проверяем карточки
     const nameNorm = name.toLowerCase();
     const cards = document.querySelectorAll('.item');
 
-    let foundCard = false;
+    let found = false;
     for(const c of cards){
-      const titleEl = c.querySelector('.title');
-      const text = titleEl ? titleEl.textContent : c.textContent;
+      const t = c.querySelector('.title');
+      const text = t ? t.textContent : c.textContent;
       if(String(text||'').toLowerCase().includes(nameNorm)){
-        foundCard = true;
+        found = true;
         break;
       }
     }
 
-    if(!foundCard){
+    if(!found){
       showScannerToast("Товар найден в базе, но карточка не найдена");
       return;
     }
 
-    // 5) успех
     showScannerToast("Товар найден");
   }
 
@@ -2329,14 +2270,10 @@ recognition.addEventListener('result', (ev) => {
   =========================== */
   function init(){
     const btn = createButton();
-    btn.addEventListener('click', e=>{
-      e.preventDefault();
-      positionUnderSearch();
-      startScanner();
-    });
+    btn.addEventListener('click', ()=> startScanner());
 
-    window.addEventListener('resize', ()=> positionUnderSearch());
-    window.addEventListener('scroll', ()=> positionUnderSearch(), { passive:true });
+    window.addEventListener('resize', positionUnderSearch);
+    window.addEventListener('scroll', positionUnderSearch, {passive:true});
   }
 
   if(document.readyState === 'loading')
@@ -2344,11 +2281,8 @@ recognition.addEventListener('result', (ev) => {
   else
     init();
 
-  window.rotScanner = { start: startScanner, stop: stopScanner };
-
 })();
 </script>
-
 
 
 
