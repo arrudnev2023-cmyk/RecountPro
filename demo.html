@@ -1906,14 +1906,16 @@ recognition.addEventListener('result', (ev) => {
 
 
 
-<!-- Полный автономный скрипт: точная логика твоего идеального сканера, упакованная в один файл -->
+<!-- Полный автономный скрипт: интерфейс + идеальный быстрый сканер + восстановление плавающей кнопки -->
 <script>
 /* ============================================================
-   Инициализация DOM (создаём элементы, если их нет)
-   Этот блок гарантирует, что старые ID из твоего кода существуют.
+   1) Гарантируем DOM (создаём элементы, если их нет)
+   2) Идеальный движок сканера (твоя логика 1:1: downscale ~900, ZXing, BarcodeDetector, повороты)
+   3) Восстановление плавающей кнопки поверх всего
 ============================================================ */
+
 (function ensureDOM(){
-  // Overlay container
+  // Overlay container (scanner)
   if(!document.getElementById('scanner-container')){
     const container = document.createElement('div');
     container.id = 'scanner-container';
@@ -1931,13 +1933,13 @@ recognition.addEventListener('result', (ev) => {
     container.style.boxShadow = '0 20px 60px rgba(0,0,0,0.6)';
     container.style.padding = '6px';
     container.innerHTML = `
-      <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative;">
+      <div style="width:100%;height:70%;display:flex;align-items:center;justify-content:center;position:relative;">
         <video id="preview" playsinline muted style="width:100%;height:100%;object-fit:cover;border-radius:6px;display:block;background:#000"></video>
         <div style="position:absolute;right:10px;top:10px;z-index:3;">
           <button id="closeBtn" style="background:rgba(255,255,255,0.06);color:#fff;border:none;padding:6px 8px;border-radius:8px;cursor:pointer">Закрыть</button>
         </div>
       </div>
-      <div style="display:flex;gap:8px;padding:8px;">
+      <div style="display:flex;gap:8px;padding:8px;height:30%;align-items:center;">
         <input id="barcodeInput" placeholder="Штрихкод" style="flex:1;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:#111;color:#fff"/>
         <input id="nameInput" placeholder="Название товара" style="flex:2;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:#111;color:#fff"/>
         <button id="saveBtn" style="background:linear-gradient(180deg,#6d28d9,#4c1d95);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer">Сохранить</button>
@@ -1971,18 +1973,12 @@ recognition.addEventListener('result', (ev) => {
     document.body.appendChild(t);
   }
 
-  // Floating open button
+  // Floating open button (если нет)
   if(!document.getElementById('openScannerBtn')){
     const b = document.createElement('button');
     b.id = 'openScannerBtn';
     b.title = 'Открыть сканер';
-    b.style.cssText = `
-      position:fixed;left:12px;bottom:18px;z-index:2147483647;
-      width:56px;height:56px;border-radius:12px;
-      background:linear-gradient(180deg,#6d28d9,#4c1d95);
-      display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;
-    `;
-    b.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+    b.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
       <rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/>
       <path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
     </svg>`;
@@ -1991,11 +1987,8 @@ recognition.addEventListener('result', (ev) => {
 })();
 
 /* ============================================================
-   Твой идеальный движок — объединённый скрипт
-   Сохраняет 1:1 логику: уменьшение до ~900, повороты, ZXing,
-   BarcodeDetector, canvas-pool, grayscale + contrast, debounce.
+   Основной модуль сканера
 ============================================================ */
-
 (async function main(){
   /* ===== State ===== */
   let barcodeDB = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
@@ -2006,7 +1999,7 @@ recognition.addEventListener('result', (ev) => {
   let lastDetected = {code:null, ts:0};
   const DEBOUNCE_MS = 900;
 
-  /* ===== Elements (те же ID, что в твоём коде) ===== */
+  /* ===== Elements ===== */
   const preview = document.getElementById('preview');
   const barcodeInput = document.getElementById('barcodeInput');
   const nameInput = document.getElementById('nameInput');
@@ -2031,7 +2024,7 @@ recognition.addEventListener('result', (ev) => {
     try{ navigator.vibrate?.(60); }catch(e){}
   }
 
-  /* ===== Camera & scanning (start/stop) ===== */
+  /* ===== ZXing loader ===== */
   async function ensureZXing(){
     if(window.ZXing) return;
     await new Promise((res)=>{
@@ -2043,6 +2036,7 @@ recognition.addEventListener('result', (ev) => {
     });
   }
 
+  /* ===== Camera start/stop (как в твоём коде) ===== */
   async function startCamera(){
     if(scanning) return;
     stopCamera();
@@ -2063,7 +2057,6 @@ recognition.addEventListener('result', (ev) => {
       stream = await navigator.mediaDevices.getUserMedia(constraints);
       preview.srcObject = stream;
       await preview.play();
-      // reader используется в оригинале, но мы держим ZXing lib loaded
       reader = new (window.ZXing?.BrowserMultiFormatReader || function(){})();
       requestAnimationFrame(scanLoop);
       showToast('Сканер включён', 900);
@@ -2213,13 +2206,13 @@ recognition.addEventListener('result', (ev) => {
 
   /* ===== UI actions (события кнопок) ===== */
   openBtn.addEventListener('click', async ()=>{
-    document.getElementById('scanner-container').style.display = 'block';
-    await startCamera();
+    container.style.display = 'block';
+    try{ await startCamera(); }catch(e){}
   });
 
   closeBtn.addEventListener('click', ()=>{
     stopCamera();
-    document.getElementById('scanner-container').style.display = 'none';
+    container.style.display = 'none';
   });
 
   saveBtn.addEventListener('click', ()=>{
@@ -2248,12 +2241,111 @@ recognition.addEventListener('result', (ev) => {
     barcodeDB = {};
   }
 
-  /* ===== Авто-инициализация: если хочешь, можно открыть сканер сразу (закомментировано) ===== */
-  // document.getElementById('scanner-container').style.display = 'block';
-  // await startCamera();
+  // Экспорт функций в глобальную область, чтобы внешний код мог управлять (если нужно)
+  window.startCamera = startCamera;
+  window.stopCamera = stopCamera;
+
+  /* ===== (не открываем автоматически) ===== */
+})();
+
+/* ============================================================
+   Восстановление / защита плавающей кнопки (поверх всего)
+   Гарантирует, что кнопка всегда видима и кликабельна.
+============================================================ */
+(function(){
+  const BTN_ID = 'openScannerBtn';
+  const CONTAINER_ID = 'scanner-container';
+
+  function createOrRestoreButton(){
+    let btn = document.getElementById(BTN_ID);
+    if(!btn){
+      btn = document.createElement('button');
+      btn.id = BTN_ID;
+      btn.title = 'Открыть сканер';
+      btn.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+        <rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/>
+        <path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>`;
+      document.body.appendChild(btn);
+    } else {
+      document.body.appendChild(btn);
+    }
+
+    Object.assign(btn.style, {
+      position: 'fixed',
+      left: '12px',
+      bottom: '18px',
+      width: '56px',
+      height: '56px',
+      borderRadius: '12px',
+      background: 'linear-gradient(180deg,#6d28d9,#4c1d95)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: 'none',
+      cursor: 'pointer',
+      zIndex: String(2147483647),
+      boxShadow: '0 10px 30px rgba(0,0,0,0.45)',
+      outline: 'none',
+      padding: '0',
+      margin: '0',
+      pointerEvents: 'auto'
+    });
+
+    btn.style.display = 'flex';
+    btn.style.opacity = '1';
+
+    btn.onclick = function(){
+      const container = document.getElementById(CONTAINER_ID);
+      if(container){
+        container.style.display = 'block';
+        try{ if(typeof startCamera === 'function') startCamera(); }catch(e){}
+      } else {
+        const ev = new CustomEvent('openScannerRequested');
+        window.dispatchEvent(ev);
+      }
+    };
+
+    btn.ondblclick = function(){
+      const container = document.getElementById(CONTAINER_ID);
+      if(container) container.style.display = 'none';
+      try{ if(typeof stopCamera === 'function') stopCamera(); }catch(e){}
+    };
+
+    return btn;
+  }
+
+  const btn = createOrRestoreButton();
+
+  const observer = new MutationObserver(()=> {
+    if(document.body.lastElementChild !== btn) document.body.appendChild(btn);
+  });
+  observer.observe(document.body, { childList: true, subtree: false });
+
+  let fixInterval = setInterval(()=>{
+    if(!document.getElementById(BTN_ID)) createOrRestoreButton();
+    const b = document.getElementById(BTN_ID);
+    if(b){
+      b.style.zIndex = String(2147483647);
+      b.style.pointerEvents = 'auto';
+      b.style.display = 'flex';
+    }
+  }, 800);
+
+  window.addEventListener('beforeunload', ()=>{
+    observer.disconnect();
+    clearInterval(fixInterval);
+  });
+
+  window.addEventListener('openScannerRequested', async ()=>{
+    const container = document.getElementById(CONTAINER_ID);
+    if(container) container.style.display = 'block';
+    try{ if(typeof startCamera === 'function') startCamera(); }catch(e){}
+  });
 
 })();
 </script>
+
 
 
 
