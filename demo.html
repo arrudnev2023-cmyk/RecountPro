@@ -2264,32 +2264,103 @@ async function handleDetected(code){
 ===========================*/
 async function startScanner(){
   if(scanning) return;
-  // ensure worker loaded
-  if(!workerReady){
-    // wait up to 1s for worker
-    const start = performance.now();
-    while(!workerReady && performance.now() - start < 1000) await new Promise(r=>setTimeout(r,30));
+  stopScanner();
+  scanning = true;
+
+  const overlay = document.getElementById('rot-scanner-overlay') || document.getElementById('scanner-container');
+  if(overlay) overlay.classList ? overlay.classList.add('visible') : overlay.style.display = 'block';
+
+  showScannerToast('Запрос доступа к камере...');
+
+  // наборы constraints: от самых "жирных" к самым простым
+  const constraintSets = [
+    { video: { facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:60} }, audio:false },
+    { video: { facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}, frameRate:{ideal:30} }, audio:false },
+    { video: { facingMode:{ideal:'environment'}, width:{ideal:640}, height:{ideal:480} }, audio:false },
+    { video: true, audio:false }
+  ];
+
+  // helper: try getUserMedia with timeout
+  async function tryGetMedia(constraints, timeoutMs = 4000){
+    try{
+      const p = navigator.mediaDevices.getUserMedia(constraints);
+      if(timeoutMs <= 0) return await p;
+      const t = new Promise((_, rej) => setTimeout(()=> rej(new Error('getUserMedia timeout')), timeoutMs));
+      return await Promise.race([p, t]);
+    }catch(err){
+      throw err;
+    }
   }
-  const ov = document.getElementById('rot-scanner-overlay');
-  ov.classList.add('visible');
+
+  // try each constraint set
+  let lastErr = null;
+  for(const c of constraintSets){
+    try{
+      const s = await tryGetMedia(c, 5000);
+      stream = s;
+      const video = document.getElementById(VIDEO_ID) || document.getElementById('preview') || document.querySelector('video');
+      if(!video){
+        showScannerToast('Видео элемент не найден');
+        stopScanner();
+        return;
+      }
+      video.srcObject = stream;
+      // ensure playsinline and muted
+      video.muted = true;
+      video.playsInline = true;
+      try{
+        await video.play();
+      }catch(playErr){
+        // попытка повторного присвоения и play
+        try{ video.srcObject = stream; await video.play(); }catch(e){ throw playErr; }
+      }
+      // success
+      showScannerToast('Камера включена');
+      // set aggressive interval if high-res
+      targetInterval = (c.video && c.video.frameRate && c.video.frameRate.ideal >= 50) ? 25 : 40;
+      scanning = true;
+      scanLoop();
+      return;
+    }catch(err){
+      console.warn('getUserMedia failed for constraints', c, err);
+      lastErr = err;
+      // continue to next constraints
+    }
+  }
+
+  // если не удалось — попробуем перечислить устройства и пробовать по deviceId
   try{
-    stream = await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:60} },
-      audio:false
-    });
-    const video = document.getElementById(VIDEO_ID);
-    video.srcObject = stream;
-    await video.play();
-    scanning = true;
-    // aggressive targetInterval for fastest attempts on capable devices
-    targetInterval = 25;
-    scanLoop(); // start loop (no await)
-    showScannerToast('Сканер включён', 700);
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+    for(const dev of videoDevices){
+      try{
+        const s = await tryGetMedia({ video: { deviceId: { exact: dev.deviceId }, width:{ideal:1280}, height:{ideal:720} }, audio:false }, 5000);
+        stream = s;
+        const video = document.getElementById(VIDEO_ID) || document.getElementById('preview') || document.querySelector('video');
+        video.srcObject = stream;
+        video.muted = true;
+        video.playsInline = true;
+        await video.play();
+        showScannerToast('Камера включена (deviceId)');
+        targetInterval = 40;
+        scanning = true;
+        scanLoop();
+        return;
+      }catch(err){
+        console.warn('deviceId open failed', dev.deviceId, err);
+      }
+    }
   }catch(e){
-    console.error(e);
-    showScannerToast('Не удалось открыть камеру', 900);
+    console.warn('enumerateDevices failed', e);
   }
+
+  // окончательный отказ — покажем понятную ошибку
+  console.error('Не удалось открыть камеру. Последняя ошибка:', lastErr);
+  showScannerToast('Не удалось открыть камеру. Проверь разрешения и HTTPS', 3000);
+  scanning = false;
+  if(overlay) overlay.classList ? overlay.classList.remove('visible') : overlay.style.display = 'none';
 }
+
 
 function stopScanner(){
   scanning = false;
