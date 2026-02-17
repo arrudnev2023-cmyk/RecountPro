@@ -1906,15 +1906,23 @@ recognition.addEventListener('result', (ev) => {
 
 
 
+<!-- Вставь этот один <script> в конец страницы (перед </body>).
+     Это полный автономный скрипт: UI (плавающая кнопка + оверлей + тост),
+     ультра‑быстрый сканер (BarcodeDetector → ZXing в воркере → OCR fallback),
+     надёжный старт камеры (несколько constraints + deviceId fallback),
+     и патч, гарантирующий, что кнопка всегда видна и кликабельна. -->
+
 <script>
-/* Быстрый сканер + OCR fallback (цифры) — единый автономный скрипт
-   - BarcodeDetector -> ZXing (в воркере) -> Tesseract.js OCR (fallback)
+/* ============================================================
+   FULL ULTRA-FAST SCANNER SCRIPT
+   - BarcodeDetector first
+   - ZXing decoding in WebWorker
    - createImageBitmap / OffscreenCanvas fast path
-   - масштабирование до ~900px по длинной стороне
-   - многопозиционные полосы (центр + квадранты)
-   - предобработка: contrast stretch + adaptive binarize (быстро)
-   - OCR ограничен цифрами (whitelist) и запускается только при неудаче декодера
-*/
+   - multi-position strips + preprocessing
+   - OCR fallback (Tesseract.js digits-only) as last resort
+   - robust startScanner with multiple constraints and deviceId fallback
+   - pointer-events patch so floating button is always clickable
+============================================================ */
 
 /* =========================
    Worker: ZXing loader + decode
@@ -1978,15 +1986,12 @@ decodeWorker.onmessage = (ev) => {
 decodeWorker.postMessage({type:'load'});
 
 /* =========================
-   Load Tesseract.js (OCR) as worker via CDN
-   We'll create a lightweight worker using Tesseract.js createWorker
+   OCR (Tesseract) setup (lazy)
    ========================= */
 let ocrWorker = null;
 let ocrReady = false;
 async function ensureOCR(){
   if(ocrReady) return;
-  // load tesseract core and create worker
-  // using CDN; this may take time on first load
   const scriptUrl = 'https://unpkg.com/tesseract.js@4.1.1/dist/tesseract.min.js';
   if(!window.Tesseract){
     await new Promise((res, rej) => {
@@ -1998,13 +2003,10 @@ async function ensureOCR(){
     }).catch(()=>{});
   }
   if(window.Tesseract && !ocrWorker){
-    ocrWorker = window.Tesseract.createWorker({
-      logger: m => { /* silent */ }
-    });
+    ocrWorker = window.Tesseract.createWorker({ logger: m => {} });
     await ocrWorker.load();
     await ocrWorker.loadLanguage('eng');
     await ocrWorker.initialize('eng');
-    // restrict to digits to speed up
     await ocrWorker.setParameters({
       tessedit_char_whitelist: '0123456789',
       preserve_interword_spaces: '0'
@@ -2014,7 +2016,7 @@ async function ensureOCR(){
 }
 
 /* =========================
-   UI: overlay, button, toast
+   UI: styles, overlay, button, toast
    ========================= */
 (function createUI(){
   if(!document.getElementById('rot-scanner-styles')){
@@ -2069,7 +2071,114 @@ function showScannerToast(text, ms=900){
 }
 
 /* =========================
-   Helpers: contrast stretch + simple binarize
+   Pointer-events patch so button is clickable
+   ========================= */
+(function pointerFix(){
+  const BTN_ID = 'rot-scanner-btn';
+  const OVERLAY_ID = 'rot-scanner-overlay';
+  const MAX_Z = 2147483647;
+
+  // Ensure overlay background doesn't block clicks globally
+  const styleId = 'rot-scanner-pointer-fix';
+  if(!document.getElementById(styleId)){
+    const s = document.createElement('style');
+    s.id = styleId;
+    s.textContent = `
+#${OVERLAY_ID} { pointer-events: none; }
+#${OVERLAY_ID} .preview, #${OVERLAY_ID} .controls { pointer-events: auto; }
+`;
+    document.head.appendChild(s);
+  }
+
+  function createOrRestoreButton(){
+    let btn = document.getElementById(BTN_ID);
+    if(!btn){
+      btn = document.createElement('button');
+      btn.id = BTN_ID;
+      btn.title = 'Открыть сканер';
+      btn.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/><path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>';
+      document.body.appendChild(btn);
+    } else {
+      document.body.appendChild(btn);
+    }
+
+    Object.assign(btn.style, {
+      position: 'fixed',
+      left: '12px',
+      bottom: '18px',
+      width: '56px',
+      height: '56px',
+      borderRadius: '12px',
+      background: 'linear-gradient(180deg,#6d28d9,#4c1d95)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: 'none',
+      cursor: 'pointer',
+      zIndex: String(MAX_Z),
+      boxShadow: '0 10px 30px rgba(0,0,0,0.45)',
+      outline: 'none',
+      padding: '0',
+      margin: '0',
+      pointerEvents: 'auto',
+      opacity: '1'
+    });
+
+    if(!btn._rot_bound){
+      btn.addEventListener('click', ()=>{
+        try{ if(typeof startScanner === 'function') startScanner(); }catch(e){}
+        const ov = document.getElementById(OVERLAY_ID);
+        if(ov) ov.classList ? ov.classList.add('visible') : ov.style.display = 'block';
+      });
+      btn._rot_bound = true;
+    }
+    return btn;
+  }
+
+  const btn = createOrRestoreButton();
+  const observer = new MutationObserver(()=> {
+    const b = document.getElementById(BTN_ID);
+    if(!b) createOrRestoreButton();
+    else {
+      if(document.body.lastElementChild !== b) document.body.appendChild(b);
+      b.style.zIndex = String(MAX_Z);
+      b.style.pointerEvents = 'auto';
+      b.style.display = 'flex';
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: false });
+
+  const fixInterval = setInterval(()=>{
+    const b = document.getElementById(BTN_ID);
+    if(!b) createOrRestoreButton();
+    else {
+      b.style.zIndex = String(MAX_Z);
+      b.style.pointerEvents = 'auto';
+      b.style.display = 'flex';
+    }
+  }, 700);
+
+  window.addEventListener('beforeunload', ()=>{
+    observer.disconnect();
+    clearInterval(fixInterval);
+  });
+
+})();
+
+/* =========================
+   State and DB in memory
+   ========================= */
+let stream = null;
+let scanning = false;
+let targetInterval = 30; // ms between decode attempts
+let lastAttempt = 0;
+const DEBOUNCE_MS = 700;
+let lastDetected = {code:null, ts:0};
+let barcodeDB = {};
+try{ barcodeDB = JSON.parse(localStorage.getItem('barcodeDB') || '{}'); }catch(e){ barcodeDB = {}; }
+
+/* =========================
+   Helpers: contrast stretch + binarize
    ========================= */
 function contrastStretchImageData(imgData){
   const d = imgData.data;
@@ -2095,11 +2204,10 @@ function fastBinarize(ctx, w, h){
   try{
     const img = ctx.getImageData(0,0,w,h);
     const d = img.data;
-    // compute mean luminance
     let sum=0, cnt=0;
     for(let i=0;i<d.length;i+=4){ sum += (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114); cnt++; }
     const mean = sum / cnt;
-    const thresh = Math.max(100, Math.min(200, mean)); // adaptive-ish
+    const thresh = Math.max(100, Math.min(200, mean));
     for(let i=0;i<d.length;i+=4){
       const v = (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114);
       const val = v > thresh ? 255 : 0;
@@ -2146,14 +2254,12 @@ async function tryBarcodeDetectorFromBitmap(bitmap){
 }
 
 /* =========================
-   OCR fallback using Tesseract (digits only)
-   - ensureOCR() must be called before heavy use
+   OCR fallback helper
    ========================= */
 async function ocrRecognizeCanvas(canvas){
   try{
     await ensureOCR();
     if(!ocrReady || !ocrWorker) return null;
-    // convert canvas to blob then recognize
     const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
     const { data: { text } } = await ocrWorker.recognize(blob);
     const digits = (text || '').replace(/\D+/g, '');
@@ -2184,7 +2290,6 @@ async function smartDecode(video){
       const off = new OffscreenCanvas(sw, sh);
       const ctx = off.getContext('2d');
       ctx.drawImage(bitmapFull, 0, 0, w, h, 0, 0, sw, sh);
-      // quick contrast stretch
       try{ const img = ctx.getImageData(0,0,sw,sh); ctx.putImageData(contrastStretchImageData(img),0,0); }catch(e){}
       smallBitmap = off.transferToImageBitmap();
       bitmapFull.close && bitmapFull.close();
@@ -2198,7 +2303,6 @@ async function smartDecode(video){
       smallBitmap = await createImageBitmap(c);
     }
 
-    // 1) BarcodeDetector
     if('BarcodeDetector' in window){
       try{
         const code = await tryBarcodeDetectorFromBitmap(smallBitmap);
@@ -2207,12 +2311,10 @@ async function smartDecode(video){
       }catch(e){}
     }
 
-    // 2) ZXing in worker
     if(workerReady){
       const code = await decodeInWorker(smallBitmap);
       if(code) return code;
     }else{
-      // fallback local ZXing if loaded
       try{
         if(window.ZXing){
           const c = document.createElement('canvas'); c.width = smallBitmap.width; c.height = smallBitmap.height;
@@ -2226,7 +2328,6 @@ async function smartDecode(video){
       }catch(e){}
     }
 
-    // 3) Multi-position strips + preprocessing + OCR fallback
     const positions = [
       {cx:0.5, cy:0.5, wFrac:1.0, hFrac:0.18},
       {cx:0.25, cy:0.35, wFrac:0.5, hFrac:0.14},
@@ -2252,7 +2353,6 @@ async function smartDecode(video){
         const off = new OffscreenCanvas(rsw, rsh);
         const ctx = off.getContext('2d');
         ctx.drawImage(regionBitmap, 0, 0, stripW, stripH, 0, 0, rsw, rsh);
-        // preprocessing: contrast + binarize to help ZXing and OCR
         try{ const img = ctx.getImageData(0,0,rsw,rsh); ctx.putImageData(contrastStretchImageData(img),0,0); }catch(e){}
         fastBinarize(ctx, rsw, rsh);
         scaledRegion = off.transferToImageBitmap();
@@ -2266,7 +2366,6 @@ async function smartDecode(video){
         scaledRegion = await createImageBitmap(c);
       }
 
-      // try ZXing on strip
       if(workerReady){
         const code = await decodeInWorker(scaledRegion);
         if(code) return code;
@@ -2284,22 +2383,16 @@ async function smartDecode(video){
         }catch(e){}
       }
 
-      // OCR fallback on strip (digits only)
       try{
-        // draw scaledRegion to canvas for OCR
         const c = document.createElement('canvas'); c.width = rsw; c.height = rsh;
         const ctx = c.getContext('2d'); ctx.drawImage(scaledRegion,0,0);
         scaledRegion.close && scaledRegion.close();
         const digits = await ocrRecognizeCanvas(c);
-        if(digits && digits.length >= 6){ // heuristic: at least 6 digits to be a barcode fallback
-          return digits;
-        }
+        if(digits && digits.length >= 6) return digits;
       }catch(e){}
     }
 
-  }catch(e){
-    // ignore
-  }
+  }catch(e){}
   return null;
 }
 
@@ -2372,7 +2465,6 @@ async function startScanner(){
       }
       targetInterval = (c.video && c.video.frameRate && c.video.frameRate.ideal >= 50) ? 25 : 40;
       scanning = true;
-      // warm OCR in background (non-blocking)
       ensureOCR().catch(()=>{});
       scanLoop();
       showScannerToast('Камера включена', 700);
@@ -2383,7 +2475,6 @@ async function startScanner(){
     }
   }
 
-  // deviceId fallback
   try{
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoDevices = devices.filter(d => d.kind === 'videoinput');
@@ -2442,15 +2533,13 @@ async function scanLoop(){
         await handleDetected(code);
         await new Promise(r=>setTimeout(r, 200));
       }
-    }catch(e){
-      // ignore per-frame errors
-    }
+    }catch(e){}
     await new Promise(r=>requestAnimationFrame(r));
   }
 }
 
 /* =========================
-   Expose helpers
+   Expose helpers and DB control
    ========================= */
 window.startScanner = startScanner;
 window.stopScanner = stopScanner;
@@ -2463,7 +2552,7 @@ window.addBarcode = function(code, name){
   try{ localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB)); }catch(e){}
 };
 
-/* bind UI */
+/* bind UI safety */
 (function bindUI(){
   const btn = document.getElementById('rot-scanner-btn');
   if(btn) btn.addEventListener('click', startScanner);
@@ -2471,6 +2560,7 @@ window.addBarcode = function(code, name){
   if(close) close.addEventListener('click', stopScanner);
 })();
 </script>
+
 
 
 
