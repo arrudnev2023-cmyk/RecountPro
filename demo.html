@@ -1906,7 +1906,6 @@ recognition.addEventListener('result', (ev) => {
 
 
 
-<!-- TOAST -->
 <script>
 /* ===========================
    TOAST
@@ -1919,7 +1918,7 @@ recognition.addEventListener('result', (ev) => {
     left: 50%;
     bottom: 22px;
     transform: translateX(-50%);
-    background: rgba(20,20,24,0.94);
+    background: rgba(18,18,22,0.95);
     color: #fff;
     padding: 10px 16px;
     border-radius: 10px;
@@ -1930,7 +1929,7 @@ recognition.addEventListener('result', (ev) => {
     z-index:2147483647; pointer-events:none;
   `;
   document.body.appendChild(toast);
-  window.showScannerToast = function(text, ms=1600){
+  window.showScannerToast = function(text, ms=1400){
     toast.textContent = text;
     toast.style.opacity = '1';
     clearTimeout(toast._t);
@@ -1939,7 +1938,7 @@ recognition.addEventListener('result', (ev) => {
 })();
 
 /* ===========================
-   NEW UI + OLD FAST ENGINE + LASER STRIP PASS
+   UI + FAST SCANNER
 =========================== */
 (function(){
   const BTN_ID = 'rot-scanner-btn';
@@ -1971,11 +1970,11 @@ recognition.addEventListener('result', (ev) => {
 }
 #${OVERLAY_ID}{
   display:none;position:fixed;background:rgba(8,8,10,0.98);
-  border-radius:10px;padding:6px;
+  border-radius:6px;padding:6px;
   box-shadow:0 20px 60px rgba(0,0,0,0.6);
   z-index:2147483646;overflow:hidden;
-  left:50%;top:10%;transform:translateX(-50%);
-  width:80vw;height:40vh;
+  left:50%;top:6%;transform:translateX(-50%);
+  width:100vw;height:46vh;
 }
 #${OVERLAY_ID}.visible{display:block}
 #${OVERLAY_ID} .preview{
@@ -1983,7 +1982,7 @@ recognition.addEventListener('result', (ev) => {
   display:flex;align-items:center;justify-content:center;position:relative;
 }
 #${OVERLAY_ID} video{
-  width:100%;height:100%;object-fit:contain;display:block;
+  width:100%;height:100%;object-fit:cover;display:block;
 }
 #${OVERLAY_ID} .controls{
   position:absolute;right:8px;top:8px;display:flex;gap:8px;z-index:3;
@@ -1992,12 +1991,6 @@ recognition.addEventListener('result', (ev) => {
   background:rgba(255,255,255,0.06);color:#fff;border:none;
   padding:6px 8px;border-radius:8px;cursor:pointer;
 }
-#${OVERLAY_ID} .laser-h, #${OVERLAY_ID} .laser-v{
-  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  pointer-events:none;z-index:2;opacity:0.9;
-}
-#${OVERLAY_ID} .laser-h{ width:80%; height:2px; background:rgba(0,255,120,0.9); }
-#${OVERLAY_ID} .laser-v{ width:2px; height:80%; background:rgba(0,255,120,0.9); }
 `;
     document.head.appendChild(s);
   }
@@ -2026,8 +2019,6 @@ recognition.addEventListener('result', (ev) => {
     ov.innerHTML = `
       <div class="preview">
         <video id="${VIDEO_ID}" playsinline muted></video>
-        <div class="laser-h" style="display:none"></div>
-        <div class="laser-v" style="display:none"></div>
       </div>
       <div class="controls"><button id="rot-close">Закрыть</button></div>`;
     document.body.appendChild(ov);
@@ -2053,9 +2044,8 @@ recognition.addEventListener('result', (ev) => {
     const c = createCanvas(w,h); canvasPool.push(c); return c;
   }
 
-  /* ===== simple image enhancements (fast) ===== */
+  /* ===== fast simple enhancements ===== */
   function contrastStretch(ctx, w, h){
-    // быстрый контраст: линейная растяжка по min/max яркости
     const img = ctx.getImageData(0,0,w,h);
     const d = img.data;
     let min=255, max=0;
@@ -2077,40 +2067,10 @@ recognition.addEventListener('result', (ev) => {
     ctx.putImageData(img,0,0);
   }
 
-  function unsharpMask(ctx, w, h){
-    // лёгкий unsharp: быстрый 3x3 kernel high-pass add
-    const img = ctx.getImageData(0,0,w,h);
-    const d = img.data;
-    const copy = new Uint8ClampedArray(d);
-    const kernel = [1,1,1,1, -8,1,1,1,1]; // simple high-pass
-    for(let y=1;y<h-1;y++){
-      for(let x=1;x<w-1;x++){
-        let r=0,g=0,b=0, idx=0;
-        for(let ky=-1;ky<=1;ky++){
-          for(let kx=-1;kx<=1;kx++){
-            const px = x+kx, py = y+ky;
-            const pidx = (py*w+px)*4;
-            const k = kernel[idx++];
-            r += copy[pidx]*k;
-            g += copy[pidx+1]*k;
-            b += copy[pidx+2]*k;
-          }
-        }
-        const i = (y*w+x)*4;
-        // add small amount of high-pass back
-        d[i] = Math.min(255, Math.max(0, copy[i] + 0.25 * r));
-        d[i+1] = Math.min(255, Math.max(0, copy[i+1] + 0.25 * g));
-        d[i+2] = Math.min(255, Math.max(0, copy[i+2] + 0.25 * b));
-      }
-    }
-    ctx.putImageData(img,0,0);
-  }
-
   /* ===== decoding attempts (old logic + rotated passes) ===== */
   async function tryDecodeCanvas(canvas){
     const ctx = canvas.getContext('2d');
 
-    // 1) BarcodeDetector (fast, if available)
     if(detector){
       try{
         const imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
@@ -2119,7 +2079,6 @@ recognition.addEventListener('result', (ev) => {
       }catch(e){}
     }
 
-    // 2) ZXing normal
     try{
       const luminanceSource = new ZX.HTMLCanvasElementLuminanceSource(canvas);
       const binaryBitmap = new ZX.BinaryBitmap(new ZX.HybridBinarizer(luminanceSource));
@@ -2127,7 +2086,6 @@ recognition.addEventListener('result', (ev) => {
       if(result && result.text) return result.text;
     }catch(e){}
 
-    // 3) ZXing rotated (90,180,270)
     const w = canvas.width, h = canvas.height;
     const temp = getCanvas(w,h);
     const tctx = temp.getContext('2d');
@@ -2148,13 +2106,54 @@ recognition.addEventListener('result', (ev) => {
     return null;
   }
 
-  /* ===== smart two-pass scan: full small frame, then laser strips ===== */
+  /* ===== multi-position strip scan for anywhere-in-frame detection ===== */
+  async function stripDecode(video){
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if(!w || !h) return null;
+
+    // positions: center, left, right, top, bottom (both horizontal and vertical strips)
+    const positions = [
+      {x:0.0, y:0.5, wFrac:1.0, hFrac:0.18}, // full-width center horizontal
+      {x:0.0, y:0.2, wFrac:1.0, hFrac:0.12}, // upper horizontal
+      {x:0.0, y:0.8, wFrac:1.0, hFrac:0.12}, // lower horizontal
+      {x:0.5, y:0.5, wFrac:0.18, hFrac:1.0}, // center vertical
+      {x:0.2, y:0.5, wFrac:0.12, hFrac:1.0}, // left vertical
+      {x:0.8, y:0.5, wFrac:0.12, hFrac:1.0}  // right vertical
+    ];
+
+    for(const p of positions){
+      const stripW = Math.max(40, Math.floor(w * p.wFrac));
+      const stripH = Math.max(24, Math.floor(h * p.hFrac));
+      const sx = Math.max(0, Math.floor(w * p.x - stripW/2));
+      const sy = Math.max(0, Math.floor(h * p.y - stripH/2));
+
+      const scale = Math.max(1, Math.floor(Math.max(stripW,stripH)/900));
+      const ssw = Math.floor(stripW/scale);
+      const ssh = Math.floor(stripH/scale);
+      const strip = getCanvas(ssw, ssh);
+      const sctx = strip.getContext('2d');
+      sctx.clearRect(0,0,ssw,ssh);
+      sctx.drawImage(video, sx, sy, stripW, stripH, 0, 0, ssw, ssh);
+
+      // quick enhancement for black/white codes
+      contrastStretch(sctx, ssw, ssh);
+
+      try{
+        const code = await tryDecodeCanvas(strip);
+        if(code) return code;
+      }catch(e){}
+    }
+    return null;
+  }
+
+  /* ===== smart decode: full scaled frame then strips ===== */
   async function smartDecodeFromVideo(video){
     const w = video.videoWidth;
     const h = video.videoHeight;
     if(!w || !h) return null;
 
-    // 1) Full frame scaled down to ~900px long side (fast)
+    // 1) Full frame scaled down to ~900px long side (fast, covers whole frame)
     const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
     const sw = Math.floor(w/scale);
     const sh = Math.floor(h/scale);
@@ -2162,67 +2161,21 @@ recognition.addEventListener('result', (ev) => {
     const fctx = fullSmall.getContext('2d');
     fctx.drawImage(video, 0, 0, w, h, 0, 0, sw, sh);
 
-    // try decode full small
     try{
       const code = await tryDecodeCanvas(fullSmall);
       if(code) return code;
     }catch(e){}
 
-    // 2) Laser strip passes (center horizontal and vertical)
-    // Horizontal strip: center 20% height, full width
-    const stripH = Math.max(40, Math.floor(h * 0.20));
-    const sy = Math.floor((h - stripH)/2);
-    const stripW = w;
-    const stripScale = Math.max(1, Math.floor(Math.max(stripW, stripH)/900));
-    const ssw = Math.floor(stripW/stripScale);
-    const ssh = Math.floor(stripH/stripScale);
-    const stripCanvasH = getCanvas(ssw, ssh);
-    const shctx = stripCanvasH.getContext('2d');
-    shctx.clearRect(0,0,ssw,ssh);
-    shctx.drawImage(video, 0, sy, stripW, stripH, 0, 0, ssw, ssh);
-    // enhance only this strip
-    contrastStretch(shctx, ssw, ssh);
-    unsharpMask(shctx, ssw, ssh);
+    // 2) Multi-position strip passes (fast, targets edges and off-center codes)
     try{
-      const code = await tryDecodeCanvas(stripCanvasH);
-      if(code) return code;
-    }catch(e){}
-
-    // Vertical strip: center 20% width, full height
-    const stripWv = Math.max(40, Math.floor(w * 0.20));
-    const sxv = Math.floor((w - stripWv)/2);
-    const sswv = Math.floor(stripWv/stripScale);
-    const sshv = Math.floor(h/stripScale);
-    const stripCanvasV = getCanvas(sswv, sshv);
-    const svctx = stripCanvasV.getContext('2d');
-    svctx.clearRect(0,0,sswv,sshv);
-    svctx.drawImage(video, sxv, 0, stripWv, h, 0, 0, sswv, sshv);
-    contrastStretch(svctx, sswv, sshv);
-    unsharpMask(svctx, sswv, sshv);
-    try{
-      const code = await tryDecodeCanvas(stripCanvasV);
-      if(code) return code;
-    }catch(e){}
-
-    // 3) fallback: try rotated narrow strips (rare)
-    // rotate and try horizontal strip rotated
-    const temp = getCanvas(ssw, ssh);
-    const tctx = temp.getContext('2d');
-    tctx.clearRect(0,0,ssw,ssh);
-    tctx.save();
-    tctx.translate(ssw/2, ssh/2);
-    tctx.rotate(90*Math.PI/180);
-    tctx.drawImage(stripCanvasH, -ssw/2, -ssh/2);
-    tctx.restore();
-    try{
-      const code = await tryDecodeCanvas(temp);
-      if(code) return code;
+      const code2 = await stripDecode(video);
+      if(code2) return code2;
     }catch(e){}
 
     return null;
   }
 
-  /* ===== scan loop (uses smartDecodeFromVideo) ===== */
+  /* ===== scan loop ===== */
   async function scanLoop(){
     const video = document.getElementById(VIDEO_ID);
     while(scanning){
@@ -2237,9 +2190,7 @@ recognition.addEventListener('result', (ev) => {
         const code = await smartDecodeFromVideo(video);
         if(code){
           handleDetected(code);
-          // небольшая пауза чтобы не дергать сразу
-          await new Promise(r=>setTimeout(r, 300));
-          // continue scanning after debounce
+          await new Promise(r=>setTimeout(r, 250));
         }
       }catch(e){
         // ignore per-frame errors
@@ -2260,8 +2211,8 @@ recognition.addEventListener('result', (ev) => {
       stream = await navigator.mediaDevices.getUserMedia({
         video:{
           facingMode:{ideal:"environment"},
-          width:{ideal:1280},
-          height:{ideal:720}
+          width:{ideal:1920},
+          height:{ideal:1080}
         },
         audio:false
       });
@@ -2302,7 +2253,6 @@ recognition.addEventListener('result', (ev) => {
     if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
     lastDetected = {code, ts: now};
 
-    // beep / vibration
     try{ if(navigator.vibrate) navigator.vibrate(60); }catch(e){}
 
     stopScanner();
@@ -2317,9 +2267,8 @@ recognition.addEventListener('result', (ev) => {
     }catch(e){}
 
     if(!name){
-      showScannerToast("Штрих‑кода нет в базе");
-      // still put code into search field
       insertIntoSearch(code);
+      showScannerToast("Штрих‑кода нет в базе");
       return;
     }
 
@@ -2333,7 +2282,6 @@ recognition.addEventListener('result', (ev) => {
       const text = t ? t.textContent : c.textContent;
       if(String(text||'').toLowerCase().includes(nameNorm)){
         found = true;
-        // highlight briefly
         c.style.transition = 'box-shadow .18s ease';
         const prev = c.style.boxShadow;
         c.style.boxShadow = '0 8px 30px rgba(0,200,120,0.25)';
@@ -2363,6 +2311,7 @@ recognition.addEventListener('result', (ev) => {
 
 })();
 </script>
+
 
 
 
