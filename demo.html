@@ -1906,208 +1906,199 @@ recognition.addEventListener('result', (ev) => {
 
 
 
-<!-- Полный автономный скрипт: интерфейс + идеальный быстрый сканер + восстановление плавающей кнопки -->
+<!-- Полный автономный скрипт: интерфейс + ультра быстрый сканер + плавающая кнопка -->
 <script>
-/* ============================================================
-   1) Гарантируем DOM (создаём элементы, если их нет)
-   2) Идеальный движок сканера (твоя логика 1:1: downscale ~900, ZXing, BarcodeDetector, повороты)
-   3) Восстановление плавающей кнопки поверх всего
-============================================================ */
+/* ===========================
+   TOAST
+=========================== */
+(function(){
+  const toast = document.createElement('div');
+  toast.id = 'scanner-toast';
+  toast.style.cssText = `
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    background: rgba(18,18,22,0.95);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight:600;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    opacity:0; transition:opacity .18s ease;
+    z-index:2147483647; pointer-events:none;
+  `;
+  document.body.appendChild(toast);
+  window.showScannerToast = function(text, ms=1200){
+    toast.textContent = text;
+    toast.style.opacity = '1';
+    clearTimeout(toast._t);
+    toast._t = setTimeout(()=> toast.style.opacity = '0', ms);
+  };
+})();
 
-(function ensureDOM(){
-  // Overlay container (scanner)
-  if(!document.getElementById('scanner-container')){
-    const container = document.createElement('div');
-    container.id = 'scanner-container';
-    container.style.position = 'fixed';
-    container.style.left = '50%';
-    container.style.top = '6%';
-    container.style.transform = 'translateX(-50%)';
-    container.style.width = '100vw';
-    container.style.maxWidth = '1400px';
-    container.style.height = '46vh';
-    container.style.zIndex = 2147483646;
-    container.style.display = 'none';
-    container.style.background = 'rgba(8,8,10,0.98)';
-    container.style.borderRadius = '8px';
-    container.style.boxShadow = '0 20px 60px rgba(0,0,0,0.6)';
-    container.style.padding = '6px';
-    container.innerHTML = `
-      <div style="width:100%;height:70%;display:flex;align-items:center;justify-content:center;position:relative;">
-        <video id="preview" playsinline muted style="width:100%;height:100%;object-fit:cover;border-radius:6px;display:block;background:#000"></video>
-        <div style="position:absolute;right:10px;top:10px;z-index:3;">
-          <button id="closeBtn" style="background:rgba(255,255,255,0.06);color:#fff;border:none;padding:6px 8px;border-radius:8px;cursor:pointer">Закрыть</button>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;padding:8px;height:30%;align-items:center;">
-        <input id="barcodeInput" placeholder="Штрихкод" style="flex:1;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:#111;color:#fff"/>
-        <input id="nameInput" placeholder="Название товара" style="flex:2;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:#111;color:#fff"/>
-        <button id="saveBtn" style="background:linear-gradient(180deg,#6d28d9,#4c1d95);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer">Сохранить</button>
-        <button id="clearBtn" style="background:rgba(255,255,255,0.06);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer">Очистить</button>
-      </div>
-    `;
-    document.body.appendChild(container);
+/* ===========================
+   ULTRA FAST SCANNER
+   - full-frame scanning (scaled)
+   - adaptive throttle
+   - createImageBitmap fast path
+   - multi-position strips for off-center codes
+=========================== */
+(function(){
+  const BTN_ID = 'rot-scanner-btn';
+  const OVERLAY_ID = 'rot-scanner-overlay';
+  const VIDEO_ID = 'rot-scanner-video';
+
+  let scanning = false;
+  let stream = null;
+  let ZX = null;
+  let detector = ('BarcodeDetector' in window)
+      ? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]})
+      : null;
+
+  let canvasPool = [];
+  let lastDetected = {code:null, ts:0};
+  const DEBOUNCE_MS = 700;
+
+  // throttle: minimal ms between heavy decode attempts
+  let targetInterval = 50;
+  let lastAttempt = 0;
+
+  /* ===== CSS & UI ===== */
+  function injectCSS(){
+    if(document.getElementById('rot-scanner-styles')) return;
+    const s = document.createElement('style');
+    s.id = 'rot-scanner-styles';
+    s.textContent = `
+#${BTN_ID}{
+  position:fixed;left:12px;bottom:18px;z-index:2147483647;
+  width:56px;height:56px;border-radius:12px;
+  background:linear-gradient(180deg,#6d28d9,#4c1d95);
+  display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;
+}
+#${OVERLAY_ID}{
+  display:none;position:fixed;background:rgba(8,8,10,0.98);
+  border-radius:6px;padding:6px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.6);
+  z-index:2147483646;overflow:hidden;
+  left:50%;top:6%;transform:translateX(-50%);
+  width:100vw;height:52vh;
+}
+#${OVERLAY_ID}.visible{display:block}
+#${OVERLAY_ID} .preview{
+  width:100%;height:100%;background:#000;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;position:relative;
+}
+#${OVERLAY_ID} video{
+  width:100%;height:100%;object-fit:cover;display:block;
+}
+#${OVERLAY_ID} .controls{
+  position:absolute;right:8px;top:8px;display:flex;gap:8px;z-index:3;
+}
+#${OVERLAY_ID} button{
+  background:rgba(255,255,255,0.06);color:#fff;border:none;
+  padding:6px 8px;border-radius:8px;cursor:pointer;
+}
+`;
+    document.head.appendChild(s);
   }
 
-  // Toast
-  if(!document.getElementById('toast')){
-    const t = document.createElement('div');
-    t.id = 'toast';
-    t.style.cssText = `
-      position: fixed;
-      left: 50%;
-      bottom: 22px;
-      transform: translateX(-50%);
-      background: rgba(20,18,28,0.92);
-      color: #eae9f8;
-      padding: 12px 18px;
-      border-radius: 10px;
-      font-size: 15px;
-      font-weight: 600;
-      box-shadow: 0 8px 28px rgba(0,0,0,0.55);
-      border: 1px solid rgba(255,255,255,0.06);
-      backdrop-filter: blur(6px);
-      display:none;
-      z-index:2147483647;
-    `;
-    document.body.appendChild(t);
-  }
-
-  // Floating open button (если нет)
-  if(!document.getElementById('openScannerBtn')){
-    const b = document.createElement('button');
-    b.id = 'openScannerBtn';
-    b.title = 'Открыть сканер';
-    b.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+  function createButton(){
+    injectCSS();
+    let btn = document.getElementById(BTN_ID);
+    if(btn) return btn;
+    btn = document.createElement('button');
+    btn.id = BTN_ID;
+    btn.title = 'Открыть сканер';
+    btn.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none">
       <rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/>
       <path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
     </svg>`;
-    document.body.appendChild(b);
+    document.body.appendChild(btn);
+    return btn;
   }
-})();
 
-/* ============================================================
-   Основной модуль сканера
-============================================================ */
-(async function main(){
-  /* ===== State ===== */
-  let barcodeDB = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
-  let stream = null;
-  let scanning = false;
-  let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
-  let reader = null;
-  let lastDetected = {code:null, ts:0};
-  const DEBOUNCE_MS = 900;
-
-  /* ===== Elements ===== */
-  const preview = document.getElementById('preview');
-  const barcodeInput = document.getElementById('barcodeInput');
-  const nameInput = document.getElementById('nameInput');
-  const saveBtn = document.getElementById('saveBtn');
-  const clearBtn = document.getElementById('clearBtn');
-  const closeBtn = document.getElementById('closeBtn');
-  const toast = document.getElementById('toast');
-  const container = document.getElementById('scanner-container');
-  const openBtn = document.getElementById('openScannerBtn');
-
-  /* ===== Helpers ===== */
-  function showToast(text, ms = 1400){
-    toast.textContent = text;
-    toast.style.display = 'block';
-    clearTimeout(toast._t);
-    toast._t = setTimeout(()=>{ toast.style.display = 'none'; }, ms);
-  }
-  function saveBarcodeDB(){
-    localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
-  }
-  function beep(){
-    try{ navigator.vibrate?.(60); }catch(e){}
+  function ensureOverlay(){
+    injectCSS();
+    let ov = document.getElementById(OVERLAY_ID);
+    if(ov) return ov;
+    ov = document.createElement('div');
+    ov.id = OVERLAY_ID;
+    ov.innerHTML = `
+      <div class="preview">
+        <video id="${VIDEO_ID}" playsinline muted></video>
+      </div>
+      <div class="controls"><button id="rot-close">Закрыть</button></div>`;
+    document.body.appendChild(ov);
+    document.getElementById('rot-close').addEventListener('click', stopScanner);
+    return ov;
   }
 
   /* ===== ZXing loader ===== */
   async function ensureZXing(){
-    if(window.ZXing) return;
+    if(ZX) return;
     await new Promise((res)=>{
       const s = document.createElement('script');
       s.src = "https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js";
-      s.onload = ()=> res();
-      s.onerror = ()=> res();
+      s.onload = ()=>{ ZX = window.ZXing; res(); };
       document.head.appendChild(s);
     });
   }
 
-  /* ===== Camera start/stop (как в твоём коде) ===== */
-  async function startCamera(){
-    if(scanning) return;
-    stopCamera();
-    scanning = true;
-
-    const constraints = {
-      audio:false,
-      video:{
-        facingMode: { ideal: "environment" },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30 }
-      }
-    };
-
-    try{
-      await ensureZXing();
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
-      preview.srcObject = stream;
-      await preview.play();
-      reader = new (window.ZXing?.BrowserMultiFormatReader || function(){})();
-      requestAnimationFrame(scanLoop);
-      showToast('Сканер включён', 900);
-    }catch(err){
-      console.error('camera error', err);
-      showToast('Не удалось получить доступ к камере', 1400);
-      scanning = false;
-    }
-  }
-
-  function stopCamera(){
-    scanning = false;
-    if(preview && preview.srcObject){
-      try{ preview.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){}
-      preview.srcObject = null;
-    }
-    if(reader){
-      try{ reader.reset(); }catch(e){}
-      reader = null;
-    }
-  }
-
-  /* ===== Preprocessing helpers (как в твоём коде) ===== */
+  /* ===== canvas helpers ===== */
   function createCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
-  function toGrayscale(ctx,w,h){ try{ const img=ctx.getImageData(0,0,w,h); const d=img.data; for(let i=0;i<d.length;i+=4){ const v=(d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114)|0; d[i]=d[i+1]=d[i+2]=v; } ctx.putImageData(img,0,0); }catch(e){} }
-  function increaseContrast(ctx,w,h,contrast=30){ try{ const img=ctx.getImageData(0,0,w,h); const d=img.data; const factor=(259*(contrast+255))/(255*(259-contrast)); for(let i=0;i<d.length;i+=4){ for(let c=0;c<3;c++){ let col=d[i+c]; col=factor*(col-128)+128; d[i+c]=Math.max(0,Math.min(255,col)); } } ctx.putImageData(img,0,0); }catch(e){} }
+  function getCanvas(w,h){
+    for(let c of canvasPool) if(c.width===w && c.height===h) return c;
+    const c = createCanvas(w,h); canvasPool.push(c); return c;
+  }
 
-  /* ===== Try decode with detector or ZXing, including rotated attempts (1:1) ===== */
+  /* ===== fast contrast stretch (cheap) ===== */
+  function contrastStretch(ctx, w, h){
+    try{
+      const img = ctx.getImageData(0,0,w,h);
+      const d = img.data;
+      let min=255, max=0;
+      for(let i=0;i<d.length;i+=4){
+        const v = (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114)|0;
+        if(v<min) min=v;
+        if(v>max) max=v;
+      }
+      const range = max - min || 1;
+      const mul = 255 / range;
+      for(let i=0;i<d.length;i+=4){
+        for(let k=0;k<3;k++){
+          let v = d[i+k];
+          v = (v - min) * mul;
+          if(v<0) v=0; if(v>255) v=255;
+          d[i+k]=v;
+        }
+      }
+      ctx.putImageData(img,0,0);
+    }catch(e){}
+  }
+
+  /* ===== try decode canvas (BarcodeDetector -> ZXing -> rotated ZXing) ===== */
   async function tryDecodeCanvas(canvas){
-    // BarcodeDetector
+    const ctx = canvas.getContext('2d');
+
     if(detector){
       try{
-        const imageData = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+        const imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
         const res = await detector.detect(imageData);
         if(res && res.length) return res[0].rawValue;
       }catch(e){}
     }
 
-    // ZXing direct
     try{
-      const luminanceSource = new window.ZXing?.HTMLCanvasElementLuminanceSource(canvas);
-      if(luminanceSource){
-        const binaryBitmap = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(luminanceSource));
-        const result = new window.ZXing.MultiFormatReader().decode(binaryBitmap);
-        if(result && result.text) return result.text;
-      }
+      const luminanceSource = new ZX.HTMLCanvasElementLuminanceSource(canvas);
+      const binaryBitmap = new ZX.BinaryBitmap(new ZX.HybridBinarizer(luminanceSource));
+      const result = new ZX.MultiFormatReader().decode(binaryBitmap);
+      if(result && result.text) return result.text;
     }catch(e){}
 
-    // Rotated attempts
     const w = canvas.width, h = canvas.height;
-    const temp = createCanvas(w,h);
+    const temp = getCanvas(w,h);
     const tctx = temp.getContext('2d');
     for(let angle of [90,180,270]){
       tctx.clearRect(0,0,w,h);
@@ -2117,234 +2108,241 @@ recognition.addEventListener('result', (ev) => {
       tctx.drawImage(canvas, -w/2, -h/2);
       tctx.restore();
       try{
-        const luminanceSource = new window.ZXing?.HTMLCanvasElementLuminanceSource(temp);
-        if(luminanceSource){
-          const binaryBitmap = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(luminanceSource));
-          const result = new window.ZXing.MultiFormatReader().decode(binaryBitmap);
-          if(result && result.text) return result.text;
-        }
+        const luminanceSource = new ZX.HTMLCanvasElementLuminanceSource(temp);
+        const binaryBitmap = new ZX.BinaryBitmap(new ZX.HybridBinarizer(luminanceSource));
+        const result = new ZX.MultiFormatReader().decode(binaryBitmap);
+        if(result && result.text) return result.text;
       }catch(e){}
     }
     return null;
   }
 
-  /* ===== Main scanning loop (full frame) ===== */
-  let canvasPool = [];
-  function getCanvas(w,h){
-    for(let c of canvasPool) if(c.width===w && c.height===h) return c;
-    const c = createCanvas(w,h); canvasPool.push(c); return c;
+  /* ===== multi-position strip scan (fast) ===== */
+  async function stripDecode(video){
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if(!w || !h) return null;
+
+    const positions = [
+      {cx:0.5, cy:0.5, wFrac:1.0, hFrac:0.18},
+      {cx:0.25, cy:0.35, wFrac:0.5, hFrac:0.14},
+      {cx:0.75, cy:0.35, wFrac:0.5, hFrac:0.14},
+      {cx:0.25, cy:0.65, wFrac:0.5, hFrac:0.14},
+      {cx:0.75, cy:0.65, wFrac:0.5, hFrac:0.14}
+    ];
+
+    for(const p of positions){
+      const stripW = Math.max(48, Math.floor(w * p.wFrac));
+      const stripH = Math.max(28, Math.floor(h * p.hFrac));
+      const sx = Math.max(0, Math.floor(w * p.cx - stripW/2));
+      const sy = Math.max(0, Math.floor(h * p.cy - stripH/2));
+
+      const scale = Math.max(1, Math.floor(Math.max(stripW,stripH)/900));
+      const ssw = Math.floor(stripW/scale);
+      const ssh = Math.floor(stripH/scale);
+      const strip = getCanvas(ssw, ssh);
+      const sctx = strip.getContext('2d');
+      sctx.clearRect(0,0,ssw,ssh);
+      sctx.drawImage(video, sx, sy, stripW, stripH, 0, 0, ssw, ssh);
+
+      contrastStretch(sctx, ssw, ssh);
+
+      try{
+        const code = await tryDecodeCanvas(strip);
+        if(code) return code;
+      }catch(e){}
+    }
+    return null;
   }
 
-  async function scanLoop(){
-    if(!scanning) return;
+  /* ===== smart decode: full scaled frame then strips; uses createImageBitmap if available ===== */
+  async function smartDecodeFromVideo(video){
+    const now = performance.now();
+    if(now - lastAttempt < targetInterval) return null;
+    lastAttempt = now;
+
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if(!w || !h) return null;
+
     try{
-      const w = preview.videoWidth;
-      const h = preview.videoHeight;
-      if(w===0 || h===0){ requestAnimationFrame(scanLoop); return; }
+      if('createImageBitmap' in window){
+        const bitmap = await createImageBitmap(video);
+        const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
+        const sw = Math.floor(w/scale);
+        const sh = Math.floor(h/scale);
+        const small = getCanvas(sw,sh);
+        const sctx = small.getContext('2d');
+        sctx.clearRect(0,0,sw,sh);
+        sctx.drawImage(bitmap, 0, 0, w, h, 0, 0, sw, sh);
+        bitmap.close && bitmap.close();
 
-      const canvas = getCanvas(w,h);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(preview, 0, 0, w, h);
+        const code = await tryDecodeCanvas(small);
+        if(code) return code;
+      }else{
+        const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
+        const sw = Math.floor(w/scale);
+        const sh = Math.floor(h/scale);
+        const small = getCanvas(sw,sh);
+        const sctx = small.getContext('2d');
+        sctx.clearRect(0,0,sw,sh);
+        sctx.drawImage(video, 0, 0, w, h, 0, 0, sw, sh);
 
-      // downscale for speed (как в твоём коде)
-      const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
-      const sw = Math.floor(w/scale);
-      const sh = Math.floor(h/scale);
-      const small = getCanvas(sw,sh);
-      const sctx = small.getContext('2d');
-      sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
-
-      // preprocessing (grayscale + contrast) — как в оригинале
-      toGrayscale(sctx, sw, sh);
-      increaseContrast(sctx, sw, sh, 30);
-
-      const code = await tryDecodeCanvas(small);
-      if(code) handleDetected(code);
+        const code = await tryDecodeCanvas(small);
+        if(code) return code;
+      }
     }catch(e){
-      // ignore per-frame errors
-    } finally {
-      requestAnimationFrame(scanLoop);
+      // continue to strips
+    }
+
+    try{
+      const code2 = await stripDecode(video);
+      if(code2) return code2;
+    }catch(e){}
+
+    return null;
+  }
+
+  /* ===== scan loop ===== */
+  async function scanLoop(){
+    const video = document.getElementById(VIDEO_ID);
+    while(scanning){
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      if(!w || !h){
+        await new Promise(r=>requestAnimationFrame(r));
+        continue;
+      }
+
+      try{
+        const code = await smartDecodeFromVideo(video);
+        if(code){
+          handleDetected(code);
+          await new Promise(r=>setTimeout(r, 200));
+        }
+      }catch(e){
+        // ignore per-frame errors
+      }
+
+      await new Promise(r=>requestAnimationFrame(r));
     }
   }
 
-  /* ===== Handle detection (как в твоём коде) ===== */
+  /* ===== start / stop ===== */
+  async function startScanner(){
+    await ensureZXing();
+    ensureOverlay();
+    const ov = document.getElementById(OVERLAY_ID);
+    ov.classList.add('visible');
+
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{
+          facingMode:{ideal:"environment"},
+          width:{ideal:1920},
+          height:{ideal:1080},
+          frameRate:{ideal:30}
+        },
+        audio:false
+      });
+      const video = document.getElementById(VIDEO_ID);
+      video.srcObject = stream;
+      await video.play();
+
+      targetInterval = 40;
+      scanning = true;
+      scanLoop();
+      showScannerToast('Сканер включён');
+    }catch(e){
+      console.error(e);
+      showScannerToast('Не удалось открыть камеру');
+    }
+  }
+
+  function stopScanner(){
+    scanning = false;
+    if(stream){
+      stream.getTracks().forEach(t=>t.stop());
+      stream = null;
+    }
+    const ov = document.getElementById(OVERLAY_ID);
+    if(ov) ov.classList.remove('visible');
+    showScannerToast('Сканер остановлен', 900);
+  }
+
+  /* ===== insert into search & handleDetected ===== */
+  function insertIntoSearch(value){
+    const searchEl = document.getElementById('search');
+    if(!searchEl) return;
+    searchEl.value = value;
+    searchEl.dispatchEvent(new Event('input',{bubbles:true}));
+    searchEl.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+
   function handleDetected(code){
     const now = Date.now();
     if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
     lastDetected = {code, ts: now};
-    beep();
 
-    // Заполняем поля и сохраняем/подсвечиваем как в оригинале
-    barcodeInput.value = code;
-    if(barcodeDB[code]) nameInput.value = barcodeDB[code];
-    else nameInput.value = '';
+    try{ if(navigator.vibrate) navigator.vibrate(40); }catch(e){}
 
-    // Останавливаем камеру (как в твоём коде)
-    stopCamera();
+    stopScanner();
 
-    // Пытаемся найти в базе и показать тост
-    if(barcodeDB[code]){
-      showToast('Товар найден: ' + barcodeDB[code], 1200);
-      // подсветка карточки, если есть
-      const nameNorm = String(barcodeDB[code]).toLowerCase();
-      const cards = document.querySelectorAll('.item');
-      for(const c of cards){
-        const t = c.querySelector('.title');
-        const text = t ? t.textContent : c.textContent;
-        if(String(text||'').toLowerCase().includes(nameNorm)){
-          c.style.transition = 'box-shadow .18s ease';
-          const prev = c.style.boxShadow;
-          c.style.boxShadow = '0 8px 30px rgba(0,200,120,0.25)';
-          setTimeout(()=> c.style.boxShadow = prev || '', 900);
-          break;
-        }
+    let name = null;
+    try{
+      const raw = localStorage.getItem('barcodeDB');
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(parsed[code]) name = parsed[code];
       }
-    }else{
-      showToast('Штрих‑кода нет в базе', 1200);
-    }
-  }
+    }catch(e){}
 
-  /* ===== UI actions (события кнопок) ===== */
-  openBtn.addEventListener('click', async ()=>{
-    container.style.display = 'block';
-    try{ await startCamera(); }catch(e){}
-  });
-
-  closeBtn.addEventListener('click', ()=>{
-    stopCamera();
-    container.style.display = 'none';
-  });
-
-  saveBtn.addEventListener('click', ()=>{
-    const code = (barcodeInput.value || '').trim();
-    const name = (nameInput.value || '').trim();
-    if(!code) return showToast('Штрих‑код пустой');
-    if(!name) return showToast('Введите название');
-    barcodeDB[code] = name;
-    saveBarcodeDB();
-    showToast('Сохранено');
-    lastDetected = {code:null, ts:0};
-    barcodeInput.value = '';
-    nameInput.value = '';
-  });
-
-  clearBtn.addEventListener('click', ()=>{
-    barcodeInput.value = '';
-    nameInput.value = '';
-    showToast('Поля очищены');
-  });
-
-  /* ===== Загрузка базы в память при старте (если есть) ===== */
-  try{
-    barcodeDB = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
-  }catch(e){
-    barcodeDB = {};
-  }
-
-  // Экспорт функций в глобальную область, чтобы внешний код мог управлять (если нужно)
-  window.startCamera = startCamera;
-  window.stopCamera = stopCamera;
-
-  /* ===== (не открываем автоматически) ===== */
-})();
-
-/* ============================================================
-   Восстановление / защита плавающей кнопки (поверх всего)
-   Гарантирует, что кнопка всегда видима и кликабельна.
-============================================================ */
-(function(){
-  const BTN_ID = 'openScannerBtn';
-  const CONTAINER_ID = 'scanner-container';
-
-  function createOrRestoreButton(){
-    let btn = document.getElementById(BTN_ID);
-    if(!btn){
-      btn = document.createElement('button');
-      btn.id = BTN_ID;
-      btn.title = 'Открыть сканер';
-      btn.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
-        <rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/>
-        <path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
-      </svg>`;
-      document.body.appendChild(btn);
-    } else {
-      document.body.appendChild(btn);
+    if(!name){
+      insertIntoSearch(code);
+      showScannerToast("Штрих‑кода нет в базе");
+      return;
     }
 
-    Object.assign(btn.style, {
-      position: 'fixed',
-      left: '12px',
-      bottom: '18px',
-      width: '56px',
-      height: '56px',
-      borderRadius: '12px',
-      background: 'linear-gradient(180deg,#6d28d9,#4c1d95)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      border: 'none',
-      cursor: 'pointer',
-      zIndex: String(2147483647),
-      boxShadow: '0 10px 30px rgba(0,0,0,0.45)',
-      outline: 'none',
-      padding: '0',
-      margin: '0',
-      pointerEvents: 'auto'
-    });
+    insertIntoSearch(name);
 
-    btn.style.display = 'flex';
-    btn.style.opacity = '1';
-
-    btn.onclick = function(){
-      const container = document.getElementById(CONTAINER_ID);
-      if(container){
-        container.style.display = 'block';
-        try{ if(typeof startCamera === 'function') startCamera(); }catch(e){}
-      } else {
-        const ev = new CustomEvent('openScannerRequested');
-        window.dispatchEvent(ev);
+    const nameNorm = name.toLowerCase();
+    const cards = document.querySelectorAll('.item');
+    let found = false;
+    for(const c of cards){
+      const t = c.querySelector('.title');
+      const text = t ? t.textContent : c.textContent;
+      if(String(text||'').toLowerCase().includes(nameNorm)){
+        found = true;
+        c.style.transition = 'box-shadow .18s ease';
+        const prev = c.style.boxShadow;
+        c.style.boxShadow = '0 8px 30px rgba(0,200,120,0.25)';
+        setTimeout(()=> c.style.boxShadow = prev || '', 900);
+        break;
       }
-    };
+    }
 
-    btn.ondblclick = function(){
-      const container = document.getElementById(CONTAINER_ID);
-      if(container) container.style.display = 'none';
-      try{ if(typeof stopCamera === 'function') stopCamera(); }catch(e){}
-    };
+    if(!found){
+      showScannerToast("Товар найден в базе, но карточка не найдена");
+      return;
+    }
 
-    return btn;
+    showScannerToast("Товар найден");
   }
 
-  const btn = createOrRestoreButton();
+  /* ===== init UI ===== */
+  function init(){
+    const btn = createButton();
+    btn.addEventListener('click', ()=> startScanner());
+  }
 
-  const observer = new MutationObserver(()=> {
-    if(document.body.lastElementChild !== btn) document.body.appendChild(btn);
-  });
-  observer.observe(document.body, { childList: true, subtree: false });
-
-  let fixInterval = setInterval(()=>{
-    if(!document.getElementById(BTN_ID)) createOrRestoreButton();
-    const b = document.getElementById(BTN_ID);
-    if(b){
-      b.style.zIndex = String(2147483647);
-      b.style.pointerEvents = 'auto';
-      b.style.display = 'flex';
-    }
-  }, 800);
-
-  window.addEventListener('beforeunload', ()=>{
-    observer.disconnect();
-    clearInterval(fixInterval);
-  });
-
-  window.addEventListener('openScannerRequested', async ()=>{
-    const container = document.getElementById(CONTAINER_ID);
-    if(container) container.style.display = 'block';
-    try{ if(typeof startCamera === 'function') startCamera(); }catch(e){}
-  });
+  if(document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', init);
+  else
+    init();
 
 })();
 </script>
+
 
 
 
