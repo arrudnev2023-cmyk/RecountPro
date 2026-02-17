@@ -1907,12 +1907,12 @@ recognition.addEventListener('result', (ev) => {
 
 
 <script>
-/* Ultra fast barcode scanner
-   - BarcodeDetector first
-   - 2x WebWorker ZXing decoders (parallel)
-   - ROI via vertical gradient on small image
-   - createImageBitmap + OffscreenCanvas
-   - robust getUserMedia fallback
+/* Ultra-fast scanner tuned for small barcodes
+   - 4 parallel ZXing workers
+   - ROI detection; small regions sent at full resolution (no downscale)
+   - quick sharpening + contrast on strips (OffscreenCanvas)
+   - BarcodeDetector first, then workers
+   - robust camera start with torch/focus attempts
 */
 
 /* ---------------- Worker source (ZXing UMD) ---------------- */
@@ -1932,9 +1932,8 @@ const workerSrc = `self.onmessage = async function(e){
     const id = msg.id;
     try{
       const bitmap = msg.imageBitmap;
-      // draw to offscreen canvas
-      let off = new OffscreenCanvas(bitmap.width, bitmap.height);
-      let ctx = off.getContext('2d');
+      const off = new OffscreenCanvas(bitmap.width, bitmap.height);
+      const ctx = off.getContext('2d');
       ctx.drawImage(bitmap, 0, 0);
       let code = null;
       if(self.ZX){
@@ -1954,32 +1953,40 @@ const workerSrc = `self.onmessage = async function(e){
   }
 };`;
 
-/* create two workers */
-function createWorkerFromSrc(src){
-  const blob = new Blob([src], {type:'application/javascript'});
+/* create N workers */
+const MAX_WORKERS = 4;
+const workers = [];
+for(let i=0;i<MAX_WORKERS;i++){
+  const blob = new Blob([workerSrc], {type:'application/javascript'});
   const url = URL.createObjectURL(blob);
   const w = new Worker(url);
-  return {worker: w, url};
+  workers.push({worker:w, ready:false, url});
+  w.onmessage = (ev)=> {
+    const m = ev.data;
+    if(m.type === 'loaded') { workers[i].ready = true; }
+    if(m.type === 'result' && pending.has(m.id)){
+      const {resolve} = pending.get(m.id);
+      pending.delete(m.id);
+      resolve(m.code || null);
+    }
+  };
+  w.postMessage({type:'load'});
 }
-const wA = createWorkerFromSrc(workerSrc);
-const wB = createWorkerFromSrc(workerSrc);
-let wAready = false, wBready = false;
+
+/* pending map for worker responses */
 const pending = new Map();
 let decodeId = 1;
 
-wA.worker.onmessage = (ev)=>{ const m=ev.data; if(m.type==='loaded') wAready=true; if(m.type==='result' && pending.has(m.id)){ pending.get(m.id).resolve(m.code||null); pending.delete(m.id);} };
-wB.worker.onmessage = (ev)=>{ const m=ev.data; if(m.type==='loaded') wBready=true; if(m.type==='result' && pending.has(m.id)){ pending.get(m.id).resolve(m.code||null); pending.delete(m.id);} };
-wA.worker.postMessage({type:'load'}); wB.worker.postMessage({type:'load'});
-
-/* helper to send bitmap to any available worker */
-function decodeWithWorker(imageBitmap){
+/* helper: choose worker round-robin */
+let rr = 0;
+function postToWorker(imageBitmap){
   return new Promise((resolve)=>{
     const id = decodeId++;
     pending.set(id, {resolve});
-    // choose worker round-robin / by readiness
-    const target = (wAready && !wBready) ? wA.worker : (!wAready && wBready) ? wB.worker : (Math.random()<0.5 ? wA.worker : wB.worker);
+    // choose next worker
+    const idx = rr % workers.length; rr++;
     try{
-      target.postMessage({type:'decode', id, imageBitmap}, [imageBitmap]);
+      workers[idx].worker.postMessage({type:'decode', id, imageBitmap}, [imageBitmap]);
     }catch(e){
       try{ imageBitmap.close && imageBitmap.close(); }catch(_){}
       pending.delete(id);
@@ -1990,56 +1997,56 @@ function decodeWithWorker(imageBitmap){
 
 /* ---------------- UI: overlay, button, toast ---------------- */
 (function uiCreate(){
-  if(!document.getElementById('fast-scanner-styles')){
+  if(!document.getElementById('fast2-styles')){
     const s = document.createElement('style');
-    s.id = 'fast-scanner-styles';
+    s.id = 'fast2-styles';
     s.textContent = `
-#fast-scanner-btn{position:fixed;left:12px;bottom:18px;z-index:2147483647;width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg,#6d28d9,#4c1d95);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer}
-#fast-scanner-overlay{display:none;position:fixed;background:rgba(0,0,0,0.92);border-radius:6px;padding:6px;box-shadow:0 20px 60px rgba(0,0,0,0.6);z-index:2147483646;overflow:hidden;left:50%;top:6%;transform:translateX(-50%);width:100vw;height:60vh}
-#fast-scanner-overlay.visible{display:block}
-#fast-scanner-overlay .preview{width:100%;height:100%;background:#000;border-radius:6px;display:flex;align-items:center;justify-content:center;position:relative}
-#fast-scanner-overlay video{width:100%;height:100%;object-fit:cover;display:block}
-#fast-scanner-overlay .controls{position:absolute;right:8px;top:8px;display:flex;gap:8px;z-index:3}
-#fast-scanner-overlay button{background:rgba(255,255,255,0.06);color:#fff;border:none;padding:6px 8px;border-radius:8px;cursor:pointer}
-#fast-scanner-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:rgba(18,18,22,0.95);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,0.6);opacity:0;transition:opacity .18s ease;z-index:2147483647;pointer-events:none}
+#fast2-btn{position:fixed;left:12px;bottom:18px;z-index:2147483647;width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg,#6d28d9,#4c1d95);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer}
+#fast2-overlay{display:none;position:fixed;background:rgba(0,0,0,0.92);border-radius:6px;padding:6px;box-shadow:0 20px 60px rgba(0,0,0,0.6);z-index:2147483646;overflow:hidden;left:50%;top:6%;transform:translateX(-50%);width:100vw;height:60vh}
+#fast2-overlay.visible{display:block}
+#fast2-overlay .preview{width:100%;height:100%;background:#000;border-radius:6px;display:flex;align-items:center;justify-content:center;position:relative}
+#fast2-overlay video{width:100%;height:100%;object-fit:cover;display:block}
+#fast2-overlay .controls{position:absolute;right:8px;top:8px;display:flex;gap:8px;z-index:3}
+#fast2-overlay button{background:rgba(255,255,255,0.06);color:#fff;border:none;padding:6px 8px;border-radius:8px;cursor:pointer}
+#fast2-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:rgba(18,18,22,0.95);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,0.6);opacity:0;transition:opacity .18s ease;z-index:2147483647;pointer-events:none}
 `;
     document.head.appendChild(s);
   }
-  if(!document.getElementById('fast-scanner-overlay')){
+  if(!document.getElementById('fast2-overlay')){
     const ov = document.createElement('div');
-    ov.id = 'fast-scanner-overlay';
-    ov.innerHTML = `<div class="preview"><video id="fast-scanner-video" playsinline muted></video></div><div class="controls"><button id="fast-close">Закрыть</button></div>`;
+    ov.id = 'fast2-overlay';
+    ov.innerHTML = `<div class="preview"><video id="fast2-video" playsinline muted></video></div><div class="controls"><button id="fast2-close">Закрыть</button></div>`;
     document.body.appendChild(ov);
-    ov.querySelector('#fast-close').addEventListener('click', stopScanner);
+    ov.querySelector('#fast2-close').addEventListener('click', stopScanner);
   }
-  if(!document.getElementById('fast-scanner-btn')){
+  if(!document.getElementById('fast2-btn')){
     const b = document.createElement('button');
-    b.id = 'fast-scanner-btn';
+    b.id = 'fast2-btn';
     b.title = 'Открыть сканер';
     b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none"><rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/><path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>';
     document.body.appendChild(b);
     b.addEventListener('click', startScanner);
   }
-  if(!document.getElementById('fast-scanner-toast')){
+  if(!document.getElementById('fast2-toast')){
     const t = document.createElement('div');
-    t.id = 'fast-scanner-toast';
+    t.id = 'fast2-toast';
     document.body.appendChild(t);
   }
 })();
 function showToast(text, ms=900){
-  const t = document.getElementById('fast-scanner-toast');
+  const t = document.getElementById('fast2-toast');
   t.textContent = text;
   t.style.opacity = '1';
   clearTimeout(t._t);
   t._t = setTimeout(()=> t.style.opacity = '0', ms);
 }
 
-/* ---------------- camera start/stop (robust) ---------------- */
+/* ---------------- camera start/stop (robust + torch/focus attempts) ---------------- */
 let stream = null;
 let scanning = false;
 let lastDetected = {code:null, ts:0};
 const DEBOUNCE = 700;
-let targetInterval = 30;
+let targetInterval = 25;
 let lastAttempt = 0;
 
 async function tryGetMedia(constraints, timeout=5000){
@@ -2053,7 +2060,7 @@ async function startScanner(){
   if(scanning) return;
   stopScanner();
   scanning = true;
-  const ov = document.getElementById('fast-scanner-overlay');
+  const ov = document.getElementById('fast2-overlay');
   ov.classList.add('visible');
   showToast('Открываем камеру...');
   const sets = [
@@ -2067,11 +2074,26 @@ async function startScanner(){
     try{
       const s = await tryGetMedia(c, 5000);
       stream = s;
-      const v = document.getElementById('fast-scanner-video');
+      const v = document.getElementById('fast2-video');
       v.srcObject = stream;
       v.muted = true; v.playsInline = true;
       await v.play();
-      targetInterval = (c.video && c.video.frameRate && c.video.frameRate.ideal>=50) ? 25 : 40;
+      // try to enable torch if available
+      try{
+        const track = stream.getVideoTracks()[0];
+        const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+        if(capabilities.torch){
+          await track.applyConstraints({advanced:[{torch:true}]});
+        }
+        // try focus/exposure continuous if supported
+        if(capabilities.focusMode && capabilities.focusMode.includes('continuous')){
+          await track.applyConstraints({advanced:[{focusMode:'continuous'}]});
+        }
+        if(capabilities.exposureMode && capabilities.exposureMode.includes('continuous')){
+          await track.applyConstraints({advanced:[{exposureMode:'continuous'}]});
+        }
+      }catch(e){}
+      targetInterval = (c.video && c.video.frameRate && c.video.frameRate.ideal>=50) ? 20 : 30;
       scanning = true;
       scanLoop();
       showToast('Камера включена', 700);
@@ -2089,9 +2111,9 @@ async function startScanner(){
       try{
         const s = await tryGetMedia({video:{deviceId:{exact:d.deviceId}, width:{ideal:1280}, height:{ideal:720}}, audio:false}, 4000);
         stream = s;
-        const v = document.getElementById('fast-scanner-video');
+        const v = document.getElementById('fast2-video');
         v.srcObject = stream; v.muted=true; v.playsInline=true; await v.play();
-        targetInterval = 40; scanning = true; scanLoop(); showToast('Камера включена',700); return;
+        targetInterval = 30; scanning = true; scanLoop(); showToast('Камера включена',700); return;
       }catch(e){ console.warn('device open failed', e); }
     }
   }catch(e){ console.warn('enumerateDevices failed', e); }
@@ -2103,19 +2125,13 @@ async function startScanner(){
 function stopScanner(){
   scanning = false;
   if(stream){ try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){} stream=null; }
-  const ov = document.getElementById('fast-scanner-overlay');
+  const ov = document.getElementById('fast2-overlay');
   ov.classList.remove('visible');
   showToast('Сканер остановлен', 700);
 }
 
-/* ---------------- fast ROI detector (vertical gradient) ----------------
-   - downscale to small width (e.g., 300px long side)
-   - compute vertical gradient (Sobel-like) quickly on Uint8
-   - sum columns to find peaks -> candidate strips
-   - returns array of {x,y,w,h} in original video coords
-*/
-function findStripRegions(imageBitmap, longSideTarget=300){
-  // draw to small canvas and compute vertical gradient
+/* ---------------- ROI detector (fast vertical gradient) ---------------- */
+function findStripRegionsFast(imageBitmap, longSideTarget=300){
   const w = imageBitmap.width, h = imageBitmap.height;
   const scale = Math.max(1, Math.floor(Math.max(w,h)/longSideTarget));
   const sw = Math.max(1, Math.floor(w/scale)), sh = Math.max(1, Math.floor(h/scale));
@@ -2124,7 +2140,6 @@ function findStripRegions(imageBitmap, longSideTarget=300){
   ctx.drawImage(imageBitmap, 0, 0, w, h, 0, 0, sw, sh);
   const img = ctx.getImageData(0,0,sw,sh);
   const d = img.data;
-  // compute vertical gradient per pixel (simple difference)
   const colSums = new Float32Array(sw);
   for(let y=1;y<sh-1;y++){
     for(let x=0;x<sw;x++){
@@ -2138,9 +2153,8 @@ function findStripRegions(imageBitmap, longSideTarget=300){
       colSums[x] += grad;
     }
   }
-  // smooth colSums with small window
   const smooth = new Float32Array(sw);
-  const win = 5;
+  const win = 3;
   for(let x=0;x<sw;x++){
     let s=0, cnt=0;
     for(let k=-win;k<=win;k++){
@@ -2149,9 +2163,8 @@ function findStripRegions(imageBitmap, longSideTarget=300){
     }
     smooth[x] = s / cnt;
   }
-  // find peaks above threshold
   const maxv = Math.max(...smooth);
-  const thresh = Math.max(0.12*maxv, 8); // heuristic
+  const thresh = Math.max(0.12*maxv, 6);
   const regions = [];
   let inPeak=false, start=0;
   for(let x=0;x<sw;x++){
@@ -2160,84 +2173,149 @@ function findStripRegions(imageBitmap, longSideTarget=300){
       inPeak=false;
       const end = x;
       const cx = Math.floor((start+end)/2);
-      // map back to original coords
       const origX = Math.floor(cx * scale);
       const stripW = Math.max(40, Math.floor((end-start) * scale));
-      const origY = 0;
-      const origH = h;
-      regions.push({x: Math.max(0, origX - Math.floor(stripW/2)), y: origY, w: stripW, h: origH});
+      regions.push({x: Math.max(0, origX - Math.floor(stripW/2)), y: 0, w: stripW, h: h});
     }
   }
-  // if no regions found, return center full-width strip
   if(regions.length===0){
     const stripW = Math.floor(w * 0.9);
     return [{x: Math.floor((w-stripW)/2), y:0, w:stripW, h:h}];
   }
-  // limit to top 3 widest/strongest
   regions.sort((a,b)=> b.w - a.w);
   return regions.slice(0,3);
 }
 
-/* ---------------- decode pipeline: try BarcodeDetector -> workers on ROIs -> full frame ---------------- */
+/* ---------------- image preprocessing: sharpening + contrast ---------------- */
+function applySharpenAndContrastToOffscreen(offCanvas){
+  try{
+    const ctx = offCanvas.getContext('2d');
+    const w = offCanvas.width, h = offCanvas.height;
+    const img = ctx.getImageData(0,0,w,h);
+    const d = img.data;
+    // simple contrast stretch
+    let min=255, max=0;
+    for(let i=0;i<d.length;i+=4){
+      const v = (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114)|0;
+      if(v<min) min=v; if(v>max) max=v;
+    }
+    const range = max - min || 1;
+    const mul = 255 / range;
+    for(let i=0;i<d.length;i+=4){
+      for(let k=0;k<3;k++){
+        let v = d[i+k];
+        v = (v - min) * mul;
+        if(v<0) v=0; if(v>255) v=255;
+        d[i+k] = v;
+      }
+    }
+    ctx.putImageData(img,0,0);
+    // sharpen via 3x3 kernel
+    const kernel = [0,-1,0, -1,5,-1, 0,-1,0];
+    const src = ctx.getImageData(0,0,w,h);
+    const sd = src.data;
+    const out = ctx.createImageData(w,h);
+    const od = out.data;
+    for(let y=1;y<h-1;y++){
+      for(let x=1;x<w-1;x++){
+        let r=0,g=0,b=0;
+        let kIdx=0;
+        for(let ky=-1;ky<=1;ky++){
+          for(let kx=-1;kx<=1;kx++){
+            const xi = x+kx, yi = y+ky;
+            const idx = (yi*w + xi)*4;
+            const kval = kernel[kIdx++];
+            r += sd[idx] * kval;
+            g += sd[idx+1] * kval;
+            b += sd[idx+2] * kval;
+          }
+        }
+        const idx = (y*w + x)*4;
+        od[idx] = Math.min(255, Math.max(0, r));
+        od[idx+1] = Math.min(255, Math.max(0, g));
+        od[idx+2] = Math.min(255, Math.max(0, b));
+        od[idx+3] = 255;
+      }
+    }
+    ctx.putImageData(out,0,0);
+  }catch(e){}
+}
+
+/* ---------------- decode frame: BarcodeDetector -> ROI workers -> full frame ---------------- */
 async function tryDecodeFrame(video){
   const now = performance.now();
   if(now - lastAttempt < targetInterval) return null;
   lastAttempt = now;
   const w = video.videoWidth, h = video.videoHeight;
   if(!w || !h) return null;
-  // createImageBitmap of full frame
-  let fullBitmap;
-  try{ fullBitmap = await createImageBitmap(video); }catch(e){ return null; }
-  // 1) try BarcodeDetector on small scaled image (fast)
+  let fullBmp;
+  try{ fullBmp = await createImageBitmap(video); }catch(e){ return null; }
+  // 1) BarcodeDetector quick on small scaled image
   if('BarcodeDetector' in window){
     try{
       const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
       const sw = Math.floor(w/scale), sh = Math.floor(h/scale);
       const off = new OffscreenCanvas(sw, sh);
       const ctx = off.getContext('2d');
-      ctx.drawImage(fullBitmap, 0, 0, w, h, 0, 0, sw, sh);
+      ctx.drawImage(fullBmp, 0, 0, w, h, 0, 0, sw, sh);
       const imageData = ctx.getImageData(0,0,sw,sh);
       const det = new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]});
       const res = await det.detect(imageData);
-      if(res && res.length){ fullBitmap.close && fullBitmap.close(); return res[0].rawValue; }
+      if(res && res.length){ fullBmp.close && fullBmp.close(); return res[0].rawValue; }
     }catch(e){}
   }
-  // 2) ROI detection on small bitmap -> send strips to workers in parallel
+  // 2) ROI detection
   let regions = [];
-  try{ regions = findStripRegions(fullBitmap, 300); }catch(e){ regions = [{x: Math.floor(w*0.05), y:0, w: Math.floor(w*0.9), h:h}]; }
-  // prepare promises: decode each region (send to workers)
+  try{ regions = findStripRegionsFast(fullBmp, 300); }catch(e){ regions = [{x: Math.floor(w*0.05), y:0, w: Math.floor(w*0.9), h:h}]; }
   const decodePromises = [];
   for(const r of regions){
     try{
-      const bmp = await createImageBitmap(video, r.x, r.y, r.w, r.h);
-      // scale region down to reasonable size to speed up worker
-      const maxLong = 900;
-      const scale = Math.max(1, Math.floor(Math.max(r.w, r.h)/maxLong));
-      if(scale>1){
-        const sw = Math.max(1, Math.floor(r.w/scale)), sh = Math.max(1, Math.floor(r.h/scale));
-        const off = new OffscreenCanvas(sw, sh);
+      // create region bitmap at original resolution
+      const regionBmp = await createImageBitmap(video, r.x, r.y, r.w, r.h);
+      // If region is small (width < threshold), DO NOT downscale — send full res to worker after preprocessing
+      const SMALL_THRESHOLD = 220; // px
+      if(r.w <= SMALL_THRESHOLD){
+        // preprocess: sharpen + contrast on OffscreenCanvas same size
+        const off = new OffscreenCanvas(regionBmp.width, regionBmp.height);
         const ctx = off.getContext('2d');
-        ctx.drawImage(bmp, 0, 0, r.w, r.h, 0, 0, sw, sh);
-        bmp.close && bmp.close();
-        const smallBmp = off.transferToImageBitmap();
-        decodePromises.push(decodeWithWorker(smallBmp));
-      }else{
-        decodePromises.push(decodeWithWorker(bmp));
+        ctx.drawImage(regionBmp, 0, 0);
+        applySharpenAndContrastToOffscreen(off);
+        const bmp = off.transferToImageBitmap();
+        regionBmp.close && regionBmp.close();
+        decodePromises.push(postToWorker(bmp));
+      } else {
+        // larger region: scale down to speed up
+        const maxLong = 900;
+        const scale = Math.max(1, Math.floor(Math.max(r.w, r.h)/maxLong));
+        if(scale>1){
+          const sw = Math.max(1, Math.floor(r.w/scale)), sh = Math.max(1, Math.floor(r.h/scale));
+          const off = new OffscreenCanvas(sw, sh);
+          const ctx = off.getContext('2d');
+          ctx.drawImage(regionBmp, 0, 0, r.w, r.h, 0, 0, sw, sh);
+          applySharpenAndContrastToOffscreen(off);
+          regionBmp.close && regionBmp.close();
+          const smallBmp = off.transferToImageBitmap();
+          decodePromises.push(postToWorker(smallBmp));
+        }else{
+          // send as-is
+          decodePromises.push(postToWorker(regionBmp));
+        }
       }
     }catch(e){}
   }
-  // also send a full small frame as backup
+  // also send a small full-frame backup
   try{
     const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
     const sw = Math.floor(w/scale), sh = Math.floor(h/scale);
     const off = new OffscreenCanvas(sw, sh);
     const ctx = off.getContext('2d');
-    ctx.drawImage(fullBitmap, 0, 0, w, h, 0, 0, sw, sh);
+    ctx.drawImage(fullBmp, 0, 0, w, h, 0, 0, sw, sh);
+    applySharpenAndContrastToOffscreen(off);
     const smallFull = off.transferToImageBitmap();
-    decodePromises.push(decodeWithWorker(smallFull));
+    decodePromises.push(postToWorker(smallFull));
   }catch(e){}
-  fullBitmap.close && fullBitmap.close();
-  // wait for first non-null result (race)
+  fullBmp.close && fullBmp.close();
+  // wait for any worker to return a code (race)
   const results = await Promise.allSettled(decodePromises);
   for(const r of results){
     if(r.status==='fulfilled' && r.value) return r.value;
@@ -2247,17 +2325,16 @@ async function tryDecodeFrame(video){
 
 /* ---------------- main loop ---------------- */
 async function scanLoop(){
-  const video = document.getElementById('fast-scanner-video');
+  const video = document.getElementById('fast2-video');
   while(scanning){
     try{
       const code = await tryDecodeFrame(video);
       if(code){
         const now = Date.now();
-        if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE) { /* ignore duplicate */ }
+        if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE) { /* duplicate */ }
         else {
           lastDetected = {code, ts: now};
           try{ navigator.vibrate && navigator.vibrate(40); }catch(e){}
-          // insert into search if exists
           const searchEl = document.getElementById('search');
           if(searchEl){ searchEl.value = code; searchEl.dispatchEvent(new Event('input',{bubbles:true})); searchEl.dispatchEvent(new Event('change',{bubbles:true})); }
           showToast('Штрихкод: ' + code, 900);
@@ -2265,7 +2342,6 @@ async function scanLoop(){
         }
       }
     }catch(e){
-      // ignore per-frame errors
       console.warn('frame error', e);
     }
     await new Promise(r=>requestAnimationFrame(r));
@@ -2273,17 +2349,14 @@ async function scanLoop(){
 }
 
 /* ---------------- expose helpers ---------------- */
-window.startFastScanner = startScanner;
-window.stopFastScanner = stopScanner;
+window.startFast2 = startScanner;
+window.stopFast2 = stopScanner;
 window.addBarcodeToLocalDB = function(code, name){ try{ const db = JSON.parse(localStorage.getItem('barcodeDB')||'{}'); db[code]=name; localStorage.setItem('barcodeDB', JSON.stringify(db)); }catch(e){} };
 
-/* ensure button clickable (defensive) */
-(function ensureButtonClickable(){
-  const btn = document.getElementById('fast-scanner-btn');
-  if(btn){
-    btn.style.zIndex = String(2147483647);
-    btn.style.pointerEvents = 'auto';
-  }
+/* ensure button clickable */
+(function ensureClickable(){
+  const btn = document.getElementById('fast2-btn');
+  if(btn){ btn.style.zIndex = String(2147483647); btn.style.pointerEvents = 'auto'; }
 })();
 </script>
 
