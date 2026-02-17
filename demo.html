@@ -1906,27 +1906,16 @@ recognition.addEventListener('result', (ev) => {
 
 
 
-<!-- Вставь этот один <script> в конец страницы (перед </body>).
-     Это полный автономный скрипт: UI (плавающая кнопка + оверлей + тост),
-     ультра‑быстрый сканер (BarcodeDetector → ZXing в воркере → OCR fallback),
-     надёжный старт камеры (несколько constraints + deviceId fallback),
-     и патч, гарантирующий, что кнопка всегда видна и кликабельна. -->
-
 <script>
-/* ============================================================
-   FULL ULTRA-FAST SCANNER SCRIPT
+/* Ultra fast barcode scanner
    - BarcodeDetector first
-   - ZXing decoding in WebWorker
-   - createImageBitmap / OffscreenCanvas fast path
-   - multi-position strips + preprocessing
-   - OCR fallback (Tesseract.js digits-only) as last resort
-   - robust startScanner with multiple constraints and deviceId fallback
-   - pointer-events patch so floating button is always clickable
-============================================================ */
+   - 2x WebWorker ZXing decoders (parallel)
+   - ROI via vertical gradient on small image
+   - createImageBitmap + OffscreenCanvas
+   - robust getUserMedia fallback
+*/
 
-/* =========================
-   Worker: ZXing loader + decode
-   ========================= */
+/* ---------------- Worker source (ZXing UMD) ---------------- */
 const workerSrc = `self.onmessage = async function(e){
   const msg = e.data;
   if(msg.type === 'load'){
@@ -1943,13 +1932,9 @@ const workerSrc = `self.onmessage = async function(e){
     const id = msg.id;
     try{
       const bitmap = msg.imageBitmap;
-      let off;
-      if(typeof OffscreenCanvas !== 'undefined'){
-        off = new OffscreenCanvas(bitmap.width, bitmap.height);
-      } else {
-        off = new OffscreenCanvas(bitmap.width, bitmap.height);
-      }
-      const ctx = off.getContext('2d');
+      // draw to offscreen canvas
+      let off = new OffscreenCanvas(bitmap.width, bitmap.height);
+      let ctx = off.getContext('2d');
       ctx.drawImage(bitmap, 0, 0);
       let code = null;
       if(self.ZX){
@@ -1968,598 +1953,340 @@ const workerSrc = `self.onmessage = async function(e){
     }
   }
 };`;
-const workerBlob = new Blob([workerSrc], {type:'application/javascript'});
-const workerUrl = URL.createObjectURL(workerBlob);
-const decodeWorker = new Worker(workerUrl);
-let workerReady = false;
-const pendingResults = new Map();
-let decodeIdCounter = 1;
-decodeWorker.onmessage = (ev) => {
-  const m = ev.data;
-  if(m.type === 'loaded') workerReady = true;
-  if(m.type === 'result' && pendingResults.has(m.id)){
-    const {resolve} = pendingResults.get(m.id);
-    pendingResults.delete(m.id);
-    resolve(m.code || null);
-  }
-};
-decodeWorker.postMessage({type:'load'});
 
-/* =========================
-   OCR (Tesseract) setup (lazy)
-   ========================= */
-let ocrWorker = null;
-let ocrReady = false;
-async function ensureOCR(){
-  if(ocrReady) return;
-  const scriptUrl = 'https://unpkg.com/tesseract.js@4.1.1/dist/tesseract.min.js';
-  if(!window.Tesseract){
-    await new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = scriptUrl;
-      s.onload = res;
-      s.onerror = rej;
-      document.head.appendChild(s);
-    }).catch(()=>{});
-  }
-  if(window.Tesseract && !ocrWorker){
-    ocrWorker = window.Tesseract.createWorker({ logger: m => {} });
-    await ocrWorker.load();
-    await ocrWorker.loadLanguage('eng');
-    await ocrWorker.initialize('eng');
-    await ocrWorker.setParameters({
-      tessedit_char_whitelist: '0123456789',
-      preserve_interword_spaces: '0'
-    });
-    ocrReady = true;
-  }
+/* create two workers */
+function createWorkerFromSrc(src){
+  const blob = new Blob([src], {type:'application/javascript'});
+  const url = URL.createObjectURL(blob);
+  const w = new Worker(url);
+  return {worker: w, url};
+}
+const wA = createWorkerFromSrc(workerSrc);
+const wB = createWorkerFromSrc(workerSrc);
+let wAready = false, wBready = false;
+const pending = new Map();
+let decodeId = 1;
+
+wA.worker.onmessage = (ev)=>{ const m=ev.data; if(m.type==='loaded') wAready=true; if(m.type==='result' && pending.has(m.id)){ pending.get(m.id).resolve(m.code||null); pending.delete(m.id);} };
+wB.worker.onmessage = (ev)=>{ const m=ev.data; if(m.type==='loaded') wBready=true; if(m.type==='result' && pending.has(m.id)){ pending.get(m.id).resolve(m.code||null); pending.delete(m.id);} };
+wA.worker.postMessage({type:'load'}); wB.worker.postMessage({type:'load'});
+
+/* helper to send bitmap to any available worker */
+function decodeWithWorker(imageBitmap){
+  return new Promise((resolve)=>{
+    const id = decodeId++;
+    pending.set(id, {resolve});
+    // choose worker round-robin / by readiness
+    const target = (wAready && !wBready) ? wA.worker : (!wAready && wBready) ? wB.worker : (Math.random()<0.5 ? wA.worker : wB.worker);
+    try{
+      target.postMessage({type:'decode', id, imageBitmap}, [imageBitmap]);
+    }catch(e){
+      try{ imageBitmap.close && imageBitmap.close(); }catch(_){}
+      pending.delete(id);
+      resolve(null);
+    }
+  });
 }
 
-/* =========================
-   UI: styles, overlay, button, toast
-   ========================= */
-(function createUI(){
-  if(!document.getElementById('rot-scanner-styles')){
+/* ---------------- UI: overlay, button, toast ---------------- */
+(function uiCreate(){
+  if(!document.getElementById('fast-scanner-styles')){
     const s = document.createElement('style');
-    s.id = 'rot-scanner-styles';
+    s.id = 'fast-scanner-styles';
     s.textContent = `
-#rot-scanner-btn{position:fixed;left:12px;bottom:18px;z-index:2147483647;width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg,#6d28d9,#4c1d95);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer}
-#rot-scanner-overlay{display:none;position:fixed;background:rgba(8,8,10,0.98);border-radius:6px;padding:6px;box-shadow:0 20px 60px rgba(0,0,0,0.6);z-index:2147483646;overflow:hidden;left:50%;top:6%;transform:translateX(-50%);width:100vw;height:60vh}
-#rot-scanner-overlay.visible{display:block}
-#rot-scanner-overlay .preview{width:100%;height:100%;background:#000;border-radius:6px;display:flex;align-items:center;justify-content:center;position:relative}
-#rot-scanner-overlay video{width:100%;height:100%;object-fit:cover;display:block}
-#rot-scanner-overlay .controls{position:absolute;right:8px;top:8px;display:flex;gap:8px;z-index:3}
-#rot-scanner-overlay button{background:rgba(255,255,255,0.06);color:#fff;border:none;padding:6px 8px;border-radius:8px;cursor:pointer}
-#scanner-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:rgba(18,18,22,0.95);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,0.6);opacity:0;transition:opacity .18s ease;z-index:2147483647;pointer-events:none}
+#fast-scanner-btn{position:fixed;left:12px;bottom:18px;z-index:2147483647;width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg,#6d28d9,#4c1d95);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer}
+#fast-scanner-overlay{display:none;position:fixed;background:rgba(0,0,0,0.92);border-radius:6px;padding:6px;box-shadow:0 20px 60px rgba(0,0,0,0.6);z-index:2147483646;overflow:hidden;left:50%;top:6%;transform:translateX(-50%);width:100vw;height:60vh}
+#fast-scanner-overlay.visible{display:block}
+#fast-scanner-overlay .preview{width:100%;height:100%;background:#000;border-radius:6px;display:flex;align-items:center;justify-content:center;position:relative}
+#fast-scanner-overlay video{width:100%;height:100%;object-fit:cover;display:block}
+#fast-scanner-overlay .controls{position:absolute;right:8px;top:8px;display:flex;gap:8px;z-index:3}
+#fast-scanner-overlay button{background:rgba(255,255,255,0.06);color:#fff;border:none;padding:6px 8px;border-radius:8px;cursor:pointer}
+#fast-scanner-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:rgba(18,18,22,0.95);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,0.6);opacity:0;transition:opacity .18s ease;z-index:2147483647;pointer-events:none}
 `;
     document.head.appendChild(s);
   }
-
-  if(!document.getElementById('rot-scanner-overlay')){
+  if(!document.getElementById('fast-scanner-overlay')){
     const ov = document.createElement('div');
-    ov.id = 'rot-scanner-overlay';
-    ov.innerHTML = `
-      <div class="preview"><video id="rot-scanner-video" playsinline muted></video></div>
-      <div class="controls"><button id="rot-close">Закрыть</button></div>
-    `;
+    ov.id = 'fast-scanner-overlay';
+    ov.innerHTML = `<div class="preview"><video id="fast-scanner-video" playsinline muted></video></div><div class="controls"><button id="fast-close">Закрыть</button></div>`;
     document.body.appendChild(ov);
-    ov.querySelector('#rot-close').addEventListener('click', stopScanner);
+    ov.querySelector('#fast-close').addEventListener('click', stopScanner);
   }
-
-  if(!document.getElementById('rot-scanner-btn')){
-    const btn = document.createElement('button');
-    btn.id = 'rot-scanner-btn';
-    btn.title = 'Открыть сканер';
-    btn.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none"><rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/><path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>';
-    document.body.appendChild(btn);
-    btn.addEventListener('click', startScanner);
+  if(!document.getElementById('fast-scanner-btn')){
+    const b = document.createElement('button');
+    b.id = 'fast-scanner-btn';
+    b.title = 'Открыть сканер';
+    b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none"><rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/><path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    document.body.appendChild(b);
+    b.addEventListener('click', startScanner);
   }
-
-  if(!document.getElementById('scanner-toast')){
+  if(!document.getElementById('fast-scanner-toast')){
     const t = document.createElement('div');
-    t.id = 'scanner-toast';
+    t.id = 'fast-scanner-toast';
     document.body.appendChild(t);
   }
 })();
-
-function showScannerToast(text, ms=900){
-  const t = document.getElementById('scanner-toast');
+function showToast(text, ms=900){
+  const t = document.getElementById('fast-scanner-toast');
   t.textContent = text;
   t.style.opacity = '1';
   clearTimeout(t._t);
   t._t = setTimeout(()=> t.style.opacity = '0', ms);
 }
 
-/* =========================
-   Pointer-events patch so button is clickable
-   ========================= */
-(function pointerFix(){
-  const BTN_ID = 'rot-scanner-btn';
-  const OVERLAY_ID = 'rot-scanner-overlay';
-  const MAX_Z = 2147483647;
-
-  // Ensure overlay background doesn't block clicks globally
-  const styleId = 'rot-scanner-pointer-fix';
-  if(!document.getElementById(styleId)){
-    const s = document.createElement('style');
-    s.id = styleId;
-    s.textContent = `
-#${OVERLAY_ID} { pointer-events: none; }
-#${OVERLAY_ID} .preview, #${OVERLAY_ID} .controls { pointer-events: auto; }
-`;
-    document.head.appendChild(s);
-  }
-
-  function createOrRestoreButton(){
-    let btn = document.getElementById(BTN_ID);
-    if(!btn){
-      btn = document.createElement('button');
-      btn.id = BTN_ID;
-      btn.title = 'Открыть сканер';
-      btn.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/><path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>';
-      document.body.appendChild(btn);
-    } else {
-      document.body.appendChild(btn);
-    }
-
-    Object.assign(btn.style, {
-      position: 'fixed',
-      left: '12px',
-      bottom: '18px',
-      width: '56px',
-      height: '56px',
-      borderRadius: '12px',
-      background: 'linear-gradient(180deg,#6d28d9,#4c1d95)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      border: 'none',
-      cursor: 'pointer',
-      zIndex: String(MAX_Z),
-      boxShadow: '0 10px 30px rgba(0,0,0,0.45)',
-      outline: 'none',
-      padding: '0',
-      margin: '0',
-      pointerEvents: 'auto',
-      opacity: '1'
-    });
-
-    if(!btn._rot_bound){
-      btn.addEventListener('click', ()=>{
-        try{ if(typeof startScanner === 'function') startScanner(); }catch(e){}
-        const ov = document.getElementById(OVERLAY_ID);
-        if(ov) ov.classList ? ov.classList.add('visible') : ov.style.display = 'block';
-      });
-      btn._rot_bound = true;
-    }
-    return btn;
-  }
-
-  const btn = createOrRestoreButton();
-  const observer = new MutationObserver(()=> {
-    const b = document.getElementById(BTN_ID);
-    if(!b) createOrRestoreButton();
-    else {
-      if(document.body.lastElementChild !== b) document.body.appendChild(b);
-      b.style.zIndex = String(MAX_Z);
-      b.style.pointerEvents = 'auto';
-      b.style.display = 'flex';
-    }
-  });
-  observer.observe(document.body, { childList: true, subtree: false });
-
-  const fixInterval = setInterval(()=>{
-    const b = document.getElementById(BTN_ID);
-    if(!b) createOrRestoreButton();
-    else {
-      b.style.zIndex = String(MAX_Z);
-      b.style.pointerEvents = 'auto';
-      b.style.display = 'flex';
-    }
-  }, 700);
-
-  window.addEventListener('beforeunload', ()=>{
-    observer.disconnect();
-    clearInterval(fixInterval);
-  });
-
-})();
-
-/* =========================
-   State and DB in memory
-   ========================= */
+/* ---------------- camera start/stop (robust) ---------------- */
 let stream = null;
 let scanning = false;
-let targetInterval = 30; // ms between decode attempts
-let lastAttempt = 0;
-const DEBOUNCE_MS = 700;
 let lastDetected = {code:null, ts:0};
-let barcodeDB = {};
-try{ barcodeDB = JSON.parse(localStorage.getItem('barcodeDB') || '{}'); }catch(e){ barcodeDB = {}; }
+const DEBOUNCE = 700;
+let targetInterval = 30;
+let lastAttempt = 0;
 
-/* =========================
-   Helpers: contrast stretch + binarize
-   ========================= */
-function contrastStretchImageData(imgData){
-  const d = imgData.data;
-  let min=255, max=0;
-  for(let i=0;i<d.length;i+=4){
-    const v = (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114)|0;
-    if(v<min) min=v;
-    if(v>max) max=v;
-  }
-  const range = max - min || 1;
-  const mul = 255 / range;
-  for(let i=0;i<d.length;i+=4){
-    for(let k=0;k<3;k++){
-      let v = d[i+k];
-      v = (v - min) * mul;
-      if(v<0) v=0; if(v>255) v=255;
-      d[i+k]=v;
-    }
-  }
-  return imgData;
-}
-function fastBinarize(ctx, w, h){
-  try{
-    const img = ctx.getImageData(0,0,w,h);
-    const d = img.data;
-    let sum=0, cnt=0;
-    for(let i=0;i<d.length;i+=4){ sum += (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114); cnt++; }
-    const mean = sum / cnt;
-    const thresh = Math.max(100, Math.min(200, mean));
-    for(let i=0;i<d.length;i+=4){
-      const v = (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114);
-      const val = v > thresh ? 255 : 0;
-      d[i]=d[i+1]=d[i+2]=val;
-    }
-    ctx.putImageData(img,0,0);
-  }catch(e){}
+async function tryGetMedia(constraints, timeout=5000){
+  const p = navigator.mediaDevices.getUserMedia(constraints);
+  if(timeout<=0) return await p;
+  const t = new Promise((_, rej)=> setTimeout(()=> rej(new Error('timeout')), timeout));
+  return await Promise.race([p,t]);
 }
 
-/* =========================
-   Worker decode helper
-   ========================= */
-function decodeInWorker(imageBitmap){
-  return new Promise((resolve)=>{
-    const id = decodeIdCounter++;
-    pendingResults.set(id, {resolve});
-    try{
-      decodeWorker.postMessage({type:'decode', id, imageBitmap}, [imageBitmap]);
-    }catch(e){
-      try{ imageBitmap.close && imageBitmap.close(); }catch(err){}
-      pendingResults.delete(id);
-      resolve(null);
-    }
-  });
-}
-
-/* =========================
-   BarcodeDetector fast try
-   ========================= */
-async function tryBarcodeDetectorFromBitmap(bitmap){
-  if(!('BarcodeDetector' in window)) return null;
-  try{
-    const c = document.createElement('canvas');
-    c.width = bitmap.width;
-    c.height = bitmap.height;
-    const ctx = c.getContext('2d');
-    ctx.drawImage(bitmap, 0, 0);
-    const imageData = ctx.getImageData(0,0,c.width,c.height);
-    const det = new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]});
-    const res = await det.detect(imageData);
-    if(res && res.length) return res[0].rawValue;
-  }catch(e){}
-  return null;
-}
-
-/* =========================
-   OCR fallback helper
-   ========================= */
-async function ocrRecognizeCanvas(canvas){
-  try{
-    await ensureOCR();
-    if(!ocrReady || !ocrWorker) return null;
-    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-    const { data: { text } } = await ocrWorker.recognize(blob);
-    const digits = (text || '').replace(/\D+/g, '');
-    return digits || null;
-  }catch(e){
-    return null;
-  }
-}
-
-/* =========================
-   Smart decode pipeline with OCR fallback
-   ========================= */
-async function smartDecode(video){
-  const now = performance.now();
-  if(now - lastAttempt < targetInterval) return null;
-  lastAttempt = now;
-
-  const w = video.videoWidth, h = video.videoHeight;
-  if(!w || !h) return null;
-
-  try{
-    const bitmapFull = await createImageBitmap(video);
-    const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
-    const sw = Math.floor(w/scale), sh = Math.floor(h/scale);
-
-    let smallBitmap;
-    if(typeof OffscreenCanvas !== 'undefined'){
-      const off = new OffscreenCanvas(sw, sh);
-      const ctx = off.getContext('2d');
-      ctx.drawImage(bitmapFull, 0, 0, w, h, 0, 0, sw, sh);
-      try{ const img = ctx.getImageData(0,0,sw,sh); ctx.putImageData(contrastStretchImageData(img),0,0); }catch(e){}
-      smallBitmap = off.transferToImageBitmap();
-      bitmapFull.close && bitmapFull.close();
-    }else{
-      const c = document.createElement('canvas');
-      c.width = sw; c.height = sh;
-      const ctx = c.getContext('2d');
-      ctx.drawImage(bitmapFull, 0, 0, w, h, 0, 0, sw, sh);
-      try{ const img = ctx.getImageData(0,0,sw,sh); ctx.putImageData(contrastStretchImageData(img),0,0); }catch(e){}
-      bitmapFull.close && bitmapFull.close();
-      smallBitmap = await createImageBitmap(c);
-    }
-
-    if('BarcodeDetector' in window){
-      try{
-        const code = await tryBarcodeDetectorFromBitmap(smallBitmap);
-        smallBitmap.close && smallBitmap.close();
-        if(code) return code;
-      }catch(e){}
-    }
-
-    if(workerReady){
-      const code = await decodeInWorker(smallBitmap);
-      if(code) return code;
-    }else{
-      try{
-        if(window.ZXing){
-          const c = document.createElement('canvas'); c.width = smallBitmap.width; c.height = smallBitmap.height;
-          const ctx = c.getContext('2d'); ctx.drawImage(smallBitmap,0,0);
-          smallBitmap.close && smallBitmap.close();
-          const luminanceSource = new window.ZXing.HTMLCanvasElementLuminanceSource(c);
-          const binaryBitmap = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(luminanceSource));
-          const result = new window.ZXing.MultiFormatReader().decode(binaryBitmap);
-          if(result && result.text) return result.text;
-        }
-      }catch(e){}
-    }
-
-    const positions = [
-      {cx:0.5, cy:0.5, wFrac:1.0, hFrac:0.18},
-      {cx:0.25, cy:0.35, wFrac:0.5, hFrac:0.14},
-      {cx:0.75, cy:0.35, wFrac:0.5, hFrac:0.14},
-      {cx:0.25, cy:0.65, wFrac:0.5, hFrac:0.14},
-      {cx:0.75, cy:0.65, wFrac:0.5, hFrac:0.14}
-    ];
-
-    for(const p of positions){
-      const stripW = Math.max(48, Math.floor(w * p.wFrac));
-      const stripH = Math.max(28, Math.floor(h * p.hFrac));
-      const sx = Math.max(0, Math.floor(w * p.cx - stripW/2));
-      const sy = Math.max(0, Math.floor(h * p.cy - stripH/2));
-      let regionBitmap;
-      try{
-        regionBitmap = await createImageBitmap(video, sx, sy, stripW, stripH);
-      }catch(e){ continue; }
-      const rScale = Math.max(1, Math.floor(Math.max(stripW,stripH)/900));
-      const rsw = Math.max(1, Math.floor(stripW / rScale));
-      const rsh = Math.max(1, Math.floor(stripH / rScale));
-      let scaledRegion;
-      if(typeof OffscreenCanvas !== 'undefined'){
-        const off = new OffscreenCanvas(rsw, rsh);
-        const ctx = off.getContext('2d');
-        ctx.drawImage(regionBitmap, 0, 0, stripW, stripH, 0, 0, rsw, rsh);
-        try{ const img = ctx.getImageData(0,0,rsw,rsh); ctx.putImageData(contrastStretchImageData(img),0,0); }catch(e){}
-        fastBinarize(ctx, rsw, rsh);
-        scaledRegion = off.transferToImageBitmap();
-        regionBitmap.close && regionBitmap.close();
-      }else{
-        const c = document.createElement('canvas'); c.width = rsw; c.height = rsh;
-        const ctx = c.getContext('2d'); ctx.drawImage(regionBitmap, 0, 0, stripW, stripH, 0, 0, rsw, rsh);
-        try{ const img = ctx.getImageData(0,0,rsw,rsh); ctx.putImageData(contrastStretchImageData(img),0,0); }catch(e){}
-        fastBinarize(ctx, rsw, rsh);
-        regionBitmap.close && regionBitmap.close();
-        scaledRegion = await createImageBitmap(c);
-      }
-
-      if(workerReady){
-        const code = await decodeInWorker(scaledRegion);
-        if(code) return code;
-      }else{
-        try{
-          if(window.ZXing){
-            const c = document.createElement('canvas'); c.width = scaledRegion.width; c.height = scaledRegion.height;
-            const ctx = c.getContext('2d'); ctx.drawImage(scaledRegion,0,0);
-            scaledRegion.close && scaledRegion.close();
-            const luminanceSource = new window.ZXing.HTMLCanvasElementLuminanceSource(c);
-            const binaryBitmap = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(luminanceSource));
-            const result = new window.ZXing.MultiFormatReader().decode(binaryBitmap);
-            if(result && result.text) return result.text;
-          }
-        }catch(e){}
-      }
-
-      try{
-        const c = document.createElement('canvas'); c.width = rsw; c.height = rsh;
-        const ctx = c.getContext('2d'); ctx.drawImage(scaledRegion,0,0);
-        scaledRegion.close && scaledRegion.close();
-        const digits = await ocrRecognizeCanvas(c);
-        if(digits && digits.length >= 6) return digits;
-      }catch(e){}
-    }
-
-  }catch(e){}
-  return null;
-}
-
-/* =========================
-   Detection handler
-   ========================= */
-async function handleDetected(code){
-  const now = Date.now();
-  if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
-  lastDetected = {code, ts: now};
-  try{ navigator.vibrate && navigator.vibrate(40); }catch(e){}
-  const name = barcodeDB[code] || null;
-  const searchEl = document.getElementById('search');
-  if(searchEl){
-    searchEl.value = name || code;
-    searchEl.dispatchEvent(new Event('input',{bubbles:true}));
-    searchEl.dispatchEvent(new Event('change',{bubbles:true}));
-  }
-  if(name) showScannerToast('Товар найден: ' + name, 900);
-  else showScannerToast('Штрих‑код найден: ' + code, 900);
-  stopScanner();
-}
-
-/* =========================
-   Robust startScanner
-   ========================= */
 async function startScanner(){
   if(scanning) return;
   stopScanner();
   scanning = true;
-
-  const ov = document.getElementById('rot-scanner-overlay');
-  if(ov) ov.classList.add('visible');
-  showScannerToast('Запрос доступа к камере...');
-
-  const constraintSets = [
-    { video: { facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:60} }, audio:false },
-    { video: { facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}, frameRate:{ideal:30} }, audio:false },
-    { video: { facingMode:{ideal:'environment'}, width:{ideal:640}, height:{ideal:480} }, audio:false },
-    { video: true, audio:false }
+  const ov = document.getElementById('fast-scanner-overlay');
+  ov.classList.add('visible');
+  showToast('Открываем камеру...');
+  const sets = [
+    {video:{facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:60}}, audio:false},
+    {video:{facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}, frameRate:{ideal:30}}, audio:false},
+    {video:{facingMode:{ideal:'environment'}, width:{ideal:640}, height:{ideal:480}}, audio:false},
+    {video:true, audio:false}
   ];
-
-  async function tryGetMedia(constraints, timeoutMs = 5000){
-    try{
-      const p = navigator.mediaDevices.getUserMedia(constraints);
-      if(timeoutMs <= 0) return await p;
-      const t = new Promise((_, rej) => setTimeout(()=> rej(new Error('getUserMedia timeout')), timeoutMs));
-      return await Promise.race([p, t]);
-    }catch(err){
-      throw err;
-    }
-  }
-
   let lastErr = null;
-  for(const c of constraintSets){
+  for(const c of sets){
     try{
       const s = await tryGetMedia(c, 5000);
       stream = s;
-      const video = document.getElementById('rot-scanner-video');
-      if(!video){
-        showScannerToast('Видео элемент не найден');
-        stopScanner();
-        return;
-      }
-      video.srcObject = stream;
-      video.muted = true;
-      video.playsInline = true;
-      try{ await video.play(); }catch(playErr){
-        try{ video.srcObject = stream; await video.play(); }catch(e){ throw playErr; }
-      }
-      targetInterval = (c.video && c.video.frameRate && c.video.frameRate.ideal >= 50) ? 25 : 40;
+      const v = document.getElementById('fast-scanner-video');
+      v.srcObject = stream;
+      v.muted = true; v.playsInline = true;
+      await v.play();
+      targetInterval = (c.video && c.video.frameRate && c.video.frameRate.ideal>=50) ? 25 : 40;
       scanning = true;
-      ensureOCR().catch(()=>{});
       scanLoop();
-      showScannerToast('Камера включена', 700);
+      showToast('Камера включена', 700);
       return;
     }catch(err){
-      console.warn('getUserMedia failed for constraints', c, err);
       lastErr = err;
+      console.warn('getUserMedia failed', err);
     }
   }
-
+  // deviceId fallback
   try{
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(d => d.kind === 'videoinput');
-    for(const dev of videoDevices){
+    const devs = await navigator.mediaDevices.enumerateDevices();
+    const vids = devs.filter(d=>d.kind==='videoinput');
+    for(const d of vids){
       try{
-        const s = await tryGetMedia({ video: { deviceId: { exact: dev.deviceId }, width:{ideal:1280}, height:{ideal:720} }, audio:false }, 5000);
+        const s = await tryGetMedia({video:{deviceId:{exact:d.deviceId}, width:{ideal:1280}, height:{ideal:720}}, audio:false}, 4000);
         stream = s;
-        const video = document.getElementById('rot-scanner-video');
-        video.srcObject = stream;
-        video.muted = true;
-        video.playsInline = true;
-        await video.play();
-        targetInterval = 40;
-        scanning = true;
-        ensureOCR().catch(()=>{});
-        scanLoop();
-        showScannerToast('Камера включена (deviceId)', 700);
-        return;
-      }catch(err){
-        console.warn('deviceId open failed', dev.deviceId, err);
-      }
+        const v = document.getElementById('fast-scanner-video');
+        v.srcObject = stream; v.muted=true; v.playsInline=true; await v.play();
+        targetInterval = 40; scanning = true; scanLoop(); showToast('Камера включена',700); return;
+      }catch(e){ console.warn('device open failed', e); }
     }
-  }catch(e){
-    console.warn('enumerateDevices failed', e);
-  }
-
-  console.error('Не удалось открыть камеру. Последняя ошибка:', lastErr);
-  showScannerToast('Не удалось открыть камеру. Проверь разрешения и HTTPS', 3000);
+  }catch(e){ console.warn('enumerateDevices failed', e); }
+  showToast('Не удалось открыть камеру. Проверь разрешения и HTTPS', 3000);
   scanning = false;
-  if(ov) ov.classList.remove('visible');
+  ov.classList.remove('visible');
 }
 
-/* =========================
-   Stop scanner
-   ========================= */
 function stopScanner(){
   scanning = false;
-  if(stream){
-    try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
-    stream = null;
-  }
-  const ov = document.getElementById('rot-scanner-overlay');
-  if(ov) ov.classList.remove('visible');
-  showScannerToast('Сканер остановлен', 700);
+  if(stream){ try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){} stream=null; }
+  const ov = document.getElementById('fast-scanner-overlay');
+  ov.classList.remove('visible');
+  showToast('Сканер остановлен', 700);
 }
 
-/* =========================
-   Main loop
-   ========================= */
-async function scanLoop(){
-  const video = document.getElementById('rot-scanner-video');
-  while(scanning){
+/* ---------------- fast ROI detector (vertical gradient) ----------------
+   - downscale to small width (e.g., 300px long side)
+   - compute vertical gradient (Sobel-like) quickly on Uint8
+   - sum columns to find peaks -> candidate strips
+   - returns array of {x,y,w,h} in original video coords
+*/
+function findStripRegions(imageBitmap, longSideTarget=300){
+  // draw to small canvas and compute vertical gradient
+  const w = imageBitmap.width, h = imageBitmap.height;
+  const scale = Math.max(1, Math.floor(Math.max(w,h)/longSideTarget));
+  const sw = Math.max(1, Math.floor(w/scale)), sh = Math.max(1, Math.floor(h/scale));
+  const c = new OffscreenCanvas(sw, sh);
+  const ctx = c.getContext('2d');
+  ctx.drawImage(imageBitmap, 0, 0, w, h, 0, 0, sw, sh);
+  const img = ctx.getImageData(0,0,sw,sh);
+  const d = img.data;
+  // compute vertical gradient per pixel (simple difference)
+  const colSums = new Float32Array(sw);
+  for(let y=1;y<sh-1;y++){
+    for(let x=0;x<sw;x++){
+      const idx = (y*sw + x)*4;
+      const up = ((y-1)*sw + x)*4;
+      const down = ((y+1)*sw + x)*4;
+      const v = (d[idx]*0.299 + d[idx+1]*0.587 + d[idx+2]*0.114);
+      const vUp = (d[up]*0.299 + d[up+1]*0.587 + d[up+2]*0.114);
+      const vDown = (d[down]*0.299 + d[down+1]*0.587 + d[down+2]*0.114);
+      const grad = Math.abs(vDown - vUp);
+      colSums[x] += grad;
+    }
+  }
+  // smooth colSums with small window
+  const smooth = new Float32Array(sw);
+  const win = 5;
+  for(let x=0;x<sw;x++){
+    let s=0, cnt=0;
+    for(let k=-win;k<=win;k++){
+      const xi = x+k;
+      if(xi>=0 && xi<sw){ s += colSums[xi]; cnt++; }
+    }
+    smooth[x] = s / cnt;
+  }
+  // find peaks above threshold
+  const maxv = Math.max(...smooth);
+  const thresh = Math.max(0.12*maxv, 8); // heuristic
+  const regions = [];
+  let inPeak=false, start=0;
+  for(let x=0;x<sw;x++){
+    if(smooth[x] >= thresh && !inPeak){ inPeak=true; start=x; }
+    if((smooth[x] < thresh || x===sw-1) && inPeak){
+      inPeak=false;
+      const end = x;
+      const cx = Math.floor((start+end)/2);
+      // map back to original coords
+      const origX = Math.floor(cx * scale);
+      const stripW = Math.max(40, Math.floor((end-start) * scale));
+      const origY = 0;
+      const origH = h;
+      regions.push({x: Math.max(0, origX - Math.floor(stripW/2)), y: origY, w: stripW, h: origH});
+    }
+  }
+  // if no regions found, return center full-width strip
+  if(regions.length===0){
+    const stripW = Math.floor(w * 0.9);
+    return [{x: Math.floor((w-stripW)/2), y:0, w:stripW, h:h}];
+  }
+  // limit to top 3 widest/strongest
+  regions.sort((a,b)=> b.w - a.w);
+  return regions.slice(0,3);
+}
+
+/* ---------------- decode pipeline: try BarcodeDetector -> workers on ROIs -> full frame ---------------- */
+async function tryDecodeFrame(video){
+  const now = performance.now();
+  if(now - lastAttempt < targetInterval) return null;
+  lastAttempt = now;
+  const w = video.videoWidth, h = video.videoHeight;
+  if(!w || !h) return null;
+  // createImageBitmap of full frame
+  let fullBitmap;
+  try{ fullBitmap = await createImageBitmap(video); }catch(e){ return null; }
+  // 1) try BarcodeDetector on small scaled image (fast)
+  if('BarcodeDetector' in window){
     try{
-      const code = await smartDecode(video);
-      if(code){
-        await handleDetected(code);
-        await new Promise(r=>setTimeout(r, 200));
+      const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
+      const sw = Math.floor(w/scale), sh = Math.floor(h/scale);
+      const off = new OffscreenCanvas(sw, sh);
+      const ctx = off.getContext('2d');
+      ctx.drawImage(fullBitmap, 0, 0, w, h, 0, 0, sw, sh);
+      const imageData = ctx.getImageData(0,0,sw,sh);
+      const det = new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]});
+      const res = await det.detect(imageData);
+      if(res && res.length){ fullBitmap.close && fullBitmap.close(); return res[0].rawValue; }
+    }catch(e){}
+  }
+  // 2) ROI detection on small bitmap -> send strips to workers in parallel
+  let regions = [];
+  try{ regions = findStripRegions(fullBitmap, 300); }catch(e){ regions = [{x: Math.floor(w*0.05), y:0, w: Math.floor(w*0.9), h:h}]; }
+  // prepare promises: decode each region (send to workers)
+  const decodePromises = [];
+  for(const r of regions){
+    try{
+      const bmp = await createImageBitmap(video, r.x, r.y, r.w, r.h);
+      // scale region down to reasonable size to speed up worker
+      const maxLong = 900;
+      const scale = Math.max(1, Math.floor(Math.max(r.w, r.h)/maxLong));
+      if(scale>1){
+        const sw = Math.max(1, Math.floor(r.w/scale)), sh = Math.max(1, Math.floor(r.h/scale));
+        const off = new OffscreenCanvas(sw, sh);
+        const ctx = off.getContext('2d');
+        ctx.drawImage(bmp, 0, 0, r.w, r.h, 0, 0, sw, sh);
+        bmp.close && bmp.close();
+        const smallBmp = off.transferToImageBitmap();
+        decodePromises.push(decodeWithWorker(smallBmp));
+      }else{
+        decodePromises.push(decodeWithWorker(bmp));
       }
     }catch(e){}
+  }
+  // also send a full small frame as backup
+  try{
+    const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
+    const sw = Math.floor(w/scale), sh = Math.floor(h/scale);
+    const off = new OffscreenCanvas(sw, sh);
+    const ctx = off.getContext('2d');
+    ctx.drawImage(fullBitmap, 0, 0, w, h, 0, 0, sw, sh);
+    const smallFull = off.transferToImageBitmap();
+    decodePromises.push(decodeWithWorker(smallFull));
+  }catch(e){}
+  fullBitmap.close && fullBitmap.close();
+  // wait for first non-null result (race)
+  const results = await Promise.allSettled(decodePromises);
+  for(const r of results){
+    if(r.status==='fulfilled' && r.value) return r.value;
+  }
+  return null;
+}
+
+/* ---------------- main loop ---------------- */
+async function scanLoop(){
+  const video = document.getElementById('fast-scanner-video');
+  while(scanning){
+    try{
+      const code = await tryDecodeFrame(video);
+      if(code){
+        const now = Date.now();
+        if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE) { /* ignore duplicate */ }
+        else {
+          lastDetected = {code, ts: now};
+          try{ navigator.vibrate && navigator.vibrate(40); }catch(e){}
+          // insert into search if exists
+          const searchEl = document.getElementById('search');
+          if(searchEl){ searchEl.value = code; searchEl.dispatchEvent(new Event('input',{bubbles:true})); searchEl.dispatchEvent(new Event('change',{bubbles:true})); }
+          showToast('Штрихкод: ' + code, 900);
+          stopScanner();
+        }
+      }
+    }catch(e){
+      // ignore per-frame errors
+      console.warn('frame error', e);
+    }
     await new Promise(r=>requestAnimationFrame(r));
   }
 }
 
-/* =========================
-   Expose helpers and DB control
-   ========================= */
-window.startScanner = startScanner;
-window.stopScanner = stopScanner;
-window.setBarcodeDB = function(obj){
-  barcodeDB = obj || {};
-  try{ localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB)); }catch(e){}
-};
-window.addBarcode = function(code, name){
-  barcodeDB[code] = name;
-  try{ localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB)); }catch(e){}
-};
+/* ---------------- expose helpers ---------------- */
+window.startFastScanner = startScanner;
+window.stopFastScanner = stopScanner;
+window.addBarcodeToLocalDB = function(code, name){ try{ const db = JSON.parse(localStorage.getItem('barcodeDB')||'{}'); db[code]=name; localStorage.setItem('barcodeDB', JSON.stringify(db)); }catch(e){} };
 
-/* bind UI safety */
-(function bindUI(){
-  const btn = document.getElementById('rot-scanner-btn');
-  if(btn) btn.addEventListener('click', startScanner);
-  const close = document.querySelector('#rot-scanner-overlay .controls button');
-  if(close) close.addEventListener('click', stopScanner);
+/* ensure button clickable (defensive) */
+(function ensureButtonClickable(){
+  const btn = document.getElementById('fast-scanner-btn');
+  if(btn){
+    btn.style.zIndex = String(2147483647);
+    btn.style.pointerEvents = 'auto';
+  }
 })();
 </script>
+
 
 
 
