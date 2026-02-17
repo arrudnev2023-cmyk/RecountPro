@@ -1908,9 +1908,9 @@ recognition.addEventListener('result', (ev) => {
 
 <!-- TOAST -->
 <script>
-/* ============================================================
+/* ===========================
    TOAST
-============================================================ */
+=========================== */
 (function(){
   const toast = document.createElement('div');
   toast.id = 'scanner-toast';
@@ -1919,35 +1919,28 @@ recognition.addEventListener('result', (ev) => {
     left: 50%;
     bottom: 22px;
     transform: translateX(-50%);
-    background: rgba(20, 18, 28, 0.92);
-    color: #eae9f8;
-    padding: 12px 18px;
+    background: rgba(20,20,24,0.94);
+    color: #fff;
+    padding: 10px 16px;
     border-radius: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    box-shadow: 0 8px 28px rgba(0,0,0,0.55);
-    border: 1px solid rgba(255,255,255,0.06);
-    backdrop-filter: blur(6px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .25s ease;
-    z-index: 2147483647;
+    font-size: 14px;
+    font-weight:600;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    opacity:0; transition:opacity .22s ease;
+    z-index:2147483647; pointer-events:none;
   `;
   document.body.appendChild(toast);
-
-  window.showScannerToast = function(text){
+  window.showScannerToast = function(text, ms=1600){
     toast.textContent = text;
-    toast.style.opacity = "1";
+    toast.style.opacity = '1';
     clearTimeout(toast._t);
-    toast._t = setTimeout(()=> toast.style.opacity = "0", 2000);
+    toast._t = setTimeout(()=> toast.style.opacity = '0', ms);
   };
 })();
-</script>
 
-<script>
-/* ============================================================
-   NEW UI + OLD FAST ENGINE
-============================================================ */
+/* ===========================
+   NEW UI + OLD FAST ENGINE + LASER STRIP PASS
+=========================== */
 (function(){
   const BTN_ID = 'rot-scanner-btn';
   const OVERLAY_ID = 'rot-scanner-overlay';
@@ -1960,12 +1953,11 @@ recognition.addEventListener('result', (ev) => {
       ? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]})
       : null;
 
+  let canvasPool = [];
   let lastDetected = {code:null, ts:0};
   const DEBOUNCE_MS = 900;
 
-  /* ===========================
-     CSS
-  =========================== */
+  /* ===== CSS & UI ===== */
   function injectCSS(){
     if(document.getElementById('rot-scanner-styles')) return;
     const s = document.createElement('style');
@@ -1975,8 +1967,7 @@ recognition.addEventListener('result', (ev) => {
   position:fixed;left:12px;bottom:18px;z-index:2147483647;
   width:56px;height:56px;border-radius:12px;
   background:linear-gradient(180deg,#6d28d9,#4c1d95);
-  display:flex;align-items:center;justify-content:center;
-  border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;
 }
 #${OVERLAY_ID}{
   display:none;position:fixed;background:rgba(8,8,10,0.98);
@@ -1989,37 +1980,39 @@ recognition.addEventListener('result', (ev) => {
 #${OVERLAY_ID}.visible{display:block}
 #${OVERLAY_ID} .preview{
   width:100%;height:100%;background:#000;border-radius:6px;
-  display:flex;align-items:center;justify-content:center;
+  display:flex;align-items:center;justify-content:center;position:relative;
 }
 #${OVERLAY_ID} video{
   width:100%;height:100%;object-fit:contain;display:block;
 }
 #${OVERLAY_ID} .controls{
-  position:absolute;right:8px;top:8px;display:flex;gap:8px;
+  position:absolute;right:8px;top:8px;display:flex;gap:8px;z-index:3;
 }
 #${OVERLAY_ID} button{
   background:rgba(255,255,255,0.06);color:#fff;border:none;
   padding:6px 8px;border-radius:8px;cursor:pointer;
 }
+#${OVERLAY_ID} .laser-h, #${OVERLAY_ID} .laser-v{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  pointer-events:none;z-index:2;opacity:0.9;
+}
+#${OVERLAY_ID} .laser-h{ width:80%; height:2px; background:rgba(0,255,120,0.9); }
+#${OVERLAY_ID} .laser-v{ width:2px; height:80%; background:rgba(0,255,120,0.9); }
 `;
     document.head.appendChild(s);
   }
 
-  /* ===========================
-     UI
-  =========================== */
   function createButton(){
     injectCSS();
     let btn = document.getElementById(BTN_ID);
     if(btn) return btn;
-
     btn = document.createElement('button');
     btn.id = BTN_ID;
-    btn.innerHTML = `
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
-        <rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/>
-        <path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
-      </svg>`;
+    btn.title = 'Открыть сканер';
+    btn.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+      <rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/>
+      <path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>`;
     document.body.appendChild(btn);
     return btn;
   }
@@ -2028,23 +2021,21 @@ recognition.addEventListener('result', (ev) => {
     injectCSS();
     let ov = document.getElementById(OVERLAY_ID);
     if(ov) return ov;
-
     ov = document.createElement('div');
     ov.id = OVERLAY_ID;
     ov.innerHTML = `
       <div class="preview">
         <video id="${VIDEO_ID}" playsinline muted></video>
+        <div class="laser-h" style="display:none"></div>
+        <div class="laser-v" style="display:none"></div>
       </div>
       <div class="controls"><button id="rot-close">Закрыть</button></div>`;
     document.body.appendChild(ov);
-
     document.getElementById('rot-close').addEventListener('click', stopScanner);
     return ov;
   }
 
-  /* ===========================
-     ZXing loader
-  =========================== */
+  /* ===== ZXing loader ===== */
   async function ensureZXing(){
     if(ZX) return;
     await new Promise((res)=>{
@@ -2055,20 +2046,80 @@ recognition.addEventListener('result', (ev) => {
     });
   }
 
-  /* ===========================
-     OLD ENGINE (1:1)
-  =========================== */
+  /* ===== canvas helpers ===== */
   function createCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+  function getCanvas(w,h){
+    for(let c of canvasPool) if(c.width===w && c.height===h) return c;
+    const c = createCanvas(w,h); canvasPool.push(c); return c;
+  }
 
+  /* ===== simple image enhancements (fast) ===== */
+  function contrastStretch(ctx, w, h){
+    // быстрый контраст: линейная растяжка по min/max яркости
+    const img = ctx.getImageData(0,0,w,h);
+    const d = img.data;
+    let min=255, max=0;
+    for(let i=0;i<d.length;i+=4){
+      const v = (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114)|0;
+      if(v<min) min=v;
+      if(v>max) max=v;
+    }
+    const range = max - min || 1;
+    const mul = 255 / range;
+    for(let i=0;i<d.length;i+=4){
+      for(let k=0;k<3;k++){
+        let v = d[i+k];
+        v = (v - min) * mul;
+        if(v<0) v=0; if(v>255) v=255;
+        d[i+k]=v;
+      }
+    }
+    ctx.putImageData(img,0,0);
+  }
+
+  function unsharpMask(ctx, w, h){
+    // лёгкий unsharp: быстрый 3x3 kernel high-pass add
+    const img = ctx.getImageData(0,0,w,h);
+    const d = img.data;
+    const copy = new Uint8ClampedArray(d);
+    const kernel = [1,1,1,1, -8,1,1,1,1]; // simple high-pass
+    for(let y=1;y<h-1;y++){
+      for(let x=1;x<w-1;x++){
+        let r=0,g=0,b=0, idx=0;
+        for(let ky=-1;ky<=1;ky++){
+          for(let kx=-1;kx<=1;kx++){
+            const px = x+kx, py = y+ky;
+            const pidx = (py*w+px)*4;
+            const k = kernel[idx++];
+            r += copy[pidx]*k;
+            g += copy[pidx+1]*k;
+            b += copy[pidx+2]*k;
+          }
+        }
+        const i = (y*w+x)*4;
+        // add small amount of high-pass back
+        d[i] = Math.min(255, Math.max(0, copy[i] + 0.25 * r));
+        d[i+1] = Math.min(255, Math.max(0, copy[i+1] + 0.25 * g));
+        d[i+2] = Math.min(255, Math.max(0, copy[i+2] + 0.25 * b));
+      }
+    }
+    ctx.putImageData(img,0,0);
+  }
+
+  /* ===== decoding attempts (old logic + rotated passes) ===== */
   async function tryDecodeCanvas(canvas){
+    const ctx = canvas.getContext('2d');
+
+    // 1) BarcodeDetector (fast, if available)
     if(detector){
       try{
-        const imageData = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+        const imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
         const res = await detector.detect(imageData);
         if(res && res.length) return res[0].rawValue;
       }catch(e){}
     }
 
+    // 2) ZXing normal
     try{
       const luminanceSource = new ZX.HTMLCanvasElementLuminanceSource(canvas);
       const binaryBitmap = new ZX.BinaryBitmap(new ZX.HybridBinarizer(luminanceSource));
@@ -2076,10 +2127,10 @@ recognition.addEventListener('result', (ev) => {
       if(result && result.text) return result.text;
     }catch(e){}
 
+    // 3) ZXing rotated (90,180,270)
     const w = canvas.width, h = canvas.height;
-    const temp = createCanvas(w,h);
+    const temp = getCanvas(w,h);
     const tctx = temp.getContext('2d');
-
     for(let angle of [90,180,270]){
       tctx.clearRect(0,0,w,h);
       tctx.save();
@@ -2087,7 +2138,6 @@ recognition.addEventListener('result', (ev) => {
       tctx.rotate(angle*Math.PI/180);
       tctx.drawImage(canvas, -w/2, -h/2);
       tctx.restore();
-
       try{
         const luminanceSource = new ZX.HTMLCanvasElementLuminanceSource(temp);
         const binaryBitmap = new ZX.BinaryBitmap(new ZX.HybridBinarizer(luminanceSource));
@@ -2095,58 +2145,114 @@ recognition.addEventListener('result', (ev) => {
         if(result && result.text) return result.text;
       }catch(e){}
     }
+    return null;
+  }
+
+  /* ===== smart two-pass scan: full small frame, then laser strips ===== */
+  async function smartDecodeFromVideo(video){
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if(!w || !h) return null;
+
+    // 1) Full frame scaled down to ~900px long side (fast)
+    const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
+    const sw = Math.floor(w/scale);
+    const sh = Math.floor(h/scale);
+    const fullSmall = getCanvas(sw,sh);
+    const fctx = fullSmall.getContext('2d');
+    fctx.drawImage(video, 0, 0, w, h, 0, 0, sw, sh);
+
+    // try decode full small
+    try{
+      const code = await tryDecodeCanvas(fullSmall);
+      if(code) return code;
+    }catch(e){}
+
+    // 2) Laser strip passes (center horizontal and vertical)
+    // Horizontal strip: center 20% height, full width
+    const stripH = Math.max(40, Math.floor(h * 0.20));
+    const sy = Math.floor((h - stripH)/2);
+    const stripW = w;
+    const stripScale = Math.max(1, Math.floor(Math.max(stripW, stripH)/900));
+    const ssw = Math.floor(stripW/stripScale);
+    const ssh = Math.floor(stripH/stripScale);
+    const stripCanvasH = getCanvas(ssw, ssh);
+    const shctx = stripCanvasH.getContext('2d');
+    shctx.clearRect(0,0,ssw,ssh);
+    shctx.drawImage(video, 0, sy, stripW, stripH, 0, 0, ssw, ssh);
+    // enhance only this strip
+    contrastStretch(shctx, ssw, ssh);
+    unsharpMask(shctx, ssw, ssh);
+    try{
+      const code = await tryDecodeCanvas(stripCanvasH);
+      if(code) return code;
+    }catch(e){}
+
+    // Vertical strip: center 20% width, full height
+    const stripWv = Math.max(40, Math.floor(w * 0.20));
+    const sxv = Math.floor((w - stripWv)/2);
+    const sswv = Math.floor(stripWv/stripScale);
+    const sshv = Math.floor(h/stripScale);
+    const stripCanvasV = getCanvas(sswv, sshv);
+    const svctx = stripCanvasV.getContext('2d');
+    svctx.clearRect(0,0,sswv,sshv);
+    svctx.drawImage(video, sxv, 0, stripWv, h, 0, 0, sswv, sshv);
+    contrastStretch(svctx, sswv, sshv);
+    unsharpMask(svctx, sswv, sshv);
+    try{
+      const code = await tryDecodeCanvas(stripCanvasV);
+      if(code) return code;
+    }catch(e){}
+
+    // 3) fallback: try rotated narrow strips (rare)
+    // rotate and try horizontal strip rotated
+    const temp = getCanvas(ssw, ssh);
+    const tctx = temp.getContext('2d');
+    tctx.clearRect(0,0,ssw,ssh);
+    tctx.save();
+    tctx.translate(ssw/2, ssh/2);
+    tctx.rotate(90*Math.PI/180);
+    tctx.drawImage(stripCanvasH, -ssw/2, -ssh/2);
+    tctx.restore();
+    try{
+      const code = await tryDecodeCanvas(temp);
+      if(code) return code;
+    }catch(e){}
 
     return null;
   }
 
-  let canvasPool = [];
-  function getCanvas(w,h){
-    for(let c of canvasPool) if(c.width===w && c.height===h) return c;
-    const c = createCanvas(w,h); canvasPool.push(c); return c;
-  }
-
+  /* ===== scan loop (uses smartDecodeFromVideo) ===== */
   async function scanLoop(){
     const video = document.getElementById(VIDEO_ID);
-
     while(scanning){
       const w = video.videoWidth;
       const h = video.videoHeight;
       if(!w || !h){
-        await new Promise(r => requestAnimationFrame(r));
+        await new Promise(r=>requestAnimationFrame(r));
         continue;
       }
 
-      const canvas = getCanvas(w,h);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, w, h);
-
-      const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
-      const sw = Math.floor(w/scale);
-      const sh = Math.floor(h/scale);
-
-      const small = getCanvas(sw,sh);
-      const sctx = small.getContext('2d');
-      sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
-
       try{
-        const code = await tryDecodeCanvas(small);
+        const code = await smartDecodeFromVideo(video);
         if(code){
           handleDetected(code);
-          return;
+          // небольшая пауза чтобы не дергать сразу
+          await new Promise(r=>setTimeout(r, 300));
+          // continue scanning after debounce
         }
-      }catch(e){}
+      }catch(e){
+        // ignore per-frame errors
+      }
 
-      await new Promise(r => requestAnimationFrame(r));
+      await new Promise(r=>requestAnimationFrame(r));
     }
   }
 
-  /* ===========================
-     START / STOP
-  =========================== */
+  /* ===== start / stop ===== */
   async function startScanner(){
     await ensureZXing();
     ensureOverlay();
-
     const ov = document.getElementById(OVERLAY_ID);
     ov.classList.add('visible');
 
@@ -2159,16 +2265,15 @@ recognition.addEventListener('result', (ev) => {
         },
         audio:false
       });
-
       const video = document.getElementById(VIDEO_ID);
       video.srcObject = stream;
       await video.play();
-
       scanning = true;
       scanLoop();
-
+      showScannerToast('Сканер включён');
     }catch(e){
-      showScannerToast("Не удалось открыть камеру");
+      console.error(e);
+      showScannerToast('Не удалось открыть камеру');
     }
   }
 
@@ -2180,11 +2285,10 @@ recognition.addEventListener('result', (ev) => {
     }
     const ov = document.getElementById(OVERLAY_ID);
     if(ov) ov.classList.remove('visible');
+    showScannerToast('Сканер остановлен', 900);
   }
 
-  /* ===========================
-     SEARCH INSERT
-  =========================== */
+  /* ===== insert into search & handleDetected ===== */
   function insertIntoSearch(value){
     const searchEl = document.getElementById('search');
     if(!searchEl) return;
@@ -2193,10 +2297,14 @@ recognition.addEventListener('result', (ev) => {
     searchEl.dispatchEvent(new Event('change',{bubbles:true}));
   }
 
-  /* ===========================
-     MAIN LOGIC
-  =========================== */
   function handleDetected(code){
+    const now = Date.now();
+    if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+    lastDetected = {code, ts: now};
+
+    // beep / vibration
+    try{ if(navigator.vibrate) navigator.vibrate(60); }catch(e){}
+
     stopScanner();
 
     let name = null;
@@ -2210,6 +2318,8 @@ recognition.addEventListener('result', (ev) => {
 
     if(!name){
       showScannerToast("Штрих‑кода нет в базе");
+      // still put code into search field
+      insertIntoSearch(code);
       return;
     }
 
@@ -2217,13 +2327,17 @@ recognition.addEventListener('result', (ev) => {
 
     const nameNorm = name.toLowerCase();
     const cards = document.querySelectorAll('.item');
-
     let found = false;
     for(const c of cards){
       const t = c.querySelector('.title');
       const text = t ? t.textContent : c.textContent;
       if(String(text||'').toLowerCase().includes(nameNorm)){
         found = true;
+        // highlight briefly
+        c.style.transition = 'box-shadow .18s ease';
+        const prev = c.style.boxShadow;
+        c.style.boxShadow = '0 8px 30px rgba(0,200,120,0.25)';
+        setTimeout(()=> c.style.boxShadow = prev || '', 900);
         break;
       }
     }
@@ -2236,9 +2350,7 @@ recognition.addEventListener('result', (ev) => {
     showScannerToast("Товар найден");
   }
 
-  /* ===========================
-     INIT
-  =========================== */
+  /* ===== init ===== */
   function init(){
     const btn = createButton();
     btn.addEventListener('click', ()=> startScanner());
