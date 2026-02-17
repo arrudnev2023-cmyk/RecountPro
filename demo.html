@@ -1907,446 +1907,367 @@ recognition.addEventListener('result', (ev) => {
 
 
 <script>
-/* Ultra-fast barcode scanner tuned for small codes
-   - 4 parallel ZXing workers
-   - ROI detection (vertical gradient)
-   - Small regions sent at full resolution (no downscale)
-   - Sharpen + contrast preprocessing in OffscreenCanvas
-   - BarcodeDetector first, then workers
-   - Robust camera start with torch/focus attempts
-*/
+let db = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
+let stream = null;
+let currentDeviceId = null;
+let scanning = false;
+let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
+let reader = null;
+let lastDetected = {code:null, ts:0};
+const DEBOUNCE_MS = 900;
 
-/* ---------------- Worker source (ZXing UMD) ---------------- */
-const workerSrc = `self.onmessage = async function(e){
-  const msg = e.data;
-  if(msg.type === 'load'){
-    try{
-      importScripts('https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js');
-      self.ZX = self.ZXing || null;
-      self.postMessage({type:'loaded'});
-    }catch(err){
-      self.postMessage({type:'loaded', err: err && err.message});
-    }
+/* ===== Elements ===== */
+const preview = document.getElementById('preview');
+const startScannerBtn = document.getElementById('startScannerBtn');
+const stopScannerBtn = document.getElementById('stopScannerBtn');
+const deviceSelect = document.getElementById('deviceSelect');
+const torchBtn = document.getElementById('torchBtn');
+const scanResult = document.getElementById('scanResult');
+
+const codeInput = document.getElementById('codeInput');
+const nameInput = document.getElementById('nameInput');
+const saveBtn = document.getElementById('saveBtn');
+const clearBtn = document.getElementById('clearBtn');
+
+const tableBody = document.querySelector('#table tbody');
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const toast = document.getElementById('toast');
+
+const bulkImportBtn = document.getElementById('bulkImportBtn');
+const clearDBBtn = document.getElementById('clearDBBtn');
+
+const bulkImportModal = document.getElementById('bulkImportModal');
+const bulkImportBackdrop = document.getElementById('bulkImportBackdrop');
+const bulkImportTextarea = document.getElementById('bulkImportTextarea');
+const bulkImportApply = document.getElementById('bulkImportApply');
+const bulkImportCancel = document.getElementById('bulkImportCancel');
+const bulkImportResult = document.getElementById('bulkImportResult');
+
+/* ===== Utilities ===== */
+function showToast(text, ms = 1400){
+  toast.textContent = text;
+  toast.style.display = 'block';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>{ toast.style.display = 'none'; }, ms);
+}
+function saveDB(){
+  localStorage.setItem('barcodeDB', JSON.stringify(db));
+  renderTable();
+}
+function renderTable(){
+  tableBody.innerHTML = '';
+  const keys = Object.keys(db);
+  if(!keys.length){
+    tableBody.innerHTML = '<tr><td colspan="2" class="small" style="padding:12px;color:var(--muted)">База пуста</td></tr>';
     return;
   }
-  if(msg.type === 'decode'){
-    const id = msg.id;
-    try{
-      const bitmap = msg.imageBitmap;
-      const off = new OffscreenCanvas(bitmap.width, bitmap.height);
-      const ctx = off.getContext('2d');
-      ctx.drawImage(bitmap, 0, 0);
-      let code = null;
-      if(self.ZX){
-        try{
-          const luminanceSource = new self.ZX.HTMLCanvasElementLuminanceSource(off);
-          const binaryBitmap = new self.ZX.BinaryBitmap(new self.ZX.HybridBinarizer(luminanceSource));
-          const result = new self.ZX.MultiFormatReader().decode(binaryBitmap);
-          if(result && result.text) code = result.text;
-        }catch(e){}
-      }
-      try{ bitmap.close && bitmap.close(); }catch(e){}
-      self.postMessage({type:'result', id, code: code || null});
-    }catch(err){
-      try{ msg.imageBitmap && msg.imageBitmap.close && msg.imageBitmap.close(); }catch(e){}
-      self.postMessage({type:'result', id, code: null, err: err && err.message});
-    }
-  }
-};`;
-
-/* ---------------- create workers ---------------- */
-const MAX_WORKERS = 4;
-const workers = [];
-for(let i=0;i<MAX_WORKERS;i++){
-  const blob = new Blob([workerSrc], {type:'application/javascript'});
-  const url = URL.createObjectURL(blob);
-  const w = new Worker(url);
-  workers.push({worker:w, ready:false, url});
-  // attach handler per worker
-  w.onmessage = (ev)=> {
-    const m = ev.data;
-    if(m.type === 'loaded') workers[i].ready = true;
-    if(m.type === 'result' && pending.has(m.id)){
-      const {resolve} = pending.get(m.id);
-      pending.delete(m.id);
-      resolve(m.code || null);
-    }
-  };
-  w.postMessage({type:'load'});
-}
-
-/* pending map for worker responses */
-const pending = new Map();
-let decodeId = 1;
-let rr = 0;
-function postToWorker(imageBitmap){
-  return new Promise((resolve)=>{
-    const id = decodeId++;
-    pending.set(id, {resolve});
-    const idx = rr % workers.length; rr++;
-    try{
-      workers[idx].worker.postMessage({type:'decode', id, imageBitmap}, [imageBitmap]);
-    }catch(e){
-      try{ imageBitmap.close && imageBitmap.close(); }catch(_){}
-      pending.delete(id);
-      resolve(null);
-    }
+  keys.forEach(code=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${code}</td><td>${db[code]}</td>`;
+    tableBody.appendChild(tr);
   });
 }
+function beep(){ try{ navigator.vibrate?.(60); }catch(e){} }
 
-/* ---------------- UI: overlay, button, toast ---------------- */
-(function uiCreate(){
-  if(!document.getElementById('fast-small-styles')){
-    const s = document.createElement('style');
-    s.id = 'fast-small-styles';
-    s.textContent = `
-#fs-btn{position:fixed;left:12px;bottom:18px;z-index:2147483647;width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg,#6d28d9,#4c1d95);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer}
-#fs-overlay{display:none;position:fixed;background:rgba(0,0,0,0.92);border-radius:6px;padding:6px;box-shadow:0 20px 60px rgba(0,0,0,0.6);z-index:2147483646;overflow:hidden;left:50%;top:6%;transform:translateX(-50%);width:100vw;height:60vh}
-#fs-overlay.visible{display:block}
-#fs-overlay .preview{width:100%;height:100%;background:#000;border-radius:6px;display:flex;align-items:center;justify-content:center;position:relative}
-#fs-overlay video{width:100%;height:100%;object-fit:cover;display:block}
-#fs-overlay .controls{position:absolute;right:8px;top:8px;display:flex;gap:8px;z-index:3}
-#fs-overlay button{background:rgba(255,255,255,0.06);color:#fff;border:none;padding:6px 8px;border-radius:8px;cursor:pointer}
-#fs-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:rgba(18,18,22,0.95);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,0.6);opacity:0;transition:opacity .18s ease;z-index:2147483647;pointer-events:none}
-`;
-    document.head.appendChild(s);
-  }
-  if(!document.getElementById('fs-overlay')){
-    const ov = document.createElement('div');
-    ov.id = 'fs-overlay';
-    ov.innerHTML = `<div class="preview"><video id="fs-video" playsinline muted></video></div><div class="controls"><button id="fs-close">Закрыть</button></div>`;
-    document.body.appendChild(ov);
-    ov.querySelector('#fs-close').addEventListener('click', stopScanner);
-  }
-  if(!document.getElementById('fs-btn')){
-    const b = document.createElement('button');
-    b.id = 'fs-btn';
-    b.title = 'Открыть сканер';
-    b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none"><rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/><path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>';
-    document.body.appendChild(b);
-    b.addEventListener('click', startScanner);
-  }
-  if(!document.getElementById('fs-toast')){
-    const t = document.createElement('div');
-    t.id = 'fs-toast';
-    document.body.appendChild(t);
-  }
-})();
-function showToast(text, ms=900){
-  const t = document.getElementById('fs-toast');
-  t.textContent = text;
-  t.style.opacity = '1';
-  clearTimeout(t._t);
-  t._t = setTimeout(()=> t.style.opacity = '0', ms);
+/* ===== Camera & devices ===== */
+async function enumerateCameras(){
+  try{
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d => d.kind === 'videoinput');
+    deviceSelect.innerHTML = '';
+    cams.forEach((c, idx)=>{
+      const opt = document.createElement('option');
+      opt.value = c.deviceId;
+      opt.text = c.label || `Камера ${idx+1}`;
+      deviceSelect.appendChild(opt);
+    });
+    if(cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
+    if(currentDeviceId) deviceSelect.value = currentDeviceId;
+  }catch(e){}
 }
 
-/* ---------------- state & tuning ---------------- */
-let stream = null;
-let scanning = false;
-let lastDetected = {code:null, ts:0};
-const DEBOUNCE = 700;
-let targetInterval = 20; // aggressive
-let lastAttempt = 0;
-const SMALL_THRESHOLD = 400; // regions <= this width are treated as "small" and NOT downscaled
-
-/* ---------------- robust getUserMedia with torch/focus attempts ---------------- */
-async function tryGetMedia(constraints, timeout=5000){
-  const p = navigator.mediaDevices.getUserMedia(constraints);
-  if(timeout<=0) return await p;
-  const t = new Promise((_, rej)=> setTimeout(()=> rej(new Error('timeout')), timeout));
-  return await Promise.race([p,t]);
-}
-
-async function startScanner(){
+async function startCamera(){
   if(scanning) return;
-  stopScanner();
+  stopCamera();
   scanning = true;
-  const ov = document.getElementById('fs-overlay');
-  ov.classList.add('visible');
-  showToast('Открываем камеру...');
-  const sets = [
-    {video:{facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:60}}, audio:false},
-    {video:{facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}, frameRate:{ideal:30}}, audio:false},
-    {video:{facingMode:{ideal:'environment'}, width:{ideal:640}, height:{ideal:480}}, audio:false},
-    {video:true, audio:false}
-  ];
-  let lastErr = null;
-  for(const c of sets){
-    try{
-      const s = await tryGetMedia(c, 5000);
-      stream = s;
-      const v = document.getElementById('fs-video');
-      v.srcObject = stream;
-      v.muted = true; v.playsInline = true;
-      await v.play();
-      // try torch/focus/exposure if supported
-      try{
-        const track = stream.getVideoTracks()[0];
-        const caps = track.getCapabilities ? track.getCapabilities() : {};
-        const adv = [];
-        if(caps.torch) adv.push({torch:true});
-        if(caps.focusMode && caps.focusMode.includes('continuous')) adv.push({focusMode:'continuous'});
-        if(caps.exposureMode && caps.exposureMode.includes('continuous')) adv.push({exposureMode:'continuous'});
-        if(adv.length) await track.applyConstraints({advanced: adv});
-      }catch(e){}
-      targetInterval = (c.video && c.video.frameRate && c.video.frameRate.ideal>=50) ? 15 : 25;
-      scanning = true;
-      scanLoop();
-      showToast('Камера включена', 700);
-      return;
-    }catch(err){
-      lastErr = err;
-      console.warn('getUserMedia failed', err);
+  await enumerateCameras();
+
+  const constraints = {
+    audio:false,
+    video:{
+      deviceId: deviceSelect.value || currentDeviceId || undefined,
+      facingMode: { ideal: "environment" },
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
     }
-  }
-  // deviceId fallback
+  };
+
   try{
-    const devs = await navigator.mediaDevices.enumerateDevices();
-    const vids = devs.filter(d=>d.kind==='videoinput');
-    for(const d of vids){
-      try{
-        const s = await tryGetMedia({video:{deviceId:{exact:d.deviceId}, width:{ideal:1280}, height:{ideal:720}}, audio:false}, 4000);
-        stream = s;
-        const v = document.getElementById('fs-video');
-        v.srcObject = stream; v.muted=true; v.playsInline=true; await v.play();
-        targetInterval = 25; scanning = true; scanLoop(); showToast('Камера включена',700); return;
-      }catch(e){ console.warn('device open failed', e); }
-    }
-  }catch(e){ console.warn('enumerateDevices failed', e); }
-  showToast('Не удалось открыть камеру. Проверь разрешения и HTTPS', 3000);
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    preview.srcObject = stream;
+    await preview.play();
+    currentDeviceId = stream.getVideoTracks()[0].getSettings().deviceId || currentDeviceId;
+    deviceSelect.value = currentDeviceId || deviceSelect.value;
+
+    if(!reader) reader = new ZXing.BrowserMultiFormatReader();
+
+    requestAnimationFrame(scanLoop);
+    showToast('Сканер включён');
+  }catch(err){
+    console.error('camera error', err);
+    scanResult.innerText = 'Ошибка доступа к камере';
+    scanning = false;
+    showToast('Не удалось включить камеру');
+  }
+}
+
+function stopCamera(){
   scanning = false;
-  ov.classList.remove('visible');
+  if(preview.srcObject){
+    preview.srcObject.getTracks().forEach(t=>t.stop());
+    preview.srcObject = null;
+  }
+  if(reader){
+    try{ reader.reset(); }catch(e){}
+  }
+  showToast('Сканер остановлен');
 }
 
-function stopScanner(){
-  scanning = false;
-  if(stream){ try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){} stream=null; }
-  const ov = document.getElementById('fs-overlay');
-  ov.classList.remove('visible');
-  showToast('Сканер остановлен', 700);
-}
-
-/* ---------------- ROI detection (fast vertical gradient) ---------------- */
-function findStripRegions(imageBitmap, longSideTarget=300){
-  const w = imageBitmap.width, h = imageBitmap.height;
-  const scale = Math.max(1, Math.floor(Math.max(w,h)/longSideTarget));
-  const sw = Math.max(1, Math.floor(w/scale)), sh = Math.max(1, Math.floor(h/scale));
-  const c = new OffscreenCanvas(sw, sh);
-  const ctx = c.getContext('2d');
-  ctx.drawImage(imageBitmap, 0, 0, w, h, 0, 0, sw, sh);
-  const img = ctx.getImageData(0,0,sw,sh);
-  const d = img.data;
-  const colSums = new Float32Array(sw);
-  for(let y=1;y<sh-1;y++){
-    for(let x=0;x<sw;x++){
-      const idx = (y*sw + x)*4;
-      const up = ((y-1)*sw + x)*4;
-      const down = ((y+1)*sw + x)*4;
-      const v = (d[idx]*0.299 + d[idx+1]*0.587 + d[idx+2]*0.114);
-      const vUp = (d[up]*0.299 + d[up+1]*0.587 + d[up+2]*0.114);
-      const vDown = (d[down]*0.299 + d[down+1]*0.587 + d[down+2]*0.114);
-      const grad = Math.abs(vDown - vUp);
-      colSums[x] += grad;
-    }
-  }
-  const smooth = new Float32Array(sw);
-  const win = 3;
-  for(let x=0;x<sw;x++){
-    let s=0, cnt=0;
-    for(let k=-win;k<=win;k++){
-      const xi = x+k;
-      if(xi>=0 && xi<sw){ s += colSums[xi]; cnt++; }
-    }
-    smooth[x] = s / cnt;
-  }
-  const maxv = Math.max(...smooth);
-  const thresh = Math.max(0.12*maxv, 6);
-  const regions = [];
-  let inPeak=false, start=0;
-  for(let x=0;x<sw;x++){
-    if(smooth[x] >= thresh && !inPeak){ inPeak=true; start=x; }
-    if((smooth[x] < thresh || x===sw-1) && inPeak){
-      inPeak=false;
-      const end = x;
-      const cx = Math.floor((start+end)/2);
-      const origX = Math.floor(cx * scale);
-      const stripW = Math.max(40, Math.floor((end-start) * scale));
-      regions.push({x: Math.max(0, origX - Math.floor(stripW/2)), y: 0, w: stripW, h: h});
-    }
-  }
-  if(regions.length===0){
-    const stripW = Math.floor(w * 0.9);
-    return [{x: Math.floor((w-stripW)/2), y:0, w:stripW, h:h}];
-  }
-  regions.sort((a,b)=> b.w - a.w);
-  return regions.slice(0,3);
-}
-
-/* ---------------- preprocessing: contrast + sharpen ---------------- */
-function applySharpenAndContrastToOffscreen(offCanvas){
+let torchOn = false;
+async function toggleTorch(){
+  if(!stream) return showToast('Сначала включите сканер');
+  const track = stream.getVideoTracks()[0];
   try{
-    const ctx = offCanvas.getContext('2d');
-    const w = offCanvas.width, h = offCanvas.height;
-    const img = ctx.getImageData(0,0,w,h);
-    const d = img.data;
-    let min=255, max=0;
-    for(let i=0;i<d.length;i+=4){
-      const v = (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114)|0;
-      if(v<min) min=v; if(v>max) max=v;
-    }
-    const range = max - min || 1;
-    const mul = 255 / range;
-    for(let i=0;i<d.length;i+=4){
-      for(let k=0;k<3;k++){
-        let v = d[i+k];
-        v = (v - min) * mul;
-        d[i+k] = Math.max(0, Math.min(255, v));
-      }
-    }
-    ctx.putImageData(img,0,0);
-    // sharpen kernel
-    const src = ctx.getImageData(0,0,w,h);
-    const sd = src.data;
-    const out = ctx.createImageData(w,h);
-    const od = out.data;
-    const kernel = [0,-1,0, -1,5,-1, 0,-1,0];
-    for(let y=1;y<h-1;y++){
-      for(let x=1;x<w-1;x++){
-        let r=0,g=0,b=0, kIdx=0;
-        for(let ky=-1;ky<=1;ky++){
-          for(let kx=-1;kx<=1;kx++){
-            const idx = ((y+ky)*w + (x+kx))*4;
-            const kval = kernel[kIdx++];
-            r += sd[idx] * kval;
-            g += sd[idx+1] * kval;
-            b += sd[idx+2] * kval;
-          }
-        }
-        const idx = (y*w + x)*4;
-        od[idx] = Math.min(255, Math.max(0, r));
-        od[idx+1] = Math.min(255, Math.max(0, g));
-        od[idx+2] = Math.min(255, Math.max(0, b));
-        od[idx+3] = 255;
-      }
-    }
-    ctx.putImageData(out,0,0);
-  }catch(e){}
+    await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
+    torchOn = !torchOn;
+    torchBtn.textContent = torchOn ? '🔦 ON' : '🔦';
+  }catch(e){
+    showToast('Torch не поддерживается');
+  }
 }
 
-/* ---------------- decode pipeline ---------------- */
-async function tryDecodeFrame(video){
-  const now = performance.now();
-  if(now - lastAttempt < targetInterval) return null;
-  lastAttempt = now;
-  const w = video.videoWidth, h = video.videoHeight;
-  if(!w || !h) return null;
-  let fullBmp;
-  try{ fullBmp = await createImageBitmap(video); }catch(e){ return null; }
-  // 1) BarcodeDetector quick on small scaled image
-  if('BarcodeDetector' in window){
+/* ===== Decoding helpers ===== */
+function createCanvas(w,h){
+  const c=document.createElement('canvas');
+  c.width=w; c.height=h;
+  return c;
+}
+
+async function tryDecodeCanvas(canvas){
+  if(detector){
     try{
-      const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
-      const sw = Math.floor(w/scale), sh = Math.floor(h/scale);
-      const off = new OffscreenCanvas(sw, sh);
-      const ctx = off.getContext('2d');
-      ctx.drawImage(fullBmp, 0, 0, w, h, 0, 0, sw, sh);
-      const imageData = ctx.getImageData(0,0,sw,sh);
-      const det = new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]});
-      const res = await det.detect(imageData);
-      if(res && res.length){ fullBmp.close && fullBmp.close(); return res[0].rawValue; }
+      const imageData = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+      const res = await detector.detect(imageData);
+      if(res && res.length) return res[0].rawValue;
     }catch(e){}
   }
-  // 2) ROI detection
-  let regions = [];
-  try{ regions = findStripRegions(fullBmp, 300); }catch(e){ regions = [{x: Math.floor(w*0.05), y:0, w: Math.floor(w*0.9), h:h}]; }
-  const decodePromises = [];
-  for(const r of regions){
-    try{
-      const regionBmp = await createImageBitmap(video, r.x, r.y, r.w, r.h);
-      if(r.w <= SMALL_THRESHOLD){
-        // do NOT downscale small regions; preprocess and send full res
-        const off = new OffscreenCanvas(regionBmp.width, regionBmp.height);
-        const ctx = off.getContext('2d');
-        ctx.drawImage(regionBmp, 0, 0);
-        applySharpenAndContrastToOffscreen(off);
-        const bmp = off.transferToImageBitmap();
-        regionBmp.close && regionBmp.close();
-        decodePromises.push(postToWorker(bmp));
-      } else {
-        // downscale larger regions
-        const maxLong = 900;
-        const scale = Math.max(1, Math.floor(Math.max(r.w, r.h)/maxLong));
-        if(scale>1){
-          const sw = Math.max(1, Math.floor(r.w/scale)), sh = Math.max(1, Math.floor(r.h/scale));
-          const off = new OffscreenCanvas(sw, sh);
-          const ctx = off.getContext('2d');
-          ctx.drawImage(regionBmp, 0, 0, r.w, r.h, 0, 0, sw, sh);
-          applySharpenAndContrastToOffscreen(off);
-          regionBmp.close && regionBmp.close();
-          const smallBmp = off.transferToImageBitmap();
-          decodePromises.push(postToWorker(smallBmp));
-        }else{
-          // send as-is
-          decodePromises.push(postToWorker(regionBmp));
-        }
-      }
-    }catch(e){}
-  }
-  // backup: small full-frame
   try{
-    const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
-    const sw = Math.floor(w/scale), sh = Math.floor(h/scale);
-    const off = new OffscreenCanvas(sw, sh);
-    const ctx = off.getContext('2d');
-    ctx.drawImage(fullBmp, 0, 0, w, h, 0, 0, sw, sh);
-    applySharpenAndContrastToOffscreen(off);
-    const smallFull = off.transferToImageBitmap();
-    decodePromises.push(postToWorker(smallFull));
+    const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+    const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+    if(result && result.text) return result.text;
   }catch(e){}
-  fullBmp.close && fullBmp.close();
-  const results = await Promise.allSettled(decodePromises);
-  for(const r of results){
-    if(r.status==='fulfilled' && r.value) return r.value;
+  const w = canvas.width, h = canvas.height;
+  const temp = createCanvas(w,h);
+  const tctx = temp.getContext('2d');
+  for(let angle of [90,180,270]){
+    tctx.clearRect(0,0,w,h);
+    tctx.save();
+    tctx.translate(w/2,h/2);
+    tctx.rotate(angle*Math.PI/180);
+    tctx.drawImage(canvas, -w/2, -h/2);
+    tctx.restore();
+    try{
+      const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(temp);
+      const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+      const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+      if(result && result.text) return result.text;
+    }catch(e){}
   }
   return null;
 }
 
-/* ---------------- main loop ---------------- */
+/* Main scanning loop */
+let canvasPool = [];
+function getCanvas(w,h){
+  for(let c of canvasPool) if(c.width===w && c.height===h) return c;
+  const c = createCanvas(w,h); canvasPool.push(c); return c;
+}
+
+let scanLoopRunning = false;
 async function scanLoop(){
-  const video = document.getElementById('fs-video');
-  while(scanning){
-    try{
-      const code = await tryDecodeFrame(video);
-      if(code){
-        const now = Date.now();
-        if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE) { /* duplicate */ }
-        else {
-          lastDetected = {code, ts: now};
-          try{ navigator.vibrate && navigator.vibrate(40); }catch(e){}
-          const searchEl = document.getElementById('search');
-          if(searchEl){ searchEl.value = code; searchEl.dispatchEvent(new Event('input',{bubbles:true})); searchEl.dispatchEvent(new Event('change',{bubbles:true})); }
-          showToast('Штрихкод: ' + code, 900);
-          stopScanner();
-        }
+  if(!scanning) { scanLoopRunning = false; return; }
+  if(scanLoopRunning) return;
+  scanLoopRunning = true;
+
+  try{
+    while(scanning){
+      const w = preview.videoWidth;
+      const h = preview.videoHeight;
+      if(w===0 || h===0){
+        await new Promise(r => requestAnimationFrame(r));
+        continue;
       }
-    }catch(e){
-      console.warn('frame error', e);
+
+      const canvas = getCanvas(w,h);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(preview, 0, 0, w, h);
+
+      const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
+      const sw = Math.floor(w/scale);
+      const sh = Math.floor(h/scale);
+      const small = getCanvas(sw,sh);
+      const sctx = small.getContext('2d');
+      sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
+
+      try{
+        const code = await tryDecodeCanvas(small);
+        if(code) {
+          handleDetected(code);
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }catch(e){}
+
+      await new Promise(r => requestAnimationFrame(r));
     }
-    await new Promise(r=>requestAnimationFrame(r));
+  }finally{
+    scanLoopRunning = false;
   }
 }
 
-/* ---------------- expose helpers ---------------- */
-window.startFastSmall = startScanner;
-window.stopFastSmall = stopScanner;
-window.addBarcodeToLocalDB = function(code, name){ try{ const db = JSON.parse(localStorage.getItem('barcodeDB')||'{}'); db[code]=name; localStorage.setItem('barcodeDB', JSON.stringify(db)); }catch(e){} };
+/* Handle detection */
+function handleDetected(code){
+  const now = Date.now();
+  if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+  lastDetected = {code, ts: now};
+  beep();
+  scanResult.innerText = `${code} → ${db[code] || 'Товар не найден'}`;
+  codeInput.value = code;
+  if(db[code]) nameInput.value = db[code];
+  else nameInput.value = '';
+}
 
-/* ensure button clickable */
-(function ensureClickable(){
-  const btn = document.getElementById('fs-btn');
-  if(btn){ btn.style.zIndex = String(2147483647); btn.style.pointerEvents = 'auto'; }
-})();
+/* ===== UI actions ===== */
+startScannerBtn.addEventListener('click', async ()=>{ await startCamera(); });
+stopScannerBtn.addEventListener('click', ()=>{ stopCamera(); });
+deviceSelect.addEventListener('change', async ()=>{ currentDeviceId = deviceSelect.value; await startCamera(); });
+torchBtn.addEventListener('click', toggleTorch);
+
+saveBtn.addEventListener('click', ()=>{
+  const code = (codeInput.value || '').trim();
+  const name = (nameInput.value || '').trim();
+  if(!code) return showToast('Штрих‑код пустой');
+  if(!name) return showToast('Введите название');
+  db[code] = name;
+  saveDB();
+  showToast('Сохранено');
+  lastDetected = {code:null, ts:0};
+  codeInput.value = '';
+  nameInput.value = '';
+});
+
+clearBtn.addEventListener('click', ()=>{
+  codeInput.value = '';
+  nameInput.value = '';
+  showToast('Поля очищены');
+});
+
+/* ===== Export / Import / Bulk / Clear DB ===== */
+exportBtn.addEventListener('click', ()=>{
+  const data = JSON.stringify(db, null, 2);
+  navigator.clipboard?.writeText(data).then(()=>{
+    showToast('JSON скопирован в буфер обмена');
+  }).catch(()=>{
+    const w = window.open();
+    if(w){ w.document.write('<pre>'+data.replace(/</g,'&lt;')+'</pre>'); }
+    showToast('Открыл JSON в новом окне');
+  });
+});
+
+importBtn.addEventListener('click', ()=>{
+  const json = prompt('Вставь JSON с базой штрих‑кодов:');
+  if(!json) return;
+  try{
+    const obj = JSON.parse(json);
+    if(typeof obj !== 'object' || Array.isArray(obj)) throw new Error('bad');
+    db = obj;
+    saveDB();
+    showToast('Импорт выполнен');
+  }catch(e){
+    showToast('Ошибка JSON');
+  }
+});
+
+bulkImportBtn.addEventListener('click', ()=>{
+  bulkImportTextarea.value = '';
+  bulkImportResult.textContent = '';
+  bulkImportModal.style.display = 'flex';
+  bulkImportModal.setAttribute('aria-hidden','false');
+});
+
+function closeBulkModal(){
+  bulkImportModal.style.display = 'none';
+  bulkImportModal.setAttribute('aria-hidden','true');
+}
+
+bulkImportBackdrop.addEventListener('click', closeBulkModal);
+bulkImportCancel.addEventListener('click', closeBulkModal);
+
+bulkImportApply.addEventListener('click', ()=>{
+  const text = bulkImportTextarea.value.trim();
+  if(!text){
+    bulkImportResult.textContent = 'Пустой ввод';
+    return;
+  }
+  let added = 0;
+  // пробуем как JSON
+  try{
+    const obj = JSON.parse(text);
+    if(typeof obj === 'object' && !Array.isArray(obj)){
+      Object.keys(obj).forEach(code=>{
+        const name = String(obj[code] ?? '').trim();
+        if(code && name){
+          db[code] = name;
+          added++;
+        }
+      });
+      saveDB();
+      bulkImportResult.textContent = `Импортировано: ${added}`;
+      showToast('Массовый импорт выполнен');
+      return;
+    }
+  }catch(e){}
+  // иначе парсим построчно: "code": "name"
+  const lines = text.split(/\r?\n/);
+  lines.forEach(line=>{
+    const m = line.match(/"(\d+)"\s*:\s*"([^"]+)"/);
+    if(m){
+      const code = m[1].trim();
+      const name = m[2].trim();
+      if(code && name){
+        db[code] = name;
+        added++;
+      }
+    }
+  });
+  saveDB();
+  bulkImportResult.textContent = `Импортировано: ${added}`;
+  showToast('Массовый импорт выполнен');
+});
+
+clearDBBtn.addEventListener('click', ()=>{
+  if(!confirm('Точно очистить всю базу?')) return;
+  db = {};
+  saveDB();
+  showToast('База очищена');
+});
+
+/* ===== Init ===== */
+renderTable();
+enumerateCameras().catch(()=>{});
 </script>
+
 
 
 
