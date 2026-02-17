@@ -1907,12 +1907,13 @@ recognition.addEventListener('result', (ev) => {
 
 
 <script>
-/* Ultra-fast scanner tuned for small barcodes
+/* Ultra-fast barcode scanner tuned for small codes
    - 4 parallel ZXing workers
-   - ROI detection; small regions sent at full resolution (no downscale)
-   - quick sharpening + contrast on strips (OffscreenCanvas)
+   - ROI detection (vertical gradient)
+   - Small regions sent at full resolution (no downscale)
+   - Sharpen + contrast preprocessing in OffscreenCanvas
    - BarcodeDetector first, then workers
-   - robust camera start with torch/focus attempts
+   - Robust camera start with torch/focus attempts
 */
 
 /* ---------------- Worker source (ZXing UMD) ---------------- */
@@ -1953,7 +1954,7 @@ const workerSrc = `self.onmessage = async function(e){
   }
 };`;
 
-/* create N workers */
+/* ---------------- create workers ---------------- */
 const MAX_WORKERS = 4;
 const workers = [];
 for(let i=0;i<MAX_WORKERS;i++){
@@ -1961,9 +1962,10 @@ for(let i=0;i<MAX_WORKERS;i++){
   const url = URL.createObjectURL(blob);
   const w = new Worker(url);
   workers.push({worker:w, ready:false, url});
+  // attach handler per worker
   w.onmessage = (ev)=> {
     const m = ev.data;
-    if(m.type === 'loaded') { workers[i].ready = true; }
+    if(m.type === 'loaded') workers[i].ready = true;
     if(m.type === 'result' && pending.has(m.id)){
       const {resolve} = pending.get(m.id);
       pending.delete(m.id);
@@ -1976,14 +1978,11 @@ for(let i=0;i<MAX_WORKERS;i++){
 /* pending map for worker responses */
 const pending = new Map();
 let decodeId = 1;
-
-/* helper: choose worker round-robin */
 let rr = 0;
 function postToWorker(imageBitmap){
   return new Promise((resolve)=>{
     const id = decodeId++;
     pending.set(id, {resolve});
-    // choose next worker
     const idx = rr % workers.length; rr++;
     try{
       workers[idx].worker.postMessage({type:'decode', id, imageBitmap}, [imageBitmap]);
@@ -1997,58 +1996,60 @@ function postToWorker(imageBitmap){
 
 /* ---------------- UI: overlay, button, toast ---------------- */
 (function uiCreate(){
-  if(!document.getElementById('fast2-styles')){
+  if(!document.getElementById('fast-small-styles')){
     const s = document.createElement('style');
-    s.id = 'fast2-styles';
+    s.id = 'fast-small-styles';
     s.textContent = `
-#fast2-btn{position:fixed;left:12px;bottom:18px;z-index:2147483647;width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg,#6d28d9,#4c1d95);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer}
-#fast2-overlay{display:none;position:fixed;background:rgba(0,0,0,0.92);border-radius:6px;padding:6px;box-shadow:0 20px 60px rgba(0,0,0,0.6);z-index:2147483646;overflow:hidden;left:50%;top:6%;transform:translateX(-50%);width:100vw;height:60vh}
-#fast2-overlay.visible{display:block}
-#fast2-overlay .preview{width:100%;height:100%;background:#000;border-radius:6px;display:flex;align-items:center;justify-content:center;position:relative}
-#fast2-overlay video{width:100%;height:100%;object-fit:cover;display:block}
-#fast2-overlay .controls{position:absolute;right:8px;top:8px;display:flex;gap:8px;z-index:3}
-#fast2-overlay button{background:rgba(255,255,255,0.06);color:#fff;border:none;padding:6px 8px;border-radius:8px;cursor:pointer}
-#fast2-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:rgba(18,18,22,0.95);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,0.6);opacity:0;transition:opacity .18s ease;z-index:2147483647;pointer-events:none}
+#fs-btn{position:fixed;left:12px;bottom:18px;z-index:2147483647;width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg,#6d28d9,#4c1d95);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer}
+#fs-overlay{display:none;position:fixed;background:rgba(0,0,0,0.92);border-radius:6px;padding:6px;box-shadow:0 20px 60px rgba(0,0,0,0.6);z-index:2147483646;overflow:hidden;left:50%;top:6%;transform:translateX(-50%);width:100vw;height:60vh}
+#fs-overlay.visible{display:block}
+#fs-overlay .preview{width:100%;height:100%;background:#000;border-radius:6px;display:flex;align-items:center;justify-content:center;position:relative}
+#fs-overlay video{width:100%;height:100%;object-fit:cover;display:block}
+#fs-overlay .controls{position:absolute;right:8px;top:8px;display:flex;gap:8px;z-index:3}
+#fs-overlay button{background:rgba(255,255,255,0.06);color:#fff;border:none;padding:6px 8px;border-radius:8px;cursor:pointer}
+#fs-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:rgba(18,18,22,0.95);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,0.6);opacity:0;transition:opacity .18s ease;z-index:2147483647;pointer-events:none}
 `;
     document.head.appendChild(s);
   }
-  if(!document.getElementById('fast2-overlay')){
+  if(!document.getElementById('fs-overlay')){
     const ov = document.createElement('div');
-    ov.id = 'fast2-overlay';
-    ov.innerHTML = `<div class="preview"><video id="fast2-video" playsinline muted></video></div><div class="controls"><button id="fast2-close">Закрыть</button></div>`;
+    ov.id = 'fs-overlay';
+    ov.innerHTML = `<div class="preview"><video id="fs-video" playsinline muted></video></div><div class="controls"><button id="fs-close">Закрыть</button></div>`;
     document.body.appendChild(ov);
-    ov.querySelector('#fast2-close').addEventListener('click', stopScanner);
+    ov.querySelector('#fs-close').addEventListener('click', stopScanner);
   }
-  if(!document.getElementById('fast2-btn')){
+  if(!document.getElementById('fs-btn')){
     const b = document.createElement('button');
-    b.id = 'fast2-btn';
+    b.id = 'fs-btn';
     b.title = 'Открыть сканер';
     b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none"><rect x="3" y="8" width="18" height="12" rx="2" stroke="white" stroke-width="1.6"/><path d="M12 2v6" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>';
     document.body.appendChild(b);
     b.addEventListener('click', startScanner);
   }
-  if(!document.getElementById('fast2-toast')){
+  if(!document.getElementById('fs-toast')){
     const t = document.createElement('div');
-    t.id = 'fast2-toast';
+    t.id = 'fs-toast';
     document.body.appendChild(t);
   }
 })();
 function showToast(text, ms=900){
-  const t = document.getElementById('fast2-toast');
+  const t = document.getElementById('fs-toast');
   t.textContent = text;
   t.style.opacity = '1';
   clearTimeout(t._t);
   t._t = setTimeout(()=> t.style.opacity = '0', ms);
 }
 
-/* ---------------- camera start/stop (robust + torch/focus attempts) ---------------- */
+/* ---------------- state & tuning ---------------- */
 let stream = null;
 let scanning = false;
 let lastDetected = {code:null, ts:0};
 const DEBOUNCE = 700;
-let targetInterval = 25;
+let targetInterval = 20; // aggressive
 let lastAttempt = 0;
+const SMALL_THRESHOLD = 400; // regions <= this width are treated as "small" and NOT downscaled
 
+/* ---------------- robust getUserMedia with torch/focus attempts ---------------- */
 async function tryGetMedia(constraints, timeout=5000){
   const p = navigator.mediaDevices.getUserMedia(constraints);
   if(timeout<=0) return await p;
@@ -2060,7 +2061,7 @@ async function startScanner(){
   if(scanning) return;
   stopScanner();
   scanning = true;
-  const ov = document.getElementById('fast2-overlay');
+  const ov = document.getElementById('fs-overlay');
   ov.classList.add('visible');
   showToast('Открываем камеру...');
   const sets = [
@@ -2074,26 +2075,21 @@ async function startScanner(){
     try{
       const s = await tryGetMedia(c, 5000);
       stream = s;
-      const v = document.getElementById('fast2-video');
+      const v = document.getElementById('fs-video');
       v.srcObject = stream;
       v.muted = true; v.playsInline = true;
       await v.play();
-      // try to enable torch if available
+      // try torch/focus/exposure if supported
       try{
         const track = stream.getVideoTracks()[0];
-        const capabilities = track.getCapabilities ? track.getCapabilities() : {};
-        if(capabilities.torch){
-          await track.applyConstraints({advanced:[{torch:true}]});
-        }
-        // try focus/exposure continuous if supported
-        if(capabilities.focusMode && capabilities.focusMode.includes('continuous')){
-          await track.applyConstraints({advanced:[{focusMode:'continuous'}]});
-        }
-        if(capabilities.exposureMode && capabilities.exposureMode.includes('continuous')){
-          await track.applyConstraints({advanced:[{exposureMode:'continuous'}]});
-        }
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        const adv = [];
+        if(caps.torch) adv.push({torch:true});
+        if(caps.focusMode && caps.focusMode.includes('continuous')) adv.push({focusMode:'continuous'});
+        if(caps.exposureMode && caps.exposureMode.includes('continuous')) adv.push({exposureMode:'continuous'});
+        if(adv.length) await track.applyConstraints({advanced: adv});
       }catch(e){}
-      targetInterval = (c.video && c.video.frameRate && c.video.frameRate.ideal>=50) ? 20 : 30;
+      targetInterval = (c.video && c.video.frameRate && c.video.frameRate.ideal>=50) ? 15 : 25;
       scanning = true;
       scanLoop();
       showToast('Камера включена', 700);
@@ -2111,9 +2107,9 @@ async function startScanner(){
       try{
         const s = await tryGetMedia({video:{deviceId:{exact:d.deviceId}, width:{ideal:1280}, height:{ideal:720}}, audio:false}, 4000);
         stream = s;
-        const v = document.getElementById('fast2-video');
+        const v = document.getElementById('fs-video');
         v.srcObject = stream; v.muted=true; v.playsInline=true; await v.play();
-        targetInterval = 30; scanning = true; scanLoop(); showToast('Камера включена',700); return;
+        targetInterval = 25; scanning = true; scanLoop(); showToast('Камера включена',700); return;
       }catch(e){ console.warn('device open failed', e); }
     }
   }catch(e){ console.warn('enumerateDevices failed', e); }
@@ -2125,13 +2121,13 @@ async function startScanner(){
 function stopScanner(){
   scanning = false;
   if(stream){ try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){} stream=null; }
-  const ov = document.getElementById('fast2-overlay');
+  const ov = document.getElementById('fs-overlay');
   ov.classList.remove('visible');
   showToast('Сканер остановлен', 700);
 }
 
-/* ---------------- ROI detector (fast vertical gradient) ---------------- */
-function findStripRegionsFast(imageBitmap, longSideTarget=300){
+/* ---------------- ROI detection (fast vertical gradient) ---------------- */
+function findStripRegions(imageBitmap, longSideTarget=300){
   const w = imageBitmap.width, h = imageBitmap.height;
   const scale = Math.max(1, Math.floor(Math.max(w,h)/longSideTarget));
   const sw = Math.max(1, Math.floor(w/scale)), sh = Math.max(1, Math.floor(h/scale));
@@ -2186,14 +2182,13 @@ function findStripRegionsFast(imageBitmap, longSideTarget=300){
   return regions.slice(0,3);
 }
 
-/* ---------------- image preprocessing: sharpening + contrast ---------------- */
+/* ---------------- preprocessing: contrast + sharpen ---------------- */
 function applySharpenAndContrastToOffscreen(offCanvas){
   try{
     const ctx = offCanvas.getContext('2d');
     const w = offCanvas.width, h = offCanvas.height;
     const img = ctx.getImageData(0,0,w,h);
     const d = img.data;
-    // simple contrast stretch
     let min=255, max=0;
     for(let i=0;i<d.length;i+=4){
       const v = (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114)|0;
@@ -2205,25 +2200,22 @@ function applySharpenAndContrastToOffscreen(offCanvas){
       for(let k=0;k<3;k++){
         let v = d[i+k];
         v = (v - min) * mul;
-        if(v<0) v=0; if(v>255) v=255;
-        d[i+k] = v;
+        d[i+k] = Math.max(0, Math.min(255, v));
       }
     }
     ctx.putImageData(img,0,0);
-    // sharpen via 3x3 kernel
-    const kernel = [0,-1,0, -1,5,-1, 0,-1,0];
+    // sharpen kernel
     const src = ctx.getImageData(0,0,w,h);
     const sd = src.data;
     const out = ctx.createImageData(w,h);
     const od = out.data;
+    const kernel = [0,-1,0, -1,5,-1, 0,-1,0];
     for(let y=1;y<h-1;y++){
       for(let x=1;x<w-1;x++){
-        let r=0,g=0,b=0;
-        let kIdx=0;
+        let r=0,g=0,b=0, kIdx=0;
         for(let ky=-1;ky<=1;ky++){
           for(let kx=-1;kx<=1;kx++){
-            const xi = x+kx, yi = y+ky;
-            const idx = (yi*w + xi)*4;
+            const idx = ((y+ky)*w + (x+kx))*4;
             const kval = kernel[kIdx++];
             r += sd[idx] * kval;
             g += sd[idx+1] * kval;
@@ -2241,7 +2233,7 @@ function applySharpenAndContrastToOffscreen(offCanvas){
   }catch(e){}
 }
 
-/* ---------------- decode frame: BarcodeDetector -> ROI workers -> full frame ---------------- */
+/* ---------------- decode pipeline ---------------- */
 async function tryDecodeFrame(video){
   const now = performance.now();
   if(now - lastAttempt < targetInterval) return null;
@@ -2266,16 +2258,13 @@ async function tryDecodeFrame(video){
   }
   // 2) ROI detection
   let regions = [];
-  try{ regions = findStripRegionsFast(fullBmp, 300); }catch(e){ regions = [{x: Math.floor(w*0.05), y:0, w: Math.floor(w*0.9), h:h}]; }
+  try{ regions = findStripRegions(fullBmp, 300); }catch(e){ regions = [{x: Math.floor(w*0.05), y:0, w: Math.floor(w*0.9), h:h}]; }
   const decodePromises = [];
   for(const r of regions){
     try{
-      // create region bitmap at original resolution
       const regionBmp = await createImageBitmap(video, r.x, r.y, r.w, r.h);
-      // If region is small (width < threshold), DO NOT downscale — send full res to worker after preprocessing
-      const SMALL_THRESHOLD = 220; // px
       if(r.w <= SMALL_THRESHOLD){
-        // preprocess: sharpen + contrast on OffscreenCanvas same size
+        // do NOT downscale small regions; preprocess and send full res
         const off = new OffscreenCanvas(regionBmp.width, regionBmp.height);
         const ctx = off.getContext('2d');
         ctx.drawImage(regionBmp, 0, 0);
@@ -2284,7 +2273,7 @@ async function tryDecodeFrame(video){
         regionBmp.close && regionBmp.close();
         decodePromises.push(postToWorker(bmp));
       } else {
-        // larger region: scale down to speed up
+        // downscale larger regions
         const maxLong = 900;
         const scale = Math.max(1, Math.floor(Math.max(r.w, r.h)/maxLong));
         if(scale>1){
@@ -2303,7 +2292,7 @@ async function tryDecodeFrame(video){
       }
     }catch(e){}
   }
-  // also send a small full-frame backup
+  // backup: small full-frame
   try{
     const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
     const sw = Math.floor(w/scale), sh = Math.floor(h/scale);
@@ -2315,7 +2304,6 @@ async function tryDecodeFrame(video){
     decodePromises.push(postToWorker(smallFull));
   }catch(e){}
   fullBmp.close && fullBmp.close();
-  // wait for any worker to return a code (race)
   const results = await Promise.allSettled(decodePromises);
   for(const r of results){
     if(r.status==='fulfilled' && r.value) return r.value;
@@ -2325,7 +2313,7 @@ async function tryDecodeFrame(video){
 
 /* ---------------- main loop ---------------- */
 async function scanLoop(){
-  const video = document.getElementById('fast2-video');
+  const video = document.getElementById('fs-video');
   while(scanning){
     try{
       const code = await tryDecodeFrame(video);
@@ -2349,16 +2337,17 @@ async function scanLoop(){
 }
 
 /* ---------------- expose helpers ---------------- */
-window.startFast2 = startScanner;
-window.stopFast2 = stopScanner;
+window.startFastSmall = startScanner;
+window.stopFastSmall = stopScanner;
 window.addBarcodeToLocalDB = function(code, name){ try{ const db = JSON.parse(localStorage.getItem('barcodeDB')||'{}'); db[code]=name; localStorage.setItem('barcodeDB', JSON.stringify(db)); }catch(e){} };
 
 /* ensure button clickable */
 (function ensureClickable(){
-  const btn = document.getElementById('fast2-btn');
+  const btn = document.getElementById('fs-btn');
   if(btn){ btn.style.zIndex = String(2147483647); btn.style.pointerEvents = 'auto'; }
 })();
 </script>
+
 
 
 
