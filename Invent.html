@@ -835,80 +835,55 @@ saveBtn.onclick = () => {
 
   const box = createConfirmBox("Сохранить пересчёт?", () => {
 
-    // 1. Загружаем базу товаров
+    /* === 1. Загружаем базу товаров === */
     let db = {};
     try {
       const raw = localStorage.getItem("barcodeDB");
       if (raw) db = JSON.parse(raw);
     } catch(e){ db = {}; }
 
-    // 2. Загружаем базу штрих‑кодов
+    /* === 2. Загружаем базу штрих‑кодов === */
     let codes = {};
     try {
       const raw = localStorage.getItem("barcodeCodes");
       if (raw) codes = JSON.parse(raw);
     } catch(e){ codes = {}; }
 
-    // 3. Проходим по карточкам пересчёта
+    /* === 3. Собираем товары с пересчёта === */
     const items = list.querySelectorAll(".item");
 
     items.forEach(item => {
       const code = item.dataset.code;
-      if (!code) return;
 
-      // --- имя ---
-      const nameInput = item.querySelector('input[data-name]');
-      const nameFromInput = nameInput?.value.trim() || "";
+      /* ВАЖНО: название берём из input */
+      const nameInput = item.querySelector("input[data-name]");
+      const name = nameInput?.value.trim() || "Без названия";
 
-      // старое имя из баз
-      const oldDbRec = db[code];
-      const oldDbName = typeof oldDbRec === "string"
-        ? oldDbRec
-        : (oldDbRec && oldDbRec.name) || "";
-
-      const oldCodeName = codes[code] || "";
-
-      // итоговое имя: что ввёл пользователь, иначе старое, иначе "Без названия"
-      const finalName = nameFromInput || oldDbName || oldCodeName || "Без названия";
-
-      // --- qty ---
-      const qtyInput = item.querySelector('input[data-code]');
+      const qtyInput = item.querySelector("input[data-code]");
       const qty = Number(qtyInput?.value || 0);
 
-      // 3.1. Обновляем / создаём запись в базе штрих‑кодов (строка!)
-      codes[code] = finalName;
-
-      // 3.2. Обновляем базу товаров
       if (qty > 0) {
-        // если записи не было — создаём
-        if (!oldDbRec) {
-          db[code] = { name: finalName, qty };
-        } else if (typeof oldDbRec === "string") {
-          db[code] = { name: finalName || oldDbRec, qty };
-        } else {
-          db[code] = {
-            ...oldDbRec,
-            name: finalName,
-            qty
-          };
-        }
 
-        // сохраняем qty_КОД для пересчёта
+        /* === 3.1 Обновляем базу товаров === */
+        db[code] = { name, qty };
+
+        /* === 3.2 Обновляем базу штрих‑кодов (ТОЛЬКО СТРОКА!) === */
+        codes[code] = name;
+
+        /* === 3.3 Сохраняем qty_КОД === */
         localStorage.setItem("qty_" + code, qty);
-      } else {
-        // qty = 0: базу товаров НЕ трогаем (не затираем старые остатки)
-        // если хочешь при 0 очищать qty в базе — скажи, сделаем отдельной логикой
       }
     });
 
-    // 4. Сохраняем базы обратно
+    /* === 4. Сохраняем базы === */
     localStorage.setItem("barcodeDB", JSON.stringify(db));
     localStorage.setItem("barcodeCodes", JSON.stringify(codes));
 
-    // 5. Анимация
+    /* === 5. Анимация === */
     animateSaveSuccess();
   });
 };
+
 
 
 
