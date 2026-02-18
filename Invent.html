@@ -763,29 +763,104 @@ window._recount = { db, barcodeDB, allItems, startCamera, stopCamera, render };
 
 </script>
 
-  <script>
+ <script>
 const fab = document.getElementById("fabMenu");
 const sheet = document.getElementById("bottomSheet");
 const overlay = document.getElementById("sheetOverlay");
 const clearBtn = document.getElementById("clearBtn");
 const list = document.getElementById("list");
 
-function closeMenu(){
-  sheet.classList.remove("show");
-  overlay.classList.remove("show");
-}
-
+/* Открытие меню */
 fab.onclick = () => {
   sheet.classList.add("show");
   overlay.classList.add("show");
 };
 
+/* Закрытие меню по клику вне */
 overlay.onclick = () => closeMenu();
 
-/* === ОЧИСТКА ВСЕХ КАРТОЧЕК === */
+function closeMenu(){
+  sheet.classList.remove("show");
+  overlay.classList.remove("show");
+}
+
+/* === ПОДТВЕРЖДЕНИЕ + АНИМАЦИЯ ОЧИСТКИ === */
 clearBtn.onclick = () => {
-  list.innerHTML = "";   // ← Удаляем все карточки
-  closeMenu();           // ← Закрываем меню
+  closeMenu();
+
+  // Создаём кастомное подтверждение
+  const confirmBox = document.createElement("div");
+  confirmBox.style.position = "fixed";
+  confirmBox.style.left = "50%";
+  confirmBox.style.top = "50%";
+  confirmBox.style.transform = "translate(-50%, -50%)";
+  confirmBox.style.background = "rgba(20,20,20,0.85)";
+  confirmBox.style.backdropFilter = "blur(12px)";
+  confirmBox.style.padding = "1.4rem";
+  confirmBox.style.borderRadius = "16px";
+  confirmBox.style.boxShadow = "0 12px 32px rgba(0,0,0,0.6)";
+  confirmBox.style.zIndex = "5000";
+  confirmBox.style.width = "80%";
+  confirmBox.style.maxWidth = "340px";
+  confirmBox.style.textAlign = "center";
+  confirmBox.style.animation = "fadeIn .25s ease";
+
+  confirmBox.innerHTML = `
+    <div style="font-size:1.1rem; margin-bottom:1rem; color:#fff;">
+      Очистить пересчёт?
+    </div>
+    <div style="display:flex; gap:10px; justify-content:center;">
+      <button id="confirmYes" style="
+        flex:1;
+        padding:0.7rem;
+        border:none;
+        border-radius:10px;
+        background:linear-gradient(135deg,#6a11cb,#2575fc);
+        color:#fff;
+        font-size:1rem;
+        font-weight:600;
+        cursor:pointer;
+      ">Да</button>
+
+      <button id="confirmNo" style="
+        flex:1;
+        padding:0.7rem;
+        border:none;
+        border-radius:10px;
+        background:#2c2c2c;
+        color:#fff;
+        font-size:1rem;
+        font-weight:600;
+        cursor:pointer;
+      ">Нет</button>
+    </div>
+  `;
+
+  document.body.appendChild(confirmBox);
+
+  // Кнопка "Нет"
+  document.getElementById("confirmNo").onclick = () => {
+    confirmBox.remove();
+  };
+
+  // Кнопка "Да"
+  document.getElementById("confirmYes").onclick = () => {
+    confirmBox.remove();
+
+    const items = list.querySelectorAll(".item");
+
+    // Анимация исчезновения
+    items.forEach((item, i) => {
+      item.style.transition = "opacity .25s ease, transform .25s ease";
+      item.style.opacity = "0";
+      item.style.transform = "translateY(10px)";
+    });
+
+    // Удаляем после анимации
+    setTimeout(() => {
+      list.innerHTML = "";
+    }, 260);
+  };
 };
 </script>
 
