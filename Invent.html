@@ -835,21 +835,21 @@ saveBtn.onclick = () => {
 
   const box = createConfirmBox("Сохранить пересчёт?", () => {
 
-    /* 1. Загружаем текущую базу товаров */
+    /* === 1. Загружаем базу товаров === */
     let db = {};
     try {
       const raw = localStorage.getItem("barcodeDB");
       if (raw) db = JSON.parse(raw);
     } catch(e){ db = {}; }
 
-    /* 2. Загружаем базу штрих‑кодов */
+    /* === 2. Загружаем базу штрих‑кодов === */
     let codes = {};
     try {
       const raw = localStorage.getItem("barcodeCodes");
       if (raw) codes = JSON.parse(raw);
     } catch(e){ codes = {}; }
 
-    /* 3. Собираем товары с пересчёта */
+    /* === 3. Собираем товары с пересчёта === */
     const items = list.querySelectorAll(".item");
 
     items.forEach(item => {
@@ -860,7 +860,7 @@ saveBtn.onclick = () => {
 
       if (qty > 0) {
 
-        /* === 3.1 Сохраняем в базу товаров === */
+        /* === 3.1 Обновляем базу товаров === */
         if (!db[code]) {
           db[code] = { name, qty };
         } else {
@@ -871,9 +871,9 @@ saveBtn.onclick = () => {
           }
         }
 
-        /* === 3.2 Сохраняем в базу штрих‑кодов === */
+        /* === 3.2 Обновляем базу штрих‑кодов (ТОЛЬКО СТРОКА!) === */
         if (!codes[code]) {
-          codes[code] = name;
+          codes[code] = name;   // ← ВАЖНО: только строка
         }
 
         /* === 3.3 Сохраняем qty_КОД === */
@@ -881,11 +881,11 @@ saveBtn.onclick = () => {
       }
     });
 
-    /* 4. Сохраняем базы */
+    /* === 4. Сохраняем базы === */
     localStorage.setItem("barcodeDB", JSON.stringify(db));
     localStorage.setItem("barcodeCodes", JSON.stringify(codes));
 
-    /* 5. Анимация */
+    /* === 5. Анимация === */
     animateSaveSuccess();
   });
 };
