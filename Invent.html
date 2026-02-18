@@ -849,28 +849,47 @@ saveBtn.onclick = () => {
       if (raw) codes = JSON.parse(raw);
     } catch(e){ codes = {}; }
 
-    /* === 3. Собираем товары с пересчёта === */
+    /* === 3. Проходим по карточкам пересчёта === */
     const items = list.querySelectorAll(".item");
 
     items.forEach(item => {
       const code = item.dataset.code;
+      if (!code || code === "undefined") return; // пропускаем битые карточки
 
-      /* ВАЖНО: название берём из input */
-      const nameInput = item.querySelector("input[data-name]");
-      const name = nameInput?.value.trim() || "Без названия";
+      /* --- название --- */
+      let name = "";
 
-      const qtyInput = item.querySelector("input[data-code]");
+      // 1) пробуем взять из input[data-name]
+      const nameInput = item.querySelector('input[data-name]');
+      if (nameInput && nameInput.value.trim()) {
+        name = nameInput.value.trim();
+      }
+
+      // 2) пробуем взять из .name
+      if (!name) {
+        const nameDiv = item.querySelector('.name');
+        if (nameDiv && nameDiv.textContent.trim()) {
+          name = nameDiv.textContent.trim();
+        }
+      }
+
+      // 3) если всё ещё пусто — берём старое название из баз
+      if (!name) {
+        if (codes[code]) name = codes[code];
+        else if (db[code] && db[code].name) name = db[code].name;
+        else name = "Без названия";
+      }
+
+      /* --- количество --- */
+      const qtyInput = item.querySelector('input[data-code]');
       const qty = Number(qtyInput?.value || 0);
 
+      /* === 3.1. Обновляем базу штрих‑кодов === */
+      codes[code] = name;
+
+      /* === 3.2. Обновляем базу товаров === */
       if (qty > 0) {
-
-        /* === 3.1 Обновляем базу товаров === */
         db[code] = { name, qty };
-
-        /* === 3.2 Обновляем базу штрих‑кодов (ТОЛЬКО СТРОКА!) === */
-        codes[code] = name;
-
-        /* === 3.3 Сохраняем qty_КОД === */
         localStorage.setItem("qty_" + code, qty);
       }
     });
@@ -883,7 +902,6 @@ saveBtn.onclick = () => {
     animateSaveSuccess();
   });
 };
-
 
 
 
