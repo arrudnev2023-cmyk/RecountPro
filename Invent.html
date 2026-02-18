@@ -283,18 +283,22 @@ function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,
 /* =========================
    Load DB and build items
    ========================= */
-function loadBarcodeDB(){
-  try{
+/* =========================
+   Load DB
+   ========================= */
+function loadBarcodeDB() {
+  try {
     const raw = localStorage.getItem('barcodeDB');
-    if(raw){
+    if (raw) {
       const parsed = JSON.parse(raw);
-      if(parsed && typeof parsed === 'object'){
+      if (parsed && typeof parsed === 'object') {
         barcodeDB = parsed;
         db = barcodeDB;
         return;
       }
     }
-  }catch(e){}
+  } catch (e) {}
+
   // fallback sample if none
   barcodeDB = {
     "4601234000011": { code: "4601234000011", name: "Молоко 1л", unit: "шт", price: 59.90 },
@@ -303,49 +307,102 @@ function loadBarcodeDB(){
     "4601234000042": { code: "4601234000042", name: "Сыр 200г", unit: "шт", price: 250.00 },
     "4601234000059": { code: "4601234000059", name: "Кофе 250г", unit: "шт", price: 499.00 }
   };
+
   db = barcodeDB;
   saveDB();
 }
 
-function buildAllItemsFromDB(){
-  allItems = Object.keys(barcodeDB).map(k=>{
-    const b = barcodeDB[k];
-    return { code: b.code, name: b.name, unit: b.unit || '', price: b.price || 0, docQty: 0 };
-  });
+/* =========================
+   Build items list from BOTH databases
+   ========================= */
+function buildAllItemsFromDB() {
+  allItems = [];
+
+  // 1. Товары из основной базы
+  for (const code in barcodeDB) {
+    const b = barcodeDB[code];
+    allItems.push({
+      code,
+      name: b.name || "",
+      unit: b.unit || "",
+      price: b.price || 0,
+      docQty: 0
+    });
+  }
+
+  // 2. Товары, которых нет в barcodeDB, но есть в barcodeCodes
+  for (const code in barcodeCodes) {
+    if (!barcodeDB[code]) {
+      allItems.push({
+        code,
+        name: barcodeCodes[code] || "",
+        unit: "",
+        price: 0,
+        docQty: 0
+      });
+    }
+  }
 }
 
 /* =========================
    Render UI (title first, then barcode)
    ========================= */
-function render(items){
+function render(items) {
   listEl.innerHTML = '';
-  items.forEach(item=>{
-    const value = sessionValues[item.code] || localStorage.getItem('qty_' + item.code) || '';
+
+  items.forEach(item => {
+    const value =
+      sessionValues[item.code] ||
+      localStorage.getItem('qty_' + item.code) ||
+      '';
+
     const div = document.createElement('div');
     div.className = 'item';
     div.dataset.code = item.code;
-    // Title first, then barcode (user requested)
+
     div.innerHTML = `
-      <div class="field"><span class="label">Название:</span> ${escapeHtml(item.name)}</div>
-      <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
+      <div class="field">
+        <span class="label">Название:</span> ${escapeHtml(item.name || '')}
+      </div>
+
+      <div class="field">
+        <span class="label">Артикул:</span> ${item.code}
+      </div>
+
       <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
         <div style="flex:1">
-          <input type="text" data-code="${item.code}" value="${escapeHtml(value)}" inputmode="none" readonly />
+          <input
+            type="text"
+            data-code="${item.code}"
+            value="${value}"
+            inputmode="none"
+            readonly
+          />
         </div>
-        <div style="min-width:70px;text-align:right;color:var(--muted)">${item.docQty} шт</div>
+
+        <div style="min-width:70px;text-align:right;color:var(--muted)">
+          ${item.docQty} шт
+        </div>
       </div>
     `;
-    // initial coloring
+
+    // === раскраска ===
     let actual = 0;
-    try{ actual = Function("return " + (value || "0").replace(',', '.'))() || 0; }catch{}
-    if(actual === item.docQty) div.classList.add('match');
-    else if(actual < item.docQty) div.classList.add('missing');
-    else if(actual > item.docQty) div.classList.add('excess');
+    try {
+      actual = Function("return " + (value || "0").replace(',', '.'))() || 0;
+    } catch {}
+
+    if (actual === item.docQty) div.classList.add('match');
+    else if (actual < item.docQty) div.classList.add('missing');
+    else if (actual > item.docQty) div.classList.add('excess');
 
     listEl.appendChild(div);
   });
+
   attachInputHandlers();
 }
+
+
 
 /* =========================
    Keyboard & input handlers
@@ -838,7 +895,7 @@ saveBtn.onclick = () => {
     let db = JSON.parse(localStorage.getItem("barcodeDB") || "{}");
     let codes = JSON.parse(localStorage.getItem("barcodeCodes") || "{}");
 
-    const items = list.querySelectorAll(".item");
+    const items = listEl.querySelectorAll(".item");
 
     items.forEach(item => {
       const code = item.dataset.code;
@@ -851,13 +908,20 @@ saveBtn.onclick = () => {
       // --- НАЗВАНИЕ ---
       let name = "";
 
-      // 1) если есть в базе штрих‑кодов — используем
-      if (codes[code]) name = codes[code];
+      // 1) название из карточки
+      const nameField = item.querySelector(".field:nth-child(1)");
+      if (nameField) {
+        const text = nameField.textContent.replace("Название:", "").trim();
+        if (text) name = text;
+      }
 
-      // 2) если есть в базе товаров — используем
+      // 2) название из базы штрих‑кодов
+      if (!name && codes[code]) name = codes[code];
+
+      // 3) название из базы товаров
       if (!name && db[code]?.name) name = db[code].name;
 
-      // 3) если вообще нет — fallback
+      // 4) fallback
       if (!name) name = "Без названия";
 
       // === Обновляем базу штрих‑кодов ===
