@@ -68,6 +68,118 @@
     #custom-keyboard button{border:none;border-radius:8px;background:#222;color:#fff;font-size:20px;cursor:pointer}
     .hidden{display:none!important}
     @media(min-width:900px){#content{padding-left:24px;padding-right:24px}}
+
+    /* === FAB кнопка меню (в стиле твоего примера) === */
+#fabMenu{
+  position:fixed;
+  bottom:1rem;
+  right:1rem;
+  z-index:1001;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color:#fff;
+  border:none;
+  padding:0.9rem 1.2rem;
+  border-radius:14px;
+  font-size:1.2rem;
+  font-weight:600;
+  cursor:pointer;
+  box-shadow:0 6px 20px rgba(0,0,0,0.35), 0 0 12px rgba(106,17,203,0.6);
+  transition:all .3s ease;
+  backdrop-filter:blur(6px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+#fabMenu:hover{
+  transform:translateY(-3px) scale(1.03);
+  box-shadow:0 10px 28px rgba(0,0,0,0.5), 0 0 18px rgba(37,117,252,0.8);
+}
+
+#fabMenu:active{
+  transform:scale(0.96);
+  box-shadow:inset 0 3px 8px rgba(0,0,0,0.6);
+}
+
+/* === Затемнение фона === */
+#sheetOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.55);
+  backdrop-filter:blur(4px);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .25s ease;
+  z-index:999;
+}
+
+#sheetOverlay.show{
+  opacity:1;
+  pointer-events:auto;
+}
+
+/* === Bottom Sheet (в стиле твоего меню) === */
+#bottomSheet{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:-60vh;
+  padding:1.2rem;
+  background:rgba(20,20,20,0.7);
+  backdrop-filter:blur(12px) saturate(180%);
+  border-radius:20px 20px 0 0;
+  box-shadow:0 -12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+  transition:bottom .35s ease;
+  z-index:1002;
+  animation:fadeIn .35s ease;
+}
+
+#bottomSheet.show{
+  bottom:0;
+}
+
+/* Контейнер кнопок */
+.sheet-content{
+  display:flex;
+  flex-direction:column;
+  gap:0.7rem;
+}
+
+/* Кнопки внутри меню */
+.sheet-btn{
+  background:linear-gradient(145deg, #1f1f1f, #2c2c2c);
+  color:#f9f9f9;
+  border:none;
+  padding:0.9rem 1rem;
+  border-radius:12px;
+  font-size:1rem;
+  font-weight:500;
+  cursor:pointer;
+  transition:all .25s ease;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 14px rgba(0,0,0,0.4);
+  letter-spacing:0.3px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.sheet-btn:hover{
+  background:linear-gradient(145deg, #2c2c2c, #3a3a3a);
+  transform:translateX(-3px);
+  box-shadow:0 8px 20px rgba(0,0,0,0.6), 0 0 10px rgba(255,255,255,0.15);
+}
+
+.sheet-btn:active{
+  transform:scale(0.97);
+  box-shadow:inset 0 3px 8px rgba(0,0,0,0.6);
+}
+
+/* Анимация */
+@keyframes fadeIn{
+  from{opacity:0; transform:translateY(12px) scale(0.95);}
+  to{opacity:1; transform:translateY(0) scale(1);}
+}
+
   </style>
 </head>
 <body>
@@ -107,6 +219,18 @@
     <button class="done" id="done" style="grid-column:1 / -1">Готово</button>
   </div>
 
+  <button id="fabMenu">☰</button>
+
+<div id="sheetOverlay"></div>
+
+<div id="bottomSheet">
+  <div class="sheet-content">
+    <button class="sheet-btn" id="saveBtn">💾 Сохранить</button>
+    <button class="sheet-btn" id="clearBtn">🧹 Очистить пересчёт</button>
+    <button class="sheet-btn" id="totalBtn">📊 Итог</button>
+    <button class="sheet-btn" id="codesBtn">🔍 База штрих‑кодов</button>
+  </div>
+</div>
 <script>
 /* =========================
    State and elements
@@ -638,5 +762,24 @@ window.addEventListener('beforeunload', ()=>{ stopCamera(); });
 window._recount = { db, barcodeDB, allItems, startCamera, stopCamera, render };
 
 </script>
+
+  <script>
+const fab = document.getElementById("fabMenu");
+const sheet = document.getElementById("bottomSheet");
+const overlay = document.getElementById("sheetOverlay");
+
+function closeMenu(){
+  sheet.classList.remove("show");
+  overlay.classList.remove("show");
+}
+
+fab.onclick = () => {
+  sheet.classList.add("show");
+  overlay.classList.add("show");
+};
+
+overlay.onclick = () => closeMenu();
+</script>
+
 </body>
 </html>
