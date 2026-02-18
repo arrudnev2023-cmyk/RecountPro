@@ -835,37 +835,35 @@ saveBtn.onclick = () => {
 
   const box = createConfirmBox("Сохранить пересчёт?", () => {
 
-    /* === 1. Загружаем базу товаров === */
+    /* === 1. Загружаем базы === */
     let db = {};
+    let codes = {};
+
     try {
-      const raw = localStorage.getItem("barcodeDB");
-      if (raw) db = JSON.parse(raw);
+      db = JSON.parse(localStorage.getItem("barcodeDB")) || {};
     } catch(e){ db = {}; }
 
-    /* === 2. Загружаем базу штрих‑кодов === */
-    let codes = {};
     try {
-      const raw = localStorage.getItem("barcodeCodes");
-      if (raw) codes = JSON.parse(raw);
+      codes = JSON.parse(localStorage.getItem("barcodeCodes")) || {};
     } catch(e){ codes = {}; }
 
-    /* === 3. Проходим по карточкам пересчёта === */
+    /* === 2. Проходим по карточкам === */
     const items = list.querySelectorAll(".item");
 
     items.forEach(item => {
       const code = item.dataset.code;
-      if (!code || code === "undefined") return; // пропускаем битые карточки
+      if (!code || code === "undefined") return;
 
-      /* --- название --- */
+      /* --- НАЗВАНИЕ --- */
       let name = "";
 
-      // 1) пробуем взять из input[data-name]
+      // 1) input[data-name]
       const nameInput = item.querySelector('input[data-name]');
       if (nameInput && nameInput.value.trim()) {
         name = nameInput.value.trim();
       }
 
-      // 2) пробуем взять из .name
+      // 2) .name
       if (!name) {
         const nameDiv = item.querySelector('.name');
         if (nameDiv && nameDiv.textContent.trim()) {
@@ -873,14 +871,14 @@ saveBtn.onclick = () => {
         }
       }
 
-      // 3) если всё ещё пусто — берём старое название из баз
+      // 3) старое название из баз
       if (!name) {
         if (codes[code]) name = codes[code];
-        else if (db[code] && db[code].name) name = db[code].name;
+        else if (db[code]?.name) name = db[code].name;
         else name = "Без названия";
       }
 
-      /* --- количество --- */
+      /* --- КОЛИЧЕСТВО --- */
       const qtyInput = item.querySelector('input[data-code]');
       const qty = Number(qtyInput?.value || 0);
 
@@ -902,6 +900,7 @@ saveBtn.onclick = () => {
     animateSaveSuccess();
   });
 };
+
 
 
 
