@@ -85,7 +85,6 @@
 
     .label{font-weight:700; color:#dbeafe; margin-right:6px;}
 
-    /* === FAB кнопка меню === */
     #fabMenu{
       position:fixed; bottom:1rem; right:1rem; z-index:1001;
       background: linear-gradient(135deg, #6a11cb, #2575fc);
@@ -99,16 +98,7 @@
       backdrop-filter:blur(6px);
       display:flex; align-items:center; justify-content:center;
     }
-    #fabMenu:hover{
-      transform:translateY(-3px) scale(1.03);
-      box-shadow:0 10px 28px rgba(0,0,0,0.5), 0 0 18px rgba(37,117,252,0.8);
-    }
-    #fabMenu:active{
-      transform:scale(0.96);
-      box-shadow:inset 0 3px 8px rgba(0,0,0,0.6);
-    }
 
-    /* === Overlay === */
     #sheetOverlay{
       position:fixed; inset:0;
       background:rgba(0,0,0,0.55);
@@ -121,7 +111,6 @@
       opacity:1; pointer-events:auto;
     }
 
-    /* === Bottom Sheet === */
     #bottomSheet{
       position:fixed; left:0; right:0; bottom:-60vh;
       padding:1.2rem;
@@ -147,15 +136,6 @@
       transition:all .25s ease;
       box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 14px rgba(0,0,0,0.4);
       display:flex; align-items:center; gap:10px;
-    }
-    .sheet-btn:hover{
-      background:linear-gradient(145deg, #2c2c2c, #3a3a3a);
-      transform:translateX(-3px);
-      box-shadow:0 8px 20px rgba(0,0,0,0.6), 0 0 10px rgba(255,255,255,0.15);
-    }
-    .sheet-btn:active{
-      transform:scale(0.97);
-      box-shadow:inset 0 3px 8px rgba(0,0,0,0.6);
     }
 
     @keyframes fadeIn{
@@ -203,16 +183,15 @@
       <button class="sheet-btn" id="clearBaseBtn">🧹 Очистить базу</button>
     </div>
   </div>
+
 <script>
 /* ============================================================
-   БАЗА ТОВАРОВ (структура: { "код": "название" })
+   БАЗА ТОВАРОВ
 ============================================================ */
 
-let barcodeDB = {};     // основная база
-let allItems = [];      // массив [{code, name}]
-let lastFoundCode = null;
+let barcodeDB = {};
+let allItems = [];
 
-/* Загрузка базы из localStorage */
 function loadDB(){
   try{
     const raw = localStorage.getItem("barcodeDB");
@@ -224,30 +203,23 @@ function loadDB(){
       }
     }
   }catch(e){}
-
-  // если базы нет — создаём пустую
   barcodeDB = {};
-  saveDB();
 }
 
-/* Сохранение базы */
 function saveDB(){
   localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
 }
 
-/* Преобразуем объект в массив */
 function buildItems(){
-  allItems = Object.keys(barcodeDB).map(code => ({
-    code,
-    name: barcodeDB[code]
-  }));
+  allItems = Object.keys(barcodeDB)
+    .map(code => {
+      const rec = barcodeDB[code];
+      let name = typeof rec === "string" ? rec : rec.name;
+      let qty  = typeof rec === "string" ? Number(rec.qty||0) : Number(rec.qty||0);
+      return { code, name, qty };
+    })
+    .filter(i => i.qty > 0);
 }
-
-/* ============================================================
-   РЕНДЕР КАРТОЧЕК
-============================================================ */
-
-const listEl = document.getElementById("list");
 
 function escapeHtml(s){
   return String(s||"")
@@ -257,9 +229,10 @@ function escapeHtml(s){
     .replace(/"/g,"&quot;");
 }
 
+const listEl = document.getElementById("list");
+
 function render(items){
   listEl.innerHTML = "";
-
   items.forEach(item => {
     const div = document.createElement("div");
     div.className = "item";
@@ -268,6 +241,7 @@ function render(items){
     div.innerHTML = `
       <div class="field"><span class="label">Название:</span> ${escapeHtml(item.name)}</div>
       <div class="field"><span class="label">Штрих‑код:</span> ${item.code}</div>
+      <div class="field"><span class="label">Остаток:</span> ${item.qty}</div>
     `;
 
     listEl.appendChild(div);
@@ -299,13 +273,8 @@ searchEl.addEventListener("input", () => {
 
   document.querySelectorAll("#list .item").forEach(div => {
     const code = normalize(div.dataset.code);
-    const name = normalize(barcodeDB[div.dataset.code] || "");
-
-    const match =
-      q === "" ||
-      matchesQuery(name, q) ||
-      matchesQuery(code, q);
-
+    const name = normalize(barcodeDB[div.dataset.code]?.name || barcodeDB[div.dataset.code] || "");
+    const match = q === "" || matchesQuery(name, q) || matchesQuery(code, q);
     div.classList.toggle("hidden", !match);
   });
 });
@@ -316,7 +285,7 @@ clearSearchBtn.addEventListener("click", () => {
 });
 
 /* ============================================================
-   ПОДСВЕТКА НАЙДЕННОГО ТОВАРА
+   ПОДСВЕТКА
 ============================================================ */
 
 function highlightItem(code){
@@ -334,26 +303,7 @@ function highlightItem(code){
 }
 
 /* ============================================================
-   КНОПКА "ОБНОВИТЬ"
-============================================================ */
-
-document.getElementById("refreshBtn").onclick = () => {
-  location.reload();
-};
-
-/* ============================================================
-   ИНИЦИАЛИЗАЦИЯ
-============================================================ */
-
-window.addEventListener("DOMContentLoaded", () => {
-  loadDB();
-  buildItems();
-  render(allItems);
-});
-</script>
-<script>
-/* ============================================================
-   СКАНЕР (ZXing + BarcodeDetector)
+   СКАНЕР
 ============================================================ */
 
 let stream = null;
@@ -390,7 +340,7 @@ async function enumerateCameras(){
       const opt = document.createElement("option");
       opt.value = c.deviceId;
       opt.text = c.label || `Камера ${idx+1}`;
-      deviceSelect.appendChild(opt);
+      deviceSelect.appendappendChild(opt);
     });
     if(cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
     if(currentDeviceId) deviceSelect.value = currentDeviceId;
@@ -512,39 +462,48 @@ function handleDetected(code){
 
   stopCamera();
 
-  if(barcodeDB[code]){
-    highlightItem(code);
-    showToast("Найден");
-  } else {
-    showToast("Нет в базе");
+  const rec = barcodeDB[code];
+
+  if(rec){
+    let name = typeof rec === "string" ? rec : rec.name;
+    let qty  = typeof rec === "string" ? Number(rec.qty||0) : Number(rec.qty||0);
+
+    if(qty > 0){
+      highlightItem(code);
+      showToast("Найден");
+      return;
+    }
+
+    // qty == 0 → показываем красную карточку на 10 секунд
+    const temp = document.createElement("div");
+    temp.className = "item";
+    temp.style.borderLeftColor = "#ef4444";
+    temp.innerHTML = `
+      <div class="field"><span class="label">Название:</span> ${escapeHtml(name)}</div>
+      <div class="field"><span class="label">Штрих‑код:</span> ${code}</div>
+      <div class="field"><span class="label">Остаток:</span> 0</div>
+    `;
+
+    listEl.prepend(temp);
+    temp.scrollIntoView({ behavior:"smooth", block:"center" });
+
+    setTimeout(() => {
+      temp.style.transition = "opacity .3s ease, transform .3s ease";
+      temp.style.opacity = "0";
+      temp.style.transform = "translateY(10px)";
+    }, 9500);
+
+    setTimeout(() => temp.remove(), 10000);
+
+    showToast("По позиции остаток 0");
+    return;
   }
+
+  // Вообще нет в базе штрих‑кодов
+  showToast("Нет в базе штрих‑кодов");
 }
-
-/* Torch */
-let torchOn = false;
-async function toggleTorch(){
-  if(!stream) return showToast("Сначала включите сканер");
-  const track = stream.getVideoTracks()[0];
-  try{
-    await track.applyConstraints({advanced:[{torch:!torchOn}]});
-    torchOn = !torchOn;
-    torchBtn.textContent = torchOn ? "🔦 ON" : "🔦";
-  }catch(e){
-    showToast("Torch не поддерживается");
-  }
-}
-
-/* UI events */
-document.getElementById("scan-btn").onclick = () => {
-  if(!scanning) startCamera();
-  else stopCamera();
-};
-closeScannerBtn.onclick = stopCamera;
-deviceSelect.onchange = () => startCamera();
-torchBtn.onclick = toggleTorch;
-
 /* ============================================================
-   МЕНЮ СНИЗУ
+   МЕНЮ
 ============================================================ */
 
 const fab = document.getElementById("fabMenu");
@@ -563,15 +522,24 @@ function closeMenu(){
 }
 
 /* ============================================================
-   ЭКСПОРТ CSV
+   ОБНОВИТЬ
+============================================================ */
+
+document.getElementById("refreshBtn").onclick = () => location.reload();
+
+/* ============================================================
+   ЭКСПОРТ CSV (code;name;qty)
 ============================================================ */
 
 document.getElementById("exportBtn").onclick = () => {
   closeMenu();
 
-  let csv = "code;name\n";
+  let csv = "code;name;qty\n";
   for(const code in barcodeDB){
-    csv += `${code};${barcodeDB[code]}\n`;
+    const rec = barcodeDB[code];
+    const name = typeof rec === "string" ? rec : rec.name;
+    const qty  = typeof rec === "string" ? Number(rec.qty||0) : Number(rec.qty||0);
+    csv += `${code};${name};${qty}\n`;
   }
 
   const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
@@ -586,7 +554,7 @@ document.getElementById("exportBtn").onclick = () => {
 };
 
 /* ============================================================
-   ИМПОРТ CSV
+   ИМПОРТ CSV (code;name;qty)
 ============================================================ */
 
 document.getElementById("importBtn").onclick = () => {
@@ -605,14 +573,16 @@ document.getElementById("importBtn").onclick = () => {
       const lines = reader.result.split(/\r?\n/);
 
       lines.forEach((line, idx)=>{
-        if(idx===0) return; // пропускаем заголовок
+        if(idx === 0) return;
         const parts = line.split(";");
-        if(parts.length >= 2){
+        if(parts.length >= 3){
           const code = parts[0].trim();
           const name = parts[1].trim();
-          if(code && name){
-            barcodeDB[code] = name;
-          }
+          const qty  = Number(parts[2].trim() || 0);
+
+          if(!code || !name) return;
+
+          barcodeDB[code] = { name, qty };
         }
       });
 
@@ -629,19 +599,28 @@ document.getElementById("importBtn").onclick = () => {
 };
 
 /* ============================================================
-   ОЧИСТКА БАЗЫ (двойное предупреждение)
+   ОЧИСТИТЬ БАЗУ (qty = 0, коды остаются)
 ============================================================ */
 
 document.getElementById("clearBaseBtn").onclick = () => {
   closeMenu();
 
-  const box1 = createConfirm("Очистить базу товаров?", () => {
-    const box2 = createConfirm("Это действие необратимо. Удалить ВСЁ?", () => {
-      barcodeDB = {};
+  const box1 = createConfirm("Очистить экран базы товаров?", () => {
+    const box2 = createConfirm("Остатки будут обнулены. Действие необратимо.", () => {
+
+      for(const code in barcodeDB){
+        const rec = barcodeDB[code];
+        if(typeof rec === "string"){
+          barcodeDB[code] = { name: rec, qty: 0 };
+        } else {
+          rec.qty = 0;
+        }
+      }
+
       saveDB();
       buildItems();
       render(allItems);
-      showToast("База очищена");
+      showToast("Экран базы очищен");
     });
   });
 };
@@ -693,18 +672,16 @@ function createConfirm(text, onYes){
 }
 
 /* ============================================================
-   ИНИЦИАЛИЗАЦИЯ СКАНЕРА
+   ИНИЦИАЛИЗАЦИЯ
 ============================================================ */
 
-window.addEventListener("DOMContentLoaded", async () => {
-  try{
-    const s = await navigator.mediaDevices.getUserMedia({video:true});
-    s.getTracks().forEach(t=>t.stop());
-    await enumerateCameras();
-  }catch(e){}
+window.addEventListener("DOMContentLoaded", () => {
+  loadDB();
+  buildItems();
+  render(allItems);
 });
 </script>
 
-
 </body>
 </html>
+
