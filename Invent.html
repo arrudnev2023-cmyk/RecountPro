@@ -835,11 +835,9 @@ saveBtn.onclick = () => {
 
   const box = createConfirmBox("Сохранить пересчёт?", () => {
 
-    // 1. Загружаем базы
     let db = JSON.parse(localStorage.getItem("barcodeDB") || "{}");
     let codes = JSON.parse(localStorage.getItem("barcodeCodes") || "{}");
 
-    // 2. Проходим по карточкам
     const items = list.querySelectorAll(".item");
 
     items.forEach(item => {
@@ -853,31 +851,13 @@ saveBtn.onclick = () => {
       // --- НАЗВАНИЕ ---
       let name = "";
 
-      // 1) input[data-name]
-      const nameInput = item.querySelector('input[data-name]');
-      if (nameInput && nameInput.value.trim()) {
-        name = nameInput.value.trim();
-      }
+      // 1) если есть в базе штрих‑кодов — используем
+      if (codes[code]) name = codes[code];
 
-      // 2) .name
-      if (!name) {
-        const nameDiv = item.querySelector('.name');
-        if (nameDiv && nameDiv.textContent.trim()) {
-          name = nameDiv.textContent.trim();
-        }
-      }
+      // 2) если есть в базе товаров — используем
+      if (!name && db[code]?.name) name = db[code].name;
 
-      // 3) база штрих‑кодов
-      if (!name && codes[code]) {
-        name = codes[code];
-      }
-
-      // 4) база товаров
-      if (!name && db[code]?.name) {
-        name = db[code].name;
-      }
-
-      // 5) fallback
+      // 3) если вообще нет — fallback
       if (!name) name = "Без названия";
 
       // === Обновляем базу штрих‑кодов ===
@@ -890,13 +870,13 @@ saveBtn.onclick = () => {
       }
     });
 
-    // 3. Сохраняем базы
     localStorage.setItem("barcodeDB", JSON.stringify(db));
     localStorage.setItem("barcodeCodes", JSON.stringify(codes));
 
     animateSaveSuccess();
   });
 };
+
 
 
 
