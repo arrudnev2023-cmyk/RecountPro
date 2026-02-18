@@ -854,27 +854,21 @@ saveBtn.onclick = () => {
 
     items.forEach(item => {
       const code = item.dataset.code;
-      const name = item.querySelector(".name")?.innerText || "Без названия";
+
+      /* ВАЖНО: название берём из input */
+      const nameInput = item.querySelector("input[data-name]");
+      const name = nameInput?.value.trim() || "Без названия";
+
       const qtyInput = item.querySelector("input[data-code]");
       const qty = Number(qtyInput?.value || 0);
 
       if (qty > 0) {
 
         /* === 3.1 Обновляем базу товаров === */
-        if (!db[code]) {
-          db[code] = { name, qty };
-        } else {
-          if (typeof db[code] === "string") {
-            db[code] = { name: db[code], qty };
-          } else {
-            db[code].qty = qty;
-          }
-        }
+        db[code] = { name, qty };
 
         /* === 3.2 Обновляем базу штрих‑кодов (ТОЛЬКО СТРОКА!) === */
-        if (!codes[code]) {
-          codes[code] = name;   // ← ВАЖНО: только строка
-        }
+        codes[code] = name;
 
         /* === 3.3 Сохраняем qty_КОД === */
         localStorage.setItem("qty_" + code, qty);
@@ -889,6 +883,7 @@ saveBtn.onclick = () => {
     animateSaveSuccess();
   });
 };
+
 
 
 
