@@ -836,16 +836,8 @@ saveBtn.onclick = () => {
   const box = createConfirmBox("Сохранить пересчёт?", () => {
 
     /* === 1. Загружаем базы === */
-    let db = {};
-    let codes = {};
-
-    try {
-      db = JSON.parse(localStorage.getItem("barcodeDB")) || {};
-    } catch(e){ db = {}; }
-
-    try {
-      codes = JSON.parse(localStorage.getItem("barcodeCodes")) || {};
-    } catch(e){ codes = {}; }
+    let db = JSON.parse(localStorage.getItem("barcodeDB") || "{}");
+    let codes = JSON.parse(localStorage.getItem("barcodeCodes") || "{}");
 
     /* === 2. Проходим по карточкам === */
     const items = list.querySelectorAll(".item");
@@ -854,16 +846,20 @@ saveBtn.onclick = () => {
       const code = item.dataset.code;
       if (!code || code === "undefined") return;
 
+      /* --- КОЛИЧЕСТВО --- */
+      const qtyInput = item.querySelector('input[data-code]');
+      const qty = Number(qtyInput?.value || 0);
+
       /* --- НАЗВАНИЕ --- */
       let name = "";
 
-      // 1) input[data-name]
+      // 1) пробуем взять из input[data-name]
       const nameInput = item.querySelector('input[data-name]');
       if (nameInput && nameInput.value.trim()) {
         name = nameInput.value.trim();
       }
 
-      // 2) .name
+      // 2) пробуем взять из .name
       if (!name) {
         const nameDiv = item.querySelector('.name');
         if (nameDiv && nameDiv.textContent.trim()) {
@@ -871,32 +867,33 @@ saveBtn.onclick = () => {
         }
       }
 
-      // 3) старое название из баз
-      if (!name) {
-        if (codes[code]) name = codes[code];
-        else if (db[code]?.name) name = db[code].name;
-        else name = "Без названия";
+      // 3) если в карточке нет названия — берём из базы штрих‑кодов
+      if (!name && codes[code]) {
+        name = codes[code];
       }
 
-      /* --- КОЛИЧЕСТВО --- */
-      const qtyInput = item.querySelector('input[data-code]');
-      const qty = Number(qtyInput?.value || 0);
+      // 4) если нет — берём из базы товаров
+      if (!name && db[code]?.name) {
+        name = db[code].name;
+      }
 
-      /* === 3.1. Обновляем базу штрих‑кодов === */
+      // 5) если вообще нет — ставим заглушку
+      if (!name) name = "Без названия";
+
+      /* === 3. Обновляем базу штрих‑кодов === */
       codes[code] = name;
 
-      /* === 3.2. Обновляем базу товаров === */
+      /* === 4. Обновляем базу товаров === */
       if (qty > 0) {
         db[code] = { name, qty };
         localStorage.setItem("qty_" + code, qty);
       }
     });
 
-    /* === 4. Сохраняем базы === */
+    /* === 5. Сохраняем базы === */
     localStorage.setItem("barcodeDB", JSON.stringify(db));
     localStorage.setItem("barcodeCodes", JSON.stringify(codes));
 
-    /* === 5. Анимация === */
     animateSaveSuccess();
   });
 };
