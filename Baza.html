@@ -340,7 +340,8 @@ async function enumerateCameras(){
       const opt = document.createElement("option");
       opt.value = c.deviceId;
       opt.text = c.label || `Камера ${idx+1}`;
-      deviceSelect.appendappendChild(opt);
+      deviceSelect.appendChild(opt);
+
     });
     if(cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
     if(currentDeviceId) deviceSelect.value = currentDeviceId;
@@ -680,6 +681,14 @@ window.addEventListener("DOMContentLoaded", () => {
   buildItems();
   render(allItems);
 });
+  document.getElementById("scan-btn").onclick = () => {
+  if(!scanning) startCamera();
+  else stopCamera();
+};
+closeScannerBtn.onclick = stopCamera;
+deviceSelect.onchange = () => startCamera();
+torchBtn.onclick = toggleTorch;
+
 </script>
 
 </body>
