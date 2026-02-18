@@ -851,18 +851,26 @@ saveBtn.onclick = () => {
       const qty = Number(qtyInput?.value || 0);
 
       if (qty > 0) {
+
         /* Если товара нет в базе — создаём */
         if (!db[code]) {
           db[code] = {
-            code: code,
             name: item.querySelector(".name")?.innerText || "Без названия",
-            unit: "шт",
-            price: 0
+            qty: qty
           };
-        }
+        } else {
 
-        /* Обновляем количество */
-        db[code].qty = qty;
+          /* Если товар в старом формате (строка) — конвертируем */
+          if (typeof db[code] === "string") {
+            db[code] = {
+              name: db[code],
+              qty: qty
+            };
+          } else {
+            /* Обновляем qty */
+            db[code].qty = qty;
+          }
+        }
       }
     });
 
@@ -873,6 +881,7 @@ saveBtn.onclick = () => {
     animateSaveSuccess();
   });
 };
+
 
 /* ============================================================
    ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
