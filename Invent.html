@@ -763,51 +763,119 @@ window._recount = { db, barcodeDB, allItems, startCamera, stopCamera, render };
 
 </script>
 
- <script>
+<script>
+/* === ЭЛЕМЕНТЫ === */
 const fab = document.getElementById("fabMenu");
 const sheet = document.getElementById("bottomSheet");
 const overlay = document.getElementById("sheetOverlay");
 const clearBtn = document.getElementById("clearBtn");
+const saveBtn = document.getElementById("saveBtn");
 const list = document.getElementById("list");
 
-/* Открытие меню */
+/* === ОТКРЫТЬ МЕНЮ === */
 fab.onclick = () => {
   sheet.classList.add("show");
   overlay.classList.add("show");
 };
 
-/* Закрытие меню по клику вне */
+/* === ЗАКРЫТЬ МЕНЮ === */
 overlay.onclick = () => closeMenu();
-
 function closeMenu(){
   sheet.classList.remove("show");
   overlay.classList.remove("show");
 }
 
-/* === ПОДТВЕРЖДЕНИЕ + АНИМАЦИЯ ОЧИСТКИ === */
+/* ============================================================
+   ПОДТВЕРЖДЕНИЕ + АНИМАЦИЯ ОЧИСТКИ
+============================================================ */
 clearBtn.onclick = () => {
   closeMenu();
 
-  // Создаём кастомное подтверждение
-  const confirmBox = document.createElement("div");
-  confirmBox.style.position = "fixed";
-  confirmBox.style.left = "50%";
-  confirmBox.style.top = "50%";
-  confirmBox.style.transform = "translate(-50%, -50%)";
-  confirmBox.style.background = "rgba(20,20,20,0.85)";
-  confirmBox.style.backdropFilter = "blur(12px)";
-  confirmBox.style.padding = "1.4rem";
-  confirmBox.style.borderRadius = "16px";
-  confirmBox.style.boxShadow = "0 12px 32px rgba(0,0,0,0.6)";
-  confirmBox.style.zIndex = "5000";
-  confirmBox.style.width = "80%";
-  confirmBox.style.maxWidth = "340px";
-  confirmBox.style.textAlign = "center";
-  confirmBox.style.animation = "fadeIn .25s ease";
+  const box = createConfirmBox("Очистить пересчёт?", () => {
+    const items = list.querySelectorAll(".item");
 
-  confirmBox.innerHTML = `
+    items.forEach((item) => {
+      item.style.transition = "opacity .25s ease, transform .25s ease";
+      item.style.opacity = "0";
+      item.style.transform = "translateY(10px)";
+    });
+
+    setTimeout(() => list.innerHTML = "", 260);
+  });
+};
+
+/* ============================================================
+   ПОДТВЕРЖДЕНИЕ + СОХРАНЕНИЕ В БАЗУ ТОВАРОВ
+============================================================ */
+saveBtn.onclick = () => {
+  closeMenu();
+
+  const box = createConfirmBox("Сохранить пересчёт?", () => {
+
+    /* 1. Загружаем текущую базу */
+    let db = {};
+    try {
+      const raw = localStorage.getItem("barcodeDB");
+      if (raw) db = JSON.parse(raw);
+    } catch(e){ db = {}; }
+
+    /* 2. Собираем товары с пересчёта */
+    const items = list.querySelectorAll(".item");
+
+    items.forEach(item => {
+      const code = item.dataset.code;
+      const qtyInput = item.querySelector("input[data-code]");
+      const qty = Number(qtyInput?.value || 0);
+
+      if (qty > 0) {
+        /* Если товара нет в базе — создаём */
+        if (!db[code]) {
+          db[code] = {
+            code: code,
+            name: item.querySelector(".name")?.innerText || "Без названия",
+            unit: "шт",
+            price: 0
+          };
+        }
+
+        /* Обновляем количество */
+        db[code].qty = qty;
+      }
+    });
+
+    /* 3. Сохраняем обновлённую базу */
+    localStorage.setItem("barcodeDB", JSON.stringify(db));
+
+    /* 4. Анимация сохранения */
+    animateSaveSuccess();
+  });
+};
+
+/* ============================================================
+   ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+============================================================ */
+
+/* Создание окна подтверждения */
+function createConfirmBox(text, onYes){
+  const box = document.createElement("div");
+  box.style.position = "fixed";
+  box.style.left = "50%";
+  box.style.top = "50%";
+  box.style.transform = "translate(-50%, -50%)";
+  box.style.background = "rgba(20,20,20,0.85)";
+  box.style.backdropFilter = "blur(12px)";
+  box.style.padding = "1.4rem";
+  box.style.borderRadius = "16px";
+  box.style.boxShadow = "0 12px 32px rgba(0,0,0,0.6)";
+  box.style.zIndex = "5000";
+  box.style.width = "80%";
+  box.style.maxWidth = "340px";
+  box.style.textAlign = "center";
+  box.style.animation = "fadeIn .25s ease";
+
+  box.innerHTML = `
     <div style="font-size:1.1rem; margin-bottom:1rem; color:#fff;">
-      Очистить пересчёт?
+      ${text}
     </div>
     <div style="display:flex; gap:10px; justify-content:center;">
       <button id="confirmYes" style="
@@ -836,33 +904,48 @@ clearBtn.onclick = () => {
     </div>
   `;
 
-  document.body.appendChild(confirmBox);
+  document.body.appendChild(box);
 
-  // Кнопка "Нет"
-  document.getElementById("confirmNo").onclick = () => {
-    confirmBox.remove();
-  };
+  document.getElementById("confirmNo").onclick = () => box.remove();
 
-  // Кнопка "Да"
   document.getElementById("confirmYes").onclick = () => {
-    confirmBox.remove();
-
-    const items = list.querySelectorAll(".item");
-
-    // Анимация исчезновения
-    items.forEach((item, i) => {
-      item.style.transition = "opacity .25s ease, transform .25s ease";
-      item.style.opacity = "0";
-      item.style.transform = "translateY(10px)";
-    });
-
-    // Удаляем после анимации
-    setTimeout(() => {
-      list.innerHTML = "";
-    }, 260);
+    box.remove();
+    onYes();
   };
-};
+
+  return box;
+}
+
+/* Анимация успешного сохранения */
+function animateSaveSuccess(){
+  const ok = document.createElement("div");
+  ok.style.position = "fixed";
+  ok.style.left = "50%";
+  ok.style.top = "50%";
+  ok.style.transform = "translate(-50%, -50%)";
+  ok.style.background = "rgba(20,20,20,0.85)";
+  ok.style.backdropFilter = "blur(12px)";
+  ok.style.padding = "1.2rem 1.6rem";
+  ok.style.borderRadius = "16px";
+  ok.style.boxShadow = "0 12px 32px rgba(0,0,0,0.6)";
+  ok.style.zIndex = "5000";
+  ok.style.fontSize = "1.2rem";
+  ok.style.color = "#fff";
+  ok.style.animation = "fadeIn .25s ease";
+  ok.innerText = "✔ Сохранено";
+
+  document.body.appendChild(ok);
+
+  setTimeout(() => {
+    ok.style.transition = "opacity .3s ease, transform .3s ease";
+    ok.style.opacity = "0";
+    ok.style.transform = "translate(-50%, -40%)";
+  }, 900);
+
+  setTimeout(() => ok.remove(), 1300);
+}
 </script>
+
 
 
 </body>
