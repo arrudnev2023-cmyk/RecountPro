@@ -793,33 +793,20 @@ clearBtn.onclick = () => {
 
   const box = createConfirmBox("Очистить пересчёт?", () => {
 
-    /* 1. Обнуляем qty в barcodeDB */
-    for (const code in barcodeDB) {
-      const rec = barcodeDB[code];
-      if (typeof rec === "string") {
-        barcodeDB[code] = { name: rec, qty: 0 };
-      } else {
-        rec.qty = 0;
-      }
-    }
-
-    /* 2. Удаляем qty_КОД из localStorage */
+    /* 1. Удаляем qty_КОД из localStorage */
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith("qty_")) localStorage.removeItem(key);
     });
 
-    /* 3. Удаляем autosave_session */
+    /* 2. Удаляем autosave_session */
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith("autosave_session_")) localStorage.removeItem(key);
     });
 
-    /* 4. Чистим sessionValues */
+    /* 3. Чистим sessionValues */
     sessionValues = {};
 
-    /* 5. Сохраняем обновлённую базу */
-    saveDB();
-
-    /* 6. Анимация исчезновения карточек */
+    /* 4. Анимация исчезновения карточек */
     const items = list.querySelectorAll(".item");
     items.forEach((item) => {
       item.style.transition = "opacity .25s ease, transform .25s ease";
@@ -827,14 +814,14 @@ clearBtn.onclick = () => {
       item.style.transform = "translateY(10px)";
     });
 
-    /* 7. Полная очистка DOM */
+    /* 5. Полная очистка DOM */
     setTimeout(() => {
       list.innerHTML = "";
     }, 260);
 
-    /* 8. Теперь buildItems() вернёт пустой список */
   });
 };
+
 
 /* ============================================================
    ПОДТВЕРЖДЕНИЕ + СОХРАНЕНИЕ В БАЗУ ТОВАРОВ
