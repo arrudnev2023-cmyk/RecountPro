@@ -855,22 +855,20 @@ saveBtn.onclick = () => {
     items.forEach(item => {
       const code = item.dataset.code;
 
-      /* ВАЖНО: название берём из input */
+      /* ВАЖНО: название берём из input[data-name] */
       const nameInput = item.querySelector("input[data-name]");
       const name = nameInput?.value.trim() || "Без названия";
 
+      /* qty */
       const qtyInput = item.querySelector("input[data-code]");
       const qty = Number(qtyInput?.value || 0);
 
+      /* === 3.1 Сохраняем название в базу штрих‑кодов ВСЕГДА === */
+      codes[code] = name;
+
+      /* === 3.2 Сохраняем qty в базу товаров ТОЛЬКО если qty > 0 === */
       if (qty > 0) {
-
-        /* === 3.1 Обновляем базу товаров === */
         db[code] = { name, qty };
-
-        /* === 3.2 Обновляем базу штрих‑кодов (ТОЛЬКО СТРОКА!) === */
-        codes[code] = name;
-
-        /* === 3.3 Сохраняем qty_КОД === */
         localStorage.setItem("qty_" + code, qty);
       }
     });
@@ -883,8 +881,6 @@ saveBtn.onclick = () => {
     animateSaveSuccess();
   });
 };
-
-
 
 
 /* ============================================================
