@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Приход / Расход</title>
+
+<style>
+  :root{
+    --bg:#f6f7fb;
+    --card:#ffffff;
+    --muted:#7a7f88;
+    --accent:#0b84ff;
+    --danger:#ff6b6b;
+  }
+
+  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;background:var(--bg);color:#111}
+  .container{max-width:980px;margin:18px auto;padding:12px}
+  header{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+  .btn{padding:8px 10px;border-radius:8px;border:1px solid #dcdfe6;background:#fff;cursor:pointer}
+  .btn.primary{background:var(--accent);color:#fff;border-color:transparent}
+  .btn.ghost{background:transparent;border:1px solid transparent}
+  #stockSearch{flex:1;padding:8px;border-radius:8px;border:1px solid #e6e6e9}
+  #stockControls{display:flex;gap:8px;align-items:center;width:100%}
+  #stockList{display:flex;flex-direction:column;gap:10px;max-height:68vh;overflow:auto;padding:6px}
+  .stock-item{background:var(--card);border:1px solid #e9e9ee;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .title{font-weight:600}
+  .muted{color:var(--muted);font-size:13px}
+  .qty-controls{display:flex;align-items:center;gap:8px}
+  .qty-controls button{width:40px;height:36px;border-radius:8px;border:1px solid #ddd;background:#fafafa;cursor:pointer}
+  .qty-controls input{width:84px;padding:8px;border-radius:8px;border:1px solid #e6e6e9;text-align:center}
+  .curQty{font-weight:600}
+  .highlight{background:#fff7d6}
+  .empty-note{padding:18px;text-align:center;color:var(--muted);background:transparent}
+  /* responsive */
+  @media (max-width:640px){
+    .row{flex-direction:column;align-items:flex-start}
+    .qty-controls{width:100%;justify-content:flex-start}
+  }
+</style>
+</head>
+<body>
+  <div class="container" id="stockApp">
+    <header>
+      <div id="stockControls" style="width:100%">
+        <button id="openScannerFromStock" class="btn">Сканер</button>
+        <input id="stockSearch" placeholder="Поиск по названию или артикулу" />
+        <button id="toggleZeroBtn" class="btn">Показать 0</button>
+        <button id="saveAllBtn" class="btn">Сохранить все</button>
+        <button id="backFromStockBtn" class="btn">Назад</button>
+        <button id="stockMenuBtn" class="btn">Меню</button>
+      </div>
+    </header>
+
+    <main id="stockList"></main>
+    <div id="emptyNote" class="empty-note" style="display:none">Ничего не найдено</div>
+  </div>
+
+<script>
+/*
+  Полный модуль экрана "Приход / Расход".
+  Требования интеграции:
+    - В проекте должен быть объект barcodeDB (или он будет загружен из localStorage).
+    - Желательно иметь saveDB() и escapeHtml(); если нет — используются заглушки.
+    - Для сканера можно реализовать openScanner({onScan: fn}) — если нет, кнопка просто логирует.
+    - Для меню можно реализовать openMenu() — если нет, кнопка логирует.
+    - Для открытия экрана из основного приложения можно вызвать openStockScreen() или добавить кнопку с id="openStockBtn".
+*/
+
+(function(){
+  // --- зависимости / заглушки ---
+  if (typeof barcodeDB === "undefined") {
+    // Попробуем загрузить из localStorage
+    try {
+      const raw = localStorage.getItem("barcodeDB");
+      barcodeDB = raw ? JSON.parse(raw) : {};
+    } catch(e) { barcodeDB = {}; }
+  }
+
+  if (typeof escapeHtml !== "function") {
+    window.escapeHtml = function(s){ return String(s||"").replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); };
+  }
+  if (typeof saveDB !== "function") {
+    window.saveDB = function(){ localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB || {})); };
+  }
+
+  // --- state & elements ---
+  let showZero = false;
+  let currentQuery = "";
+  const stockList = document.getElementById("stockList");
+  const stockSearch = document.getElementById("stockSearch");
+  const toggleZeroBtn = document.getElementById("toggleZeroBtn");
+  const backFromStockBtn = document.getElementById("backFromStockBtn");
+  const openScannerFromStock = document.getElementById("openScannerFromStock");
+  const stockMenuBtn = document.getElementById("stockMenuBtn");
+  const saveAllBtn = document.getElementById("saveAllBtn");
+  const emptyNote = document.getElementById("emptyNote");
+
+  // --- API наружу ---
+  window.openStockScreen = function() {
+    // если у вас есть основной контент, можно скрыть его здесь
+    // document.getElementById("content").style.display = "none";
+    // показываем контейнер (в этом файле он всегда видим)
+    renderStockScreen();
+    // фокус на поиск
+    stockSearch.focus();
+  };
+
+  // --- рендер списка ---
+  function renderStockScreen() {
+    stockList.innerHTML = "";
+    const items = Object.values(barcodeDB || {}).sort((a,b)=> (a.name||"").localeCompare(b.name||""));
+    const q = (currentQuery || "").trim().toLowerCase();
+
+    let shown = 0;
+    for (const item of items) {
+      const code = item.code;
+      const storedQty = Number(localStorage.getItem("qty_" + code) || (item.qty || 0));
+
+      if (!showZero && storedQty === 0 && q === "") continue;
+
+      if (q) {
+        const hay = ((item.name||"") + " " + (item.code||"")).toLowerCase();
+        if (!hay.includes(q)) continue;
+      }
+
+      const div = document.createElement("div");
+      div.className = "stock-item";
+      div.dataset.code = code;
+
+      div.innerHTML = `
+        <div class="row">
+          <div>
+            <div class="title">${escapeHtml(item.name || "")}</div>
+            <div class="muted">Артикул: ${escapeHtml(code || "")}</div>
+          </div>
+          <div class="muted">Цена: ${item.price ? item.price : "-"} ${item.unit || ""}</div>
+        </div>
+
+        <div class="row">
+          <div class="qty-controls">
+            <button class="qtyMinus" data-code="${escapeHtml(code)}">−1</button>
+            <input type="number" class="qtyInput" data-code="${escapeHtml(code)}" value="${storedQty}" min="0" />
+            <button class="qtyPlus" data-code="${escapeHtml(code)}">+1</button>
+          </div>
+
+          <div class="muted">Остаток: <span class="curQty">${storedQty}</span></div>
+        </div>
+      `;
+
+      stockList.appendChild(div);
+      shown++;
+    }
+
+    emptyNote.style.display = shown ? "none" : "block";
+    attachStockHandlers();
+  }
+
+  // --- обработчики ---
+  function attachStockHandlers() {
+    // +1
+    stockList.querySelectorAll(".qtyPlus").forEach(btn=>{
+      btn.onclick = () => {
+        const code = btn.dataset.code;
+        const input = stockList.querySelector(`input.qtyInput[data-code="${code}"]`);
+        if (!input) return;
+        input.value = Number(input.value || 0) + 1;
+        onQtyChange(code, input);
+        flashRow(code);
+      };
+    });
+
+    // -1
+    stockList.querySelectorAll(".qtyMinus").forEach(btn=>{
+      btn.onclick = () => {
+        const code = btn.dataset.code;
+        const input = stockList.querySelector(`input.qtyInput[data-code="${code}"]`);
+        if (!input) return;
+        input.value = Math.max(0, Number(input.value || 0) - 1);
+        onQtyChange(code, input);
+        flashRow(code);
+      };
+    });
+
+    // ручной ввод
+    stockList.querySelectorAll(".qtyInput").forEach(input=>{
+      input.onchange = () => {
+        const code = input.dataset.code;
+        onQtyChange(code, input);
+      };
+      input.oninput = () => {
+        const row = input.closest(".stock-item");
+        if (row) row.querySelector(".curQty").textContent = input.value;
+      };
+    });
+  }
+
+  // --- при изменении количества ---
+  function onQtyChange(code, inputEl) {
+    let qty = Number(inputEl.value || 0);
+    if (isNaN(qty) || qty < 0) qty = 0;
+    inputEl.value = qty;
+
+    // localStorage
+    localStorage.setItem("qty_" + code, qty);
+
+    // barcodeDB
+    if (!barcodeDB[code]) {
+      barcodeDB[code] = { code, name: code, unit: "", price: 0, qty };
+    } else {
+      barcodeDB[code].qty = qty;
+    }
+
+    // обновляем видимую метку
+    const row = inputEl.closest(".stock-item");
+    if (row) row.querySelector(".curQty").textContent = qty;
+
+    // сохраняем базу
+    if (typeof saveDB === "function") saveDB();
+    else localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
+  }
+
+  // --- визуальная подсветка при сканировании/изменении ---
+  function flashRow(code) {
+    const el = stockList.querySelector(`.stock-item[data-code="${code}"]`);
+    if (!el) return;
+    el.classList.add("highlight");
+    setTimeout(()=> el.classList.remove("highlight"), 600);
+  }
+
+  // --- кнопки управления ---
+  toggleZeroBtn.onclick = () => {
+    showZero = !showZero;
+    toggleZeroBtn.textContent = showZero ? "Скрыть 0" : "Показать 0";
+    renderStockScreen();
+  };
+
+  stockSearch.addEventListener("input", (e) => {
+    currentQuery = e.target.value;
+    renderStockScreen();
+  });
+
+  backFromStockBtn.onclick = () => {
+    // если нужно — вернуться в основной экран
+    // document.getElementById("content").style.display = "block";
+    // здесь просто очищаем поиск
+    stockSearch.value = "";
+    currentQuery = "";
+    renderStockScreen();
+  };
+
+  // Сохранить все (дублирует saveDB, но оставлен для UX)
+  saveAllBtn.onclick = () => {
+    if (typeof saveDB === "function") saveDB();
+    else localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
+    // краткая визуальная индикация
+    saveAllBtn.textContent = "Сохранено";
+    setTimeout(()=> saveAllBtn.textContent = "Сохранить все", 900);
+  };
+
+  // Меню
+  stockMenuBtn.onclick = () => {
+    if (typeof openMenu === "function") openMenu();
+    else console.log("menu");
+  };
+
+  // Сканер
+  openScannerFromStock.onclick = () => {
+    if (typeof openScanner === "function") {
+      openScanner({ onScan: onScannedCode });
+    } else {
+      console.log("open scanner");
+      // для теста можно вызвать onScannedCode("4601234000011");
+    }
+  };
+
+  // Обработка отсканированного кода
+  function onScannedCode(code) {
+    // если есть — прокрутить и подсветить
+    const el = stockList.querySelector(`.stock-item[data-code="${code}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("highlight");
+      setTimeout(()=> el.classList.remove("highlight"), 700);
+      const input = el.querySelector("input.qtyInput");
+      if (input) input.focus();
+      return;
+    }
+
+    // если нет в базе — добавляем и рендерим
+    if (!barcodeDB[code]) {
+      barcodeDB[code] = { code, name: code, unit: "", price: 0, qty: 0 };
+      if (typeof saveDB === "function") saveDB();
+      else localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
+    }
+    renderStockScreen();
+    // прокрутка к новому элементу
+    const newEl = stockList.querySelector(`.stock-item[data-code="${code}"]`);
+    if (newEl) newEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  // --- инициализация: привязка кнопки открытия если есть ---
+  const openBtn = document.getElementById("openStockBtn");
+  if (openBtn) openBtn.onclick = openStockScreen;
+
+  // рендерим при загрузке
+  renderStockScreen();
+
+})();
+</script>
+</body>
+</html>
