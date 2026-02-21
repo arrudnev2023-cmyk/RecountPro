@@ -400,16 +400,39 @@ const listEl = document.getElementById("list");
 
 function render(items){
   listEl.innerHTML = "";
+
   items.forEach(item => {
     if(!showZero && item.qty === 0) return;
 
+    // --- НОРМАЛИЗАЦИЯ НАЗВАНИЯ ---
+    let name = item.name;
+
+    // Если name отсутствует или равно штрих‑коду → пробуем взять из базы
+    if (!name || name === item.code) {
+      const fromDB = db[item.code];
+
+      if (typeof fromDB === "string") {
+        name = fromDB;
+      } else if (typeof fromDB === "object" && fromDB !== null) {
+        name = fromDB.name || "";
+      }
+    }
+
+    // Если name объект → берём поле name
+    if (typeof name === "object" && name !== null) {
+      name = name.name || "";
+    }
+
+    // Если всё ещё пусто → оставляем пустую строку
+    if (!name) name = "";
+
+    // --- РЕНДЕР ---
     const div = document.createElement("div");
     div.className = "item";
     div.dataset.code = item.code;
 
     div.innerHTML = `
-    <div class="field"><span class="label">Название:</span> ${escapeHtml(normalizeName(item.name))}</div>
-
+      <div class="field"><span class="label">Название:</span> ${escapeHtml(name)}</div>
       <div class="field"><span class="label">Штрих‑код:</span> ${item.code}</div>
       <div class="field qty-current"><span class="label">Остаток:</span> <span class="curQty">${item.qty}</span></div>
 
@@ -439,6 +462,7 @@ function render(items){
 
   attachQtyHandlers();
 }
+
 
 /* =========================
    ПРИХОД / РАСХОД
