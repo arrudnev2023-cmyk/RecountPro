@@ -401,6 +401,12 @@ const listEl = document.getElementById("list");
 function render(items){
   listEl.innerHTML = "";
 
+  // Если items нет или это не массив — выходим
+  if (!Array.isArray(items)) {
+    console.warn("render(): items не массив", items);
+    return;
+  }
+
   items.forEach(item => {
     if(!showZero && item.qty === 0) return;
 
@@ -409,7 +415,7 @@ function render(items){
 
     // Если name отсутствует или равно штрих‑коду → пробуем взять из базы
     if (!name || name === item.code) {
-      const fromDB = db[item.code];
+      const fromDB = db?.[item.code];
 
       if (typeof fromDB === "string") {
         name = fromDB;
