@@ -4,68 +4,109 @@
     <meta charset="UTF-8" />
     <title>SmartInventory — склад, инвентаризация, касса и ERP в одном месте</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Сканер штрих‑кодов, инвентаризация, своя база товаров, ERP‑логика и даже касса с фискальными чеками — всё в одном приложении." />
+    <meta name="description" content="Сканер штрих‑кодов, инвентаризация, своя база товаров, ERP‑логика и касса с фискальными чеками через терминал оплаты — реальный рабочий интерфейс, без заглушек." />
 
     <style>
-        /* --- Премиальная цветовая палитра --- */
         :root {
-            --bg: #f7f8fa;
-            --text: #1a1d23;
+            --bg: #f5f6fa;
+            --text: #111827;
             --text-muted: #6b7280;
-            --primary: #3b82f6;
-            --primary-dark: #2563eb;
+            --primary: #2563eb;
+            --primary-soft: #dbeafe;
+            --primary-dark: #1d4ed8;
             --border: #e5e7eb;
             --card-bg: #ffffff;
             --radius: 14px;
-            --shadow: 0 6px 22px rgba(0,0,0,0.06);
+            --radius-sm: 10px;
+            --shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.06);
+            --shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
             margin: 0;
-            font-family: "Inter", system-ui, sans-serif;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
             background: var(--bg);
             color: var(--text);
         }
 
-        a { text-decoration: none; color: inherit; }
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
 
-        /* --- Шапка --- */
+        /* Шапка */
+
         header {
-            background: #ffffff;
-            border-bottom: 1px solid var(--border);
             position: sticky;
             top: 0;
-            z-index: 50;
+            z-index: 40;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
         }
 
         .nav {
             max-width: 1180px;
             margin: 0 auto;
-            padding: 14px 20px;
+            padding: 12px 20px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
+            gap: 16px;
         }
 
-        .logo {
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-mark {
+            width: 30px;
+            height: 30px;
+            border-radius: 9px;
+            background: linear-gradient(135deg, #2563eb, #22c55e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
             font-weight: 700;
-            font-size: 18px;
+            font-size: 15px;
+        }
+
+        .logo-text-main {
+            font-weight: 700;
+            font-size: 17px;
             letter-spacing: -0.02em;
+        }
+
+        .logo-text-sub {
+            font-size: 11px;
+            color: var(--text-muted);
         }
 
         .nav-buttons {
             display: flex;
-            gap: 12px;
+            gap: 10px;
         }
 
         .btn {
-            padding: 10px 18px;
-            border-radius: var(--radius);
-            font-size: 14px;
+            padding: 9px 16px;
+            border-radius: 999px;
+            font-size: 13px;
             font-weight: 600;
             border: 1px solid var(--border);
-            background: #fff;
-            transition: 0.15s;
+            background: #ffffff;
+            color: var(--text);
+            cursor: pointer;
+            transition: 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .btn:hover {
@@ -75,287 +116,744 @@
         .btn-primary {
             background: var(--primary);
             border-color: var(--primary);
-            color: #fff;
+            color: #ffffff;
         }
 
         .btn-primary:hover {
             background: var(--primary-dark);
         }
 
-        /* --- Герой-блок --- */
+        /* Герой-блок */
+
         .hero {
             max-width: 1180px;
             margin: 0 auto;
-            padding: 60px 20px 80px;
+            padding: 40px 20px 60px;
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr);
+            gap: 32px;
             align-items: center;
         }
 
-        .hero h1 {
-            font-size: 42px;
+        .hero-title {
+            font-size: 38px;
             font-weight: 800;
             line-height: 1.2;
+            letter-spacing: -0.03em;
+            margin-bottom: 16px;
+        }
+
+        .hero-subtitle {
+            font-size: 16px;
+            color: var(--text-muted);
+            max-width: 520px;
+            margin-bottom: 22px;
+        }
+
+        .hero-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
             margin-bottom: 18px;
         }
 
-        .hero p {
-            font-size: 17px;
-            color: var(--text-muted);
-            margin-bottom: 26px;
-            max-width: 480px;
+        .hero-badge {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: var(--primary-soft);
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
         }
 
-        .hero-img {
-            width: 100%;
-            height: 360px;
-            border-radius: var(--radius);
-            background: #fff;
-            border: 1px solid var(--border);
-            box-shadow: var(--shadow);
+        .hero-actions {
             display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .hero-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .hero-meta span::before {
+            content: "•";
+            margin-right: 4px;
+        }
+
+        /* Правая часть — реальный макет интерфейса */
+
+        .hero-ui {
+            background: var(--card-bg);
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-strong);
+            padding: 14px;
+        }
+
+        .hero-ui-header {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            font-size: 15px;
+            margin-bottom: 10px;
+        }
+
+        .hero-ui-title {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .hero-ui-tabs {
+            display: inline-flex;
+            background: #f3f4f6;
+            border-radius: 999px;
+            padding: 2px;
+            gap: 2px;
+        }
+
+        .hero-ui-tab {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            cursor: default;
             color: var(--text-muted);
         }
 
-        /* --- Блок преимуществ --- */
+        .hero-ui-tab.active {
+            background: #ffffff;
+            color: var(--text);
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+        }
+
+        .hero-ui-body {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 12px;
+        }
+
+        .hero-ui-card {
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: #ffffff;
+            padding: 10px;
+        }
+
+        .hero-ui-card-title {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .hero-ui-card-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .hero-ui-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        .hero-ui-table th,
+        .hero-ui-table td {
+            padding: 4px 6px;
+            text-align: left;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .hero-ui-table th {
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 10px;
+        }
+
+        .hero-ui-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 6px;
+            border-radius: 999px;
+            font-size: 10px;
+            background: #ecfdf3;
+            color: #15803d;
+        }
+
+        .hero-ui-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .hero-ui-status strong {
+            color: var(--text);
+        }
+
+        .hero-ui-footer {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #f3f4f6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .hero-ui-footer span strong {
+            color: var(--text);
+        }
+
+        .hero-ui-pos {
+            margin-top: 8px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: #f9fafb;
+            padding: 8px 10px;
+            font-size: 11px;
+        }
+
+        .hero-ui-pos-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .hero-ui-pos-header span {
+            font-weight: 600;
+        }
+
+        .hero-ui-pos-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+
+        .hero-ui-pos-total {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        .hero-ui-pos-note {
+            margin-top: 4px;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        /* Секции */
+
         .section {
             max-width: 1180px;
             margin: 0 auto;
-            padding: 40px 20px 60px;
+            padding: 0 20px 50px;
         }
 
-        .section h2 {
-            font-size: 28px;
+        .section-header {
+            margin-bottom: 22px;
+        }
+
+        .section-title {
+            font-size: 24px;
             font-weight: 700;
-            margin-bottom: 26px;
+            margin-bottom: 6px;
+        }
+
+        .section-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            max-width: 620px;
         }
 
         .grid-3 {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 22px;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
         }
 
         .card {
             background: var(--card-bg);
-            border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 20px;
-            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            padding: 16px 16px 14px;
+            box-shadow: var(--shadow-soft);
         }
 
         .card h3 {
-            font-size: 18px;
-            margin-bottom: 10px;
+            font-size: 16px;
+            margin-bottom: 6px;
         }
 
         .card p {
-            font-size: 14px;
+            font-size: 13px;
             color: var(--text-muted);
             line-height: 1.55;
         }
 
-        /* --- Блок логики --- */
+        .card-tag {
+            margin-top: 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
         .steps {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-top: 20px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 18px;
         }
 
         .step {
-            background: #fff;
+            background: #ffffff;
+            border-radius: var(--radius-sm);
             border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 16px;
-            box-shadow: var(--shadow);
+            padding: 12px;
+            box-shadow: var(--shadow-soft);
+            font-size: 12px;
+            color: var(--text-muted);
         }
 
         .step strong {
             display: block;
-            margin-bottom: 6px;
-            font-size: 14px;
+            margin-bottom: 4px;
+            color: var(--text);
         }
 
-        .step span {
+        .pos-block {
+            margin-top: 30px;
+            background: #ffffff;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 18px 18px 16px;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .pos-block h3 {
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+
+        .pos-block p {
+            font-size: 14px;
+            color: var(--text-muted);
+            max-width: 720px;
+        }
+
+        .pos-list {
+            margin-top: 8px;
             font-size: 13px;
             color: var(--text-muted);
         }
 
-        /* --- Блок кассы --- */
-        .pos-block {
-            margin-top: 40px;
-            padding: 26px;
-            background: #fff;
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            box-shadow: var(--shadow);
+        .pos-list li {
+            margin-left: 18px;
+            margin-bottom: 3px;
         }
 
-        .pos-block h3 {
-            font-size: 20px;
-            margin-bottom: 10px;
-        }
+        /* CTA */
 
-        .pos-block p {
-            font-size: 15px;
-            color: var(--text-muted);
-            max-width: 700px;
-        }
-
-        /* --- CTA --- */
         .cta {
             background: #ffffff;
             border-top: 1px solid var(--border);
-            padding: 50px 20px;
-            margin-top: 40px;
+            margin-top: 20px;
         }
 
         .cta-inner {
             max-width: 1180px;
             margin: 0 auto;
-            text-align: center;
+            padding: 30px 20px 40px;
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+            gap: 24px;
+            align-items: center;
         }
 
-        .cta-inner h2 {
-            font-size: 30px;
-            margin-bottom: 14px;
+        .cta-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
         }
 
-        .cta-inner p {
-            font-size: 16px;
+        .cta-text {
+            font-size: 14px;
             color: var(--text-muted);
-            margin-bottom: 26px;
+            margin-bottom: 16px;
         }
 
-        /* --- Футер --- */
+        .cta-note {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .cta-side {
+            background: #f9fafb;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 14px 16px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .cta-side strong {
+            color: var(--text);
+        }
+
+        .cta-side ul {
+            margin-top: 6px;
+            padding-left: 18px;
+        }
+
+        .cta-side li {
+            margin-bottom: 3px;
+        }
+
+        /* Футер */
+
         footer {
-            padding: 20px;
-            text-align: center;
-            font-size: 13px;
-            color: var(--text-muted);
             border-top: 1px solid var(--border);
-            margin-top: 40px;
+            padding: 14px 20px 18px;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 960px) {
             .hero {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
+            }
+            .hero-ui {
+                order: -1;
             }
             .grid-3 {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
             .steps {
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .cta-inner {
+                grid-template-columns: minmax(0, 1fr);
             }
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 720px) {
+            .nav {
+                flex-wrap: wrap;
+            }
+            .grid-3 {
+                grid-template-columns: minmax(0, 1fr);
+            }
             .steps {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
         }
     </style>
 </head>
-
 <body>
 
 <header>
     <nav class="nav">
-        <div class="logo">SmartInventory</div>
+        <div class="nav-left">
+            <div class="logo-mark">SI</div>
+            <div>
+                <div class="logo-text-main">SmartInventory</div>
+                <div class="logo-text-sub">Склад • Инвентаризация • Касса • ERP‑логика</div>
+            </div>
+        </div>
         <div class="nav-buttons">
+            <!-- Кнопка для КБ -->
             <a href="login1.html" class="btn">Войти в КБ</a>
+            <!-- Кнопка «Начать» -->
             <a href="Login.html" class="btn btn-primary">Начать</a>
         </div>
     </nav>
 </header>
 
-<section class="hero">
-    <div>
-        <h1>Умный склад, инвентаризация, касса и ERP — в одном приложении</h1>
-        <p>
-            Сканируйте товары, ведите свою базу, проводите инвентаризацию, управляйте остатками
-            и даже пробивайте фискальные чеки через терминал оплаты.
-        </p>
+<main>
+    <!-- Герой-блок -->
+    <section class="hero">
+        <div>
+            <div class="hero-badges">
+                <div class="hero-badge">Сканер штрих‑кодов</div>
+                <div class="hero-badge">Инвентаризация</div>
+                <div class="hero-badge">Касса и фискальные чеки</div>
+                <div class="hero-badge">Мини‑ERP</div>
+            </div>
 
-        <div style="display:flex; gap:12px;">
-            <a href="Login.html" class="btn btn-primary">Начать сейчас</a>
-            <a href="login1.html" class="btn">Войти в КБ</a>
+            <h1 class="hero-title">
+                Один сервис для склада, инвентаризации, кассы и учёта.
+            </h1>
+
+            <p class="hero-subtitle">
+                SmartInventory позволяет сканировать товары, вести свою базу, проводить инвентаризацию,
+                управлять остатками и пробивать фискальные чеки через подключённый терминал оплаты.
+            </p>
+
+            <div class="hero-actions">
+                <a href="Login.html" class="btn btn-primary">Начать сейчас</a>
+                <a href="login1.html" class="btn">Войти в КБ</a>
+            </div>
+
+            <div class="hero-meta">
+                <span>Сканер прямо в приложении</span>
+                <span>Своя база штрих‑кодов и товаров</span>
+                <span>Инвентаризация без Excel</span>
+                <span>Фискальные чеки через терминал</span>
+            </div>
         </div>
-    </div>
 
-    <div class="hero-img">
-        Превью интерфейса (можно заменить на реальный скрин)
-    </div>
-</section>
+        <!-- Правая часть: реальный макет интерфейса -->
+        <div class="hero-ui">
+            <div class="hero-ui-header">
+                <div class="hero-ui-title">Рабочий экран SmartInventory</div>
+                <div class="hero-ui-tabs">
+                    <div class="hero-ui-tab active">Товары</div>
+                    <div class="hero-ui-tab">Инвентаризация</div>
+                    <div class="hero-ui-tab">Касса</div>
+                </div>
+            </div>
 
-<section class="section">
-    <h2>Что делает SmartInventory таким удобным</h2>
+            <div class="hero-ui-body">
+                <!-- Левая карточка: список товаров / база -->
+                <div class="hero-ui-card">
+                    <div class="hero-ui-card-title">База товаров</div>
+                    <div class="hero-ui-card-sub">Сканируете штрих‑код — товар появляется здесь.</div>
 
-    <div class="grid-3">
-        <div class="card">
-            <h3>Сканер штрих‑кодов</h3>
-            <p>Телефон превращается в сканер. Навели камеру — товар найден или добавлен в вашу базу.</p>
+                    <table class="hero-ui-table">
+                        <thead>
+                        <tr>
+                            <th>Товар</th>
+                            <th>Штрих‑код</th>
+                            <th>Остаток</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td>Кофе зерновой 1 кг</td>
+                            <td>4601234567890</td>
+                            <td>34</td>
+                        </tr>
+                        <tr>
+                            <td>Чай чёрный 100 пак.</td>
+                            <td>4609876543210</td>
+                            <td>18</td>
+                        </tr>
+                        <tr>
+                            <td>Сироп ваниль 1 л</td>
+                            <td>4690012345678</td>
+                            <td>7</td>
+                        </tr>
+                        <tr>
+                            <td>Стакан бумажный 250 мл</td>
+                            <td>4680001122334</td>
+                            <td>420</td>
+                        </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="hero-ui-status">
+                        <span>Создаёте свою структуру: категории, цены, партии.</span>
+                        <span><strong>Ваша мини‑ERP</strong></span>
+                    </div>
+                </div>
+
+                <!-- Правая карточка: инвентаризация + касса -->
+                <div class="hero-ui-card">
+                    <div class="hero-ui-card-title">Инвентаризация и касса</div>
+                    <div class="hero-ui-card-sub">Сканируете — система считает расхождения и формирует чек.</div>
+
+                    <table class="hero-ui-table">
+                        <thead>
+                        <tr>
+                            <th>Товар</th>
+                            <th>Учёт</th>
+                            <th>Факт</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td>Кофе зерновой 1 кг</td>
+                            <td>34</td>
+                            <td>32</td>
+                        </tr>
+                        <tr>
+                            <td>Чай чёрный 100 пак.</td>
+                            <td>18</td>
+                            <td>18</td>
+                        </tr>
+                        <tr>
+                            <td>Сироп ваниль 1 л</td>
+                            <td>7</td>
+                            <td>6</td>
+                        </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="hero-ui-pill" style="margin-top:6px;">Инвентаризация: найдено 2 расхождения</div>
+
+                    <!-- Блок кассы -->
+                    <div class="hero-ui-pos">
+                        <div class="hero-ui-pos-header">
+                            <span>Касса</span>
+                            <span>Терминал: подключён</span>
+                        </div>
+                        <div class="hero-ui-pos-line">
+                            <span>Кофе зерновой 1 кг × 1</span>
+                            <span>890 ₽</span>
+                        </div>
+                        <div class="hero-ui-pos-line">
+                            <span>Чай чёрный 100 пак. × 2</span>
+                            <span>2 * 290 ₽</span>
+                        </div>
+                        <div class="hero-ui-pos-total">
+                            <span>Итого к оплате</span>
+                            <span>1 470 ₽</span>
+                        </div>
+                        <div class="hero-ui-pos-note">
+                            Нажимаете «Оплатить» — терминал списывает деньги, система формирует
+                            <strong>фискальный чек</strong> и сохраняет продажу в учёте.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-ui-footer">
+                <span><strong>За 1 минуту</strong> понятно, как вы будете работать каждый день.</span>
+                <span>Следующий шаг — нажать «Начать» и попробовать на своих товарах.</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Блок преимуществ -->
+    <section class="section">
+        <div class="section-header">
+            <div class="section-title">Что вы реально можете делать в SmartInventory</div>
+            <div class="section-subtitle">
+                Это не презентация и не заглушка. Логика, которую вы видите на экране, — это то,
+                как вы будете работать: сканировать, считать, продавать и контролировать склад.
+            </div>
         </div>
 
-        <div class="card">
-            <h3>Инвентаризация без Excel</h3>
-            <p>Проходите по складу, сканируете товары — система сама считает расхождения и показывает недостачи.</p>
+        <div class="grid-3">
+            <div class="card">
+                <h3>Сканер штрих‑кодов</h3>
+                <p>
+                    Телефон или терминал превращается в сканер. Навели на штрих‑код — товар найден или добавлен в вашу базу.
+                    Никаких ручных таблиц и ошибок.
+                </p>
+                <div class="card-tag">Собственная база штрих‑кодов и товаров</div>
+            </div>
+
+            <div class="card">
+                <h3>Инвентаризация без Excel</h3>
+                <p>
+                    Запускаете инвентаризацию, проходите по складу, сканируете всё подряд — система сама считает расхождения,
+                    показывает недостачи и излишки.
+                </p>
+                <div class="card-tag">Живой процесс вместо ночей с таблицами</div>
+            </div>
+
+            <div class="card">
+                <h3>Мини‑ERP под ваш бизнес</h3>
+                <p>
+                    Приходы, списания, движение, остатки, точки хранения — всё в одном месте.
+                    Структура подстраивается под ваш бизнес, а не наоборот.
+                </p>
+                <div class="card-tag">ERP‑логика без перегруза интерфейсом</div>
+            </div>
         </div>
 
-        <div class="card">
-            <h3>Мини‑ERP под ваш бизнес</h3>
-            <p>Приходы, списания, движение, остатки — всё в одном месте, без сложных интерфейсов.</p>
+        <div class="section-header" style="margin-top:34px;">
+            <div class="section-title">Как выглядит ваш рабочий день в системе</div>
+            <div class="section-subtitle">
+                Ниже — последовательность действий, которую вы будете повторять каждый день.
+                Она простая, логичная и не требует обучения.
+            </div>
         </div>
-    </div>
 
-    <h2 style="margin-top:40px;">Как вы будете работать — по шагам</h2>
-
-    <div class="steps">
-        <div class="step">
-            <strong>1. Зайти и начать</strong>
-            <span>Интерфейс понятен с первого экрана. Никаких обучений.</span>
+        <div class="steps">
+            <div class="step">
+                <strong>1. Зайти в систему</strong>
+                Открываете SmartInventory, видите товары, остатки, последние операции и статус кассы.
+            </div>
+            <div class="step">
+                <strong>2. Сканировать и обновлять базу</strong>
+                Сканируете новые товары, обновляете цены, создаёте свою структуру категорий и складов.
+            </div>
+            <div class="step">
+                <strong>3. Проводить инвентаризацию</strong>
+                Запускаете инвентаризацию, проходите по складу, сканируете — система показывает расхождения.
+            </div>
+            <div class="step">
+                <strong>4. Продавать и пробивать чеки</strong>
+                В режиме кассы добавляете товары в чек, подключённый терминал принимает оплату,
+                система формирует фискальный чек и записывает продажу.
+            </div>
         </div>
-        <div class="step">
-            <strong>2. Сканировать товары</strong>
-            <span>Создаёте свою базу штрих‑кодов и товаров за считанные минуты.</span>
-        </div>
-        <div class="step">
-            <strong>3. Проводить инвентаризацию</strong>
-            <span>Сканируете — система считает расхождения автоматически.</span>
-        </div>
-        <div class="step">
-            <strong>4. Управлять складом</strong>
-            <span>Остатки, движение, партии — всё под контролем.</span>
-        </div>
-    </div>
 
-    <!-- Новый блок про кассу -->
-    <div class="pos-block">
-        <h3>SmartInventory как касса: фискальные чеки и терминал оплаты</h3>
-        <p>
-            Если вам нужна касса — система легко превращается в полноценное POS‑решение.
-            Вы можете подключить терминал оплаты и пробивать <strong>фискальные чеки</strong> прямо из приложения.
-            Это удобно для магазинов, складов с розничной выдачей, пунктов самовывоза и любых точек продаж.
-        </p>
-    </div>
-</section>
+        <!-- Блок про кассу и фискальные чеки -->
+        <div class="pos-block">
+            <h3>SmartInventory как касса: фискальные чеки и терминал оплаты</h3>
+            <p>
+                Помимо склада и инвентаризации, SmartInventory может работать как касса.
+                Вы подключаете терминал оплаты, выбираете товары, проводите оплату и получаете
+                <strong>фискальный чек</strong>, который сохраняется в системе вместе с движением по складу.
+            </p>
+            <ul class="pos-list">
+                <li>Подключение терминала оплаты к системе.</li>
+                <li>Формирование фискальных чеков по каждой продаже.</li>
+                <li>Автоматическое списание товара со склада при продаже.</li>
+                <li>Единая история продаж и остатков в одном интерфейсе.</li>
+            </ul>
+        </div>
+    </section>
 
-<section class="cta">
-    <div class="cta-inner">
-        <h2>Попробуйте на своих товарах уже сегодня</h2>
-        <p>Меньше минуты — чтобы понять, как всё работает. Пара часов — чтобы навести порядок на складе.</p>
+    <!-- Финальный CTA -->
+    <section class="cta">
+        <div class="cta-inner">
+            <div>
+                <div class="cta-title">Попробуйте SmartInventory на своих товарах уже сегодня</div>
+                <div class="cta-text">
+                    Вы уже видите, как выглядит интерфейс и логика работы. Следующий шаг — зайти в систему,
+                    отсканировать первый товар и почувствовать, насколько проще становится учёт.
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+                    <a href="Login.html" class="btn btn-primary">Начать работу</a>
+                    <a href="login1.html" class="btn">Войти в КБ</a>
+                </div>
+                <div class="cta-note">
+                    Меньше минуты — чтобы разобраться в интерфейсе.<br>
+                    Пара часов — чтобы навести порядок на складе и в продажах.
+                </div>
+            </div>
 
-        <a href="Login.html" class="btn btn-primary" style="padding:14px 26px; font-size:16px;">Начать работу</a>
-    </div>
-</section>
+            <div class="cta-side">
+                <strong>Когда вы берёте доступ к SmartInventory, вы получаете:</strong>
+                <ul>
+                    <li>Сканер штрих‑кодов прямо в приложении.</li>
+                    <li>Возможность создать свою базу товаров и штрих‑кодов.</li>
+                    <li>Инвентаризацию без Excel и ручных пересчётов.</li>
+                    <li>ERP‑логику: приходы, списания, движение, остатки.</li>
+                    <li>Режим кассы с фискальными чеками и терминалом оплаты.</li>
+                </ul>
+                <br>
+                <strong>И главное:</strong> вы перестаёте догадываться по складу и начинаете точно знать,
+                что у вас есть, где это лежит и как это продаётся.
+            </div>
+        </div>
+    </section>
+</main>
 
 <footer>
-    SmartInventory — склад, инвентаризация, касса и ERP в одном приложении.
+    SmartInventory — реальная система для склада, инвентаризации, кассы и учёта, а не просто красивый лендинг.
 </footer>
 
 </body>
