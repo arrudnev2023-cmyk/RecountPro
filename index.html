@@ -6,9 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <style>
-        /* ---------------------- */
-        /*   ПАЛИТРА И БАЗА       */
-        /* ---------------------- */
         :root {
             --bg: #050816;
             --bg-alt: #0b1020;
@@ -24,11 +21,7 @@
             --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.55);
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
@@ -38,10 +31,6 @@
         }
 
         a { color: inherit; text-decoration: none; }
-
-        /* ---------------------- */
-        /*   АНИМАЦИИ             */
-        /* ---------------------- */
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -61,10 +50,6 @@
 
         .fade { animation: fadeIn 0.8s ease forwards; }
         .fade-slow { animation: fadeInSlow 1.2s ease forwards; }
-
-        /* ---------------------- */
-        /*   HEADER               */
-        /* ---------------------- */
 
         header {
             position: sticky;
@@ -120,22 +105,15 @@
             animation: glowPulse 3s infinite ease-in-out;
         }
 
-        /* ---------------------- */
-        /*   HERO                 */
-        /* ---------------------- */
-
         .hero {
             max-width: 1120px;
             margin: 0 auto;
-            padding: 40px 20px 80px;
-            display: grid;
-            grid-template-columns: 1.1fr 1fr;
-            gap: 40px;
-            align-items: center;
+            padding: 60px 20px 80px;
+            text-align: center;
         }
 
         .hero-title {
-            font-size: 40px;
+            font-size: 42px;
             font-weight: 800;
             line-height: 1.2;
         }
@@ -147,16 +125,25 @@
         }
 
         .hero-subtitle {
-            font-size: 15px;
+            font-size: 18px;
             color: #e5e7eb;
-            max-width: 520px;
-            margin-top: 12px;
+            max-width: 760px;
+            margin: 18px auto 0;
+            line-height: 1.65;
+        }
+
+        .hero-actions {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
         }
 
         .btn {
             border-radius: var(--radius-pill);
             padding: 12px 22px;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             display: inline-flex;
@@ -181,57 +168,6 @@
             color: #e5e7eb;
         }
 
-        .btn-ghost:hover {
-            background: rgba(255,255,255,0.05);
-        }
-
-        /* ---------------------- */
-        /*   HERO UI MOCK         */
-        /* ---------------------- */
-
-        .hero-card {
-            border-radius: var(--radius-xl);
-            background: radial-gradient(circle at top left, rgba(79, 70, 229, 0.35), rgba(15, 23, 42, 0.98));
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            padding: 18px;
-            box-shadow: var(--shadow-soft);
-            opacity: 0;
-            animation: fadeInSlow 1.2s ease forwards;
-        }
-
-        .hero-card-title {
-            font-size: 13px;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-
-        .hero-ui-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-        }
-
-        .hero-ui-table th,
-        .hero-ui-table td {
-            padding: 6px 8px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-        }
-
-        .hero-ui-pill {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 999px;
-            background: rgba(22, 163, 74, 0.12);
-            border: 1px solid rgba(34, 197, 94, 0.4);
-            font-size: 10px;
-            color: #bbf7d0;
-            margin-top: 8px;
-        }
-
-        /* ---------------------- */
-        /*   SECTION              */
-        /* ---------------------- */
-
         .section {
             border-top: 1px solid rgba(15, 23, 42, 1);
             background: radial-gradient(circle at top, rgba(15, 23, 42, 0.9), #020617 55%);
@@ -240,34 +176,49 @@
         .section-inner {
             max-width: 1120px;
             margin: 0 auto;
-            padding: 40px 20px 70px;
+            padding: 60px 20px 80px;
         }
 
         .section-title {
-            font-size: 20px;
+            font-size: 28px;
             font-weight: 700;
-            margin-bottom: 10px;
+            margin-bottom: 14px;
+        }
+
+        .section-subtitle {
+            font-size: 16px;
+            color: var(--muted);
+            max-width: 760px;
+            line-height: 1.65;
+            margin-bottom: 40px;
         }
 
         .grid-3 {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 18px;
+            gap: 22px;
         }
 
         .card {
             border-radius: var(--radius-lg);
             background: rgba(15, 23, 42, 0.96);
             border: 1px solid rgba(31, 41, 55, 0.9);
-            padding: 16px;
+            padding: 22px;
             box-shadow: var(--shadow-soft);
             opacity: 0;
             animation: fadeIn 1s ease forwards;
         }
 
-        /* ---------------------- */
-        /*   CTA                  */
-        /* ---------------------- */
+        .card h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .card p {
+            font-size: 15px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
 
         .cta {
             border-top: 1px solid rgba(15, 23, 42, 1);
@@ -277,18 +228,20 @@
         .cta-inner {
             max-width: 1120px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 60px 20px;
             text-align: center;
         }
 
         .cta-inner h2 {
-            font-size: 24px;
-            margin-bottom: 10px;
+            font-size: 28px;
+            margin-bottom: 14px;
         }
 
-        /* ---------------------- */
-        /*   FOOTER               */
-        /* ---------------------- */
+        .cta-inner p {
+            font-size: 16px;
+            color: var(--muted);
+            margin-bottom: 26px;
+        }
 
         footer {
             padding: 20px;
@@ -297,17 +250,7 @@
             color: var(--muted);
         }
 
-        /* ---------------------- */
-        /*   MOBILE               */
-        /* ---------------------- */
-
         @media (max-width: 960px) {
-            .hero {
-                grid-template-columns: 1fr;
-            }
-            .hero-card {
-                margin-top: 20px;
-            }
             .grid-3 {
                 grid-template-columns: 1fr;
             }
@@ -315,14 +258,13 @@
 
         @media (max-width: 600px) {
             .hero-title {
-                font-size: 30px;
+                font-size: 32px;
             }
             .btn {
                 width: 100%;
                 justify-content: center;
             }
         }
-
     </style>
 </head>
 
@@ -343,79 +285,204 @@
 </header>
 
 <main>
+
     <section class="hero fade">
-        <div>
-            <h1 class="hero-title">
-                Управляйте складом, инвентаризацией и продажами в <span>RecountPro</span>.
-            </h1>
+        <h1 class="hero-title">
+            RecountPro — система, которая делает бизнес спокойнее, процессы чище, а результаты предсказуемыми.
+            <br><span>Каждый день. Без исключений.</span>
+        </h1>
 
-            <p class="hero-subtitle">
-                Сканер штрих‑кодов, своя база товаров, инвентаризация, движение остатков,
-                касса с фискальными чеками и подключением терминала — всё в одном приложении.
-            </p>
+        <p class="hero-subtitle">
+            Это не просто учёт. Это фундамент, на котором держится порядок, скорость и уверенность.
+            RecountPro объединяет склад, инвентаризацию, продажи, фискальные чеки и аналитику в единую экосистему,
+            которая работает сама — и позволяет бизнесу работать быстрее, точнее и спокойнее.
+        </p>
 
-            <div style="display:flex; gap:14px; margin-top:20px; flex-wrap:wrap;">
-                <a href="Login.html" class="btn btn-primary">Начать сейчас</a>
-                <a href="login1.html" class="btn btn-ghost">Войти в КБ</a>
-            </div>
+        <div class="hero-actions">
+            <a href="Login.html" class="btn btn-primary">Начать сейчас</a>
+            <a href="login1.html" class="btn btn-ghost">Войти в КБ</a>
         </div>
+    </section>
 
-        <!-- Правая часть — UI -->
-        <div class="hero-card fade-slow">
-            <div class="hero-card-title">Рабочий экран RecountPro</div>
+    <section class="section fade">
+        <div class="section-inner">
+            <div class="section-title">Проблемы, которые незаметно съедают прибыль</div>
+            <div class="section-subtitle">
+                Большинство компаний даже не подозревают, сколько денег уходит в туман:
+                ошибки в остатках, пересортица, потерянные товары, человеческий фактор,
+                устаревшие таблицы, хаос в движении, долгие инвентаризации.
+                Это не «мелочи» — это системные утечки.
+            </div>
 
-            <table class="hero-ui-table">
-                <thead>
-                <tr>
-                    <th>Товар</th>
-                    <th>Штрих‑код</th>
-                    <th>Остаток</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr>
-                    <td>Кофе зерновой 1 кг</td>
-                    <td>4601234567890</td>
-                    <td>34</td>
-                </tr>
-                <tr>
-                    <td>Чай чёрный 100 пак.</td>
-                    <td>4609876543210</td>
-                    <td>18</td>
-                </tr>
-                <tr>
-                    <td>Сироп ваниль 1 л</td>
-                    <td>4690012345678</td>
-                    <td>7</td>
-                </tr>
-                </tbody>
-            </table>
+            <div class="grid-3">
+                <div class="card">
+                    <h3>Ошибки, которые никто не замечает</h3>
+                    <p>
+                        Один неверный штрих‑код, одна забытая позиция, один неверный остаток —
+                        и цепочка ошибок тянется дальше. RecountPro устраняет человеческий фактор.
+                    </p>
+                </div>
 
-            <div class="hero-ui-pill">Инвентаризация: найдено 2 расхождения</div>
-            <div class="hero-ui-pill" style="background:rgba(79,70,229,0.2); border-color:#6366f1; color:#c7d2fe; margin-top:6px;">
-                Касса: терминал подключён • фискальные чеки
+                <div class="card">
+                    <h3>Инвентаризации, которые парализуют работу</h3>
+                    <p>
+                        Дни пересчётов, закрытый склад, усталые сотрудники.
+                        RecountPro превращает инвентаризацию в быстрый, точный и спокойный процесс.
+                    </p>
+                </div>
+
+                <div class="card">
+                    <h3>Продажи, которые не синхронизированы со складом</h3>
+                    <p>
+                        Продали — забыли списать. Списали — забыли продать.
+                        RecountPro делает продажи и склад единым организмом.
+                    </p>
+                </div>
             </div>
         </div>
     </section>
 
     <section class="section fade">
         <div class="section-inner">
-            <div class="section-title">Что вы можете делать в RecountPro</div>
+            <div class="section-title">Кому подходит RecountPro</div>
+            <div class="section-subtitle">
+                Любому бизнесу, где есть товар, движение, продажи или склад.
+                От маленьких магазинов до крупных распределительных центров.
+            </div>
 
             <div class="grid-3">
                 <div class="card">
-                    <h3>Сканировать товары</h3>
-                    <p>Телефон или терминал превращается в сканер. Навели — товар найден или добавлен.</p>
+                    <h3>Магазины и розница</h3>
+                    <p>
+                        Быстрые продажи, фискальные чеки, списание остатков, контроль движения.
+                        Всё в одном месте — без лишних систем.
+                    </p>
                 </div>
 
                 <div class="card">
-                    <h3>Проводить инвентаризацию</h3>
-                    <p>Сканируете товары — система сама считает расхождения и показывает недостачи.</p>
+                    <h3>Склады и логистика</h3>
+                    <p>
+                        Чёткая структура, движение по зонам, контроль сотрудников,
+                        инвентаризация без остановки процессов.
+                    </p>
                 </div>
 
                 <div class="card">
-                    <h3>Работать как касса</h3>
-                    <p>Подключаете терминал, принимаете оплату, формируете фискальные чеки.</p>
+                    <h3>Производство и комплектация</h3>
+                    <p>
+                        Учёт сырья, списания, партии, движение между цехами,
+                        контроль остатков и готовой продукции.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section fade">
+        <div class="section-inner">
+            <div class="section-title">Почему RecountPro выбирают снова и снова</div>
+            <div class="section-subtitle">
+                Потому что это не просто программа.  
+                Это инструмент, который делает бизнес спокойнее, процессы прозрачнее, а результаты стабильнее.
+            </div>
+
+            <div class="grid-3">
+                <div class="card">
+                    <h3>Простота, которая экономит время</h3>
+                    <p>
+                        Интерфейс понятен с первого экрана.  
+                        Сотрудники начинают работать без обучения.
+                    </p>
+                </div>
+
+                <div class="card">
+                    <h3>Точность, которая экономит деньги</h3>
+                    <p>
+                        Каждое движение фиксируется.  
+                        Остатки всегда актуальны.  
+                        Ошибки исчезают.
+                    </p>
+                </div>
+
+                <div class="card">
+                    <h3>Скорость, которая даёт преимущество</h3>
+                    <p>
+                        Быстрые операции, мгновенный поиск, моментальные обновления.
+                        Бизнес работает быстрее — и зарабатывает больше.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section fade">
+        <div class="section-inner">
+            <div class="section-title">Сколько денег экономит RecountPro</div>
+            <div class="section-subtitle">
+                Потери от ошибок, пересортицы, недостач и хаоса могут достигать 3–12% оборота.
+                RecountPro убирает эти утечки — и превращает их в чистую прибыль.
+            </div>
+
+            <div class="grid-3">
+                <div class="card">
+                    <h3>Меньше ошибок</h3>
+                    <p>
+                        Автоматизация снижает человеческий фактор до минимума.
+                        Каждая ошибка — это деньги.  
+                        Мы убираем их из уравнения.
+                    </p>
+                </div>
+
+                <div class="card">
+                    <h3>Меньше потерь</h3>
+                    <p>
+                        Прозрачность движения и остатков исключает пересортицу и недостачи.
+                        Всё фиксируется. Всё под контролем.
+                    </p>
+                </div>
+
+                <div class="card">
+                    <h3>Меньше времени</h3>
+                    <p>
+                        Инвентаризация, которая занимала дни, теперь занимает часы.
+                        Освобождённое время — это тоже деньги.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section fade">
+        <div class="section-inner">
+            <div class="section-title">Как работает RecountPro</div>
+            <div class="section-subtitle">
+                Всё просто: вы сканируете — система делает остальное.  
+                Она считает, фиксирует, анализирует, синхронизирует и показывает картину без искажений.
+            </div>
+
+            <div class="grid-3">
+                <div class="card">
+                    <h3>1. Сканирование</h3>
+                    <p>
+                        Любой товар — за секунду.  
+                        Телефон или терминал превращается в сканер.
+                    </p>
+                </div>
+
+                <div class="card">
+                    <h3>2. Учёт и движение</h3>
+                    <p>
+                        Приходы, списания, перемещения, партии, зоны хранения —
+                        всё фиксируется автоматически и остаётся прозрачным.
+                    </p>
+                </div>
+
+                <div class="card">
+                    <h3>3. Инвентаризация и касса</h3>
+                    <p>
+                        Быстрая инвентаризация, продажи, фискальные чеки, списание остатков —
+                        единая логика, единая система, единая правда о том, что происходит.
+                    </p>
                 </div>
             </div>
         </div>
@@ -423,12 +490,17 @@
 
     <section class="cta fade">
         <div class="cta-inner">
-            <h2>Попробуйте RecountPro прямо сейчас</h2>
-            <p>Меньше минуты — чтобы понять, как всё работает. Пара часов — чтобы навести порядок.</p>
+            <h2>Попробуйте RecountPro сегодня</h2>
+            <p>
+                Уже через несколько минут вы увидите, как меняется подход к учёту.  
+                Через несколько часов — как исчезает хаос.  
+                Через несколько дней — как растёт эффективность.
+            </p>
 
             <a href="Login.html" class="btn btn-primary">Начать работу</a>
         </div>
     </section>
+
 </main>
 
 <footer class="fade">
@@ -437,6 +509,4 @@
 
 </body>
 </html>
-
-
 
