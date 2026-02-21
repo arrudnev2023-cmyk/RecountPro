@@ -310,11 +310,13 @@
 
 <script>
 /* =========================
-   БАЗА ТОВАРОВ
+   БАЗЫ: ТОВАРЫ + ШК
 ========================= */
 
 let barcodeDB = {};
+let barcodeCodes = {};
 let allItems = [];
+let showZero = false;
 
 function loadDB(){
   try{
@@ -323,11 +325,22 @@ function loadDB(){
       const parsed = JSON.parse(raw);
       if(parsed && typeof parsed === "object"){
         barcodeDB = parsed;
-        return;
       }
     }
-  }catch(e){}
-  barcodeDB = {};
+  }catch(e){ barcodeDB = {}; }
+
+  try{
+    const rawCodes = localStorage.getItem("barcodeCodes");
+    if(rawCodes){
+      const parsed = JSON.parse(rawCodes);
+      if(parsed && typeof parsed === "object"){
+        barcodeCodes = parsed;
+      }
+    }
+  }catch(e){ barcodeCodes = {}; }
+
+  if(!barcodeDB) barcodeDB = {};
+  if(!barcodeCodes) barcodeCodes = {};
 }
 
 function saveDB(){
@@ -342,14 +355,31 @@ function escapeHtml(s){
     .replace(/"/g,"&quot;");
 }
 
-function buildItems(){
-  allItems = Object.keys(barcodeDB)
-    .map(code => {
-      const rec = barcodeDB[code];
-      const name = typeof rec === "string" ? rec : rec.name;
-      const qty  = typeof rec === "string" ? Number(rec.qty||0) : Number(rec.qty||0);
-      return { code, name, qty };
-    });
+/* =========================
+   СБОР СПИСКА ТОВАРОВ
+========================= */
+
+function buildItems() {
+  allItems = [];
+
+  // 1. Товары из базы товаров (qty >= 0)
+  for (const code in barcodeDB) {
+    const rec = barcodeDB[code];
+    const name = rec.name || code;
+    const qty  = Number(rec.qty || 0);
+    allItems.push({ code, name, qty });
+  }
+
+  // 2. Товары из базы штрих‑кодов, которых нет в базе товаров (qty = 0)
+  for (const code in barcodeCodes) {
+    if (!barcodeDB[code]) {
+      allItems.push({
+        code,
+        name: barcodeCodes[code] || code,
+        qty: 0
+      });
+    }
+  }
 }
 
 /* =========================
@@ -357,7 +387,6 @@ function buildItems(){
 ========================= */
 
 const listEl = document.getElementById("list");
-let showZero = false;
 
 function render(items){
   listEl.innerHTML = "";
@@ -377,18 +406,18 @@ function render(items){
         <div class="qty-row">
           <div class="qty-row-label">Приход</div>
           <div class="qty-controls">
-            <button class="btnPlusMinus plusPlus" data-code="${item.code}">+1</button>
-            <input type="number" class="qtyPlusInput" data-code="${item.code}" value="0" min="0" />
-            <button class="btnPlusMinus minusPlus" data-code="${item.code}">-1</button>
+            <button class="plusPlus" data-code="${item.code}">+1</button>
+            <input type="number" class="qtyPlusInput" data-code="${item.code}" value="0" min="0">
+            <button class="minusPlus" data-code="${item.code}">-1</button>
           </div>
         </div>
 
         <div class="qty-row">
           <div class="qty-row-label">Расход</div>
           <div class="qty-controls">
-            <button class="btnPlusMinus plusMinus" data-code="${item.code}">+1</button>
-            <input type="number" class="qtyMinusInput" data-code="${item.code}" value="0" min="0" />
-            <button class="btnPlusMinus minusMinus" data-code="${item.code}">-1</button>
+            <button class="plusMinus" data-code="${item.code}">+1</button>
+            <input type="number" class="qtyMinusInput" data-code="${item.code}" value="0" min="0">
+            <button class="minusMinus" data-code="${item.code}">-1</button>
           </div>
         </div>
       </div>
@@ -401,28 +430,41 @@ function render(items){
 }
 
 /* =========================
-   ЛОГИКА ПРИХОД / РАСХОД
+   ПРИХОД / РАСХОД
 ========================= */
 
-function applyChange(code){
+function applyChange(code) {
   const plusInput  = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
   const minusInput = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
   if(!plusInput || !minusInput) return;
 
-  let plus  = Number(plusInput.value||0);
-  let minus = Number(minusInput.value||0);
+  let plus  = Number(plusInput.value || 0);
+  let minus = Number(minusInput.value || 0);
   if(isNaN(plus)) plus = 0;
   if(isNaN(minus)) minus = 0;
 
-  const rec = barcodeDB[code] || { code, name: code, qty:0 };
-  const oldQty = Number(rec.qty||0);
-  let newQty = oldQty + plus - minus;
-  if(newQty < 0) newQty = 0;
+  // старый остаток
+  let oldQty = 0;
+  if (barcodeDB[code]) {
+    oldQty = Number(barcodeDB[code].qty || 0);
+  }
 
-  rec.qty = newQty;
-  barcodeDB[code] = rec;
+  let newQty = oldQty + plus - minus;
+  if (newQty < 0) newQty = 0;
+
+  // если товара нет в базе товаров — создаём его на основе базы штрих‑кодов
+  if (!barcodeDB[code]) {
+    barcodeDB[code] = {
+      code,
+      name: barcodeCodes[code] || code,
+      qty: newQty
+    };
+  } else {
+    barcodeDB[code].qty = newQty;
+  }
+
   saveDB();
-  localStorage.setItem("qty_"+code, newQty);
+  localStorage.setItem("qty_" + code, newQty);
 
   const card = document.querySelector(`.item[data-code="${code}"]`);
   if(card){
@@ -510,7 +552,7 @@ searchEl.addEventListener("input", () => {
 
   document.querySelectorAll("#list .item").forEach(div => {
     const code = normalize(div.dataset.code);
-    const rec = barcodeDB[div.dataset.code];
+    const rec = barcodeDB[div.dataset.code] || { name: barcodeCodes[div.dataset.code] || "" };
     const name = normalize(typeof rec === "string" ? rec : (rec?.name || ""));
     const match = q === "" || matchesQuery(name, q) || matchesQuery(code, q);
     div.classList.toggle("hidden", !match);
@@ -687,12 +729,25 @@ async function scanLoop(){
 
 function onBarcodeDetected(code){
   showToast(code);
-  if(!barcodeDB[code]){
-    barcodeDB[code] = { code, name: code, qty:0 };
-    saveDB();
-    buildItems();
-    render(allItems);
+
+  // если нет ни в базе товаров, ни в базе штрих‑кодов — создаём в базе штрих‑кодов
+  if(!barcodeDB[code] && !barcodeCodes[code]){
+    barcodeCodes[code] = code;
+    localStorage.setItem("barcodeCodes", JSON.stringify(barcodeCodes));
   }
+
+  // если нет в базе товаров — создадим с qty=0 (появится после изменения)
+  if(!barcodeDB[code]){
+    barcodeDB[code] = {
+      code,
+      name: barcodeCodes[code] || code,
+      qty: 0
+    };
+    saveDB();
+  }
+
+  buildItems();
+  render(allItems);
   highlightItem(code);
 }
 
