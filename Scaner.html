@@ -219,9 +219,17 @@ function showToast(text, ms = 1400){
 }
 function saveDB(){ localStorage.setItem('barcodeDB', JSON.stringify(db)); renderTable(); }
   // Нормализация: превращаем объекты в строки
+// Нормализация: превращаем объекты в строки
 for (const k in db) {
-  if (typeof db[k] === 'object' && db[k] !== null) {
-    db[k] = db[k].name || JSON.stringify(db[k]);
+  const v = db[k];
+
+  // Если объект — берём поле name
+  if (typeof v === 'object' && v !== null) {
+    if (typeof v.name === 'string') {
+      db[k] = v.name;
+    } else {
+      db[k] = '';
+    }
   }
 }
 saveDB();
