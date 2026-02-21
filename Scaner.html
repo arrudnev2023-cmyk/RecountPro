@@ -180,6 +180,14 @@ tbody td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.02)}
 
 <script>
 let db = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
+  // Нормализация: превращаем объекты в строки
+for (const k in db) {
+  if (typeof db[k] === 'object' && db[k] !== null) {
+    db[k] = db[k].name || JSON.stringify(db[k]);
+  }
+}
+saveDB();
+
 let stream = null;
 let currentDeviceId = null;
 let scanning = false;
