@@ -243,10 +243,17 @@ function renderTable(){
   }
   keys.forEach(code=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${code}</td><td>${db[code]}</td>`;
+
+    let value = db[code];
+    if (typeof value === 'object' && value !== null) {
+      value = value.name || '';
+    }
+
+    tr.innerHTML = `<td>${code}</td><td>${value}</td>`;
     tableBody.appendChild(tr);
   });
 }
+
 function beep(){ try{ navigator.vibrate?.(60); }catch(e){} }
 
 /* ===== Camera & devices ===== */
