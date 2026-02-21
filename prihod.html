@@ -401,14 +401,20 @@ const listEl = document.getElementById("list");
 function render(items){
   listEl.innerHTML = "";
 
-  // Если items нет или это не массив — выходим
+  // Защита от кривых данных
   if (!Array.isArray(items)) {
     console.warn("render(): items не массив", items);
     return;
   }
 
   items.forEach(item => {
-    if(!showZero && item.qty === 0) return;
+    if (!item) return;
+
+    // Если qty нет — ставим 0
+    if (typeof item.qty !== "number") item.qty = 0;
+
+    // Если showZero выключен — скрываем нули
+    if (!showZero && item.qty === 0) return;
 
     // --- НОРМАЛИЗАЦИЯ НАЗВАНИЯ ---
     let name = item.name;
@@ -429,7 +435,7 @@ function render(items){
       name = name.name || "";
     }
 
-    // Если всё ещё пусто → оставляем пустую строку
+    // Если всё ещё пусто → ставим пустую строку
     if (!name) name = "";
 
     // --- РЕНДЕР ---
@@ -468,6 +474,7 @@ function render(items){
 
   attachQtyHandlers();
 }
+
 
 
 /* =========================
