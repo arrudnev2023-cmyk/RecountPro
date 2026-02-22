@@ -468,26 +468,37 @@ function applyChange(code) {
 
   // старый остаток
   let oldQty = 0;
-  if (barcodeDB[code]) {
-    oldQty = Number(barcodeDB[code].qty || 0);
+  const rec = barcodeDB[code];
+
+  if (rec) {
+    if (typeof rec === "object" && rec !== null) {
+      oldQty = Number(rec.qty || 0);
+    } else {
+      // если там строка (старый формат) — qty считаем 0
+      oldQty = 0;
+    }
   }
 
   let newQty = oldQty + plus - minus;
   if (newQty < 0) newQty = 0;
 
-  // если товара нет в базе товаров — создаём запись
-  if (!barcodeDB[code]) {
+  // если товара нет или он в виде строки — нормализуем в объект
+  if (!rec) {
     barcodeDB[code] = {
+      name: barcodeCodes[code] || code,
+      qty: newQty
+    };
+  } else if (typeof rec === "string") {
+    barcodeDB[code] = {
+      name: rec,
       qty: newQty
     };
   } else {
     barcodeDB[code].qty = newQty;
   }
 
-  // сохраняем базу товаров
   saveDB();
 
-  // обновляем отображение карточки
   const card = document.querySelector(`.item[data-code="${code}"]`);
   if(card){
     const cur = card.querySelector(".curQty");
@@ -499,6 +510,7 @@ function applyChange(code) {
   plusInput.value = "0";
   minusInput.value = "0";
 }
+
 
 
 function attachQtyHandlers(){
