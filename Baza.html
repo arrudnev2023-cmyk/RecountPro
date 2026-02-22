@@ -318,16 +318,25 @@ searchEl.addEventListener("input", () => {
 
   document.querySelectorAll("#list .item").forEach(div => {
     const code = normalize(div.dataset.code);
-    const name = normalize(barcodeDB[div.dataset.code]?.name || barcodeDB[div.dataset.code] || "");
-    const match = q === "" || matchesQuery(name, q) || matchesQuery(code, q);
+
+    // название из базы товаров
+    const nameFromDB = barcodeDB[div.dataset.code]?.name;
+
+    // название из базы штрих-кодов
+    const nameFromCodes = barcodeCodes[div.dataset.code];
+
+    // итоговое название
+    const name = normalize(nameFromDB || nameFromCodes || "");
+
+    const match =
+      q === "" ||
+      matchesQuery(name, q) ||
+      matchesQuery(code, q);
+
     div.classList.toggle("hidden", !match);
   });
 });
 
-clearSearchBtn.addEventListener("click", () => {
-  searchEl.value = "";
-  document.querySelectorAll("#list .item").forEach(d => d.classList.remove("hidden"));
-});
 
 /* ============================================================
    ПОДСВЕТКА
