@@ -365,7 +365,9 @@ function buildItems() {
   // 1. Товары из базы товаров (qty >= 0)
   for (const code in barcodeDB) {
     const rec = barcodeDB[code];
-    const name = rec.name || code;
+    
+   const name = barcodeCodes[code] || code;
+    
     const qty  = Number(rec.qty || 0);
     allItems.push({ code, name, qty });
   }
@@ -398,7 +400,8 @@ function render(items){
 
     // --- Берём название из базы штрих‑кодов ---
     let name = "";
-    const fromDB = barcodeDB[item.code];
+   const fromDB = barcodeCodes[item.code];
+
 
     if (typeof fromDB === "string") {
       name = fromDB;
@@ -474,11 +477,10 @@ function applyChange(code) {
 
   // если товара нет в базе товаров — создаём его на основе базы штрих‑кодов
   if (!barcodeDB[code]) {
-    barcodeDB[code] = {
-      code,
-      name: barcodeCodes[code] || code,
-      qty: newQty
-    };
+   barcodeDB[code] = {
+  qty: newQty
+};
+
   } else {
     barcodeDB[code].qty = newQty;
   }
