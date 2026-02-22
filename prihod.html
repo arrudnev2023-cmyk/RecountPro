@@ -398,7 +398,7 @@ function render(items){
 
     // --- Берём название из базы штрих‑кодов ---
     let name = "";
-    const fromDB = db[item.code];
+    const fromDB = barcodeDB[item.code];
 
     if (typeof fromDB === "string") {
       name = fromDB;
@@ -406,7 +406,6 @@ function render(items){
       name = fromDB.name || "";
     }
 
-    // Если в базе нет названия — оставляем пусто
     if (!name) name = "";
 
     // --- Рендер ---
@@ -445,6 +444,7 @@ function render(items){
 
   attachQtyHandlers();
 }
+
 
 
 
