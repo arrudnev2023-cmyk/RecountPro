@@ -241,12 +241,14 @@ function buildItems(){
   allItems = Object.keys(barcodeDB)
     .map(code => {
       const rec = barcodeDB[code];
-      let name = typeof rec === "string" ? rec : rec.name;
-      let qty  = typeof rec === "string" ? Number(rec.qty||0) : Number(rec.qty||0);
-      return { code, name, qty };
-    })
-    .filter(i => i.qty > 0);
+      return {
+        code,
+        name: rec.name || code,
+        qty: Number(rec.qty || 0)
+      };
+    });
 }
+
 
 function escapeHtml(s){
   return String(s||"")
