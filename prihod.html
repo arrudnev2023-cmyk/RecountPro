@@ -395,7 +395,8 @@ function render(items){
   listEl.innerHTML = "";
 
   items.forEach(item => {
-    if (!showZero && item.qty === 0) return;
+   if (!showZero && item.qty === 0 && searchEl.value === "") return;
+
 
     // --- Берём название из базы ШТРИХ-КОДОВ ---
     let name = barcodeCodes[item.code] || item.name || item.code;
