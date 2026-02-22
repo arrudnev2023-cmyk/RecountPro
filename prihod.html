@@ -359,30 +359,29 @@ function escapeHtml(s){
    СБОР СПИСКА ТОВАРОВ
 ========================= */
 
-function buildItems() {
-  allItems = [];
-
-  // 1. Товары из базы товаров (qty >= 0)
-  for (const code in barcodeDB) {
+function buildItems(){
+  allItems = Object.keys(barcodeDB).map(code => {
     const rec = barcodeDB[code];
-    
-   const name = barcodeCodes[code] || code;
-    
-    const qty  = Number(rec.qty || 0);
-    allItems.push({ code, name, qty });
-  }
 
-  // 2. Товары из базы штрих‑кодов, которых нет в базе товаров (qty = 0)
-  for (const code in barcodeCodes) {
-    if (!barcodeDB[code]) {
-      allItems.push({
-        code,
-        name: barcodeCodes[code] || code,
-        qty: 0
-      });
+    let name;
+    let qty = 0;
+
+    if (typeof rec === "string") {
+      // старый формат: только название
+      name = rec;
+      qty = 0;
+    } else if (rec && typeof rec === "object") {
+      name = rec.name || code;
+      qty  = Number(rec.qty || 0);
+    } else {
+      name = code;
+      qty  = 0;
     }
-  }
+
+    return { code, name, qty };
+  });
 }
+
 
 
 /* =========================
