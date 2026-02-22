@@ -319,10 +319,10 @@ searchEl.addEventListener("input", () => {
   document.querySelectorAll("#list .item").forEach(div => {
     const code = normalize(div.dataset.code);
 
-    // название из базы товаров
+    // название из базы товаров (если есть)
     const nameFromDB = barcodeDB[div.dataset.code]?.name;
 
-    // название из базы штрих-кодов
+    // название из базы штрих‑кодов (если есть)
     const nameFromCodes = barcodeCodes[div.dataset.code];
 
     // итоговое название
@@ -335,6 +335,13 @@ searchEl.addEventListener("input", () => {
 
     div.classList.toggle("hidden", !match);
   });
+});
+
+clearSearchBtn.addEventListener("click", () => {
+  searchEl.value = "";
+  document.querySelectorAll("#list .item").forEach(d => d.classList.remove("hidden"));
+});
+
 
 
 /* ============================================================
