@@ -389,47 +389,27 @@ function buildItems() {
 
 const listEl = document.getElementById("list");
 
+  
 function render(items){
   listEl.innerHTML = "";
 
-  // Защита от кривых данных
-  if (!Array.isArray(items)) {
-    console.warn("render(): items не массив", items);
-    return;
-  }
-
   items.forEach(item => {
-    if (!item) return;
-
-    // Если qty нет — ставим 0
-    if (typeof item.qty !== "number") item.qty = 0;
-
-    // Если showZero выключен — скрываем нули
     if (!showZero && item.qty === 0) return;
 
-    // --- НОРМАЛИЗАЦИЯ НАЗВАНИЯ ---
-    let name = item.name;
+    // --- Берём название из базы штрих‑кодов ---
+    let name = "";
+    const fromDB = db[item.code];
 
-    // Если name отсутствует или равно штрих‑коду → пробуем взять из базы
-    if (!name || name === item.code) {
-      const fromDB = db?.[item.code];
-
-      if (typeof fromDB === "string") {
-        name = fromDB;
-      } else if (typeof fromDB === "object" && fromDB !== null) {
-        name = fromDB.name || "";
-      }
+    if (typeof fromDB === "string") {
+      name = fromDB;
+    } else if (typeof fromDB === "object" && fromDB !== null) {
+      name = fromDB.name || "";
     }
 
-    // Если name объект → берём поле name
-    if (typeof name === "object" && name !== null) {
-      name = name.name || "";
-    }
-
-    // Если всё ещё пусто → ставим пустую строку
+    // Если в базе нет названия — оставляем пусто
     if (!name) name = "";
 
-    // --- РЕНДЕР ---
+    // --- Рендер ---
     const div = document.createElement("div");
     div.className = "item";
     div.dataset.code = item.code;
@@ -465,6 +445,7 @@ function render(items){
 
   attachQtyHandlers();
 }
+
 
 
 
