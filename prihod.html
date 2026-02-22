@@ -475,19 +475,19 @@ function applyChange(code) {
   let newQty = oldQty + plus - minus;
   if (newQty < 0) newQty = 0;
 
-  // если товара нет в базе товаров — создаём его на основе базы штрих‑кодов
+  // если товара нет в базе товаров — создаём запись
   if (!barcodeDB[code]) {
-   barcodeDB[code] = {
-  qty: newQty
-};
-
+    barcodeDB[code] = {
+      qty: newQty
+    };
   } else {
     barcodeDB[code].qty = newQty;
   }
 
+  // сохраняем базу товаров
   saveDB();
-  localStorage.setItem("qty_" + code, newQty);
 
+  // обновляем отображение карточки
   const card = document.querySelector(`.item[data-code="${code}"]`);
   if(card){
     const cur = card.querySelector(".curQty");
@@ -499,6 +499,7 @@ function applyChange(code) {
   plusInput.value = "0";
   minusInput.value = "0";
 }
+
 
 function attachQtyHandlers(){
   document.querySelectorAll(".plusPlus").forEach(btn=>{
