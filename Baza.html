@@ -241,13 +241,16 @@ function buildItems(){
   allItems = Object.keys(barcodeDB)
     .map(code => {
       const rec = barcodeDB[code];
+
       return {
         code,
-        name: rec.name || code,
-        qty: Number(rec.qty || 0)
+        name: barcodeCodes[code] || code,   // ← название из базы штрих‑кодов
+        qty: Number(rec.qty || 0)           // ← остаток из базы товаров
       };
-    });
+    })
+    .filter(i => i.qty > 0);                // ← логика базы товаров
 }
+
 
 
 function escapeHtml(s){
