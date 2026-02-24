@@ -12,11 +12,9 @@
       --bg-1: #0b0710;
       --bg-2: #141025;
 
-      /* Премиальный фиолетовый */
       --accent1: #b07aff;
       --accent2: #d9b7ff;
 
-      /* Градиенты свечения */
       --glow-1: rgba(176,122,255,0.35);
       --glow-2: rgba(176,122,255,0.25);
       --glow-3: rgba(176,122,255,0.18);
@@ -50,7 +48,6 @@
       pointer-events:none;
     }
 
-    /* Верх */
     .top-fixed{
       position:fixed;
       top:0;
@@ -81,7 +78,6 @@
       color:rgba(255,255,255,0.55);
     }
 
-    /* Скролл */
     .scroll-area{
       position:absolute;
       top:125px;
@@ -107,7 +103,6 @@
       animation: fadeIn .9s ease forwards;
     }
 
-    /* Кнопки */
     .btn{
       width:100%;
       padding:20px 22px;
@@ -128,33 +123,28 @@
       overflow:hidden;
     }
 
-    /* Иконки */
     .btn::before{
       content: attr(data-icon);
       font-size:20px;
       opacity:0.9;
     }
 
-    /* Уровни свечения */
     .btn.level1{ box-shadow: 0 12px 40px var(--glow-1); }
     .btn.level2{ box-shadow: 0 10px 34px var(--glow-2); }
     .btn.level3{ box-shadow: 0 8px 28px var(--glow-3); }
     .btn.level4{ box-shadow: 0 6px 22px var(--glow-4); }
     .btn.level5{ box-shadow: 0 4px 16px var(--glow-5); }
 
-    /* Hover */
     .btn:hover{
       transform: translateY(-4px);
       filter: brightness(1.08);
     }
 
-    /* iOS эффект нажатия */
     .btn:active{
       transform: scale(0.97);
       filter: brightness(0.92);
     }
 
-    /* Светящийся бордер */
     .btn:hover::after{
       content:"";
       position:absolute;
@@ -164,15 +154,50 @@
       box-shadow: 0 0 18px rgba(255,255,255,0.18);
     }
 
-    a.link-btn{ display:block; text-decoration:none; }
+    /* Анимации SPA */
+    #app {
+      position: relative;
+      overflow: hidden;
+    }
 
-    @media (max-width:420px){
-      .btn{ padding:18px; font-size:17px }
+    .view-screen {
+      animation: viewFadeIn .28s ease;
+    }
+
+    .view-screen-exit {
+      animation: viewFadeOut .22s ease forwards;
+    }
+
+    @keyframes viewFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+        filter: blur(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+      }
+    }
+
+    @keyframes viewFadeOut {
+      from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+      }
+      to {
+        opacity: 0;
+        transform: translateY(6px) scale(0.98);
+        filter: blur(4px);
+      }
     }
   </style>
 </head>
 
 <body>
+
   <canvas id="bg"></canvas>
 
   <div class="top-fixed">
@@ -180,15 +205,9 @@
     <div class="subtitle">Быстрый доступ к основным разделам</div>
   </div>
 
-
-  
-<div class="scroll-area">
-  <div id="app"></div>
-</div>
-
-
-
-
+  <div class="scroll-area">
+    <div id="app"></div>
+  </div>
 
 
 
