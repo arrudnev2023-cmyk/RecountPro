@@ -1,0 +1,754 @@
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
+
+  <style>
+    :root{
+      --accent:#6d28d9;
+      --accent-light:#a78bfa;
+      --text:#e6eef8;
+      --muted:#9aa3b2;
+      --card-bg: linear-gradient(135deg,#1e1e2f,#2a2a40);
+      --maxw:980px;
+    }
+
+    *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+    html,body{
+      height:100%; margin:0;
+      background:linear-gradient(180deg,#05030a,#0b0710);
+      color:var(--text);
+      font-family:Inter,Segoe UI,system-ui,Arial;
+      overflow:hidden;
+    }
+
+    header{
+      position:fixed; left:0; right:0; top:0;
+      padding:12px;
+      background:rgba(10,10,12,0.7);
+      backdrop-filter:blur(8px);
+      z-index:1000;
+      border-radius:0 0 14px 14px;
+    }
+    header h1{
+      margin:0; text-align:center; font-size:1.15rem;
+    }
+
+    #search-wrap{
+      max-width:var(--maxw);
+      margin:10px auto;
+      position:relative;
+    }
+    #search{
+      width:100%;
+      padding:10px 56px 10px 12px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.04);
+      background:rgba(20,20,24,0.6);
+      color:var(--text);
+      font-size:15px;
+    }
+    #scan-btn{
+      position:absolute; right:44px; top:50%; transform:translateY(-50%);
+      background:none; border:none; color:var(--muted); cursor:pointer;
+    }
+    #clear-search{
+      position:absolute; right:8px; top:50%; transform:translateY(-50%);
+      background:none; border:none; color:var(--muted); cursor:pointer;
+    }
+
+    #content{
+      position:fixed; left:0; right:0; top:96px; bottom:0;
+      overflow:auto; padding:12px;
+    }
+
+    .item{
+  width:100%;
+  margin:10px 0;
+  padding:12px;
+  border-radius:12px;
+  background:var(--card-bg);
+  box-shadow:0 8px 30px rgba(0,0,0,0.6);
+  border-left:6px solid transparent;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.item.found{
+  box-shadow:0 18px 50px rgba(106,17,203,0.18);
+  transform:translateY(-6px);
+}
+
+/* ← ВОТ СЮДА ВСТАВЛЯЕШЬ НОВЫЙ КЛАСС */
+.item.highlight-purple {
+  box-shadow: 0 0 0 3px #7c3aed, 0 12px 32px rgba(124, 58, 237, 0.4);
+  border-left-color: #7c3aed !important;
+  transition: box-shadow .25s ease, transform .25s ease;
+}
+
+
+    .label{font-weight:700; color:#dbeafe; margin-right:6px;}
+
+    #fabMenu{
+      position:fixed; bottom:1rem; right:1rem; z-index:1001;
+      background: linear-gradient(135deg, #6a11cb, #2575fc);
+      color:#fff; border:none;
+      padding:0.9rem 1.2rem;
+      border-radius:14px;
+      font-size:1.2rem; font-weight:600;
+      cursor:pointer;
+      box-shadow:0 6px 20px rgba(0,0,0,0.35), 0 0 12px rgba(106,17,203,0.6);
+      transition:all .3s ease;
+      backdrop-filter:blur(6px);
+      display:flex; align-items:center; justify-content:center;
+    }
+
+    #sheetOverlay{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,0.55);
+      backdrop-filter:blur(4px);
+      opacity:0; pointer-events:none;
+      transition:opacity .25s ease;
+      z-index:999;
+    }
+    #sheetOverlay.show{
+      opacity:1; pointer-events:auto;
+    }
+
+    #bottomSheet{
+      position:fixed; left:0; right:0; bottom:-60vh;
+      padding:1.2rem;
+      background:rgba(20,20,20,0.7);
+      backdrop-filter:blur(12px) saturate(180%);
+      border-radius:20px 20px 0 0;
+      box-shadow:0 -12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+      transition:bottom .35s ease;
+      z-index:1002;
+    }
+    #bottomSheet.show{ bottom:0; }
+
+    .sheet-content{
+      display:flex; flex-direction:column; gap:0.7rem;
+    }
+    .sheet-btn{
+      background:linear-gradient(145deg, #1f1f1f, #2c2c2c);
+      color:#f9f9f9; border:none;
+      padding:0.9rem 1rem;
+      border-radius:12px;
+      font-size:1rem; font-weight:500;
+      cursor:pointer;
+      transition:all .25s ease;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 14px rgba(0,0,0,0.4);
+      display:flex; align-items:center; gap:10px;
+    }
+
+    @keyframes fadeIn{
+      from{opacity:0; transform:translateY(12px) scale(0.95);}
+      to{opacity:1; transform:translateY(0) scale(1);}
+    }
+    /* === Размер сканера как в пересчёте === */
+.preview-wrap.camera-1-3 {
+  position: relative;
+  width: 100%;
+  padding-top: 33%; /* высота = 1/3 ширины */
+  overflow: hidden;
+  border-radius: 12px;
+  background: #000;
+}
+
+.preview-wrap.camera-1-3 video {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+  </style>
+
+
+
+  <canvas id="bg"></canvas>
+
+  <header>
+    <h1>RecountPro — База товаров</h1>
+    <div id="search-wrap">
+      <input id="search" placeholder="Поиск по названию или коду..." autocomplete="off" />
+      <button id="scan-btn">📷</button>
+      <button id="clear-search">×</button>
+    </div>
+  </header>
+
+  <main id="content">
+    <div id="scannerCard" class="card" style="display:none">
+      <div class="preview-wrap camera-1-3"><video id="preview" playsinline muted></video></div>
+      <div class="controls">
+        <select id="deviceSelect" class="btn" style="min-width:160px"></select>
+        <button id="torchBtn" class="btn">🔦</button>
+        <button id="closeScannerBtn" class="btn">Закрыть</button>
+        <div id="scanResult" style="margin-left:auto;color:var(--muted)"></div>
+      </div>
+    </div>
+
+    <div id="list" class="list"></div>
+  </main>
+
+  <button id="fabMenu">☰</button>
+
+  <div id="sheetOverlay"></div>
+
+  <div id="bottomSheet">
+    <div class="sheet-content">
+      <button class="sheet-btn" id="refreshBtn">🔄 Обновить</button>
+      <button class="sheet-btn" id="exportBtn">📤 Выгрузить CSV</button>
+      <button class="sheet-btn" id="importBtn">📥 Загрузить CSV</button>
+      <button class="sheet-btn" id="clearBaseBtn">🧹 Очистить базу</button>
+    </div>
+  </div>
+
+<script>
+/* ============================================================
+   БАЗА ТОВАРОВ
+============================================================ */
+
+let barcodeDB = {};
+let allItems = [];
+
+function loadDB(){
+  try{
+    const raw = localStorage.getItem("barcodeDB");
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && typeof parsed === "object"){
+        barcodeDB = parsed;
+        return;
+      }
+    }
+  }catch(e){}
+  barcodeDB = {};
+}
+
+function saveDB(){
+  localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
+}
+
+function buildItems(){
+  allItems = Object.keys(barcodeDB)
+    .map(code => {
+      const rec = barcodeDB[code];
+
+      let name;
+      let qty = 0;
+
+      if (typeof rec === "string") {
+        // старый формат: только название
+        name = rec;
+        qty = 0;
+      } else if (rec && typeof rec === "object") {
+        name = rec.name || code;
+        qty  = Number(rec.qty || 0);
+      } else {
+        name = code;
+        qty  = 0;
+      }
+
+      return { code, name, qty };
+    })
+    .filter(item => item.qty > 0);   // ← ВОТ ЭТО ГЛАВНОЕ
+}
+
+
+
+
+
+function escapeHtml(s){
+  return String(s||"")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
+}
+
+const listEl = document.getElementById("list");
+
+function render(items){
+  listEl.innerHTML = "";
+  items.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "item";
+    div.dataset.code = item.code;
+
+    div.innerHTML = `
+      <div class="field"><span class="label">Название:</span> ${escapeHtml(item.name)}</div>
+      <div class="field"><span class="label">Штрих‑код:</span> ${item.code}</div>
+      <div class="field"><span class="label">Остаток:</span> ${item.qty}</div>
+    `;
+
+    listEl.appendChild(div);
+  });
+}
+
+/* ============================================================
+   ПОИСК
+============================================================ */
+
+const searchEl = document.getElementById("search");
+const clearSearchBtn = document.getElementById("clear-search");
+
+function normalize(s){
+  return String(s||"")
+    .toLowerCase()
+    .replace(/ё/g,"е")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function matchesQuery(text, query){
+  const words = query.split(" ").filter(Boolean);
+  return words.every(w => text.includes(w));
+}
+
+searchEl.addEventListener("input", () => {
+  const q = normalize(searchEl.value);
+
+  document.querySelectorAll("#list .item").forEach(div => {
+    const code = normalize(div.dataset.code);
+
+    // название из базы товаров (если есть)
+    const nameFromDB = barcodeDB[div.dataset.code]?.name;
+
+    // название из базы штрих‑кодов (если есть)
+    const nameFromCodes = barcodeCodes[div.dataset.code];
+
+    // итоговое название
+    const name = normalize(nameFromDB || nameFromCodes || "");
+
+    const match =
+      q === "" ||
+      matchesQuery(name, q) ||
+      matchesQuery(code, q);
+
+    div.classList.toggle("hidden", !match);
+  });
+});
+
+clearSearchBtn.addEventListener("click", () => {
+  searchEl.value = "";
+  document.querySelectorAll("#list .item").forEach(d => d.classList.remove("hidden"));
+});
+
+
+
+/* ============================================================
+   ПОДСВЕТКА
+============================================================ */
+
+function highlightItem(code){
+  const card = document.querySelector(`.item[data-code="${code}"]`);
+  if(!card) return;
+
+  // Убираем старую подсветку
+  card.classList.remove("found");
+  card.classList.remove("highlight-purple");
+
+  // Добавляем новую фиолетовую подсветку
+  card.classList.add("highlight-purple");
+
+  // Через 2 секунды убираем
+  setTimeout(() => {
+    card.classList.remove("highlight-purple");
+  }, 2000);
+
+  // Скроллим к карточке
+  setTimeout(() => {
+    card.scrollIntoView({ behavior:"smooth", block:"center" });
+  }, 150);
+}
+
+
+/* ============================================================
+   СКАНЕР
+============================================================ */
+
+let stream = null;
+let scanning = false;
+let currentDeviceId = null;
+let reader = null;
+let detector = ('BarcodeDetector' in window)
+  ? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]})
+  : null;
+
+let canvasPool = [];
+let scanLoopRunning = false;
+let lastDetected = {code:null, ts:0};
+const DEBOUNCE_MS = 900;
+
+const scannerCard = document.getElementById("scannerCard");
+const preview = document.getElementById("preview");
+const deviceSelect = document.getElementById("deviceSelect");
+const torchBtn = document.getElementById("torchBtn");
+const closeScannerBtn = document.getElementById("closeScannerBtn");
+const scanResult = document.getElementById("scanResult");
+
+function showToast(text, ms=1200){
+  scanResult.innerText = text;
+  setTimeout(()=>{ if(scanResult.innerText===text) scanResult.innerText=''; }, ms);
+}
+
+async function enumerateCameras(){
+  try{
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d => d.kind === "videoinput");
+    deviceSelect.innerHTML = "";
+    cams.forEach((c, idx)=>{
+      const opt = document.createElement("option");
+      opt.value = c.deviceId;
+      opt.text = c.label || `Камера ${idx+1}`;
+      deviceSelect.appendChild(opt);
+
+    });
+    if(cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
+    if(currentDeviceId) deviceSelect.value = currentDeviceId;
+  }catch(e){}
+}
+
+function getCanvas(w,h){
+  for(const c of canvasPool) if(c.width===w && c.height===h) return c;
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  canvasPool.push(c);
+  return c;
+}
+
+async function tryDecodeCanvas(canvas){
+  if(detector){
+    try{
+      const ctx = canvas.getContext("2d");
+      const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+      const res = await detector.detect(img);
+      if(res && res.length) return res[0].rawValue;
+    }catch(e){}
+  }
+
+  try{
+    const src = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    const bin = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
+    const result = new ZXing.MultiFormatReader().decode(bin);
+    if(result && result.text) return result.text;
+  }catch(e){}
+
+  return null;
+}
+
+async function startCamera(){
+  if(scanning) return;
+  stopCamera();
+  scanning = true;
+
+  await enumerateCameras();
+
+  const constraints = {
+    audio:false,
+    video:{
+      deviceId: deviceSelect.value || currentDeviceId || undefined,
+      facingMode:{ideal:"environment"},
+      width:{ideal:1280},
+      height:{ideal:720}
+    }
+  };
+
+  try{
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    preview.srcObject = stream;
+    await preview.play();
+
+    currentDeviceId = stream.getVideoTracks()[0].getSettings().deviceId || currentDeviceId;
+    if(currentDeviceId) deviceSelect.value = currentDeviceId;
+
+    if(!reader) reader = new ZXing.BrowserMultiFormatReader();
+
+    scannerCard.style.display = "block";
+    showToast("Сканер включён");
+
+    requestAnimationFrame(scanLoop);
+  }catch(err){
+    console.error(err);
+    showToast("Ошибка доступа к камере");
+    scanning = false;
+  }
+}
+
+function stopCamera(){
+  scanning = false;
+  if(preview.srcObject){
+    try{ preview.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){}
+    preview.srcObject = null;
+  }
+  scannerCard.style.display = "none";
+}
+
+async function scanLoop(){
+  if(!scanning){ scanLoopRunning=false; return; }
+  if(scanLoopRunning) return;
+  scanLoopRunning = true;
+
+  try{
+    while(scanning){
+      const w = preview.videoWidth;
+      const h = preview.videoHeight;
+      if(!w || !h){
+        await new Promise(r=>requestAnimationFrame(r));
+        continue;
+      }
+
+      const canvas = getCanvas(w,h);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(preview,0,0,w,h);
+
+      const code = await tryDecodeCanvas(canvas);
+      if(code){
+        handleDetected(code);
+        await new Promise(r=>setTimeout(r,300));
+      }
+
+      await new Promise(r=>requestAnimationFrame(r));
+    }
+  }finally{
+    scanLoopRunning = false;
+  }
+}
+
+function handleDetected(code){
+  const now = Date.now();
+  if(code === lastDetected.code && now - lastDetected.ts < DEBOUNCE_MS) return;
+  lastDetected = {code, ts:now};
+
+  try{ navigator.vibrate?.(60); }catch(e){}
+
+  stopCamera();
+
+  const rec = barcodeDB[code];
+
+  if(rec){
+    let name = typeof rec === "string" ? rec : rec.name;
+    let qty  = typeof rec === "string" ? Number(rec.qty||0) : Number(rec.qty||0);
+
+    if(qty > 0){
+      highlightItem(code);
+      showToast("Найден");
+      return;
+    }
+
+    // qty == 0 → показываем красную карточку на 10 секунд
+    const temp = document.createElement("div");
+    temp.className = "item";
+    temp.style.borderLeftColor = "#ef4444";
+    temp.innerHTML = `
+      <div class="field"><span class="label">Название:</span> ${escapeHtml(name)}</div>
+      <div class="field"><span class="label">Штрих‑код:</span> ${code}</div>
+      <div class="field"><span class="label">Остаток:</span> 0</div>
+    `;
+
+    listEl.prepend(temp);
+    temp.scrollIntoView({ behavior:"smooth", block:"center" });
+
+    setTimeout(() => {
+      temp.style.transition = "opacity .3s ease, transform .3s ease";
+      temp.style.opacity = "0";
+      temp.style.transform = "translateY(10px)";
+    }, 9500);
+
+    setTimeout(() => temp.remove(), 10000);
+
+    showToast("По позиции остаток 0");
+    return;
+  }
+
+  // Вообще нет в базе штрих‑кодов
+  showToast("Нет в базе штрих‑кодов");
+}
+/* ============================================================
+   МЕНЮ
+============================================================ */
+
+const fab = document.getElementById("fabMenu");
+const sheet = document.getElementById("bottomSheet");
+const overlay = document.getElementById("sheetOverlay");
+
+fab.onclick = () => {
+  sheet.classList.add("show");
+  overlay.classList.add("show");
+};
+overlay.onclick = closeMenu;
+
+function closeMenu(){
+  sheet.classList.remove("show");
+  overlay.classList.remove("show");
+}
+
+/* ============================================================
+   ОБНОВИТЬ
+============================================================ */
+
+document.getElementById("refreshBtn").onclick = () => location.reload();
+
+/* ============================================================
+   ЭКСПОРТ CSV (code;name;qty)
+============================================================ */
+
+document.getElementById("exportBtn").onclick = () => {
+  closeMenu();
+
+  let csv = "code;name;qty\n";
+  for(const code in barcodeDB){
+    const rec = barcodeDB[code];
+    const name = typeof rec === "string" ? rec : rec.name;
+    const qty  = typeof rec === "string" ? Number(rec.qty||0) : Number(rec.qty||0);
+    csv += `${code};${name};${qty}\n`;
+  }
+
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "barcodeDB.csv";
+  a.click();
+
+  URL.revokeObjectURL(url);
+};
+
+/* ============================================================
+   ИМПОРТ CSV (code;name;qty)
+============================================================ */
+
+document.getElementById("importBtn").onclick = () => {
+  closeMenu();
+
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".csv";
+
+  input.onchange = () => {
+    const file = input.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const lines = reader.result.split(/\r?\n/);
+
+      lines.forEach((line, idx)=>{
+        if(idx === 0) return;
+        const parts = line.split(";");
+        if(parts.length >= 3){
+          const code = parts[0].trim();
+          const name = parts[1].trim();
+          const qty  = Number(parts[2].trim() || 0);
+
+          if(!code || !name) return;
+
+          barcodeDB[code] = { name, qty };
+        }
+      });
+
+      saveDB();
+      buildItems();
+      render(allItems);
+      showToast("База обновлена");
+    };
+
+    reader.readAsText(file, "utf-8");
+  };
+
+  input.click();
+};
+
+/* ============================================================
+   ОЧИСТИТЬ БАЗУ (qty = 0, коды остаются)
+============================================================ */
+
+document.getElementById("clearBaseBtn").onclick = () => {
+  closeMenu();
+
+  const box1 = createConfirm("Очистить экран базы товаров?", () => {
+    const box2 = createConfirm("Остатки будут обнулены. Действие необратимо.", () => {
+
+      for(const code in barcodeDB){
+        const rec = barcodeDB[code];
+        if(typeof rec === "string"){
+          barcodeDB[code] = { name: rec, qty: 0 };
+        } else {
+          rec.qty = 0;
+        }
+      }
+
+      saveDB();
+      buildItems();
+      render(allItems);
+      showToast("Экран базы очищен");
+    });
+  });
+};
+
+function createConfirm(text, onYes){
+  const box = document.createElement("div");
+  box.style.position = "fixed";
+  box.style.left = "50%";
+  box.style.top = "50%";
+  box.style.transform = "translate(-50%, -50%)";
+  box.style.background = "rgba(20,20,20,0.85)";
+  box.style.backdropFilter = "blur(12px)";
+  box.style.padding = "1.4rem";
+  box.style.borderRadius = "16px";
+  box.style.boxShadow = "0 12px 32px rgba(0,0,0,0.6)";
+  box.style.zIndex = "5000";
+  box.style.width = "80%";
+  box.style.maxWidth = "340px";
+  box.style.textAlign = "center";
+  box.style.animation = "fadeIn .25s ease";
+
+  box.innerHTML = `
+    <div style="font-size:1.1rem; margin-bottom:1rem; color:#fff;">
+      ${text}
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button id="yes" style="
+        flex:1; padding:0.7rem; border:none; border-radius:10px;
+        background:linear-gradient(135deg,#6a11cb,#2575fc);
+        color:#fff; font-size:1rem; font-weight:600; cursor:pointer;
+      ">Да</button>
+
+      <button id="no" style="
+        flex:1; padding:0.7rem; border:none; border-radius:10px;
+        background:#2c2c2c; color:#fff; font-size:1rem; font-weight:600; cursor:pointer;
+      ">Нет</button>
+    </div>
+  `;
+
+  document.body.appendChild(box);
+
+  box.querySelector("#no").onclick = () => box.remove();
+  box.querySelector("#yes").onclick = () => {
+    box.remove();
+    onYes();
+  };
+
+  return box;
+}
+
+/* ============================================================
+   ИНИЦИАЛИЗАЦИЯ
+============================================================ */
+
+window.addEventListener("DOMContentLoaded", () => {
+  loadDB();
+  buildItems();
+  render(allItems);
+});
+  document.getElementById("scan-btn").onclick = () => {
+  if(!scanning) startCamera();
+  else stopCamera();
+};
+closeScannerBtn.onclick = stopCamera;
+deviceSelect.onchange = () => startCamera();
+torchBtn.onclick = toggleTorch;
+
+</script>
