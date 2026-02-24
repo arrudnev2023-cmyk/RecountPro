@@ -588,7 +588,13 @@ function closeMenu(){
    ОБНОВИТЬ
 ============================================================ */
 
-document.getElementById("refreshBtn").onclick = () => location.reload();
+document.getElementById("refreshBtn").onclick = () => {
+  buildItems();
+  render(allItems);
+  closeMenu();
+  showToast("Обновлено");
+};
+
 
 /* ============================================================
    ЭКСПОРТ CSV (code;name;qty)
@@ -738,11 +744,10 @@ function createConfirm(text, onYes){
    ИНИЦИАЛИЗАЦИЯ
 ============================================================ */
 
-window.addEventListener("DOMContentLoaded", () => {
-  loadDB();
-  buildItems();
-  render(allItems);
-});
+loadDB();
+buildItems();
+render(allItems);
+
   document.getElementById("scan-btn").onclick = () => {
   if(!scanning) startCamera();
   else stopCamera();
