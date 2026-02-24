@@ -29,4 +29,5 @@ async function navigateTo(page) {
 }
 
 // При первом запуске — открываем Базу товаров
-navigateTo("Baza");
+navigateTo("MainMenu");
+
