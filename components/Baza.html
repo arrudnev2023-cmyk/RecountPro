@@ -758,33 +758,124 @@ torchBtn.onclick = toggleTorch;
 
 
 
- function init() {
+function init() {
+  console.log("INIT: база товаров");
+
+  // 1. Загружаем базу и рендерим список
   loadDB();
   buildItems();
   render(allItems);
 
-  document.getElementById("scan-btn").onclick = () => {
-    if (!scanning) startCamera();
-    else stopCamera();
+  // 2. Поиск
+  const searchEl = document.getElementById("search");
+  const clearSearchBtn = document.getElementById("clear-search");
+
+  if (searchEl) {
+    searchEl.oninput = () => {
+      const q = normalize(searchEl.value);
+
+      document.querySelectorAll("#list .item").forEach(div => {
+        const code = normalize(div.dataset.code);
+
+        const nameFromDB = barcodeDB[div.dataset.code]?.name;
+        const nameFromCodes = barcodeCodes?.[div.dataset.code];
+        const name = normalize(nameFromDB || nameFromCodes || "");
+
+        const match =
+          q === "" ||
+          matchesQuery(name, q) ||
+          matchesQuery(code, q);
+
+        div.classList.toggle("hidden", !match);
+      });
+    };
+  }
+
+  if (clearSearchBtn) {
+    clearSearchBtn.onclick = () => {
+      searchEl.value = "";
+      document.querySelectorAll("#list .item").forEach(d => d.classList.remove("hidden"));
+    };
+  }
+
+  // 3. Сканер
+  const scanBtn = document.getElementById("scan-btn");
+  const closeScannerBtn = document.getElementById("closeScannerBtn");
+  const deviceSelect = document.getElementById("deviceSelect");
+  const torchBtn = document.getElementById("torchBtn");
+
+  if (scanBtn) scanBtn.onclick = () => startCamera();
+  if (closeScannerBtn) closeScannerBtn.onclick = () => stopCamera();
+  if (deviceSelect) deviceSelect.onchange = () => startCamera();
+  if (torchBtn) torchBtn.onclick = () => toggleTorch();
+
+  // 4. FAB меню
+  const fab = document.getElementById("fabMenu");
+  const sheet = document.getElementById("bottomSheet");
+  const overlay = document.getElementById("sheetOverlay");
+
+  if (fab) {
+    fab.onclick = () => {
+      sheet.classList.add("show");
+      overlay.classList.add("show");
+    };
+  }
+
+  if (overlay) {
+    overlay.onclick = () => {
+      sheet.classList.remove("show");
+      overlay.classList.remove("show");
+    };
+  }
+
+  // 5. Bottom sheet кнопки
+  const refreshBtn = document.getElementById("refreshBtn");
+  const exportBtn = document.getElementById("exportBtn");
+  const importBtn = document.getElementById("importBtn");
+  const clearBaseBtn = document.getElementById("clearBaseBtn");
+
+  if (refreshBtn) refreshBtn.onclick = () => {
+    buildItems();
+    render(allItems);
+    closeMenu();
+    showToast("Обновлено");
   };
 
-  deviceSelect.onchange = () => startCamera();
-  torchBtn.onclick = toggleTorch;
-  closeScannerBtn.onclick = stopCamera;
+  if (exportBtn) exportBtn.onclick = () => exportCSV?.();
+  if (importBtn) importBtn.onclick = () => importCSV?.();
+  if (clearBaseBtn) clearBaseBtn.onclick = () => clearBase?.();
+
+  console.log("INIT: готово");
 }
 
 function destroy() {
+  console.log("DESTROY: база товаров");
+
   stopCamera?.();
+
+  const ids = [
+    "search", "clear-search", "scan-btn", "closeScannerBtn",
+    "deviceSelect", "torchBtn", "fabMenu", "sheetOverlay",
+    "refreshBtn", "exportBtn", "importBtn", "clearBaseBtn"
+  ];
+
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.onclick = null;
+      el.oninput = null;
+      el.onchange = null;
+    }
+  });
+
   scanning = false;
   scanLoopRunning = false;
-
-  document.getElementById("scan-btn").onclick = null;
-  deviceSelect.onchange = null;
-  torchBtn.onclick = null;
-  closeScannerBtn.onclick = null;
+  stream = null;
+  reader = null;
 }
 
 init();
 window.currentDestroy = destroy;
+
 
 </script>
