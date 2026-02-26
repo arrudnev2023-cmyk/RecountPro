@@ -756,4 +756,38 @@ closeScannerBtn.onclick = stopCamera;
 deviceSelect.onchange = () => startCamera();
 torchBtn.onclick = toggleTorch;
 
+
+
+  function init() {
+  // вся инициализация
+  loadDB();
+  buildItems();
+  render(allItems);
+
+  document.getElementById("scan-btn").onclick = () => {
+    if(!scanning) startCamera();
+    else stopCamera();
+  };
+
+  deviceSelect.onchange = () => startCamera();
+  torchBtn.onclick = toggleTorch;
+  closeScannerBtn.onclick = stopCamera;
+}
+
+  function destroy() {
+  stopCamera();
+  scanning = false;
+  scanLoopRunning = false;
+  stream = null;
+  reader = null;
+
+  document.getElementById("scan-btn").onclick = null;
+  deviceSelect.onchange = null;
+  torchBtn.onclick = null;
+  closeScannerBtn.onclick = null;
+}
+
+// ВЫЗОВ init() — всегда в самом низу
+init();
+
 </script>
