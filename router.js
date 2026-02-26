@@ -10,7 +10,7 @@ function navigateTo(screenName, addToHistory = true) {
   const app = document.getElementById("app");
   const oldView = app.querySelector(".view-screen");
 
-  // ВАЖНО: вызываем destroy() предыдущего экрана
+  // destroy() предыдущего экрана
   if (window.currentDestroy) {
     try { window.currentDestroy(); } catch(e) {}
     window.currentDestroy = null;
@@ -30,12 +30,20 @@ function navigateTo(screenName, addToHistory = true) {
       app.innerHTML = "";
       app.appendChild(wrapper);
 
+      // Удаляем старые скрипты компонента
+      document.querySelectorAll("script[data-component]").forEach(s => s.remove());
+
+      // Выполняем скрипты нового компонента
       const scripts = wrapper.querySelectorAll("script");
       scripts.forEach(oldScript => {
         const newScript = document.createElement("script");
+
         if (oldScript.src) newScript.src = oldScript.src;
         else newScript.textContent = oldScript.textContent;
+
+        newScript.setAttribute("data-component", screenName);
         document.body.appendChild(newScript);
+
         oldScript.remove();
       });
 
@@ -59,5 +67,4 @@ window.addEventListener("load", () => {
   const screen = new URLSearchParams(location.search).get("screen");
   navigateTo(screen || "MainMenu", false);
 });
-
 
