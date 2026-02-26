@@ -1,7 +1,6 @@
 let currentScreen = null;
 let isTransitioning = false;
 
-// Глобальный destroy, который компонент будет устанавливать сам
 window.currentDestroy = null;
 
 function navigateTo(screenName, addToHistory = true) {
@@ -11,15 +10,12 @@ function navigateTo(screenName, addToHistory = true) {
   const app = document.getElementById("app");
   const oldView = app.querySelector(".view-screen");
 
-  // Если предыдущий экран имеет destroy() — вызываем
+  // ВАЖНО: вызываем destroy() предыдущего экрана
   if (window.currentDestroy) {
-    try { window.currentDestroy(); } catch (e) {
-      console.warn("Ошибка в destroy():", e);
-    }
+    try { window.currentDestroy(); } catch(e) {}
     window.currentDestroy = null;
   }
 
-  // Анимация выхода старого экрана
   if (oldView) {
     oldView.classList.add("view-screen-exit");
   }
@@ -34,57 +30,34 @@ function navigateTo(screenName, addToHistory = true) {
       app.innerHTML = "";
       app.appendChild(wrapper);
 
-      // Выполняем скрипты компонента
       const scripts = wrapper.querySelectorAll("script");
       scripts.forEach(oldScript => {
         const newScript = document.createElement("script");
-
-        if (oldScript.src) {
-          newScript.src = oldScript.src;
-        } else {
-          newScript.textContent = oldScript.textContent;
-        }
-
+        if (oldScript.src) newScript.src = oldScript.src;
+        else newScript.textContent = oldScript.textContent;
         document.body.appendChild(newScript);
         oldScript.remove();
       });
 
-      // Добавляем запись в историю
       if (addToHistory) {
         history.pushState({ screen: screenName }, "", `?screen=${screenName}`);
       }
 
       currentScreen = screenName;
     })
-    .catch(err => {
-      console.error("Ошибка загрузки компонента:", err);
-    })
     .finally(() => {
-      setTimeout(() => {
-        isTransitioning = false;
-      }, 250);
+      setTimeout(() => isTransitioning = false, 250);
     });
 }
 
-// Кнопка "Назад"
 window.onpopstate = (event) => {
-  if (event.state && event.state.screen) {
-    navigateTo(event.state.screen, false);
-  } else {
-    navigateTo("MainMenu", false);
-  }
+  if (event.state?.screen) navigateTo(event.state.screen, false);
+  else navigateTo("MainMenu", false);
 };
 
-// Автозагрузка экрана при открытии
 window.addEventListener("load", () => {
-  const params = new URLSearchParams(location.search);
-  const screen = params.get("screen");
-
-  if (screen) {
-    navigateTo(screen, false);
-  } else {
-    navigateTo("MainMenu", false);
-  }
+  const screen = new URLSearchParams(location.search).get("screen");
+  navigateTo(screen || "MainMenu", false);
 });
 
 
