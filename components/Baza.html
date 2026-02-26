@@ -758,14 +758,13 @@ torchBtn.onclick = toggleTorch;
 
 
 
-  function init() {
-  // вся инициализация
+ function init() {
   loadDB();
   buildItems();
   render(allItems);
 
   document.getElementById("scan-btn").onclick = () => {
-    if(!scanning) startCamera();
+    if (!scanning) startCamera();
     else stopCamera();
   };
 
@@ -774,12 +773,10 @@ torchBtn.onclick = toggleTorch;
   closeScannerBtn.onclick = stopCamera;
 }
 
-  function destroy() {
-  stopCamera();
+function destroy() {
+  stopCamera?.();
   scanning = false;
   scanLoopRunning = false;
-  stream = null;
-  reader = null;
 
   document.getElementById("scan-btn").onclick = null;
   deviceSelect.onchange = null;
@@ -787,7 +784,7 @@ torchBtn.onclick = toggleTorch;
   closeScannerBtn.onclick = null;
 }
 
-// ВЫЗОВ init() — всегда в самом низу
 init();
 window.currentDestroy = destroy;
+
 </script>
