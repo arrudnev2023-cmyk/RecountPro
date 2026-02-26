@@ -1,6 +1,9 @@
 let currentScreen = null;
 let isTransitioning = false;
 
+// Глобальный destroy, который компонент будет устанавливать сам
+window.currentDestroy = null;
+
 function navigateTo(screenName, addToHistory = true) {
   if (isTransitioning) return;
   isTransitioning = true;
@@ -8,7 +11,15 @@ function navigateTo(screenName, addToHistory = true) {
   const app = document.getElementById("app");
   const oldView = app.querySelector(".view-screen");
 
-  // анимация выхода старого экрана (если есть)
+  // Если предыдущий экран имеет destroy() — вызываем
+  if (window.currentDestroy) {
+    try { window.currentDestroy(); } catch (e) {
+      console.warn("Ошибка в destroy():", e);
+    }
+    window.currentDestroy = null;
+  }
+
+  // Анимация выхода старого экрана
   if (oldView) {
     oldView.classList.add("view-screen-exit");
   }
@@ -16,16 +27,14 @@ function navigateTo(screenName, addToHistory = true) {
   fetch(`components/${screenName}.html`)
     .then(res => res.text())
     .then(html => {
-      // создаём новый контейнер для экрана
       const wrapper = document.createElement("div");
       wrapper.className = "view-screen";
       wrapper.innerHTML = html;
 
-      // очищаем app и вставляем новый экран
       app.innerHTML = "";
       app.appendChild(wrapper);
 
-      // выполняем скрипты компонента
+      // Выполняем скрипты компонента
       const scripts = wrapper.querySelectorAll("script");
       scripts.forEach(oldScript => {
         const newScript = document.createElement("script");
@@ -40,7 +49,7 @@ function navigateTo(screenName, addToHistory = true) {
         oldScript.remove();
       });
 
-      // обновляем history
+      // Добавляем запись в историю
       if (addToHistory) {
         history.pushState({ screen: screenName }, "", `?screen=${screenName}`);
       }
@@ -51,14 +60,13 @@ function navigateTo(screenName, addToHistory = true) {
       console.error("Ошибка загрузки компонента:", err);
     })
     .finally(() => {
-      // даём анимации выхода доиграть, если была
       setTimeout(() => {
         isTransitioning = false;
       }, 250);
     });
 }
 
-// обработка кнопки «Назад» в браузере
+// Кнопка "Назад"
 window.onpopstate = (event) => {
   if (event.state && event.state.screen) {
     navigateTo(event.state.screen, false);
@@ -67,7 +75,7 @@ window.onpopstate = (event) => {
   }
 };
 
-// автозагрузка экрана при открытии страницы
+// Автозагрузка экрана при открытии
 window.addEventListener("load", () => {
   const params = new URLSearchParams(location.search);
   const screen = params.get("screen");
