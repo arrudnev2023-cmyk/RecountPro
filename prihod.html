@@ -390,15 +390,24 @@ function buildItems(){
 
 const listEl = document.getElementById("list");
 
-  
 function render(items){
   listEl.innerHTML = "";
 
   items.forEach(item => {
     if (!showZero && item.qty === 0) return;
 
-    // --- Берём название из базы ШТРИХ-КОДОВ ---
-    let name = barcodeCodes[item.code] || item.name || item.code;
+    // --- Правильное получение названия ---
+    // 1) item.name — как на рабочем экране
+    // 2) barcodeCodes — если есть в базе штрихкодов
+    // 3) item.title / product_name — на случай разных форматов
+    // 4) item.code — крайний fallback
+    let name =
+      item.name ||
+      barcodeCodes[item.code] ||
+      item.title ||
+      item.product_name ||
+      item.label ||
+      item.code;
 
     const div = document.createElement("div");
     div.className = "item";
@@ -435,6 +444,7 @@ function render(items){
 
   attachQtyHandlers();
 }
+
 
 
 
