@@ -646,12 +646,25 @@ function createConfirm(text, onYes){
 function init() {
   console.log("INIT: база товаров");
 
-  loadDB();
-  buildItems();
-  render(allItems);
+  loadDB?.();
+  buildItems?.();
+  render?.(allItems);
 
   const searchEl = document.getElementById("search");
   const clearSearchBtn = document.getElementById("clear-search");
+  const scanBtn = document.getElementById("scan-btn");
+  const closeScannerBtn = document.getElementById("closeScannerBtn");
+  const deviceSelect = document.getElementById("deviceSelect");
+  const torchBtn = document.getElementById("torchBtn");
+
+  const fab = document.getElementById("fabMenu");
+  const sheet = document.getElementById("bottomSheet");
+  const overlay = document.getElementById("sheetOverlay");
+
+  const refreshBtn = document.getElementById("refreshBtn");
+  const exportBtn = document.getElementById("exportBtn");
+  const importBtn = document.getElementById("importBtn");
+  const clearBaseBtn = document.getElementById("clearBaseBtn");
 
   if (searchEl) {
     searchEl.oninput = () => {
@@ -659,8 +672,7 @@ function init() {
 
       document.querySelectorAll("#list .item").forEach(div => {
         const code = normalize(div.dataset.code);
-
-        const nameFromDB = barcodeDB[div.dataset.code]?.name;
+        const nameFromDB = barcodeDB?.[div.dataset.code]?.name;
         const nameFromCodes = window.barcodeCodes?.[div.dataset.code];
         const name = normalize(nameFromDB || nameFromCodes || "");
 
@@ -681,57 +693,18 @@ function init() {
     };
   }
 
-  const scanBtn = document.getElementById("scan-btn");
-  if (scanBtn) scanBtn.onclick = () => {
-    if (!scanning) startCamera();
-    else stopCamera();
-  };
-
-  if (closeScannerBtn) closeScannerBtn.onclick = () => stopCamera();
-  if (deviceSelect) deviceSelect.onchange = () => startCamera();
+  if (scanBtn) scanBtn.onclick = () => (!scanning ? startCamera?.() : stopCamera?.());
+  if (closeScannerBtn) closeScannerBtn.onclick = () => stopCamera?.();
+  if (deviceSelect) deviceSelect.onchange = () => startCamera?.();
   if (torchBtn) torchBtn.onclick = () => toggleTorch?.();
 
-  const fab = document.getElementById("fabMenu");
-  const sheet = document.getElementById("bottomSheet");
-  const overlay = document.getElementById("sheetOverlay");
+  if (fab) fab.onclick = () => { sheet?.classList.add("show"); overlay?.classList.add("show"); };
+  if (overlay) overlay.onclick = () => closeMenu?.();
 
-  if (fab) {
-    fab.onclick = () => {
-      sheet.classList.add("show");
-      overlay.classList.add("show");
-    };
-  }
-
-  if (overlay) {
-    overlay.onclick = () => closeMenu();
-  }
-
-  const refreshBtn = document.getElementById("refreshBtn");
-  const exportBtn = document.getElementById("exportBtn");
-  const importBtn = document.getElementById("importBtn");
-  const clearBaseBtn = document.getElementById("clearBaseBtn");
-
-  if (refreshBtn) refreshBtn.onclick = () => {
-    buildItems();
-    render(allItems);
-    closeMenu();
-    showToast("Обновлено");
-  };
-
-  if (exportBtn) exportBtn.onclick = () => {
-    closeMenu();
-    exportCSV();
-  };
-
-  if (importBtn) importBtn.onclick = () => {
-    closeMenu();
-    importCSV();
-  };
-
-  if (clearBaseBtn) clearBaseBtn.onclick = () => {
-    closeMenu();
-    clearBase();
-  };
+  if (refreshBtn) refreshBtn.onclick = () => { buildItems?.(); render?.(allItems); closeMenu?.(); showToast?.("Обновлено"); };
+  if (exportBtn) exportBtn.onclick = () => { closeMenu?.(); exportCSV?.(); };
+  if (importBtn) importBtn.onclick = () => { closeMenu?.(); importCSV?.(); };
+  if (clearBaseBtn) clearBaseBtn.onclick = () => { closeMenu?.(); clearBase?.(); };
 
   console.log("INIT: готово");
 }
@@ -756,13 +729,14 @@ function destroy() {
     }
   });
 
-  scanning = false;
-  scanLoopRunning = false;
-  stream = null;
-  reader = null;
+  window.scanning = false;
+  window.scanLoopRunning = false;
+  window.stream = null;
+  window.reader = null;
 }
 
 init();
 window.currentDestroy = destroy;
+
 </script>
 
