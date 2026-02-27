@@ -237,22 +237,32 @@ saveDB();
 function renderTable(){
   tableBody.innerHTML = '';
   const keys = Object.keys(db);
+
   if(!keys.length){
     tableBody.innerHTML = '<tr><td colspan="2" class="small" style="padding:12px;color:var(--muted)">База пуста</td></tr>';
     return;
   }
+
   keys.forEach(code=>{
     const tr = document.createElement('tr');
 
     let value = db[code];
+
+    // --- Нормализация названия ---
     if (typeof value === 'object' && value !== null) {
-      value = value.name || '';
+      value =
+        value.name ||
+        value.title ||
+        value.product_name ||
+        value.label ||
+        '';
     }
 
-    tr.innerHTML = `<td>${code}</td><td>${value}</td>`;
+    tr.innerHTML = `<td>${code}</td><td>${escapeHtml(value)}</td>`;
     tableBody.appendChild(tr);
   });
 }
+
 
 function beep(){ try{ navigator.vibrate?.(60); }catch(e){} }
 
