@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Аналитика</title>
+
+<style>
+  body {
+    font-family: sans-serif;
+    padding: 20px;
+    background: #fafafa;
+  }
+
+  h1 {
+    margin-bottom: 20px;
+  }
+
+  .block {
+    background: #fff;
+    padding: 16px;
+    margin-bottom: 28px;
+    border-radius: 10px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.08);
+  }
+
+  .block h2 {
+    margin: 0 0 12px 0;
+    font-size: 20px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 6px 8px;
+    text-align: left;
+  }
+
+  th {
+    background: #eee;
+  }
+
+  .exportBtn {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border: none;
+    background: #007bff;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .exportBtn:hover {
+    background: #005fcc;
+  }
+</style>
+</head>
+
+<body>
+
+<h1>Аналитика</h1>
+
+<!-- БАЗА ТОВАРОВ -->
+<div class="block">
+  <h2>База товаров</h2>
+  <table id="tblBase">
+    <thead>
+      <tr><th>Штрих‑код</th><th>Название</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <button class="exportBtn" onclick="exportTable('tblBase')">Экспортировать</button>
+</div>
+
+<!-- ПРИХОД -->
+<div class="block">
+  <h2>Приход</h2>
+  <table id="tblIncome">
+    <thead>
+      <tr><th>Штрих‑код</th><th>Название</th><th>Остаток</th><th>Приход</th><th>Расход</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <button class="exportBtn" onclick="exportTable('tblIncome')">Экспортировать</button>
+</div>
+
+<!-- ИНВЕНТАРИЗАЦИЯ -->
+<div class="block">
+  <h2>Инвентаризация</h2>
+  <table id="tblInv">
+    <thead>
+      <tr><th>Штрих‑код</th><th>Название</th><th>Остаток</th><th>Факт</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <button class="exportBtn" onclick="exportTable('tblInv')">Экспортировать</button>
+</div>
+
+<script>
+  // ===== Универсальная функция получения названия =====
+  function getName(obj) {
+    if (!obj) return "";
+    if (typeof obj === "string") return obj;
+
+    return (
+      obj.name ||
+      obj.title ||
+      obj.product_name ||
+      obj.label ||
+      ""
+    );
+  }
+
+  // ====== Заглушки данных (замени на реальные) ======
+  // Эти переменные должны быть переданы из твоего приложения
+  // или загружены из localStorage.
+  let barcodeDB = {};      // { "123": "Корм", "456": {name:"Молоко"} }
+  let incomeItems = [];    // [{code, name, qty, plus, minus}]
+  let invItems = [];       // [{code, name, qty, fact}]
+
+  // ===== Рендер таблицы базы =====
+  function renderAnalyticsBase() {
+    const tbody = document.querySelector("#tblBase tbody");
+    tbody.innerHTML = "";
+
+    Object.keys(barcodeDB).forEach(code => {
+      const val = barcodeDB[code];
+      const name = getName(val);
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${code}</td><td>${name}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ===== Рендер таблицы прихода =====
+  function renderAnalyticsIncome() {
+    const tbody = document.querySelector("#tblIncome tbody");
+    tbody.innerHTML = "";
+
+    incomeItems.forEach(item => {
+      const name = getName(item);
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${item.code}</td>
+        <td>${name}</td>
+        <td>${item.qty}</td>
+        <td>${item.plus || 0}</td>
+        <td>${item.minus || 0}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ===== Рендер таблицы инвентаризации =====
+  function renderAnalyticsInv() {
+    const tbody = document.querySelector("#tblInv tbody");
+    tbody.innerHTML = "";
+
+    invItems.forEach(item => {
+      const name = getName(item);
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${item.code}</td>
+        <td>${name}</td>
+        <td>${item.qty}</td>
+        <td>${item.fact || ""}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ===== Экспорт таблицы в CSV =====
+  function exportTable(id) {
+    const table = document.getElementById(id);
+    let csv = "";
+
+    for (let row of table.rows) {
+      const cells = [...row.cells].map(td => `"${td.innerText}"`);
+      csv += cells.join(";") + "\n";
+    }
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = id + ".csv";
+    a.click();
+
+    URL.revokeObjectURL(url);
+  }
+
+  // ===== Инициализация =====
+  function initAnalytics() {
+    // Если данные хранятся в localStorage — можно раскомментировать:
+    // barcodeDB = JSON.parse(localStorage.getItem("barcodeDB") || "{}");
+    // incomeItems = JSON.parse(localStorage.getItem("incomeItems") || "[]");
+    // invItems = JSON.parse(localStorage.getItem("invItems") || "[]");
+
+    renderAnalyticsBase();
+    renderAnalyticsIncome();
+    renderAnalyticsInv();
+  }
+
+  initAnalytics();
+</script>
+
+</body>
+</html>
