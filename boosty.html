@@ -279,17 +279,36 @@ async function scanLoop(){
 function handleDetected(code){
   const now = Date.now();
   if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+
   lastDetected = {code, ts: now};
   beep();
   barcodeInput.value = code;
-  if(barcodeDB[code]) {
-    nameInput.value = barcodeDB[code];
-    showToast('Найден в базе: название подставлено');
+
+  let entry = barcodeDB[code];
+  let name = "";
+
+  if (entry) {
+    // Если в базе лежит объект — достаём название
+    if (typeof entry === "object" && entry !== null) {
+      name =
+        entry.name ||
+        entry.title ||
+        entry.product_name ||
+        entry.label ||
+        "";
+    } else {
+      // Если строка — используем как есть
+      name = entry;
+    }
+
+    nameInput.value = name;
+    showToast("Найден в базе: название подставлено");
   } else {
-    nameInput.value = '';
-    showToast('Код найден — введите название и сохраните');
+    nameInput.value = "";
+    showToast("Код найден — введите название и сохраните");
   }
 }
+
 
 /* Save to barcodeDB */
 saveBtn.addEventListener('click', ()=>{
