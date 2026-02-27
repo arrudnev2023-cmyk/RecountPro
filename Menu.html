@@ -3,195 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>RecountPro — Меню</title>
+  <title>RecountPro</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
   <style>
-    :root{
-      --bg-1: #0b0710;
-      --bg-2: #141025;
-
-      --accent1: #b07aff;
-      --accent2: #d9b7ff;
-
-      --glow-1: rgba(176,122,255,0.35);
-      --glow-2: rgba(176,122,255,0.25);
-      --glow-3: rgba(176,122,255,0.18);
-      --glow-4: rgba(176,122,255,0.12);
-      --glow-5: rgba(176,122,255,0.08);
-
-      --radius-btn: 22px;
-      --radius-card: 24px;
-
-      --shadow-soft: 0 12px 40px rgba(0,0,0,0.45);
-    }
-
-    *{box-sizing:border-box}
     html,body{
-      height:100%;
       margin:0;
       padding:0;
-      background:
-        radial-gradient(900px 500px at 10% 10%, rgba(176,122,255,0.12), transparent),
-        radial-gradient(700px 400px at 90% 90%, rgba(217,183,255,0.10), transparent),
-        linear-gradient(180deg,var(--bg-1),var(--bg-2));
-      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
-      color:#eef0ff;
+      height:100%;
       overflow:hidden;
+      background:#0b0710;
+      font-family:Inter, sans-serif;
     }
 
     #bg{
       position:fixed;
       inset:0;
-      z-index:-2;
-      pointer-events:none;
+      z-index:-1;
     }
 
-    .top-fixed{
-      position:fixed;
-      top:0;
-      left:0;
-      width:100%;
-      padding:30px 16px 20px;
-      text-align:center;
-      background:linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0));
-      backdrop-filter:blur(6px);
-      z-index:10;
-      animation: fadeIn .6s ease forwards;
-    }
-
-    @keyframes fadeIn{
-      from{opacity:0; transform:translateY(-10px)}
-      to{opacity:1; transform:translateY(0)}
-    }
-
-    h2{
-      margin:0 0 8px 0;
-      font-size:26px;
-      font-weight:700;
-      letter-spacing:0.4px;
-    }
-
-    .subtitle{
-      font-size:14px;
-      color:rgba(255,255,255,0.55);
-    }
-
-    .scroll-area{
-      position:absolute;
-      top:125px;
-      left:0;
-      right:0;
-      bottom:0;
-      overflow-y:auto;
-      overflow-x:hidden;
-      padding:0 18px 40px;
-      animation: fadeIn .8s ease forwards;
-    }
-
-    .menu-box{
-      width:100%;
-      max-width:440px;
-      margin:0 auto;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.05);
-      border-radius: var(--radius-card);
-      padding:26px 20px;
-      box-shadow: var(--shadow-soft);
-      backdrop-filter: blur(8px);
-      animation: fadeIn .9s ease forwards;
-    }
-
-    .btn{
-      width:100%;
-      padding:20px 22px;
-      margin:16px 0;
-      border-radius: var(--radius-btn);
-      border:none;
-      color:#fff;
-      font-size:18px;
-      font-weight:600;
-      cursor:pointer;
-      transition: all .18s ease;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:12px;
-      background: linear-gradient(90deg, var(--accent1), var(--accent2));
-      position:relative;
-      overflow:hidden;
-    }
-
-    .btn::before{
-      content: attr(data-icon);
-      font-size:20px;
-      opacity:0.9;
-    }
-
-    .btn.level1{ box-shadow: 0 12px 40px var(--glow-1); }
-    .btn.level2{ box-shadow: 0 10px 34px var(--glow-2); }
-    .btn.level3{ box-shadow: 0 8px 28px var(--glow-3); }
-    .btn.level4{ box-shadow: 0 6px 22px var(--glow-4); }
-    .btn.level5{ box-shadow: 0 4px 16px var(--glow-5); }
-
-    .btn:hover{
-      transform: translateY(-4px);
-      filter: brightness(1.08);
-    }
-
-    .btn:active{
-      transform: scale(0.97);
-      filter: brightness(0.92);
-    }
-
-    .btn:hover::after{
-      content:"";
+    #app{
       position:absolute;
       inset:0;
-      border-radius:inherit;
-      border:2px solid rgba(255,255,255,0.18);
-      box-shadow: 0 0 18px rgba(255,255,255,0.18);
-    }
-
-    /* Анимации SPA */
-    #app {
-      position: relative;
-      overflow: hidden;
-    }
-
-    .view-screen {
-      animation: viewFadeIn .28s ease;
-    }
-
-    .view-screen-exit {
-      animation: viewFadeOut .22s ease forwards;
-    }
-
-    @keyframes viewFadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px) scale(0.98);
-        filter: blur(4px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-        filter: blur(0);
-      }
-    }
-
-    @keyframes viewFadeOut {
-      from {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-        filter: blur(0);
-      }
-      to {
-        opacity: 0;
-        transform: translateY(6px) scale(0.98);
-        filter: blur(4px);
-      }
+      overflow:hidden;
     }
   </style>
 </head>
@@ -200,26 +35,18 @@
 
   <canvas id="bg"></canvas>
 
-  <div class="top-fixed">
-    <h2>Меню RecountPro</h2>
-    <div class="subtitle">Быстрый доступ к основным разделам</div>
-  </div>
+  <!-- Сюда router будет подгружать экраны -->
+  <div id="app"></div>
 
-  <div class="scroll-area">
-    <div id="app"></div>
-  </div>
-
-
-
+  <!-- Фон, анимации, звёзды — оставляем -->
   <script>
-    // Canvas background: stars + brighter, visible comets
     const canvas = document.getElementById('bg');
     const ctx = canvas.getContext('2d');
 
     function resizeCanvas(){
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.max(1, Math.floor(window.innerWidth * dpr));
-      canvas.height = Math.max(1, Math.floor(window.innerHeight * dpr));
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
       canvas.style.width = window.innerWidth + 'px';
       canvas.style.height = window.innerHeight + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -227,182 +54,30 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // Stars
     const stars = [];
-    const STAR_COUNT = Math.max(120, Math.floor((window.innerWidth * window.innerHeight) / 6000));
-    for(let i=0;i<STAR_COUNT;i++){
+    for(let i=0;i<200;i++){
       stars.push({
-        x: Math.random()*window.innerWidth,
-        y: Math.random()*window.innerHeight,
-        r: Math.random()*1.6 + 0.4,
-        alpha: Math.random()*0.9 + 0.1,
-        speed: Math.random()*0.25 + 0.02,
-        twinkle: Math.random()*0.02 + 0.005
+        x:Math.random()*window.innerWidth,
+        y:Math.random()*window.innerHeight,
+        r:Math.random()*1.5+0.5,
+        a:Math.random()*0.8+0.2
       });
-    }
-
-    // Comets pool
-    const comets = [];
-
-    function spawnComet(){
-      // spawn from left/top area with varied angles for visibility
-      const startY = Math.random() * window.innerHeight * 0.6;
-      const speed = 6 + Math.random()*6; // faster so visible
-      const angle = (Math.random()*30 - 10) * (Math.PI/180); // slight angle
-      const length = 120 + Math.random()*220;
-      comets.push({
-        x: -80 - Math.random()*120,
-        y: startY,
-        vx: speed * Math.cos(angle),
-        vy: speed * Math.sin(angle) + 0.6,
-        life: 0,
-        maxLife: 400 + Math.random()*200,
-        length,
-        glow: 0.9 + Math.random()*0.6
-      });
-    }
-
-    // Click particles (decorative)
-    let clickParticles = [];
-    canvas.addEventListener('click', (e)=>{
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left);
-      const y = (e.clientY - rect.top);
-      for(let i=0;i<18;i++){
-        clickParticles.push({
-          x, y,
-          vx: (Math.random()-0.5)*4,
-          vy: (Math.random()-0.5)*4,
-          life: 0,
-          maxLife: 60,
-          r: Math.random()*2 + 1
-        });
-      }
-    });
-
-    function drawClickParticles(){
-      for(let i = clickParticles.length-1; i>=0; i--){
-        const p = clickParticles[i];
-        ctx.fillStyle = `rgba(255,255,200,${1 - p.life / p.maxLife})`;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-        ctx.fill();
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life++;
-        if(p.life > p.maxLife) clickParticles.splice(i,1);
-      }
-    }
-
-    function drawComet(c){
-      // tail
-      const tailLen = c.length;
-      const tx = c.x - c.vx * (tailLen/ (c.vx||1));
-      const ty = c.y - c.vy * (tailLen/ (c.vy||1));
-      const grad = ctx.createLinearGradient(c.x, c.y, tx, ty);
-      grad.addColorStop(0, `rgba(255,255,255,${0.95 * c.glow})`);
-      grad.addColorStop(0.4, `rgba(200,108,255,${0.45 * c.glow})`);
-      grad.addColorStop(1, `rgba(200,108,255,0)`);
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = 3.5;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(c.x, c.y);
-      ctx.lineTo(tx, ty);
-      ctx.stroke();
-
-      // bright head with glow
-      const headRadius = 4 + (c.glow*2);
-      ctx.beginPath();
-      ctx.fillStyle = `rgba(255,255,255,${0.95 * c.glow})`;
-      ctx.arc(c.x, c.y, headRadius, 0, Math.PI*2);
-      ctx.fill();
-
-      // soft outer glow
-      const g = ctx.createRadialGradient(c.x, c.y, headRadius*0.2, c.x, c.y, headRadius*6);
-      g.addColorStop(0, `rgba(200,108,255,${0.18 * c.glow})`);
-      g.addColorStop(1, 'rgba(200,108,255,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, headRadius*6, 0, Math.PI*2);
-      ctx.fill();
     }
 
     function animate(){
-      // clear with slight transparent fill to create subtle trails
       ctx.clearRect(0,0,canvas.width,canvas.height);
-
-      // draw stars
-      for(let s of stars){
-        s.alpha += (Math.random()-0.5)*s.twinkle;
-        if(s.alpha < 0.05) s.alpha = 0.05;
-        if(s.alpha > 1) s.alpha = 1;
-        s.y += s.speed;
-        if(s.y > window.innerHeight){
-          s.y = -2;
-          s.x = Math.random()*window.innerWidth;
-        }
-        ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+      for(const s of stars){
+        ctx.fillStyle=`rgba(255,255,255,${s.a})`;
         ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+        ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
         ctx.fill();
       }
-
-      // spawn comets more frequently but controlled
-      if(Math.random() < 0.02) spawnComet(); // ~2% per frame -> visible often
-
-      // draw comets
-      for(let i = comets.length-1; i>=0; i--){
-        const c = comets[i];
-        drawComet(c);
-        c.x += c.vx;
-        c.y += c.vy;
-        c.life++;
-        // fade out by reducing glow
-        c.glow *= 0.9995;
-        if(c.x > window.innerWidth + 200 || c.y > window.innerHeight + 200 || c.life > c.maxLife){
-          comets.splice(i,1);
-        }
-      }
-
-      drawClickParticles();
       requestAnimationFrame(animate);
     }
-
-    // Start animation loop
     animate();
-
-    // Rebuild stars on resize to keep density consistent
-    let resizeTimeout;
-    window.addEventListener('resize', ()=>{
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(()=>{
-        resizeCanvas();
-        // rebuild stars to match new size
-        stars.length = 0;
-        const newCount = Math.max(120, Math.floor((window.innerWidth * window.innerHeight) / 6000));
-        for(let i=0;i<newCount;i++){
-          stars.push({
-            x: Math.random()*window.innerWidth,
-            y: Math.random()*window.innerHeight,
-            r: Math.random()*1.6 + 0.4,
-            alpha: Math.random()*0.9 + 0.1,
-            speed: Math.random()*0.25 + 0.02,
-            twinkle: Math.random()*0.02 + 0.005
-          });
-        }
-      }, 120);
-    });
-
-    // Prevent double-tap zoom on iOS Safari
-    document.addEventListener('touchstart', function preventZoom(e){
-      if(e.touches && e.touches.length > 1) e.preventDefault();
-    }, { passive: false });
-
   </script>
 
-  
-  
+  <!-- ВАЖНО: router.js должен быть ТОЛЬКО здесь -->
   <script src="router.js"></script>
 
 </body>
