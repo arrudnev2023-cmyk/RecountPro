@@ -1,313 +1,988 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Приход / Расход</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+  <title>RecountPro — Приход / Расход</title>
 
-<style>
-  :root{
-    --bg:#f6f7fb;
-    --card:#ffffff;
-    --muted:#7a7f88;
-    --accent:#0b84ff;
-    --danger:#ff6b6b;
-  }
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
 
-  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;background:var(--bg);color:#111}
-  .container{max-width:980px;margin:18px auto;padding:12px}
-  header{display:flex;gap:8px;align-items:center;margin-bottom:12px}
-  .btn{padding:8px 10px;border-radius:8px;border:1px solid #dcdfe6;background:#fff;cursor:pointer}
-  .btn.primary{background:var(--accent);color:#fff;border-color:transparent}
-  .btn.ghost{background:transparent;border:1px solid transparent}
-  #stockSearch{flex:1;padding:8px;border-radius:8px;border:1px solid #e6e6e9}
-  #stockControls{display:flex;gap:8px;align-items:center;width:100%}
-  #stockList{display:flex;flex-direction:column;gap:10px;max-height:68vh;overflow:auto;padding:6px}
-  .stock-item{background:var(--card);border:1px solid #e9e9ee;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
-  .row{display:flex;justify-content:space-between;align-items:center;gap:12px}
-  .title{font-weight:600}
-  .muted{color:var(--muted);font-size:13px}
-  .qty-controls{display:flex;align-items:center;gap:8px}
-  .qty-controls button{width:40px;height:36px;border-radius:8px;border:1px solid #ddd;background:#fafafa;cursor:pointer}
-  .qty-controls input{width:84px;padding:8px;border-radius:8px;border:1px solid #e6e6e9;text-align:center}
-  .curQty{font-weight:600}
-  .highlight{background:#fff7d6}
-  .empty-note{padding:18px;text-align:center;color:var(--muted);background:transparent}
-  /* responsive */
-  @media (max-width:640px){
-    .row{flex-direction:column;align-items:flex-start}
-    .qty-controls{width:100%;justify-content:flex-start}
-  }
-</style>
+  <style>
+    :root{
+      --accent:#6d28d9;
+      --accent-light:#a78bfa;
+      --text:#e6eef8;
+      --muted:#9aa3b2;
+      --card-bg: linear-gradient(135deg,#1e1e2f,#2a2a40);
+      --maxw:980px;
+    }
+
+    *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+    html,body{
+      height:100%; margin:0;
+      background:linear-gradient(180deg,#05030a,#0b0710);
+      color:var(--text);
+      font-family:Inter,Segoe UI,system-ui,Arial;
+      overflow:hidden;
+    }
+
+    header{
+      position:fixed; left:0; right:0; top:0;
+      padding:12px;
+      background:rgba(10,10,12,0.7);
+      backdrop-filter:blur(8px);
+      z-index:1000;
+      border-radius:0 0 14px 14px;
+    }
+    header h1{
+      margin:0; text-align:center; font-size:1.15rem;
+    }
+
+    #search-wrap{
+      max-width:var(--maxw);
+      margin:10px auto;
+      position:relative;
+    }
+    #search{
+      width:100%;
+      padding:10px 56px 10px 12px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.04);
+      background:rgba(20,20,24,0.6);
+      color:var(--text);
+      font-size:15px;
+    }
+    #scan-btn{
+      position:absolute; right:44px; top:50%; transform:translateY(-50%);
+      background:none; border:none; color:var(--muted); cursor:pointer;
+    }
+    #clear-search{
+      position:absolute; right:8px; top:50%; transform:translateY(-50%);
+      background:none; border:none; color:var(--muted); cursor:pointer;
+    }
+
+    #content{
+      position:fixed; left:0; right:0; top:96px; bottom:0;
+      overflow:auto; padding:12px;
+    }
+
+    .list{max-width:var(--maxw); margin:0 auto;}
+
+    .item{
+      width:100%;
+      margin:10px 0;
+      padding:12px;
+      border-radius:12px;
+      background:var(--card-bg);
+      box-shadow:0 8px 30px rgba(0,0,0,0.6);
+      border-left:6px solid transparent;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .item.found{
+      box-shadow:0 18px 50px rgba(106,17,203,0.18);
+      transform:translateY(-6px);
+    }
+
+    .item.highlight-purple {
+      box-shadow: 0 0 0 3px #7c3aed, 0 12px 32px rgba(124, 58, 237, 0.4);
+      border-left-color: #7c3aed !important;
+      transition: box-shadow .25s ease, transform .25s ease;
+    }
+
+    .field{font-size:14px;}
+    .label{font-weight:700; color:#dbeafe; margin-right:6px;}
+    .hidden{display:none !important;}
+
+    .row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      justify-content:space-between;
+    }
+
+    .qty-block{
+      margin-top:6px;
+      padding-top:6px;
+      border-top:1px solid rgba(255,255,255,0.06);
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .qty-row{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .qty-row-label{
+      min-width:60px;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .qty-controls{
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+
+    .qty-controls input{
+      width:70px;
+      padding:6px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(10,10,16,0.7);
+      color:var(--text);
+      text-align:center;
+      font-size:14px;
+    }
+
+    .qty-controls button{
+      width:34px;
+      height:32px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.18);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      cursor:pointer;
+      font-size:16px;
+    }
+
+    .qty-current{
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    #fabMenu{
+      position:fixed; bottom:1rem; right:1rem; z-index:1001;
+      background: linear-gradient(135deg, #6a11cb, #2575fc);
+      color:#fff; border:none;
+      padding:0.9rem 1.2rem;
+      border-radius:14px;
+      font-size:1.2rem; font-weight:600;
+      cursor:pointer;
+      box-shadow:0 6px 20px rgba(0,0,0,0.35), 0 0 12px rgba(106,17,203,0.6);
+      transition:all .3s ease;
+      backdrop-filter:blur(6px);
+      display:flex; align-items:center; justify-content:center;
+    }
+
+    #sheetOverlay{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,0.55);
+      backdrop-filter:blur(4px);
+      opacity:0; pointer-events:none;
+      transition:opacity .25s ease;
+      z-index:999;
+    }
+    #sheetOverlay.show{
+      opacity:1; pointer-events:auto;
+    }
+
+    #bottomSheet{
+      position:fixed; left:0; right:0; bottom:-60vh;
+      padding:1.2rem;
+      background:rgba(20,20,20,0.7);
+      backdrop-filter:blur(12px) saturate(180%);
+      border-radius:20px 20px 0 0;
+      box-shadow:0 -12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+      transition:bottom .35s ease;
+      z-index:1002;
+    }
+    #bottomSheet.show{ bottom:0; }
+
+    .sheet-content{
+      display:flex; flex-direction:column; gap:0.7rem;
+    }
+    .sheet-btn{
+      background:linear-gradient(145deg, #1f1f1f, #2c2c2c);
+      color:#f9f9f9; border:none;
+      padding:0.9rem 1rem;
+      border-radius:12px;
+      font-size:1rem; font-weight:500;
+      cursor:pointer;
+      transition:all .25s ease;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 14px rgba(0,0,0,0.4);
+      display:flex; align-items:center; gap:10px;
+    }
+
+    @keyframes fadeIn{
+      from{opacity:0; transform:translateY(12px) scale(0.95);}
+      to{opacity:1; transform:translateY(0) scale(1);}
+    }
+
+    .preview-wrap.camera-1-3 {
+      position: relative;
+      width: 100%;
+      max-width:var(--maxw);
+      margin:0 auto 10px;
+      padding-top: 33%;
+      overflow: hidden;
+      border-radius: 12px;
+      background: #000;
+    }
+
+    .preview-wrap.camera-1-3 video {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #scannerCard.card{
+      max-width:var(--maxw);
+      margin:0 auto 10px;
+      padding:10px;
+      border-radius:12px;
+      background:rgba(10,10,16,0.9);
+      box-shadow:0 8px 30px rgba(0,0,0,0.6);
+    }
+
+    .controls{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      margin-top:8px;
+      font-size:13px;
+    }
+
+    .controls .btn{
+      padding:6px 10px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.18);
+      background:rgba(255,255,255,0.04);
+      color:var(--text);
+      cursor:pointer;
+    }
+
+    #bg{
+      position:fixed;
+      inset:0;
+      z-index:-1;
+    }
+  </style>
 </head>
-<body>
-  <div class="container" id="stockApp">
-    <header>
-      <div id="stockControls" style="width:100%">
-        <button id="openScannerFromStock" class="btn">Сканер</button>
-        <input id="stockSearch" placeholder="Поиск по названию или артикулу" />
-        <button id="toggleZeroBtn" class="btn">Показать 0</button>
-        <button id="saveAllBtn" class="btn">Сохранить все</button>
-        <button id="backFromStockBtn" class="btn">Назад</button>
-        <button id="stockMenuBtn" class="btn">Меню</button>
-      </div>
-    </header>
 
-    <main id="stockList"></main>
-    <div id="emptyNote" class="empty-note" style="display:none">Ничего не найдено</div>
+<body>
+  <canvas id="bg"></canvas>
+
+  <header>
+    <h1>RecountPro — Приход / Расход</h1>
+    <div id="search-wrap">
+      <input id="search" placeholder="Поиск по названию или коду..." autocomplete="off" />
+      <button id="scan-btn">📷</button>
+      <button id="clear-search">×</button>
+    </div>
+  </header>
+
+  <main id="content">
+    <div id="scannerCard" class="card" style="display:none">
+      <div class="preview-wrap camera-1-3"><video id="preview" playsinline muted></video></div>
+      <div class="controls">
+        <select id="deviceSelect" class="btn" style="min-width:160px"></select>
+        <button id="torchBtn" class="btn">🔦</button>
+        <button id="closeScannerBtn" class="btn">Закрыть</button>
+        <div id="scanResult" style="margin-left:auto;color:var(--muted)"></div>
+      </div>
+    </div>
+
+    <div id="list" class="list"></div>
+  </main>
+
+  <button id="fabMenu">☰</button>
+
+  <div id="sheetOverlay"></div>
+
+  <div id="bottomSheet">
+    <div class="sheet-content">
+      <button class="sheet-btn" id="toggleZeroBtn">🔍 Показать товары с 0</button>
+      <button class="sheet-btn" id="backToMenuBtn">🏠 В меню</button>
+    </div>
   </div>
 
 <script>
-/*
-  Полный модуль экрана "Приход / Расход".
-  Требования интеграции:
-    - В проекте должен быть объект barcodeDB (или он будет загружен из localStorage).
-    - Желательно иметь saveDB() и escapeHtml(); если нет — используются заглушки.
-    - Для сканера можно реализовать openScanner({onScan: fn}) — если нет, кнопка просто логирует.
-    - Для меню можно реализовать openMenu() — если нет, кнопка логирует.
-    - Для открытия экрана из основного приложения можно вызвать openStockScreen() или добавить кнопку с id="openStockBtn".
-*/
+/* =========================
+   БАЗЫ: ТОВАРЫ + ШК
+========================= */
 
-(function(){
-  // --- зависимости / заглушки ---
-  if (typeof barcodeDB === "undefined") {
-    // Попробуем загрузить из localStorage
-    try {
-      const raw = localStorage.getItem("barcodeDB");
-      barcodeDB = raw ? JSON.parse(raw) : {};
-    } catch(e) { barcodeDB = {}; }
-  }
+let barcodeDB = {};
+let barcodeCodes = {};
+let allItems = [];
+let showZero = false;
 
-  if (typeof escapeHtml !== "function") {
-    window.escapeHtml = function(s){ return String(s||"").replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); };
-  }
-  if (typeof saveDB !== "function") {
-    window.saveDB = function(){ localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB || {})); };
-  }
-
-  // --- state & elements ---
-  let showZero = false;
-  let currentQuery = "";
-  const stockList = document.getElementById("stockList");
-  const stockSearch = document.getElementById("stockSearch");
-  const toggleZeroBtn = document.getElementById("toggleZeroBtn");
-  const backFromStockBtn = document.getElementById("backFromStockBtn");
-  const openScannerFromStock = document.getElementById("openScannerFromStock");
-  const stockMenuBtn = document.getElementById("stockMenuBtn");
-  const saveAllBtn = document.getElementById("saveAllBtn");
-  const emptyNote = document.getElementById("emptyNote");
-
-  // --- API наружу ---
-  window.openStockScreen = function() {
-    // если у вас есть основной контент, можно скрыть его здесь
-    // document.getElementById("content").style.display = "none";
-    // показываем контейнер (в этом файле он всегда видим)
-    renderStockScreen();
-    // фокус на поиск
-    stockSearch.focus();
-  };
-
-  // --- рендер списка ---
-  function renderStockScreen() {
-    stockList.innerHTML = "";
-    const items = Object.values(barcodeDB || {}).sort((a,b)=> (a.name||"").localeCompare(b.name||""));
-    const q = (currentQuery || "").trim().toLowerCase();
-
-    let shown = 0;
-    for (const item of items) {
-      const code = item.code;
-      const storedQty = Number(localStorage.getItem("qty_" + code) || (item.qty || 0));
-
-      if (!showZero && storedQty === 0 && q === "") continue;
-
-      if (q) {
-        const hay = ((item.name||"") + " " + (item.code||"")).toLowerCase();
-        if (!hay.includes(q)) continue;
+function loadDB(){
+  try{
+    const raw = localStorage.getItem("barcodeDB");
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && typeof parsed === "object"){
+        barcodeDB = parsed;
       }
-
-      const div = document.createElement("div");
-      div.className = "stock-item";
-      div.dataset.code = code;
-
-      div.innerHTML = `
-        <div class="row">
-          <div>
-            <div class="title">${escapeHtml(item.name || "")}</div>
-            <div class="muted">Артикул: ${escapeHtml(code || "")}</div>
-          </div>
-          <div class="muted">Цена: ${item.price ? item.price : "-"} ${item.unit || ""}</div>
-        </div>
-
-        <div class="row">
-          <div class="qty-controls">
-            <button class="qtyMinus" data-code="${escapeHtml(code)}">−1</button>
-            <input type="number" class="qtyInput" data-code="${escapeHtml(code)}" value="${storedQty}" min="0" />
-            <button class="qtyPlus" data-code="${escapeHtml(code)}">+1</button>
-          </div>
-
-          <div class="muted">Остаток: <span class="curQty">${storedQty}</span></div>
-        </div>
-      `;
-
-      stockList.appendChild(div);
-      shown++;
     }
+  }catch(e){ barcodeDB = {}; }
 
-    emptyNote.style.display = shown ? "none" : "block";
-    attachStockHandlers();
-  }
+  try{
+    const rawCodes = localStorage.getItem("barcodeCodes");
+    if(rawCodes){
+      const parsed = JSON.parse(rawCodes);
+      if(parsed && typeof parsed === "object"){
+        barcodeCodes = parsed;
+      }
+    }
+  }catch(e){ barcodeCodes = {}; }
 
-  // --- обработчики ---
-  function attachStockHandlers() {
-    // +1
-    stockList.querySelectorAll(".qtyPlus").forEach(btn=>{
-      btn.onclick = () => {
-        const code = btn.dataset.code;
-        const input = stockList.querySelector(`input.qtyInput[data-code="${code}"]`);
-        if (!input) return;
-        input.value = Number(input.value || 0) + 1;
-        onQtyChange(code, input);
-        flashRow(code);
-      };
-    });
+  if(!barcodeDB) barcodeDB = {};
+  if(!barcodeCodes) barcodeCodes = {};
+}
 
-    // -1
-    stockList.querySelectorAll(".qtyMinus").forEach(btn=>{
-      btn.onclick = () => {
-        const code = btn.dataset.code;
-        const input = stockList.querySelector(`input.qtyInput[data-code="${code}"]`);
-        if (!input) return;
-        input.value = Math.max(0, Number(input.value || 0) - 1);
-        onQtyChange(code, input);
-        flashRow(code);
-      };
-    });
+function saveDB(){
+  localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
+}
 
-    // ручной ввод
-    stockList.querySelectorAll(".qtyInput").forEach(input=>{
-      input.onchange = () => {
-        const code = input.dataset.code;
-        onQtyChange(code, input);
-      };
-      input.oninput = () => {
-        const row = input.closest(".stock-item");
-        if (row) row.querySelector(".curQty").textContent = input.value;
-      };
-    });
-  }
+function escapeHtml(s){
+  return String(s||"")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
+}
 
-  // --- при изменении количества ---
-  function onQtyChange(code, inputEl) {
-    let qty = Number(inputEl.value || 0);
-    if (isNaN(qty) || qty < 0) qty = 0;
-    inputEl.value = qty;
+/* =========================
+   СБОР СПИСКА ТОВАРОВ
+========================= */
 
-    // localStorage
-    localStorage.setItem("qty_" + code, qty);
+function buildItems(){
+  allItems = Object.keys(barcodeDB).map(code => {
+    const rec = barcodeDB[code];
 
-    // barcodeDB
-    if (!barcodeDB[code]) {
-      barcodeDB[code] = { code, name: code, unit: "", price: 0, qty };
+    let name;
+    let qty = 0;
+
+    if (typeof rec === "string") {
+      // старый формат: только название
+      name = rec;
+      qty = 0;
+    } else if (rec && typeof rec === "object") {
+      name = rec.name || code;
+      qty  = Number(rec.qty || 0);
     } else {
-      barcodeDB[code].qty = qty;
+      name = code;
+      qty  = 0;
     }
 
-    // обновляем видимую метку
-    const row = inputEl.closest(".stock-item");
-    if (row) row.querySelector(".curQty").textContent = qty;
+    return { code, name, qty };
+  });
+}
 
-    // сохраняем базу
-    if (typeof saveDB === "function") saveDB();
-    else localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
-  }
 
-  // --- визуальная подсветка при сканировании/изменении ---
-  function flashRow(code) {
-    const el = stockList.querySelector(`.stock-item[data-code="${code}"]`);
-    if (!el) return;
-    el.classList.add("highlight");
-    setTimeout(()=> el.classList.remove("highlight"), 600);
-  }
 
-  // --- кнопки управления ---
-  toggleZeroBtn.onclick = () => {
-    showZero = !showZero;
-    toggleZeroBtn.textContent = showZero ? "Скрыть 0" : "Показать 0";
-    renderStockScreen();
-  };
+/* =========================
+   РЕНДЕР
+========================= */
 
-  stockSearch.addEventListener("input", (e) => {
-    currentQuery = e.target.value;
-    renderStockScreen();
+const listEl = document.getElementById("list");
+
+  
+function render(items){
+  listEl.innerHTML = "";
+
+  items.forEach(item => {
+   if (!showZero && item.qty === 0 && searchEl.value === "") return;
+
+
+    // --- Берём название из базы ШТРИХ-КОДОВ ---
+    let name = barcodeCodes[item.code] || item.name || item.code;
+
+    const div = document.createElement("div");
+    div.className = "item";
+    div.dataset.code = item.code;
+
+    div.innerHTML = `
+      <div class="field"><span class="label">Название:</span> ${escapeHtml(name)}</div>
+      <div class="field"><span class="label">Штрих‑код:</span> ${item.code}</div>
+      <div class="field qty-current"><span class="label">Остаток:</span> <span class="curQty">${item.qty}</span></div>
+
+      <div class="qty-block">
+        <div class="qty-row">
+          <div class="qty-row-label">Приход</div>
+          <div class="qty-controls">
+            <button class="plusPlus" data-code="${item.code}">+1</button>
+            <input type="number" class="qtyPlusInput" data-code="${item.code}" value="0" min="0">
+            <button class="minusPlus" data-code="${item.code}">-1</button>
+          </div>
+        </div>
+
+        <div class="qty-row">
+          <div class="qty-row-label">Расход</div>
+          <div class="qty-controls">
+            <button class="plusMinus" data-code="${item.code}">+1</button>
+            <input type="number" class="qtyMinusInput" data-code="${item.code}" value="0" min="0">
+            <button class="minusMinus" data-code="${item.code}">-1</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    listEl.appendChild(div);
   });
 
-  backFromStockBtn.onclick = () => {
-    // если нужно — вернуться в основной экран
-    // document.getElementById("content").style.display = "block";
-    // здесь просто очищаем поиск
-    stockSearch.value = "";
-    currentQuery = "";
-    renderStockScreen();
-  };
+  attachQtyHandlers();
+}
 
-  // Сохранить все (дублирует saveDB, но оставлен для UX)
-  saveAllBtn.onclick = () => {
-    if (typeof saveDB === "function") saveDB();
-    else localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
-    // краткая визуальная индикация
-    saveAllBtn.textContent = "Сохранено";
-    setTimeout(()=> saveAllBtn.textContent = "Сохранить все", 900);
-  };
 
-  // Меню
-  stockMenuBtn.onclick = () => {
-    if (typeof openMenu === "function") openMenu();
-    else console.log("menu");
-  };
 
-  // Сканер
-  openScannerFromStock.onclick = () => {
-    if (typeof openScanner === "function") {
-      openScanner({ onScan: onScannedCode });
+
+
+
+/* =========================
+   ПРИХОД / РАСХОД
+========================= */
+
+function applyChange(code) {
+  const plusInput  = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
+  const minusInput = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
+  if(!plusInput || !minusInput) return;
+
+  let plus  = Number(plusInput.value || 0);
+  let minus = Number(minusInput.value || 0);
+  if(isNaN(plus)) plus = 0;
+  if(isNaN(minus)) minus = 0;
+
+  // старый остаток
+  let oldQty = 0;
+  const rec = barcodeDB[code];
+
+  if (rec) {
+    if (typeof rec === "object" && rec !== null) {
+      oldQty = Number(rec.qty || 0);
     } else {
-      console.log("open scanner");
-      // для теста можно вызвать onScannedCode("4601234000011");
+      // если там строка (старый формат) — qty считаем 0
+      oldQty = 0;
     }
-  };
-
-  // Обработка отсканированного кода
-  function onScannedCode(code) {
-    // если есть — прокрутить и подсветить
-    const el = stockList.querySelector(`.stock-item[data-code="${code}"]`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("highlight");
-      setTimeout(()=> el.classList.remove("highlight"), 700);
-      const input = el.querySelector("input.qtyInput");
-      if (input) input.focus();
-      return;
-    }
-
-    // если нет в базе — добавляем и рендерим
-    if (!barcodeDB[code]) {
-      barcodeDB[code] = { code, name: code, unit: "", price: 0, qty: 0 };
-      if (typeof saveDB === "function") saveDB();
-      else localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
-    }
-    renderStockScreen();
-    // прокрутка к новому элементу
-    const newEl = stockList.querySelector(`.stock-item[data-code="${code}"]`);
-    if (newEl) newEl.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
-  // --- инициализация: привязка кнопки открытия если есть ---
-  const openBtn = document.getElementById("openStockBtn");
-  if (openBtn) openBtn.onclick = openStockScreen;
+  let newQty = oldQty + plus - minus;
+  if (newQty < 0) newQty = 0;
 
-  // рендерим при загрузке
-  renderStockScreen();
+  // если товара нет или он в виде строки — нормализуем в объект
+  if (!rec) {
+    barcodeDB[code] = {
+      name: barcodeCodes[code] || code,
+      qty: newQty
+    };
+  } else if (typeof rec === "string") {
+    barcodeDB[code] = {
+      name: rec,
+      qty: newQty
+    };
+  } else {
+    barcodeDB[code].qty = newQty;
+  }
 
-})();
+  saveDB();
+
+  const card = document.querySelector(`.item[data-code="${code}"]`);
+  if(card){
+    const cur = card.querySelector(".curQty");
+    if(cur) cur.textContent = newQty;
+    card.classList.add("highlight-purple");
+    setTimeout(()=> card.classList.remove("highlight-purple"), 600);
+  }
+
+  plusInput.value = "0";
+  minusInput.value = "0";
+}
+
+
+
+function attachQtyHandlers(){
+  document.querySelectorAll(".plusPlus").forEach(btn=>{
+    btn.onclick = ()=>{
+      const code = btn.dataset.code;
+      const input = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
+      input.value = Number(input.value||0)+1;
+      applyChange(code);
+    };
+  });
+
+  document.querySelectorAll(".minusPlus").forEach(btn=>{
+    btn.onclick = ()=>{
+      const code = btn.dataset.code;
+      const input = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
+      let v = Number(input.value||0)-1;
+      if(v<0) v=0;
+      input.value = v;
+      applyChange(code);
+    };
+  });
+
+  document.querySelectorAll(".plusMinus").forEach(btn=>{
+    btn.onclick = ()=>{
+      const code = btn.dataset.code;
+      const input = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
+      input.value = Number(input.value||0)+1;
+      applyChange(code);
+    };
+  });
+
+  document.querySelectorAll(".minusMinus").forEach(btn=>{
+    btn.onclick = ()=>{
+      const code = btn.dataset.code;
+      const input = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
+      let v = Number(input.value||0)-1;
+      if(v<0) v=0;
+      input.value = v;
+      applyChange(code);
+    };
+  });
+
+  document.querySelectorAll(".qtyPlusInput").forEach(inp=>{
+    inp.onchange = ()=> applyChange(inp.dataset.code);
+  });
+  document.querySelectorAll(".qtyMinusInput").forEach(inp=>{
+    inp.onchange = ()=> applyChange(inp.dataset.code);
+  });
+}
+
+/* =========================
+   ПОИСК
+========================= */
+
+const searchEl = document.getElementById("search");
+const clearSearchBtn = document.getElementById("clear-search");
+
+function normalize(s){
+  return String(s||"")
+    .toLowerCase()
+    .replace(/ё/g,"е")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function matchesQuery(text, query){
+  const words = query.split(" ").filter(Boolean);
+  return words.every(w => text.includes(w));
+}
+
+searchEl.addEventListener("input", () => {
+  const q = normalize(searchEl.value);
+
+  document.querySelectorAll("#list .item").forEach(div => {
+    const code = normalize(div.dataset.code);
+    const rec = barcodeDB[div.dataset.code] || { name: barcodeCodes[div.dataset.code] || "" };
+    const name = normalize(typeof rec === "string" ? rec : (rec?.name || ""));
+    const match = q === "" || matchesQuery(name, q) || matchesQuery(code, q);
+    div.classList.toggle("hidden", !match);
+  });
+});
+
+clearSearchBtn.addEventListener("click", () => {
+  searchEl.value = "";
+  document.querySelectorAll("#list .item").forEach(d => d.classList.remove("hidden"));
+});
+
+/* =========================
+   ПОДСВЕТКА
+========================= */
+
+function highlightItem(code){
+  const card = document.querySelector(`.item[data-code="${code}"]`);
+  if(!card) return;
+
+  card.classList.remove("found");
+  card.classList.remove("highlight-purple");
+  card.classList.add("highlight-purple");
+
+  setTimeout(() => {
+    card.classList.remove("highlight-purple");
+  }, 2000);
+
+  setTimeout(() => {
+    card.scrollIntoView({ behavior:"smooth", block:"center" });
+  }, 150);
+}
+
+/* =========================
+   СКАНЕР
+========================= */
+
+let stream = null;
+let scanning = false;
+let currentDeviceId = null;
+let reader = null;
+let detector = ('BarcodeDetector' in window)
+  ? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]})
+  : null;
+
+let canvasPool = [];
+let lastDetected = {code:null, ts:0};
+const DEBOUNCE_MS = 900;
+
+const scannerCard = document.getElementById("scannerCard");
+const preview = document.getElementById("preview");
+const deviceSelect = document.getElementById("deviceSelect");
+const torchBtn = document.getElementById("torchBtn");
+const closeScannerBtn = document.getElementById("closeScannerBtn");
+const scanResult = document.getElementById("scanResult");
+const scanBtn = document.getElementById("scan-btn");
+
+function showToast(text, ms=1200){
+  scanResult.innerText = text;
+  setTimeout(()=>{ if(scanResult.innerText===text) scanResult.innerText=''; }, ms);
+}
+
+async function enumerateCameras(){
+  try{
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d => d.kind === "videoinput");
+    deviceSelect.innerHTML = "";
+    cams.forEach((c, idx)=>{
+      const opt = document.createElement("option");
+      opt.value = c.deviceId;
+      opt.text = c.label || `Камера ${idx+1}`;
+      deviceSelect.appendChild(opt);
+    });
+    if(cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
+    if(currentDeviceId) deviceSelect.value = currentDeviceId;
+  }catch(e){}
+}
+
+function getCanvas(w,h){
+  for(const c of canvasPool) if(c.width===w && c.height===h) return c;
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  canvasPool.push(c);
+  return c;
+}
+
+async function tryDecodeCanvas(canvas){
+  if(detector){
+    try{
+      const ctx = canvas.getContext("2d");
+      const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+      const res = await detector.detect(img);
+      if(res && res.length) return res[0].rawValue;
+    }catch(e){}
+  }
+
+  try{
+    const src = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    const bin = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
+    const result = new ZXing.MultiFormatReader().decode(bin);
+    if(result && result.text) return result.text;
+  }catch(e){}
+
+  return null;
+}
+
+async function startCamera(){
+  if(scanning) return;
+  stopCamera();
+  scanning = true;
+
+  await enumerateCameras();
+
+  const constraints = {
+    audio:false,
+    video:{
+      deviceId: deviceSelect.value || currentDeviceId || undefined,
+      facingMode:{ideal:"environment"},
+      width:{ideal:1280},
+      height:{ideal:720}
+    }
+  };
+
+  try{
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    preview.srcObject = stream;
+    await preview.play();
+
+    currentDeviceId = stream.getVideoTracks()[0].getSettings().deviceId || currentDeviceId;
+    if(currentDeviceId) deviceSelect.value = currentDeviceId;
+
+    if(!reader) reader = new ZXing.BrowserMultiFormatReader();
+
+    scannerCard.style.display = "block";
+    showToast("Сканер включён");
+
+    requestAnimationFrame(scanLoop);
+  }catch(err){
+    console.error(err);
+    showToast("Ошибка доступа к камере");
+    scanning = false;
+  }
+}
+
+function stopCamera(){
+  scanning = false;
+  if(preview.srcObject){
+    try{ preview.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){}
+    preview.srcObject = null;
+  }
+  scannerCard.style.display = "none";
+}
+
+async function scanLoop(){
+  if(!scanning || !preview.videoWidth || !preview.videoHeight){
+    if(scanning) requestAnimationFrame(scanLoop);
+    return;
+  }
+
+  const w = preview.videoWidth;
+  const h = preview.videoHeight;
+  const canvas = getCanvas(w,h);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(preview,0,0,w,h);
+
+  const code = await tryDecodeCanvas(canvas);
+  const now = Date.now();
+  if(code && (lastDetected.code !== code || now - lastDetected.ts > DEBOUNCE_MS)){
+    lastDetected = {code, ts:now};
+    onBarcodeDetected(code);
+  }
+
+  if(scanning) requestAnimationFrame(scanLoop);
+}
+
+function onBarcodeDetected(code){
+  showToast(code);
+
+  // если нет ни в базе товаров, ни в базе штрих‑кодов — создаём в базе штрих‑кодов
+  if(!barcodeDB[code] && !barcodeCodes[code]){
+    barcodeCodes[code] = code;
+    localStorage.setItem("barcodeCodes", JSON.stringify(barcodeCodes));
+  }
+
+  // если нет в базе товаров — создадим с qty=0 (появится после изменения)
+  if(!barcodeDB[code]){
+    barcodeDB[code] = {
+      code,
+      name: barcodeCodes[code] || code,
+      qty: 0
+    };
+    saveDB();
+  }
+
+  buildItems();
+  render(allItems);
+  highlightItem(code);
+}
+
+/* =========================
+   КНОПКИ СКАНЕРА
+========================= */
+
+scanBtn.addEventListener("click", startCamera);
+closeScannerBtn.addEventListener("click", stopCamera);
+deviceSelect.addEventListener("change", ()=>{
+  currentDeviceId = deviceSelect.value;
+  if(scanning) startCamera();
+});
+torchBtn.addEventListener("click", ()=>{
+  showToast("Фонарик зависит от поддержки браузера");
+});
+
+/* =========================
+   FAB / BOTTOM SHEET
+========================= */
+
+const fabMenu = document.getElementById("fabMenu");
+const sheetOverlay = document.getElementById("sheetOverlay");
+const bottomSheet = document.getElementById("bottomSheet");
+const toggleZeroBtn = document.getElementById("toggleZeroBtn");
+const backToMenuBtn = document.getElementById("backToMenuBtn");
+
+function openSheet(){
+  sheetOverlay.classList.add("show");
+  bottomSheet.classList.add("show");
+}
+function closeSheet(){
+  sheetOverlay.classList.remove("show");
+  bottomSheet.classList.remove("show");
+}
+
+fabMenu.addEventListener("click", openSheet);
+sheetOverlay.addEventListener("click", closeSheet);
+
+toggleZeroBtn.addEventListener("click", ()=>{
+  showZero = !showZero;
+  toggleZeroBtn.textContent = showZero ? "🙈 Скрыть товары с 0" : "🔍 Показать товары с 0";
+  render(allItems);
+  closeSheet();
+});
+
+backToMenuBtn.addEventListener("click", ()=>{
+  window.location.href = "index.html";
+});
+
+/* =========================
+   КОСМИЧЕСКИЙ ФОН
+========================= */
+
+const canvas = document.getElementById('bg');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas(){
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.floor(window.innerWidth * dpr));
+  canvas.height = Math.max(1, Math.floor(window.innerHeight * dpr));
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+const stars = [];
+const STAR_COUNT = Math.max(120, Math.floor((window.innerWidth * window.innerHeight) / 6000));
+for(let i=0;i<STAR_COUNT;i++){
+  stars.push({
+    x: Math.random()*window.innerWidth,
+    y: Math.random()*window.innerHeight,
+    r: Math.random()*1.6 + 0.4,
+    alpha: Math.random()*0.9 + 0.1,
+    speed: Math.random()*0.25 + 0.02,
+    twinkle: Math.random()*0.02 + 0.005
+  });
+}
+
+const comets = [];
+
+function spawnComet(){
+  const startY = Math.random() * window.innerHeight * 0.6;
+  const speed = 6 + Math.random()*6;
+  const angle = (Math.random()*30 - 10) * (Math.PI/180);
+  const length = 120 + Math.random()*220;
+  comets.push({
+    x: -80 - Math.random()*120,
+    y: startY,
+    vx: speed * Math.cos(angle),
+    vy: speed * Math.sin(angle) + 0.6,
+    life: 0,
+    maxLife: 400 + Math.random()*200,
+    length,
+    glow: 0.9 + Math.random()*0.6
+  });
+}
+
+let clickParticles = [];
+canvas.addEventListener('click', (e)=>{
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left);
+  const y = (e.clientY - rect.top);
+  for(let i=0;i<18;i++){
+    clickParticles.push({
+      x, y,
+      vx: (Math.random()-0.5)*4,
+      vy: (Math.random()-0.5)*4,
+      life: 0,
+      maxLife: 60,
+      r: Math.random()*2 + 1
+    });
+  }
+});
+
+function drawClickParticles(){
+  for(let i = clickParticles.length-1; i>=0; i--){
+    const p = clickParticles[i];
+    ctx.fillStyle = `rgba(255,255,200,${1 - p.life / p.maxLife})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fill();
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life++;
+    if(p.life > p.maxLife) clickParticles.splice(i,1);
+  }
+}
+
+function drawComet(c){
+  const tailLen = c.length;
+  const tx = c.x - c.vx * (tailLen/ (c.vx||1));
+  const ty = c.y - c.vy * (tailLen/ (c.vy||1));
+  const grad = ctx.createLinearGradient(c.x, c.y, tx, ty);
+  grad.addColorStop(0, `rgba(255,255,255,${0.95 * c.glow})`);
+  grad.addColorStop(0.4, `rgba(200,108,255,${0.45 * c.glow})`);
+  grad.addColorStop(1, `rgba(200,108,255,0)`);
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 3.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(c.x, c.y);
+  ctx.lineTo(tx, ty);
+  ctx.stroke();
+
+  const headRadius = 4 + (c.glow*2);
+  ctx.beginPath();
+  ctx.fillStyle = `rgba(255,255,255,${0.95 * c.glow})`;
+  ctx.arc(c.x, c.y, headRadius, 0, Math.PI*2);
+  ctx.fill();
+
+  const g = ctx.createRadialGradient(c.x, c.y, headRadius*0.2, c.x, c.y, headRadius*6);
+  g.addColorStop(0, `rgba(200,108,255,${0.18 * c.glow})`);
+  g.addColorStop(1, 'rgba(200,108,255,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(c.x, c.y, headRadius*6, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function animate(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  for(let s of stars){
+    s.alpha += (Math.random()-0.5)*s.twinkle;
+    if(s.alpha < 0.05) s.alpha = 0.05;
+    if(s.alpha > 1) s.alpha = 1;
+    s.y += s.speed;
+    if(s.y > window.innerHeight){
+      s.y = -2;
+      s.x = Math.random()*window.innerWidth;
+    }
+    ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  if(Math.random() < 0.02) spawnComet();
+
+  for(let i = comets.length-1; i>=0; i--){
+    const c = comets[i];
+    drawComet(c);
+    c.x += c.vx;
+    c.y += c.vy;
+    c.life++;
+    c.glow *= 0.9995;
+    if(c.x > window.innerWidth + 200 || c.y > window.innerHeight + 200 || c.life > c.maxLife){
+      comets.splice(i,1);
+    }
+  }
+
+  drawClickParticles();
+  requestAnimationFrame(animate);
+}
+animate();
+
+document.addEventListener('touchstart', function preventZoom(e){
+  if(e.touches && e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
+/* =========================
+   СТАРТ
+========================= */
+
+loadDB();
+buildItems();
+render(allItems);
 </script>
 </body>
 </html>
