@@ -72,7 +72,7 @@
       box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.1);
     }
 
-    /* Кнопка сканера — в стиле кнопок штрих‑кодов */
+    /* Кнопка сканера */
     #scan-btn {
       position: absolute;
       right: 12px;
@@ -127,35 +127,32 @@
     .list {
       max-width: var(--maxw);
       margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
     }
 
     .item {
       width: 100%;
-      margin: 12px 0;
-      padding: 20px;
+      padding: 16px;
       border-radius: var(--radius);
       background: var(--card-bg);
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
       border-left: 6px solid transparent;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 12px;
       border: 1px solid #f0f0f0;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-    .item.found {
+    .item:hover {
+      transform: translateY(-2px);
       box-shadow: 0 8px 25px rgba(106, 17, 203, 0.12);
-      transform: translateY(-4px);
-    }
-
-    .item.highlight-purple {
-      box-shadow: 0 0 0 3px #7c3aed, 0 12px 32px rgba(124, 58, 237, 0.3);
-      border-left-color: #7c3aed !important;
-      transition: box-shadow 0.25s ease, transform 0.25s ease;
     }
 
     .field {
-      font-size: 15px;
+      font-size: 14px;
     }
     .label {
       font-weight: 700;
@@ -166,85 +163,62 @@
       display: none !important;
     }
 
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    /* Улучшенные стили для блока количества */
     .qty-block {
-      margin-top: 16px;
-      padding-top: 16px;
+      margin-top: 12px;
+      padding-top: 12px;
       border-top: 1px solid #eee;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 12px;
     }
 
     .qty-section-title {
       font-weight: 600;
-      font-size: 16px;
+      font-size: 14px;
       color: var(--accent-light);
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .qty-row {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
-    .qty-row-label {
-      min-width: 90px;
-      font-size: 15px;
-      color: var(--muted);
-      font-weight: 500;
-    }
-
-    .qty-controls {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
     .qty-input-wrapper {
-      position: relative;
       flex: 1;
-      min-width: 140px;
+      min-width: 120px;
+      position: relative;
     }
 
     .qtyInput {
       width: 100%;
-      padding: 12px 44px 12px 18px;
+      padding: 10px 40px 10px 16px;
       border-radius: var(--radius);
       border: 1px solid #ddd;
       background: #fafafa;
       color: var(--text);
-      text-align: center;
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 14px;
       transition: all 0.2s ease;
     }
-.qtyInput:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.2);
-  background: #fff;
-}
 
-.qtyAction {
-  width: 52px;
-  height: 52px;
+    .qtyInput:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.2);
+      background: #fff;
+    }
+
+   .qtyAction {
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius);
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: linear-gradient(135deg, var(--accent), #8b5cf6);
   color: #fff;
   cursor: pointer;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: bold;
   display: flex;
   align-items: center;
@@ -259,38 +233,18 @@
   box-shadow: 0 6px 16px rgba(109, 40, 217, 0.6);
 }
 
-.qty-current {
-  font-size: 15px;
-  color: var(--accent-light);
-  font-weight: 600;
-  margin-left: 8px;
+.qtyAction:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(109, 40, 217, 0.4);
 }
 
-/* Подсказки для полей ввода */
-.input-hint {
-  font-size: 13px;
-  color: var(--muted);
-  margin-top: 6px;
-  margin-left: 6px;
-}
-
-@keyframes highlightQty {
-  0% { background-color: rgba(109, 40, 217, 0.1); }
-  50% { background-color: rgba(109, 40, 217, 0.3); }
-  100% { background-color: transparent; }
-}
-
-.highlight-qty {
-  animation: highlightQty 0.6s ease;
-}
-
-/* Стили для FAB‑кнопки */
+/* Стили для FAB‑кнопки в едином стиле */
 #fabMenu {
   position: fixed;
   bottom: 1.2rem;
   right: 1.2rem;
   z-index: 1001;
-  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
   color: #fff;
   border: none;
   padding: 1rem 1.4rem;
@@ -312,549 +266,162 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(106, 17, 203, 0.9);
 }
 
-/* Стили для оверлея и нижнего листа */
-#sheetOverlay {
+#fabMenu:active {
+  transform: translateY(0) scale(0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 10px rgba(106, 17, 203, 0.5);
+}
+
+/* Стили для сканера — полноэкранный режим */
+.scanner-fullscreen {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(6px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-  z-index: 999;
-}
-#sheetOverlay.show {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-#bottomSheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: -60vh;
-  padding: 1.4rem;
-  background: #fff;
-  backdrop-filter: blur(12px) saturate(180%);
-  border-radius: 24px 24px 0 0;
-  box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  transition: bottom 0.4s ease;
-  z-index: 1002;
-}
-#bottomSheet.show {
-  bottom: 0;
-}
-
-.sheet-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-.sheet-btn {
-  background: linear-gradient(145deg, #f0f0f0, #e0e0e0);
-  color: var(--text);
-  border: 1px solid #ddd;
-  padding: 1rem 1.2rem;
-  border-radius: 14px;
-  font-size: 1.1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 6px 16px rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.sheet-btn:hover {
-  background: linear-gradient(145deg, #e8e8e8, #d8d8d8);
-  transform: translateY(-2px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 20px rgba(0, 0, 0, 0.3);
-}
-
-/* Стили для сканера */
-.preview-wrap.camera-1-3 {
-  position: relative;
-  width: 100%;
-  max-width: var(--maxw);
-  margin: 0 auto 16px;
-  padding-top: 33%;
-  overflow: hidden;
-  border-radius: 16px;
-  background: #f5f5f5;
-  border: 1px solid #eee;
-}
-
-.preview-wrap.camera-1-3 video {
-  position: absolute;
   top: 0;
   left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  z-index: 2000;
+  display: none;
+}
+
+.scanner-fullscreen.active {
+  display: block;
+}
+
+.scanner-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+#preview {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-#scannerCard.card {
-  max-width: var(--maxw);
-  margin: 0 auto 16px;
+.scanner-header {
   padding: 16px;
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-}
-
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  margin-top: 12px;
-  font-size: 14px;
-}
-
-.controls .btn {
-  padding: 10px 16px;
-  border-radius: 12px;
-  border: 1px solid #ddd;
-  background: #fafafa;
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex: 1;
-  min-width: 120px;
-  text-align: center;
-}
-
-.controls .btn:hover {
-  background: #e8e8e8;
-  transform: translateY(-1px);
-}
-
-/* Карточка операции прихода/расхода */
-#operationCard {
-  max-width: var(--maxw);
-  margin: 20px auto;
-  padding: 24px;
-  border-radius: var(--radius);
-  background: var(--card-bg);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.operation-header {
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 16px;
 }
 
-.operation-title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--accent);
+.close-scanner {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
 }
 
-.current-balance {
-  font-size: 1.2rem;
-  color: var(--success);
-  font-weight: 600;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.form-control {
+.scanner-controls {
+  position: absolute;
+  bottom: 32px;
+  left: 0;
   width: 100%;
-  padding: 14px 18px;
+  padding: 0 32px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.torch-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Поля для ввода прихода/расхода */
+.input-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.input-label {
+  min-width: 80px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.action-input {
+  flex: 1;
+  padding: 10px 16px;
   border-radius: var(--radius);
   border: 1px solid #ddd;
   background: #fafafa;
-  color: var(--text);
-  font-size: 15px;
+  font-size: 14px;
   transition: all 0.2s ease;
 }
 
-.form-control:focus {
+.action-input:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.2);
   background: #fff;
 }
 
-.controls-row {
-  display: flex;
-  gap: 12px;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 20px;
-}
-
-.btn {
-  padding: 12px 20px;
-  border-radius: var(--radius);
-  border: none;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
-  color: var(--text);
-  box-shadow: 0 4px 12px rgba(109, 40, 217, 0.4);
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(109, 40, 217, 0.6);
-}
-
-.btn-secondary {
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--text);
-  border: 1px solid #ddd;
-}
-
-.btn-secondary:hover {
-  background: #f0f0f0;
-  transform: translateY(-1px);
-}
-
-.btn-danger {
-  background: linear-gradient(135deg, var(--danger), #ef4444);
-  color: var(--text);
-  box-shadow: 0 4px 12px rgba(248, 113, 113, 0.4);
-}
-
-.btn-danger:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(248, 113, 113, 0.6);
-}
-
-/* Таблица истории операций */
-.operations-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 24px;
-}
-
-.operations-table th {
-  text-align: left;
-  padding: 14px 12px;
-  font-weight: 600;
-  color: var(--accent);
-  border-bottom: 2px solid #f0f0f0;
-  background: #fafafa;
-}
-
-.operations-table td {
-  padding: 14px 12px;
-  border-bottom: 1px solid #f5f5f5;
-}
-
-.operations-table tr:hover {
-  background: rgba(109, 40, 217, 0.03);
-}
-
-.operation-type-incoming {
-  color: var(--success);
-  font-weight: 600;
-}
-
-.operation-type-outgoing {
-  color: var(--danger);
-  font-weight: 600;
-}
-
-/* Стили для модальных окон */
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-}
-
-.modal.show {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.modal-content {
-  max-width: 420px;
-  width: 90%;
-  padding: 28px;
-  border-radius: var(--radius);
-  background: var(--card-bg);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-title {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: var(--accent);
-}
-
-.close-modal {
-  background: none;
-  border: none;
-  color: var(--muted);
-  font-size: 1.6rem;
-  cursor: pointer;
-  padding: 0;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-modal:hover {
-  color: var(--text);
-}
-
-/* Уведомления (Toast) */
-.toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateY(100px);
-  padding: 14px 28px;
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.95);
-  color: var(--text);
-  font-size: 15px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-  z-index: 3000;
-  transition: transform 0.3s ease;
-  border-left: 4px solid var(--accent);
-  backdrop-filter: blur(10px);
-}
-
-.toast.show {
-  transform: translateX(-50%) translateY(0);
-}
-
-/* Адаптация для мобильных устройств */
-@media (max-width: 768px) {
-  .qtyInput {
-    width: 100%;
-    font-size: 18px;
-    padding: 14px 48px 14px 20px;
-  }
-
-  .qtyAction {
-    width: 56px;
-    height: 56px;
-    font-size: 22px;
-  }
-
-  .qty-row {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .qty-row {
-  flex-direction: column;
-  gap: 12px;
-}
-
-.qty-row label {
-  font-size: 15px;
-  color: var(--muted);
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-
-.qty-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  width: 100%;
-}
-
-.qty-input-wrapper {
-  position: relative;
-  width: 100%;
-  max-width: 240px;
-}
-
-/* Стили для кнопок увеличения/уменьшения количества */
-.qtyAction {
-  width: 52px;
-  height: 52px;
+.action-btn {
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  background: linear-gradient(135deg, var(--accent-light), var(--accent));
   color: #fff;
   cursor: pointer;
-  font-size: 20px;
+  font-size: 14px;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(109, 40, 217, 0.4);
 }
 
-.qtyAction:hover {
-  background: linear-gradient(135deg, #5a20b8, #7a4fd6);
+.action-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 6px 16px rgba(109, 40, 217, 0.6);
 }
 
-.qtyAction:active {
-  transform: scale(0.98);
-}
-
-/* Поле ввода количества */
-.qtyInput {
-  width: 100%;
-  padding: 14px 44px 14px 18px;
-  border-radius: var(--radius);
-  border: 1px solid #ddd;
-  background: #fafafa;
-  color: var(--text);
-  text-align: center;
-  font-size: 16px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-.qtyInput:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.2);
-  background: #fff;
-}
-
-/* Текущее значение количества */
-.qty-current {
-  font-size: 14px;
-  color: var(--accent-light);
-  font-weight: 600;
-  text-align: center;
-  min-height: 20px;
-}
-
-/* Подсказка под полем ввода */
-.input-hint {
-  font-size: 13px;
-  color: var(--muted);
-  margin-top: 6px;
-  text-align: center;
-}
-
-/* Анимация подсветки при изменении количества */
-@keyframes highlightQty {
-  0% { background-color: rgba(109, 40, 217, 0.1); }
-  50% { background-color: rgba(109, 40, 217, 0.3); }
-  100% { background-color: transparent; }
-}
-
-.highlight-qty {
-  animation: highlightQty 0.6s ease;
-}
-
-/* Дополнительные стили для разных состояний */
-.qty-row.disabled {
-  opacity: 0.6;
-  pointer-events: none;
-}
-
-.qty-row.error {
-  animation: shake 0.5s ease-in-out;
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
-  20%, 40%, 60%, 80% { transform: translateX(2px); }
-}
-
-/* Адаптация для мобильных устройств */
-@media (max-width: 480px) {
+/* Адаптация для мобильных */
+@media (max-width: 768px) {
+  .list {
+    grid-template-columns: 1fr;
+  }
+  
   .qty-row {
     flex-direction: column;
-    gap: 16px;
-    align-items: center;
+    align-items: stretch;
   }
-
-  .qty-controls {
-    flex-direction: row;
-    width: 100%;
-    max-width: 280px;
-  }
-
-  .qtyAction {
-    width: 56px;
-    height: 56px;
-    font-size: 22px;
-  }
-
-  .qtyInput {
-    padding: 16px 48px 16px 20px;
-    font-size: 18px;
-  }
-
-  .qty-input-wrapper {
-    max-width: 100%;
+  
+  .input-group {
+    flex-direction: column;
+    gap: 8px;
   }
 }
 
-/* Для планшетов */
-@media (min-width: 481px) and (max-width: 768px) {
-  .qty-row {
-    flex-direction: row;
-    justify-content: center;
-    align-items: flex-end;
-  }
-
-  .qty-controls {
-    width: auto;
-  }
-
-  .qty-input-wrapper {
-    max-width: 180px;
+@media (min-width: 769px) {
+  .list {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
-
-
-    
-  </style>
-</head>
-
-
 <body>
   <canvas id="bg"></canvas>
 
@@ -868,444 +435,212 @@
   </header>
 
   <main id="content">
-    <div id="scannerCard" class="card" style="display:none">
-      <div class="preview-wrap camera-1-3"><video id="preview" playsinline muted></video></div>
-      <div class="controls">
-        <select id="deviceSelect" class="btn" style="min-width:160px"></select>
-        <button id="torchBtn" class="btn">🔦</button>
-        <button id="closeScannerBtn" class="btn">Закрыть</button>
-        <div id="scanResult" style="margin-left:auto;color:var(--muted)"></div>
-      </div>
+    <div class="list" id="itemsList">
+      <!-- Карточки товаров будут добавляться динамически -->
     </div>
-
-    <div id="list" class="list"></div>
   </main>
 
-  <button id="fabMenu">☰</button>
+ <!-- Кнопка меню -->
+<button id="fabMenu">☰</button>
 
-  <div id="sheetOverlay"></div>
-
-  <div id="bottomSheet">
+<!-- Нижний лист меню -->
+<div id="sheetOverlay" class="hidden">
+  <div id="bottomSheet" class="hidden">
     <div class="sheet-content">
-      <button class="sheet-btn" id="toggleZeroBtn">🔍 Показать товары с 0</button>
-      <button class="sheet-btn" id="backToMenuBtn">🏠 В меню</button>
+      <button class="sheet-btn" id="toggleZeroBtn">
+        <span>Показать товары с 0</span>
+      </button>
+      <button class="sheet-btn" id="backToMenuBtn">
+        <span>В меню</span>
+      </button>
     </div>
   </div>
+</div>
 
-  <script>
-/* =========================
-   БАЗЫ: ТОВАРЫ + ШК
-========================= */
+<!-- Полноэкранный сканер -->
+<div id="scannerFullscreen" class="scanner-fullscreen">
+  <div class="scanner-content">
+    <div class="scanner-header">
+      <h2>Сканирование штрих‑кода</h2>
+      <button class="close-scanner" id="closeScanner">×</button>
+    </div>
+    <div class="preview-wrap">
+      <video id="preview"></video>
+    </div>
+    <div class="scanner-controls">
+      <button class="torch-btn" id="torchBtn">⚡</button>
+    </div>
+  </div>
+</div>
 
-let barcodeDB = {};
-let barcodeCodes = {};
-let allItems = [];
-let showZero = false;
-let scanTimeout = null;
+<!-- Карточка операции прихода/расхода -->
+<div id="operationCard" class="hidden">
+  <div class="operation-header">
+    <h2 class="operation-title">Операция</h2>
+    <div class="current-balance">Баланс: <span id="currentBalance">0</span></div>
+  </div>
+  
+  <div class="field">
+    <label class="label">Товар</label>
+    <input type="text" class="form-control" id="productName" readonly>
+  </div>
+  
+  <div class="qty-block">
+    <div class="qty-section-title">Приход</div>
+    <div class="input-group">
+      <span class="input-label">Количество:</span>
+      <input type="number" class="action-input" id="incomingQty" placeholder="Введите количество" min="1">
+      <button class="action-btn" id="addOneIncoming">+1</button>
+    </div>
+  </div>
+  
+  <div class="qty-block">
+    <div class="qty-section-title">Расход</div>
+    <div class="input-group">
+      <span class="input-label">Количество:</span>
+      <input type="number" class="action-input" id="outgoingQty" placeholder="Введите количество" min="1">
+      <button class="action-btn" id="addOneOutgoing">−1</button>
+    </div>
+  </div>
+  
+  <div class="controls-row">
+    <button class="btn btn-secondary" id="cancelOperation">Отмена</button>
+    <button class="btn btn-primary" id="confirmOperation">Подтвердить</button>
+  </div>
+</div>
 
-function isLocalStorageAvailable() {
-  try {
-    const test = '__test__';
-    localStorage.setItem(test, test);
-    localStorage.removeItem(test);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
+<script>
+// Инициализация элементов
+const fabMenu = document.getElementById('fabMenu');
+const sheetOverlay = document.getElementById('sheetOverlay');
+const bottomSheet = document.getElementById('bottomSheet');
+const toggleZeroBtn = document.getElementById('toggleZeroBtn');
+const backToMenuBtn = document.getElementById('backToMenuBtn');
+const scanBtn = document.getElementById('scan-btn');
+const closeScanner = document.getElementById('closeScanner');
+const scannerFullscreen = document.getElementById('scannerFullscreen');
+const torchBtn = document.getElementById('torchBtn');
+const operationCard = document.getElementById('operationCard');
+const cancelOperation = document.getElementById('cancelOperation');
+const confirmOperation = document.getElementById('confirmOperation');
 
-function loadDB() {
-  if (!isLocalStorageAvailable()) {
-    alert('Локальное хранилище недоступно. Данные не будут сохраняться.');
-    return;
-  }
-
-  try {
-    const raw = localStorage.getItem("barcodeDB");
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") {
-        barcodeDB = parsed;
-      }
-    }
-  } catch (e) {
-    barcodeDB = {};
-  }
-
-  try {
-    const rawCodes = localStorage.getItem("barcodeCodes");
-    if (rawCodes) {
-      const parsed = JSON.parse(rawCodes);
-      if (parsed && typeof parsed === "object") {
-        barcodeCodes = parsed;
-      }
-    }
-  } catch (e) {
-    barcodeCodes = {};
-  }
-
-  barcodeDB = barcodeDB || {};
-  barcodeCodes = barcodeCodes || {};
-}
-
-function saveDB() {
-  if (!isLocalStorageAvailable()) return;
-
-  try {
-    localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
-  } catch (e) {
-    console.error('Ошибка сохранения в localStorage:', e);
-    alert('Не удалось сохранить данные. Проверьте настройки браузера.');
-  }
-}
-
-function escapeHtml(s) {
-  return String(s || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-/* =========================
-   СБОР СПИСКА ТОВАРОВ
-========================= */
-
-function buildItems() {
-  allItems = Object.keys(barcodeDB).map(code => {
-    const rec = barcodeDB[code];
-
-    let name;
-    let qty = 0;
-
-    if (typeof rec === "string") {
-      // старый формат: только название
-      name = rec;
-      qty = 0;
-    } else if (rec && typeof rec === "object") {
-      name = rec.name || code;
-      qty = Number(rec.qty || 0);
-    } else {
-      name = code;
-      qty = 0;
-    }
-
-    return { code, name, qty };
-  });
-}
-
-/* =========================
-   РЕНДЕР
-========================= */
-
-const listEl = document.getElementById("list");
-
-function render(items) {
-  listEl.innerHTML = "";
-
-  items.forEach(item => {
-    if (!showZero && item.qty === 0) return;
-
-    // Правильное получение названия
-    let name = item.name || barcodeCodes[item.code] || item.code;
-
-    const div = document.createElement("div");
-    div.className = "item";
-    div.dataset.code = item.code;
-
-    div.innerHTML = `
-      <div class="field"><span class="label">Название:</span> ${escapeHtml(name)}</div>
-      <div class="field"><span class="label">Штрих‑код:</span> ${item.code}</div>
-      <div class="field qty-current"><span class="label">Остаток:</span> <span class="curQty">${item.qty}</span></div>
-
-      <div class="qty-block">
-        <div class="qty-section-title">Приход</div>
-        <div class="qty-row">
-          <div class="qty-controls">
-            <button class="qtyAction plus-icon" data-code="${item.code}" data-type="plus">+</button>
-            <div class="qty-input-wrapper">
-              <input
-                type="number"
-                class="qtyInput"
-                data-code="${item.code}"
-                data-type="plus"
-                value="0"
-                min="0"
-                placeholder="0"
-                inputmode="numeric"
-                pattern="[0-9]*"
-              >
-              <span class="input-hint">Количество для прихода</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="qty-section-title">Расход</div>
-        <div class="qty-row">
-          <div class="qty-controls">
-            <button class="qtyAction minus-icon" data-code="${item.code}" data-type="minus">−</button>
-            <div class="qty-input-wrapper">
-              <input
-                type="number"
-                class="qtyInput"
-                data-code="${item.code}"
-                data-type="minus"
-                value="0"
-                min="0"
-                placeholder="0"
-                inputmode="numeric"
-                pattern="[0-9]*"
-              >
-              <span class="input-hint">Количество для расхода</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    listEl.appendChild(div);
-  });
-
-  attachQtyHandlers();
-}
-
-/* =========================
-   ПРИХОД / РАСХОД
-========================= */
-
-function applyChange(code, type) {
-  const input = document.querySelector(`.qtyInput[data-code="${code}"][data-type="${type}"]`);
-  if (!input) return;
-
-  let value = Math.max(0, Number(input.value || 0));
-  if (value === 0) return; // ничего не делаем, если 0
-
-  // старый остаток
-  let oldQty = 0;
-  const rec = barcodeDB[code];
-
-  if (rec) {
-    if (typeof rec === "object" && rec !== null) {
-      oldQty = Number(rec.qty || 0);
-    } else {
-      oldQty = 0; // старый формат
-    }
-  }
-
-  let newQty;
-  if (type === "plus") {
-    newQty = oldQty + value;
-  } else { // type === "minus"
-    newQty = Math.max(0, oldQty - value);
-  }
-
-  // нормализуем запись в базе
-  if (!rec) {
-    barcodeDB[code] = {
-      name: barcodeCodes[code] || code,
-      qty: newQty
-    };
-  } else if (typeof rec === "string") {
-    barcodeDB[code] = {
-      name: rec,
-      qty: newQty
-    };
-  } else {
-    barcodeDB[code].qty = newQty;
-  }
-
-  saveDB();
-
-  const card = document.querySelector(`.item[data-code="${code}"]`);
-  if (card) {
-    const cur = card.querySelector(".curQty");
-    if (cur) cur.textContent = newQty;
-    card.classList.add("highlight-qty");
-    setTimeout(() => card.classList.remove("highlight-qty"), 600);
-  }
-
-  input.value = "0"; // сбрасываем поле ввода
-}
-
-function attachQtyHandlers() {
-  document.querySelectorAll(".qtyAction").forEach(btn => {
-    btn.onclick = () => {
-      const code = btn.dataset.code;
-      const type = btn.dataset.type; // "plus" или "minus"
-      applyChange(code, type);
-    };
-  });
-
-  document.querySelectorAll(".qtyInput").forEach(inp => {
-    inp.onchange = () => applyChange(inp.dataset.code, inp.dataset.type);
-  });
-}
-
-/* =========================
-   ПОИСК
-========================= */
-
-function filterItems(query) {
-  const filtered = allItems.filter(item => {
-    if (!query) return true;
-
-    const lowerQuery = query.toLowerCase().trim();
-    const nameMatch = item.name && item.name.toLowerCase().includes(lowerQuery);
-    const codeMatch = item.code && item.code.includes(lowerQuery);
-
-    return nameMatch || codeMatch;
-  });
-
-  render(filtered);
-}
-
-/* =========================
-   СКАНЕР ШТРИХ‑КОДОВ
-========================= */
-
+// Переменные для сканера
 let codeReader = null;
 let currentStream = null;
 
-async function startScanner() {
-  if (!codeReader) {
-    try {
-      codeReader = new ZXing.BrowserMultiFormatReader();
-      await codeReader.getVideoInputDevices();
-    } catch (error) {
-      console.error('Ошибка инициализации сканера:', error);
-      alert('Не удалось запустить сканер. Проверьте разрешения камеры.');
-      return;
-    }
-  }
+// Обработчики событий
+fabMenu.addEventListener('click', () => {
+  sheetOverlay.classList.remove('hidden');
+  bottomSheet.classList.remove('hidden');
+});
 
+backToMenuBtn.addEventListener('click', () => {
+  sheetOverlay.classList.add('hidden');
+  bottomSheet.classList.add('hidden');
+});
+
+scanBtn.addEventListener('click', async () => {
   try {
-    const videoElement = document.getElementById('preview');
-    const deviceSelect = document.getElementById('deviceSelect');
-
-    // Получаем список устройств
-    const devices = await codeReader.getVideoInputDevices();
-
-    // Заполняем селектор устройств
-    deviceSelect.innerHTML = '';
-    devices.forEach((device, index) => {
-      const option = document.createElement('option');
-      option.value = device.deviceId;
-      option.textContent = device.label || `Камера ${index + 1}`;
-      deviceSelect.appendChild(option);
-    });
-
-    // Если есть устройства, выбираем первое
-    if (devices.length > 0) {
-      await codeReader.decodeFromVideoDevice(
-        devices[0].deviceId,
-        videoElement,
-        (result, err) => {
-          if (result) {
-            handleScanResult(result.text);
-          }
-          if (err && !(err instanceof ZXing.NotFoundException)) {
-            console.error(err);
-          }
+    scannerFullscreen.classList.remove('hidden');
+    
+    if (!codeReader) {
+      codeReader = new ZXing.BrowserMultiFormatReader();
+    }
+    
+    await codeReader.decodeFromVideoDevice(
+      null,
+      document.getElementById('preview'),
+      (result, err) => {
+        if (result) {
+          handleScanResult(result.text);
+          closeScanner.click();
         }
-      );
-
-      currentStream = videoElement.srcObject;
-      document.getElementById('scannerCard').style.display = 'block';
-      document.getElementById('sheetOverlay').classList.add('show');
-    } else {
-      alert('Камеры не найдены');
-    }
+        if (err && !(err instanceof ZXing.NotFoundException)) {
+          console.error(err);
+        }
+      }
+    );
   } catch (error) {
-    console.error('Ошибка запуска камеры:', error);
-    alert('Не удалось получить доступ к камере. Проверьте разрешения.');
+    console.error('Ошибка запуска сканера:', error);
+    alert('Не удалось запустить сканер. Проверьте разрешения камеры.');
   }
-}
+});
 
-function handleScanResult(barcode) {
-  // Скрываем сканер после успешного сканирования
-  stopScanner();
-
-  // Ищем товар по штрих‑коду
-  const item = allItems.find(i => i.code === barcode);
-  if (item) {
-    // Выделяем найденный товар
-    const card = document.querySelector(`.item[data-code="${barcode}"]`);
-    if (card) {
-      card.classList.add('highlight-purple', 'found');
-      setTimeout(() => {
-        card.classList.remove('found');
-      }, 1000);
-    }
-
-    // Прокручиваем к найденному товару
-    card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  } else {
-    alert(`Товар с штрих‑кодом ${barcode} не найден. Добавьте его в базу.`);
-  }
-
-  // Показываем результат в интерфейсе
-  document.getElementById('scanResult').textContent = `Найден: ${barcode}`;
-  setTimeout(() => document.getElementById('scanResult').textContent = '', 3000);
-}
-
-function stopScanner() {
+closeScanner.addEventListener('click', () => {
+  scannerFullscreen.classList.add('hidden');
   if (currentStream) {
     currentStream.getTracks().forEach(track => track.stop());
-    currentStream = null;
   }
-  if (codeReader) {
-    codeReader.reset();
-  }
-  document.getElementById('scannerCard').style.display = 'none';
-  document.getElementById('sheetOverlay').classList.remove('show');
-}
-
-/* =========================
-   ИНИЦИАЛИЗАЦИЯ
-========================= */
-
-function setupEventListeners() {
-  const search = document.getElementById("search");
-  search.addEventListener("input", () => {
-    filterItems(search.value);
-  });
-
-  document.getElementById("clear-search").addEventListener("click", () => {
-    search.value = "";
-    filterItems("");
-  });
-
-  document.getElementById("scan-btn").addEventListener("click", startScanner);
-
-  document.getElementById("closeScannerBtn").addEventListener("click", stopScanner);
-
-  document.getElementById("toggleZeroBtn").addEventListener("click", () => {
-    showZero = !showZero;
-    render(allItems);
-    document.getElementById("bottomSheet").classList.remove("show");
-    document.getElementById("sheetOverlay").classList.remove("show");
-  });
-
-  document.getElementById("backToMenuBtn").addEventListener("click", () => {
-    document.getElementById("bottomSheet").classList.remove("show");
-    document.getElementById("sheetOverlay").classList.remove("show");
-  });
-
-  document.getElementById("fabMenu").addEventListener("click", () => {
-    document.getElementById("bottomSheet").classList.add("show");
-    document.getElementById("sheetOverlay").classList.add("show");
-  });
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  loadDB();
-  buildItems();
-  render(allItems);
-
-  setupEventListeners();
 });
-  </script>
+
+// Обработчики для кнопок +1 и −1
+document.getElementById('addOneIncoming').addEventListener('click', () => {
+  const input = document.getElementById('incomingQty');
+  input.value = (parseInt(input.value) || 0) + 1;
+});
+
+document.getElementById('addOneOutgoing').addEventListener('click', () => {
+  const input = document.getElementById('outgoingQty');
+  input.value = (parseInt(input.value) || 0) + 1;
+});
+
+// Обработчики закрытия карточки операции
+cancelOperation.addEventListener('click', () => {
+  operationCard.classList.add('hidden');
+});
+
+confirmOperation.addEventListener('click', () => {
+  // Здесь логика подтверждения операции
+  alert('Операция подтверждена!');
+  operationCard.classList.add('hidden');
+});
+
+// Функция обработки результата сканирования
+function handleScanResult(code) {
+  console.log('Отсканирован код:', code);
+  // Здесь можно добавить логику поиска товара по штрих‑коду
+}
+
+// Пример заполнения списка товаров (замените на реальную загрузку данных)
+function loadSampleItems() {
+  const itemsList = document.getElementById('itemsList');
+  itemsList.innerHTML = '';
+  
+  for (let i = 1; i <= 6; i++) {
+    const item = document.createElement('div');
+    item.className = 'item';
+    item.innerHTML = `
+      <div class="field">
+        <span class="label">Название:</span>
+        <span>Товар ${i}</span>
+      </div>
+      <div class="field">
+        <span class="label">Код:</span>
+        <span>12345${i}</span>
+      </div>
+      <div class="field">
+        <span class="label">Остаток:</span>
+        <span>${Math.floor(Math.random() * 50)}</span>
+      </div>
+      <div class="qty-block">
+        <div class="qty-section-title">Управление</div>
+        <div class="qty-row">
+          <div class="qty-input-wrapper">
+            <input type="number" class="qtyInput" placeholder="Кол-во" min="1">
+          </div>
+          <button class="qtyAction" onclick="handleIncoming(this)">+</button>
+          <button class="qtyAction" onclick="handleOutgoing(this)">−</button>
+        </div>
+      </div>
+    `;
+    itemsList.appendChild(item);
+  }
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+  loadSampleItems();
+});
+</script>
 </body>
 </html>
-
-
