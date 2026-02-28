@@ -6,7 +6,8 @@
   <title>RecountPro — Пересчёт</title>
 
   <!-- ZXing -->
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
+  <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
+
 
   <style>
     :root{
@@ -350,6 +351,11 @@ function buildAllItemsFromDB() {
 function render(items) {
   listEl.innerHTML = '';
 
+  if (!items.length) {
+    listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Отсканируйте первый товар</div>';
+    return;
+  }
+
   items.forEach(item => {
     const value =
       sessionValues[item.code] ||
@@ -386,10 +392,9 @@ function render(items) {
       </div>
     `;
 
-    // === раскраска ===
     let actual = 0;
     try {
-      actual = Function("return " + (value || "0").replace(',', '.'))() || 0;
+      actual = Function("return " + (value || "0").replace(/,/g, '.'))() || 0;
     } catch {}
 
     if (actual === item.docQty) div.classList.add('match');
@@ -402,6 +407,47 @@ function render(items) {
   attachInputHandlers();
 }
 
+
+function addItemToScanList(code) {
+  const existingIndex = allItems.findIndex(item => item.code === code);
+  if (existingIndex !== -1) {
+    const card = document.querySelector(`.item[data-code="${code}"]`);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('found');
+      setTimeout(() => card.classList.remove('found'), 2200);
+    }
+    return;
+  }
+
+  let name = db[code]?.name || `Товар ${code}`;
+  let unit = db[code]?.unit || '';
+  let price = db[code]?.price || 0;
+
+  const newItem = {
+    code,
+    name,
+    unit,
+    price,
+    docQty: 0
+  };
+
+  allItems.unshift(newItem);
+  render(allItems);
+
+  setTimeout(() => {
+    const newCard = document.querySelector(`.item[data-code="${code}"]`);
+    if (newCard) {
+      newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      newCard.classList.add('found');
+      setTimeout(() => newCard.classList.remove('found'), 2200);
+      const input = newCard.querySelector('input[data-code]');
+      if (input) {
+        setTimeout(() => { input.focus(); openKeyboardFor(input); }, 320);
+      }
+    }
+  }, 320);
+}
 
 
 /* =========================
@@ -706,56 +752,22 @@ async function scanLoop(){
 }
 
 /* Handle detection: stop scanner, show item or prompt to create */
-function handleDetected(code){
+function handleDetected(code) {
   const now = Date.now();
-  if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
-  lastDetected = {code, ts: now};
-  try{ navigator.vibrate?.(60); }catch(e){}
-  scanResult.innerText = `${code} → ${db[code] || 'Товар не найден'}`;
-  // auto-stop scanner
-  try{ if(reader) reader.reset(); }catch(e){}
-  scanning = false;
-  try{ if(preview.srcObject) preview.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){}
-  preview.srcObject = null;
-  scannerCard.style.display = 'none';
+  if (code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+  lastDetected = { code, ts: now };
 
-  // fill code input in UI: find or create card and open keyboard
-  const found = db[code];
-  if(found){
-    // ensure item exists in allItems
-    let card = document.querySelector(`.item[data-code="${code}"]`);
-    if(!card){
-      allItems.unshift({ code, name: found, unit:'', price:0, docQty:0 });
-      render(allItems);
-      card = document.querySelector(`.item[data-code="${code}"]`);
-    }
-    if(card){
-      card.classList.add('found');
-      setTimeout(()=>card.classList.remove('found'), 2200);
-      card.classList.remove('hidden');
-      setTimeout(()=>card.scrollIntoView({ behavior:'smooth', block:'center' }), 160);
-      const input = card.querySelector('input[data-code]');
-      if(input) setTimeout(()=>{ input.focus(); openKeyboardFor(input); }, 320);
-    }
-  } else {
-    const create = confirm(`Код ${code} не найден в базе. Добавить как новый товар?`);
-    if(create){
-      const name = prompt('Введите название товара', '') || `Товар ${code}`;
-      db[code] = name;
-      barcodeDB = db;
-      saveDB();
-      allItems.unshift({ code, name, unit:'', price:0, docQty:0 });
-      render(allItems);
-      const newCard = document.querySelector(`.item[data-code="${code}"]`);
-      if(newCard){
-        newCard.classList.add('found');
-        setTimeout(()=>newCard.classList.remove('found'), 2200);
-        setTimeout(()=> newCard.scrollIntoView({ behavior:'smooth', block:'center' }), 160);
-        const input = newCard.querySelector('input[data-code]');
-        if(input) setTimeout(()=>{ input.focus(); openKeyboardFor(input); }, 320);
-      }
-    }
-  }
+  try { navigator.vibrate?.(60); } catch (e) {}
+  scanResult.innerText = `${code} → ${db[code] ? db[code].name : 'Товар не найден'}`;
+
+  // Останавливаем сканер после обнаружения
+  stopCamera();
+
+  // Добавляем только отсканированный товар в список
+  addItemToScanList(code);
+
+  // Сохраняем текущее состояние приложения
+  saveAppState();
 }
 
 /* =========================
@@ -779,24 +791,55 @@ torchBtn.addEventListener('click', toggleTorch);
 /* =========================
    Init on load
    ========================= */
-window.addEventListener('DOMContentLoaded', async ()=>{
-  // load DB from Scaner.html storage (localStorage 'barcodeDB')
-  loadBarcodeDB();
-  buildAllItemsFromDB();
+function saveAppState() {
+  const state = {
+    items: allItems.map(item => ({
+      code: item.code,
+      name: item.name,
+      unit: item.unit,
+      price: item.price,
+      docQty: item.docQty
+    })),
+    values: { ...sessionValues },
+    scrollPosition: document.getElementById('content').scrollTop,
+    scannerActive: scanning
+  };
+  localStorage.setItem('recountProState', JSON.stringify(state));
+}
 
-  // restore autosave session if exists
-  const currentLocalkaId = (window.localkaData && window.localkaData.docId) ? window.localkaData.docId : 'loc_' + new Date().toISOString().slice(0,10);
-  const sessionKey = 'autosave_session_' + currentLocalkaId;
-  const savedSession = localStorage.getItem(sessionKey);
-  if(savedSession){
-    try{
-      const session = JSON.parse(savedSession);
-      allItems = session.items || allItems;
-      sessionValues = session.values || {};
-    }catch(e){}
+function restoreAppState() {
+  try {
+    const saved = localStorage.getItem('recountProState');
+    if (!saved) return false;
+
+    const state = JSON.parse(saved);
+    allItems = state.items || [];
+    sessionValues = state.values || {};
+
+    render(allItems);
+
+    setTimeout(() => {
+      document.getElementById('content').scrollTop = state.scrollPosition || 0;
+    }, 100);
+
+    if (state.scannerActive) {
+      startCamera();
+    }
+
+    return true;
+  } catch (e) {
+    console.error('Failed to restore state:', e);
+    return false;
   }
+}
 
-  render(allItems);
+  
+window.addEventListener('DOMContentLoaded', async () => {
+  if (!restoreAppState()) {
+    loadBarcodeDB();
+    allItems = [];
+    render(allItems);
+  }
 
   // enumerate cameras (non-blocking)
   if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices){
