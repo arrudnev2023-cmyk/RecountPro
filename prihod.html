@@ -6,7 +6,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <title>RecountPro — Приход / Расход</title>
 
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
+ <script src="https://unpkg.com/@zxing/library@latest"></script>
+
 
   <style>
     :root{
@@ -416,22 +417,25 @@ function loadDB(){
     }
   }catch(e){ barcodeDB = {}; }
 
-  try{
-    const rawCodes = localStorage.getItem("barcodeCodes");
-    if(rawCodes){
-      const parsed = JSON.parse(rawCodes);
-          if(parsed && typeof parsed === "object"){
+ try {
+  const rawCodes = localStorage.getItem("barcodeCodes");
+  if (rawCodes) {
+    const parsed = JSON.parse(rawCodes);
+    if (parsed && typeof parsed === "object") {
       barcodeCodes = parsed;
     }
-  }catch(e){ barcodeCodes = {}; }
-
-  if(!barcodeDB) barcodeDB = {};
-  if(!barcodeCodes) barcodeCodes = {};
+  }
+} catch (e) {
+  barcodeCodes = {};
 }
 
-function saveDB(){
+if (!barcodeDB) barcodeDB = {};
+if (!barcodeCodes) barcodeCodes = {};
+
+function saveDB() {
   localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
 }
+
 
 function escapeHtml(s){
   return String(s||"")
