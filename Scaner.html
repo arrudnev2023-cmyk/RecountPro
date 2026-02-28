@@ -485,31 +485,44 @@ function exportToCSV() {
 
 function importFromText(text) {
   try {
-    // Удаляем лишние пробелы и переносы строк
-    const cleanText = text.trim().replace(/\s+/g, ' ');
-    // Преобразуем в JSON, добавляя фигурные скобки
-    const jsonStr = `{${cleanText}}`;
-    const importedData = JSON.parse(jsonStr);
-
+    // Разбиваем текст на строки и фильтруем пустые
+    const lines = text.split('\n').map(line => line.trim()).filter(line => line);
     let count = 0;
-        for (const [code, name] of Object.entries(importedData)) {
+
+    for (const line of lines) {
+      // Ищем соответствие шаблону "код": "название"
+      const match = line.match(/^"([^"]+)":\s*"([^"]*)"/);
+      if (!match) {
+        console.warn(`Пропущен некорректный формат строки: ${line}`);
+        continue;
+      }
+
+      const code = match[1].trim();
+      const name = match[2].trim();
+
       // Валидация штрих‑кода: только цифры, длина 8–14
       if (!/^\d+$/.test(code) || code.length < 8 || code.length > 14) {
         console.warn(`Пропущен некорректный штрих‑код: ${code}`);
         continue;
       }
+
       db[code] = name;
       count++;
     }
 
-    saveDB();
-    showToast(`Успешно импортировано ${count} записей`, 3000);
+    if (count > 0) {
+      saveDB();
+      showToast(`Успешно импортировано ${count} записей`, 3000);
+    } else {
+      showToast('Не найдено корректных данных для импорта', 3000);
+    }
     closeImportModal();
   } catch (e) {
     console.error('Ошибка импорта:', e);
-    showToast('Ошибка формата данных. Используйте формат: "код": "название"', 4000);
+    showToast('Ошибка при импорте данных. Проверьте формат.', 4000);
   }
 }
+
 
 function showImportModal() {
   importModal.style.display = 'flex';
