@@ -1,819 +1,835 @@
-<!DOCTYPE html>
+<!doctype html>
+
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <title>RecountPro — Приход / Расход</title>
+
+ <script src="https://unpkg.com/@zxing/library@latest"></script>
+
+
   <style>
-    :root {
-      --accent: #6d28d9;
-      --accent-light: #a78bfa;
-      --text: #333;
-      --muted: #666;
-      --danger: #f87171;
-      --success: #34d399;
-      --card-bg: #fff;
-      --maxw: 980px;
-      --radius: 12px;
+    :root{
+      --accent:#6d28d9;
+      --accent-light:#a78bfa;
+      --text:#e6eef8;
+      --muted:#9aa3b2;
+      --danger:#f87171;
+      --success:#34d399;
+      --card-bg: linear-gradient(135deg,#1e1e2f,#2a2a40);
+      --maxw:980px;
+      --radius:12px;
     }
 
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: #fff;
-      color: var(--text);
-      font-family: Inter, Segoe UI, system-ui, Arial;
-      overflow: hidden;
+    *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+    html,body{
+      height:100%; margin:0;
+      background:linear-gradient(180deg,#05030a,#0b0710);
+      color:var(--text);
+      font-family:Inter,Segoe UI,system-ui,Arial;
+      overflow:hidden;
     }
 
-    header {
-      position: fixed;
-      left: 0; right: 0; top: 0;
-      padding: 16px;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(8px);
-      z-index: 1000;
-      border-bottom: 1px solid #eee;
+    header{
+      position:fixed; left:0; right:0; top:0;
+      padding:12px;
+      background:rgba(10,10,12,0.7);
+      backdrop-filter:blur(8px);
+      z-index:1000;
+      border-radius:0 0 14px 14px;
     }
-    header h1 {
-      margin: 0; text-align: center; font-size: 1.15rem; color: var(--accent);
-    }
-
-    #search-wrap {
-      max-width: var(--maxw);
-      margin: 16px auto;
-      position: relative;
-    }
-    #search {
-      width: 100%;
-      padding: 14px 60px 14px 16px;
-      border-radius: var(--radius);
-      border: 1px solid #ddd;
-      background: #fafafa;
-      color: var(--text);
-      font-size: 16px;
-      transition: all 0.2s ease;
-    }
-    #search:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.1);
+    header h1{
+      margin:0; text-align:center; font-size:1.15rem;
     }
 
-    /* Кнопка сканера */
-    #scan-btn {
-      position: absolute;
-      right: 12px; top: 50%;
-      transform: translateY(-50%);
-      width: 52px; height: 52px;
-      border-radius: var(--radius);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      background: linear-gradient(135deg, var(--accent), #8b5cf6);
-      color: #fff; cursor: pointer;
-      font-size: 20px; display: flex;
-      align-items: center; justify-content: center;
-      transition: all 0.2s ease;
-      box-shadow: 0 4px 12px rgba(109, 40, 217, 0.4);
+    #search-wrap{
+      max-width:var(--maxw);
+      margin:10px auto;
+      position:relative;
     }
-    #scan-btn:hover {
-      transform: translateY(-50%) scale(1.05);
-      box-shadow: 0 6px 16px rgba(109, 40, 217, 0.6);
+    #search{
+      width:100%;
+      padding:10px 56px 10px 12px;
+      border-radius:var(--radius);
+      border:1px solid rgba(255,255,255,0.04);
+      background:rgba(20,20,24,0.6);
+      color:var(--text);
+      font-size:15px;
     }
-
-    #clear-search {
-      position: absolute; right: 68px; top: 50%;
-      transform: translateY(-50%); background: none; border: none;
-      color: var(--muted); cursor: pointer; font-size: 20px;
-      width: 40px; height: 40px; display: flex;
-      align-items: center; justify-content: center;
+    #scan-btn{
+      position:absolute; right:44px; top:50%; transform:translateY(-50%);
+      background:none; border:none; color:var(--muted); cursor:pointer;
+    }
+    #clear-search{
+      position:absolute; right:8px; top:50%; transform:translateY(-50%);
+      background:none; border:none; color:var(--muted); cursor:pointer;
     }
 
-    #content {
-      position: fixed; left: 0; right: 0; top: 112px; bottom: 0;
-      overflow: auto; padding: 16px;
+    #content{
+      position:fixed; left:0; right:0; top:96px; bottom:0;
+      overflow:auto; padding:12px;
     }
 
-    .list {
-      max-width: var(--maxw); margin: 0 auto;
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;
+    .list{max-width:var(--maxw); margin:0 auto;}
+
+    .item{
+      width:100%;
+      margin:10px 0;
+      padding:16px;
+      border-radius:var(--radius);
+      background:var(--card-bg);
+      box-shadow:0 8px 30px rgba(0,0,0,0.6);
+      border-left:6px solid transparent;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
     }
 
-    .item {
-      width: 100%; padding: 16px; border-radius: var(--radius);
-      background: var(--card-bg); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-      border-left: 6px solid transparent; display: flex; flex-direction: column; gap: 12px;
-      border: 1px solid #f0f0f0; transition: transform 0.2s ease, box-shadow 0.2s ease;
+    .item.found{
+      box-shadow:0 18px 50px rgba(106,17,203,0.18);
+      transform:translateY(-6px);
     }
-    .item:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(106, 17, 203, 0.12); }
 
-    .field { font-size: 14px; }
-    .label { font-weight: 700; color: #444; margin-right: 8px; }
+    .item.highlight-purple {
+      box-shadow: 0 0 0 3px #7c3aed, 0 12px 32px rgba(124, 58, 237, 0.4);
+      border-left-color: #7c3aed !important;
+      transition: box-shadow .25s ease, transform .25s ease;
+    }
 
-    .qty-block { margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; display: flex; flex-direction: column; gap: 12px; }
-    .qty-section-title { font-weight: 600; font-size: 14px; color: var(--accent-light); margin-bottom: 8px; }
-    .qty-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .field{font-size:14px;}
+    .label{font-weight:700; color:#dbeafe; margin-right:6px;}
+    .hidden{display:none !important;}
 
-    .qty-input-wrapper { flex: 1; min-width: 120px; position: relative; }
-    .qtyInput { width: 100%; padding: 10px 40px 10px 16px; border-radius: var(--radius); border: 1px solid #ddd; background: #fafafa; color: var(--text); font-size: 14px; transition: all 0.2s ease; }
-    .qtyInput:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.2); background: #fff; }
+    .row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      justify-content:space-between;
+    }
 
-    .qtyAction { width: 44px; height: 44px; border-radius: var(--radius); border: 1px solid rgba(255, 255, 255, 0.2); background: linear-gradient(135deg, var(--accent), #8b5cf6); color: #fff; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(109, 40, 217, 0.4); }
-    .qtyAction:hover { background: linear-gradient(135deg, #5a20b8, #7a4fd6); transform: scale(1.05); box-shadow: 0 6px 16px rgba(109, 40, 217, 0.6); }
-    .qtyAction:active { transform: scale(0.98); box-shadow: 0 2px 8px rgba(109, 40, 217, 0.4); }
+    /* Улучшенные стили для блока количества */
+    .qty-block{
+      margin-top:12px;
+      padding-top:12px;
+      border-top:1px solid rgba(255,255,255,0.08);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
 
-    /* FAB-кнопка в едином стиле */
-   #fabMenu {
-  position: fixed;
-  bottom: 1.2rem;
-  right: 1.2rem;
-  z-index: 1001;
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
-  color: #fff;
-  border: none;
-  padding: 1rem 1.4rem;
-  border-radius: 16px;
-  font-size: 1.3rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 14px rgba(106, 17, 203, 0.7);
-  transition: all 0.3s ease;
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+    .qty-section-title{
+      font-weight:600;
+      font-size:15px;
+      color:var(--accent-light);
+      margin-bottom:8px;
+    }
+
+    .qty-row{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .qty-row-label{
+      min-width:80px;
+      font-size:14px;
+      color:var(--muted);
+      font-weight:500;
+    }
+
+    .qty-controls{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .qty-input-wrapper{
+      position:relative;
+      flex:1;
+      min-width:120px;
+    }
+
+    .qty-controls input{
+      width:100%;
+      padding:10px 40px 10px 16px;
+      border-radius:var(--radius);
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(10,10,16,0.8);
+      color:var(--text);
+      text-align:center;
+      font-size:16px;
+      font-weight:600;
+      transition:all 0.2s ease;
+    }
+
+    .qty-controls input:focus{
+      outline:none;
+      border-color:var(--accent);
+      box-shadow:0 0 0 3px rgba(109, 40, 217, 0.3);
+      background:rgba(15,15,20,0.9);
+    }
+
+    .qty-controls button{
+      width:40px;
+      height:40px;
+      border-radius:var(--radius);
+      border:1px solid rgba(255,255,255,0.2);
+      background:rgba(255,255,255,0.08);
+      color:var(--text);
+      cursor:pointer;
+      font-size:18px;
+      font-weight:bold;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      transition:all 0.2s ease;
+    }
+
+    .qty-controls button:hover{
+      background:rgba(255,255,255,0.15);
+      transform:scale(1.05);
+    }
+
+    .qty-current{
+      font-size:14px;
+      color:var(--accent-light);
+      font-weight:600;
+      margin-left:8px;
+    }
+
+    /* Подсказки для полей ввода */
+    .input-hint{
+      font-size:12px;
+      color:var(--muted);
+      margin-top:4px;
+      margin-left:4px;
+    }
+
+    /* Иконки для кнопок */
+   .plus-icon::after{content:"+";}
+.minus-icon::after{content:"−";}
+
+/* Анимация изменения количества */
+@keyframes highlightQty {
+  0% { background-color: rgba(109, 40, 217, 0.1); }
+  50% { background-color: rgba(109, 40, 217, 0.3); }
+  100% { background-color: transparent; }
 }
 
-#fabMenu:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(106, 17, 203, 0.9);
+.highlight-qty {
+  animation: highlightQty 0.6s ease;
 }
 
-#fabMenu:active {
-  transform: translateY(0) scale(0.95);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 10px rgba(106, 17, 203, 0.5);
+/* Стили для FAB-кнопки */
+#fabMenu{
+  position:fixed; bottom:1rem; right:1rem; z-index:1001;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color:#fff; border:none;
+  padding:0.9rem 1.2rem;
+  border-radius:14px;
+  font-size:1.2rem; font-weight:600;
+  cursor:pointer;
+  box-shadow:0 6px 20px rgba(0,0,0,0.35), 0 0 12px rgba(106,17,203,0.6);
+  transition:all .3s ease;
+  backdrop-filter:blur(6px);
+  display:flex; align-items:center; justify-content:center;
 }
 
-/* Стили для полноэкранного сканера */
-.scanner-fullscreen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  z-index: 2000;
-  display: none;
+/* Стили для оверлея и нижнего листа */
+#sheetOverlay{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.55);
+  backdrop-filter:blur(4px);
+  opacity:0; pointer-events:none;
+  transition:opacity .25s ease;
+  z-index:999;
+}
+#sheetOverlay.show{
+  opacity:1; pointer-events:auto;
 }
 
-.scanner-fullscreen.active {
-  display: block;
+#bottomSheet{
+  position:fixed; left:0; right:0; bottom:-60vh;
+  padding:1.2rem;
+  background:rgba(20,20,20,0.7);
+  backdrop-filter:blur(12px) saturate(180%);
+  border-radius:20px 20px 0 0;
+  box-shadow:0 -12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+  transition:bottom .35s ease;
+  z-index:1002;
+}
+#bottomSheet.show{ bottom:0; }
+
+.sheet-content{
+  display:flex; flex-direction:column; gap:0.7rem;
+}
+.sheet-btn{
+  background:linear-gradient(145deg, #1f1f1f, #2c2c2c);
+  color:#f9f9f9; border:none;
+  padding:0.9rem 1rem;
+  border-radius:12px;
+  font-size:1rem; font-weight:500;
+  cursor:pointer;
+  transition:all .2s ease;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 14px rgba(0,0,0,0.4);
+  display:flex; align-items:center; gap:10px;
 }
 
-.scanner-content {
+/* Стили для сканера */
+.preview-wrap.camera-1-3 {
   position: relative;
   width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.preview-wrap {
-  flex: 1;
-  position: relative;
+  max-width:var(--maxw);
+  margin:0 auto 10px;
+  padding-top: 33%;
   overflow: hidden;
+  border-radius: 12px;
   background: #000;
 }
 
-#preview {
+.preview-wrap.camera-1-3 video {
+  position: absolute;
+  top: 0; left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.scanner-header {
-  padding: 16px;
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+#scannerCard.card{
+  max-width:var(--maxw);
+  margin:0 auto 10px;
+  padding:10px;
+  border-radius:12px;
+  background:rgba(10,10,16,0.9);
+  box-shadow:0 8px 30px rgba(0,0,0,0.6);
 }
 
-.close-scanner {
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 24px;
-  cursor: pointer;
-  padding: 8px;
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  margin-top:8px;
+  font-size:13px;
 }
 
-.scanner-controls {
-  position: absolute;
-  bottom: 32px;
-  left: 0;
-  width: 100%;
-  padding: 0 32px;
-  display: flex;
-  justify-content: center;
-  gap: 16px;
+.controls .btn{
+  padding:6px 10px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.18);
+  background:rgba(255,255,255,0.04);
+  color:var(--text);
+  cursor:pointer;
 }
 
-.torch-btn {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
-  font-size: 20px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.torch-btn:hover {
-  background: rgba(255, 255, 255, 0.4);
-}
-
-/* Поля для ввода прихода/расхода */
-.input-group {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.input-label {
-  min-width: 80px;
-  font-weight: 500;
-  color: var(--muted);
-}
-
-.action-input {
-  flex: 1;
-  padding: 10px 16px;
-  border-radius: var(--radius);
-  border: 1px solid #ddd;
-  background: #fafafa;
-  font-size: 14px;
-  transition: all 0.2s ease;
-}
-
-.action-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.2);
-  background: #fff;
-}
-
-.action-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: linear-gradient(135deg, var(--accent-light), var(--accent));
-  color: #fff;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.action-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(109, 40, 217, 0.6);
-}
-
-.action-btn:active {
-  transform: scale(0.98);
-}
-
-/* Нижний лист меню */
-#sheetOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1500;
-  display: none;
-}
-
-#bottomSheet {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  max-width: var(--maxw);
-  margin: 0 auto;
-  background: var(--card-bg);
-  border-radius: var(--radius) var(--radius) 0 0;
-  padding: 24px 16px;
-  z-index: 1501;
-  display: none;
-}
-
-.sheet-content {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.sheet-btn {
-  width: 100%;
-  padding: 14px;
-  border-radius: var(--radius);
-  border: none;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.sheet-btn:first-child {
-  background: var(--accent);
-  color: #fff;
-}
-
-.sheet-btn:last-child {
-  background: #f0f0f0;
-  color: var(--text);
-}
-
-.sheet-btn:hover {
-  opacity: 0.9;
-  transform: translateY(-2px);
-}
-
-/* Карточка операции */
-#operationCard {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 90%;
-  max-width: 500px;
-  background: var(--card-bg);
-  border-radius: var(--radius);
-  padding: 24px;
-  z-index: 2500;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  display: none;
-}
-
-.operation-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #eee;
-}
-
-.operation-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--accent);
-  margin: 0;
-}
-
-.current-balance {
-  font-size: 14px;
-  color: var(--muted);
-}
-
-#currentBalance {
-  font-weight: 600;
-  color: var(--text);
-}
-
-/* Поля формы операции */
-.field {
-  margin-bottom: 16px;
-}
-
-.label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #444;
-}
-
-.form-control {
-  width: 100%;
-  padding: 12px 16px;
-  border-radius: var(--radius);
-  border: 1px solid #ddd;
-  background: #fafafa;
-  font-size: 14px;
-  transition: all 0.2s ease;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.2);
-  background: #fff;
-}
-
-.qty-block {
-  margin-top: 16px;
-  padding: 16px;
-  background: #f9f9f9;
-  border-radius: var(--radius);
-  border: 1px solid #f0f0f0;
-}
-
-.qty-section-title {
-  font-weight: 600;
-  font-size: 15px;
-  color: var(--accent-light);
-  margin-bottom: 12px;
-  text-align: center;
-}
-
-.input-group {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.input-label {
-  min-width: 80px;
-  font-weight: 500;
-  color: var(--muted);
-}
-
-.action-input {
-  flex: 1;
-  padding: 10px 16px;
-  border-radius: var(--radius);
-  border: 1px solid #ddd;
-  background: #fafafa;
-  font-size: 14px;
-  transition: all 0.2s ease;
-}
-
-.action-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.2);
-  background: #fff;
-}
-
-.action-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: linear-gradient(135deg, var(--accent-light), var(--accent));
-  color: #fff;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.action-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(109, 40, 217, 0.6);
-}
-
-.action-btn:active {
-  transform: scale(0.98);
-}
-
-/* Кнопки управления операцией */
-.controls-row {
-  display: flex;
-  gap: 12px;
-  margin-top: 24px;
-}
-
-.btn {
-  flex: 1;
-  padding: 12px 16px;
-  border-radius: var(--radius);
-  border: none;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: #fff;
-}
-
-.btn-secondary {
-  background: #f0f0f0;
-  color: var(--text);
-}
-
-.btn:hover {
-  opacity: 0.9;
-  transform: translateY(-2px);
-}
-
-/* Адаптивность */
+/* Адаптация для мобильных устройств */
 @media (max-width: 768px) {
-  .list {
-    grid-template-columns: 1fr;
+  .qty-controls input {
+    width: 100%;
+    font-size: 18px;
+    padding: 12px 16px;
   }
-  
-  .input-group {
+
+  .qty-controls button {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+
+  .qty-row {
     flex-direction: column;
     gap: 8px;
   }
-  
-  .controls-row {
-    flex-direction: column;
-  }
-}
 
-@media (min-width: 769px) {
-  .list {
-    grid-template-columns: repeat(2, 1fr);
+  .qty-row-label {
+    align-self: flex-start;
   }
-}
 
-/* Классы состояний */
-.hidden {
-  display: none !important;
+  #search-wrap {
+    margin: 8px auto;
+  }
+
+  .item {
+    padding: 14px;
+  }
 }
   </style>
 </head>
+
 <body>
+  <canvas id="bg"></canvas>
+
   <header>
-    <h1>RecountPro</h1>
+    <h1>RecountPro — Приход / Расход</h1>
+    <div id="search-wrap">
+      <input id="search" placeholder="Поиск по названию или коду..." autocomplete="off" />
+      <button id="scan-btn">📷</button>
+      <button id="clear-search">×</button>
+    </div>
   </header>
 
-  <div id="search-wrap">
-    <input type="text" id="search" placeholder="Поиск товара...">
-    <button id="clear-search">×</button>
-    <button id="scan-btn">🔎</button>
-  </div>
-
-  <div id="content">
-    <div class="list" id="itemsList">
-      <!-- Здесь будут динамически добавляться карточки товаров -->
+  <main id="content">
+    <div id="scannerCard" class="card" style="display:none">
+      <div class="preview-wrap camera-1-3"><video id="preview" playsinline muted></video></div>
+      <div class="controls">
+        <select id="deviceSelect" class="btn" style="min-width:160px"></select>
+        <button id="torchBtn" class="btn">🔦</button>
+        <button id="closeScannerBtn" class="btn">Закрыть</button>
+        <div id="scanResult" style="margin-left:auto;color:var(--muted)"></div>
+      </div>
     </div>
-  </div>
 
-  <!-- FAB-кнопка -->
-  <button id="fabMenu">+ Операция</button>
+    <div id="list" class="list"></div>
+  </main>
 
-  <!-- Нижний лист меню -->
-  <div id="sheetOverlay" class="hidden"></div>
-  <div id="bottomSheet" class="hidden">
+  <button id="fabMenu">☰</button>
+
+  <div id="sheetOverlay"></div>
+
+  <div id="bottomSheet">
     <div class="sheet-content">
-      <button class="sheet-btn" id="toggleZeroBtn">Показать товары с 0</button>
-      <button class="sheet-btn" id="backToMenuBtn">Назад</button>
+      <button class="sheet-btn" id="toggleZeroBtn">🔍 Показать товары с 0</button>
+      <button class="sheet-btn" id="backToMenuBtn">🏠 В меню</button>
     </div>
   </div>
-
-  <!-- Полноэкранный сканер -->
-  <div class="scanner-fullscreen hidden" id="scannerFullscreen">
-    <div class="scanner-content">
-      <div class="scanner-header">
-        <h3 style="margin:0;color:#fff;">Сканер штрихкодов</h3>
-        <button class="close-scanner" id="closeScanner">×</button>
-      </div>
-      <div class="preview-wrap">
-        <video id="preview"></video>
-      </div>
-      <div class="scanner-controls">
-        <button class="torch-btn" id="torchBtn">⚡</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Карточка операции -->
-  <div id="operationCard" class="hidden">
-    <div class="operation-header">
-      <h2 class="operation-title">Операция</h2>
-      <div class="current-balance">Баланс: <span id="currentBalance">0</span></div>
-    </div>
-    
-    <div class="field">
-      <label class="label">Товар</label>
-      <input type="text" class="form-control" id="productName" readonly>
-    </div>
-    
-    <div class="qty-block">
-      <div class="qty-section-title">Приход</div>
-      <div class="input-group">
-        <span class="input-label">Количество:</span>
-        <input type="number" class="action-input" id="incomingQty" placeholder="Введите количество" min="1">
-        <button class="action-btn" id="addOneIncoming">+1</button>
-      </div>
-    </div>
-       <div class="qty-block">
-      <div class="qty-section-title">Расход</div>
-      <div class="input-group">
-        <span class="input-label">Количество:</span>
-        <input type="number" class="action-input" id="outgoingQty" placeholder="Введите количество" min="1">
-        <button class="action-btn" id="addOneOutgoing">−1</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="controls-row">
-    <button class="btn btn-secondary" id="cancelOperation">Отмена</button>
-    <button class="btn btn-primary" id="confirmOperation">Подтвердить</button>
-  </div>
-</div>
-
-<!-- Подключаем библиотеку для сканирования штрихкодов -->
-<script src="https://unpkg.com/@zxing/library@latest"></script>
 
 <script>
-  // Инициализация при загрузке страницы
-  document.addEventListener('DOMContentLoaded', () => {
-    loadSampleItems();
-    
-    // Обработчик очистки поиска
-    document.getElementById('clear-search').addEventListener('click', () => {
-      document.getElementById('search').value = '';
-      loadSampleItems(); // Перезагружаем список без фильтрации
-    });
-    
-    // Обработчик поиска
-    document.getElementById('search').addEventListener('input', (e) => {
-      const searchTerm = e.target.value.toLowerCase();
-      const items = document.querySelectorAll('.item');
-      
-      items.forEach(item => {
-        const name = item.querySelector('.field:first-child span:last-child').textContent.toLowerCase();
-        const code = item.querySelector('.field:nth-child(2) span:last-child').textContent;
-        
-        if (name.includes(searchTerm) || code.includes(searchTerm)) {
-          item.style.display = 'flex';
-        } else {
-          item.style.display = 'none';
-        }
-      });
-    });
+/* =========================
+   БАЗЫ: ТОВАРЫ + ШК
+========================= */
 
-    // Обработчик FAB‑кнопки
-    document.getElementById('fabMenu').addEventListener('click', () => {
-      showBottomSheet();
-    });
+let barcodeDB = {};
+let barcodeCodes = {};
+let allItems = [];
+let showZero = false;
 
-    // Обработчик закрытия нижнего листа
-    document.getElementById('backToMenuBtn').addEventListener('click', () => {
-      hideBottomSheet();
-    });
+function loadDB(){
+  try{
+    const raw = localStorage.getItem("barcodeDB");
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && typeof parsed === "object"){
+        barcodeDB = parsed;
+      }
+    }
+  }catch(e){ barcodeDB = {}; }
 
-    // Обработчик кнопки «Показать товары с 0»
-    document.getElementById('toggleZeroBtn').addEventListener('click', () => {
-      toggleZeroItems();
-      hideBottomSheet();
-    });
+ try {
+  const rawCodes = localStorage.getItem("barcodeCodes");
+  if (rawCodes) {
+    const parsed = JSON.parse(rawCodes);
+    if (parsed && typeof parsed === "object") {
+      barcodeCodes = parsed;
+    }
+  }
+} catch (e) {
+  barcodeCodes = {};
+}
 
-    // Обработчики кнопок сканера
-    document.getElementById('scan-btn').addEventListener('click', () => {
-      showScanner();
-    });
+if (!barcodeDB) barcodeDB = {};
+if (!barcodeCodes) barcodeCodes = {};
 
-    document.getElementById('closeScanner').addEventListener('click', () => {
-      hideScanner();
-    });
+function saveDB() {
+  localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
+}
 
-    // Обработчики операций
-    document.getElementById('addOneIncoming').addEventListener('click', () => {
-      incrementValue('incomingQty', 1);
-    });
 
-    document.getElementById('addOneOutgoing').addEventListener('click', () => {
-      incrementValue('outgoingQty', -1);
-    });
+function escapeHtml(s){
+  return String(s||"")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
+}
 
-    document.getElementById('cancelOperation').addEventListener('click', () => {
-      hideOperationCard();
-    });
+/* =========================
+   СБОР СПИСКА ТОВАРОВ
+========================= */
 
-    document.getElementById('confirmOperation').addEventListener('click', () => {
-      confirmOperation();
-    });
+function buildItems(){
+  allItems = Object.keys(barcodeDB).map(code => {
+    const rec = barcodeDB[code];
+
+    let name;
+    let qty = 0;
+
+    if (typeof rec === "string") {
+      // старый формат: только название
+      name = rec;
+      qty = 0;
+    } else if (rec && typeof rec === "object") {
+      name = rec.name || code;
+      qty  = Number(rec.qty || 0);
+    } else {
+      name = code;
+      qty  = 0;
+    }
+
+    return { code, name, qty };
   });
+}
 
-  // Заглушка для загрузки примеров товаров
-  function loadSampleItems() {
-    const list = document.getElementById('itemsList');
-    list.innerHTML = '';
-    
-    const sampleItems = [
-      { name: 'Товар 1', code: '001', balance: 15 },
-      { name: 'Товар 2', code: '002', balance: 0 },
-      { name: 'Товар 3', code: '003', balance: 42 }
-    ];
-    
-    sampleItems.forEach(item => {
-      const itemEl = document.createElement('div');
-      itemEl.className = 'item';
-      itemEl.innerHTML = `
-        <div class="field">
-          <span class="label">Название:</span>
-          <span>${item.name}</span>
-        </div>
-        <div class="field">
-          <span class="label">Код:</span>
-          <span>${item.code}</span>
-        </div>
-        <div class="field">
-          <span class="label">Баланс:</span>
-          <span>${item.balance}</span>
-        </div>
-        <div class="qty-block">
-          <div class="qty-row">
+/* =========================
+   РЕНДЕР
+========================= */
+
+const listEl = document.getElementById("list");
+
+function render(items){
+  listEl.innerHTML = "";
+
+  items.forEach(item => {
+    if (!showZero && item.qty === 0) return;
+
+    // --- Правильное получение названия ---
+    // 1) item.name — как на рабочем экране
+    // 2) barcodeCodes — если есть в базе штрихкодов
+    // 3) item.title / product_name — на случай разных форматов
+    // 4) item.code — крайний fallback
+    let name =
+      item.name ||
+      barcodeCodes[item.code] ||
+      item.title ||
+      item.product_name ||
+      item.label ||
+      item.code;
+
+    const div = document.createElement("div");
+    div.className = "item";
+    div.dataset.code = item.code;
+
+    div.innerHTML = `
+      <div class="field"><span class="label">Название:</span> ${escapeHtml(name)}</div>
+      <div class="field"><span class="label">Штрих‑код:</span> ${item.code}</div>
+      <div class="field qty-current"><span class="label">Остаток:</span> <span class="curQty">${item.qty}</span></div>
+
+      <div class="qty-block">
+        <div class="qty-section-title">Приход</div>
+        <div class="qty-row">
+          <div class="qty-controls">
+            <button class="minusPlus minus-icon" data-code="${item.code}"></button>
             <div class="qty-input-wrapper">
-              <input type="number" class="qtyInput" value="0" min="0">
+              <input
+                type="number"
+                class="qtyPlusInput"
+                data-code="${item.code}"
+                value="0"
+                min="0"
+                placeholder="0"
+                inputmode="numeric"
+                pattern="[0-9]*"
+              >
+              <span class="input-hint">Количество для прихода</span>
             </div>
-            <button class="qtyAction">✓</button>
+            <button class="plusPlus plus-icon" data-code="${item.code}"></button>
           </div>
         </div>
-      `;
-      list.appendChild(itemEl);
+
+        <div class="qty-section-title">Расход</div>
+        <div class="qty-row">
+          <div class="qty-controls">
+            <button class="minusMinus minus-icon" data-code="${item.code}"></button>
+            <div class="qty-input-wrapper">
+              <input
+                type="number"
+                class="qtyMinusInput"
+                data-code="${item.code}"
+                value="0"
+                min="0"
+                placeholder="0"
+                inputmode="numeric"
+                pattern="[0-9]*"
+              >
+              <span class="input-hint">Количество для расхода</span>
+            </div>
+            <button class="plusMinus plus-icon" data-code="${item.code}"></button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    listEl.appendChild(div);
+  });
+
+  attachQtyHandlers();
+}
+
+/* =========================
+   ПРИХОД / РАСХОД
+========================= */
+
+function applyChange(code) {
+  const plusInput  = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
+  const minusInput = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
+  if(!plusInput || !minusInput) return;
+
+  let plus  = Number(plusInput.value || 0);
+  let minus = Number(minusInput.value || 0);
+  if(isNaN(plus)) plus = 0;
+  if(isNaN(minus)) minus = 0;
+
+  // старый остаток
+  let oldQty = 0;
+  const rec = barcodeDB[code];
+
+  if (rec) {
+    if (typeof rec === "object" && rec !== null) {
+      oldQty = Number(rec.qty || 0);
+    } else {
+      // если там строка (старый формат) — qty считаем 0
+      oldQty = 0;
+    }
+  }
+
+  let newQty = oldQty + plus - minus;
+  if (newQty < 0) newQty = 0;
+
+  // если товара нет или он в виде строки — нормализуем в объект
+  if (!rec) {
+    barcodeDB[code] = {
+      name: barcodeCodes[code] || code,
+      qty: newQty
+    };
+  } else if (typeof rec === "string") {
+    barcodeDB[code] = {
+      name: rec,
+      qty: newQty
+    };
+  } else {
+    barcodeDB[code].qty = newQty;
+  }
+
+  saveDB();
+
+  const card = document.querySelector(`.item[data-code="${code}"]`);
+  if(card){
+    const cur = card.querySelector(".curQty");
+    if(cur) cur.textContent = newQty;
+    card.classList.add("highlight-qty");
+    setTimeout(()=> card.classList.remove("highlight-qty"), 600);
+  }
+
+  plusInput.value = "0";
+  minusInput.value = "0";
+}
+
+function attachQtyHandlers(){
+  document.querySelectorAll(".plusPlus").forEach(btn=>{
+    btn.onclick = ()=>{
+      const code = btn.dataset.code;
+      const input = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
+      input.value = Number(input.value||0)+1;
+      applyChange(code);
+    };
+  });
+
+  document.querySelectorAll(".minusPlus").forEach(btn=>{
+    btn.onclick = ()=>{
+      const code = btn.dataset.code;
+      const input = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
+      let v = Number(input.value||0)-1;
+      if(v<0) v=0;
+      input.value = v;
+      applyChange(code);
+    };
+  });
+
+  document.querySelectorAll(".plusMinus").forEach(btn=>{
+    btn.onclick = ()=>{
+      const code = btn.dataset.code;
+      const input = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
+      input.value = Number(input.value||0)+1;
+      applyChange(code);
+    };
+  });
+
+  document.querySelectorAll(".minusMinus").forEach(btn=>{
+    btn.onclick = ()=>{
+      const code = btn.dataset.code;
+      const input = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
+      let v = Number(input.value||0)-1;
+      if(v<0) v=0;
+      input.value = v;
+      applyChange(code);
+    };
+  });
+
+  document.querySelectorAll(".qtyPlusInput").forEach(inp=>{
+    inp.onchange = ()=> applyChange(inp.dataset.code);
+  });
+ document.querySelectorAll(".qtyMinusInput").forEach(inp=>{
+  inp.onchange = ()=> applyChange(inp.dataset.code);
+});
+}
+
+/* =========================
+   ПОИСК
+========================= */
+
+function filterItems(query){
+  const filtered = allItems.filter(item =>
+    item.name.toLowerCase().includes(query.toLowerCase()) ||
+    item.code.includes(query)
+  );
+  render(filtered);
+}
+
+/* =========================
+   СКАНЕР ШТРИХ‑КОДОВ
+========================= */
+
+let codeReader = null;
+let currentStream = null;
+
+async function initScanner(){
+  try {
+    const codeReaderClass = window.ZXing.BrowserMultiFormatReader;
+    if (!codeReaderClass) {
+      alert("Библиотека сканера не загружена");
+      return;
+    }
+    codeReader = new codeReaderClass();
+
+    // Получаем список камер
+    const videoInputDevices = await codeReader.getVideoInputDevices();
+    const deviceSelect = document.getElementById("deviceSelect");
+    deviceSelect.innerHTML = "";
+
+    videoInputDevices.forEach((device, i) => {
+      const option = document.createElement("option");
+      option.value = device.deviceId;
+      option.textContent = device.label || `Камера ${i + 1}`;
+      deviceSelect.appendChild(option);
     });
-  }
 
-  function showBottomSheet() {
-    document.getElementById('sheetOverlay').classList.remove('hidden');
-    document.getElementById('bottomSheet').classList.remove('hidden');
+    if (videoInputDevices.length > 0) {
+      deviceSelect.value = videoInputDevices[0].deviceId;
+    }
+  } catch (err) {
+    console.error("Ошибка инициализации сканера:", err);
+    alert("Не удалось инициализировать сканер. Проверьте разрешения камеры.");
   }
+}
 
-  function hideBottomSheet() {
-    document.getElementById('sheetOverlay').classList.add('hidden');
-    document.getElementById('bottomSheet').classList.add('hidden');
-  }
+async function startScanner(){
+  const scannerCard = document.getElementById("scannerCard");
+  const preview = document.getElementById("preview");
+  const deviceSelect = document.getElementById("deviceSelect");
 
-  function toggleZeroItems() {
-    const items = document.querySelectorAll('.item');
-    items.forEach(item => {
-      const balance = parseInt(item.querySelector('.field:last-child span').textContent);
-      if (balance === 0) {
-        item.style.display = item.style.display === 'none' ? 'flex' : 'flex';
+  scannerCard.style.display = "block";
+
+  try {
+    await codeReader.decodeFromVideoDevice(
+      (deviceSelect.value || null),
+      "preview",
+      (result, err) => {
+        if (result) {
+          const code = result.getText();
+          document.getElementById("scanResult").textContent = `Найден: ${code}`;
+
+          // Автоматически добавляем товар, если его нет
+          if (!barcodeDB[code]) {
+            barcodeDB[code] = {
+              name: `Товар ${code}`,
+              qty: 0
+            };
+            saveDB();
+          }
+
+          // Показываем товар в списке
+          buildItems();
+          render(allItems);
+
+          // Закрываем сканер через 1 сек после успешного сканирования
+          setTimeout(() => {
+            stopScanner();
+          }, 1000);
+        }
+        if (err && !(err instanceof window.ZXing.NotFoundException)) {
+          console.error(err);
+        }
       }
-    });
+    );
+  } catch (err) {
+    console.error("Ошибка запуска сканера:", err);
+    alert("Не удалось запустить камеру. Проверьте разрешения.");
+    stopScanner();
   }
+}
 
-  function showScanner() {
-    document.getElementById('scannerFullscreen').classList.remove('hidden');
-    // Здесь должна быть логика инициализации сканера ZXing
+function stopScanner(){
+  if (codeReader) {
+    codeReader.reset();
   }
+  const scannerCard = document.getElementById("scannerCard");
+  scannerCard.style.display = "none";
+  document.getElementById("scanResult").textContent = "";
+}
 
-  function hideScanner() {
-    document.getElementById('scannerFullscreen').classList.add('hidden');
-  }
+/* =========================
+   ИНИЦИАЛИЗАЦИЯ
+========================= */
 
-  function incrementValue(inputId, delta) {
-    const input = document.getElementById(inputId);
-    let value = parseInt(input.value) || 0;
-    value = Math.max(0, value + delta); // Не допускаем отрицательных значений
-    input.value = value;
-  }
+document.addEventListener("DOMContentLoaded", () => {
+  loadDB();
+  buildItems();
+  render(allItems);
 
-  function showOperationCard(productName, balance) {
-    document.getElementById('productName').value = productName;
-    document.getElementById('currentBalance').textContent = balance;
-    document.getElementById('operationCard').classList.remove('hidden');
-  }
+  // Поиск
+  const searchInput = document.getElementById("search");
+  searchInput.addEventListener("input", (e) => {
+    filterItems(e.target.value);
+  });
 
-  function hideOperationCard() {
-    document.getElementById('operationCard').classList.add('hidden');
-  }
+  document.getElementById("clear-search").addEventListener("click", () => {
+    searchInput.value = "";
+    filterItems("");
+  });
 
-  function confirmOperation() {
-    const incoming = parseInt(document.getElementById('incomingQty').value) || 0;
-    const outgoing = parseInt(document.getElementById('outgoingQty').value) || 0;
-    const newBalance = parseInt(document.getElementById('currentBalance').textContent) + incoming - outgoing;
+  // Сканер
+  document.getElementById("scan-btn").addEventListener("click", async () => {
+    if (!codeReader) await initScanner();
+    startScanner();
+  });
 
-    alert(`Операция подтверждена! Новый баланс: ${newBalance}`);
-    hideOperationCard();
-  }
+  document.getElementById("closeScannerBtn").addEventListener("click", stopScanner);
+
+  // Фонарик
+  document.getElementById("torchBtn").addEventListener("click", () => {
+    // Реализация включения фонарика (зависит от браузера и устройства)
+    alert("Функция фонарика пока не реализована");
+  });
+
+  // FAB-меню
+  document.getElementById("fabMenu").addEventListener("click", () => {
+    document.getElementById("sheetOverlay").classList.add("show");
+    document.getElementById("bottomSheet").classList.add("show");
+  });
+
+  document.getElementById("sheetOverlay").addEventListener("click", () => {
+    document.getElementById("sheetOverlay").classList.remove("show");
+    document.getElementById("bottomSheet").classList.remove("show");
+  });
+
+  // Показать/скрыть товары с нулевым остатком
+  document.getElementById("toggleZeroBtn").addEventListener("click", () => {
+    showZero = !showZero;
+    buildItems();
+    render(allItems);
+    document.getElementById("sheetOverlay").classList.remove("show");
+    document.getElementById("bottomSheet").classList.remove("show");
+  });
+
+  document.getElementById("backToMenuBtn").addEventListener("click", () => {
+    // Здесь можно добавить переход в главное меню
+    alert("Переход в главное меню");
+    document.getElementById("sheetOverlay").classList.remove("show");
+    document.getElementById("bottomSheet").classList.remove("show");
+  });
+});
 </script>
 </body>
 </html>
