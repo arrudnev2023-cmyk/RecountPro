@@ -1,5 +1,4 @@
 <!doctype html>
-
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
@@ -7,7 +6,6 @@
   <title>RecountPro — Приход / Расход</title>
 
   <script src="https://unpkg.com/@zxing/library@latest"></script>
-
 
   <style>
     :root{
@@ -152,7 +150,7 @@
       min-width:120px;
     }
 
-    .qty-controls input{
+    .qtyInput{
       width:100%;
       padding:10px 40px 10px 16px;
       border-radius:var(--radius);
@@ -165,22 +163,22 @@
       transition:all 0.2s ease;
     }
 
-    .qty-controls input:focus{
+    .qtyInput:focus{
       outline:none;
       border-color:var(--accent);
       box-shadow:0 0 0 3px rgba(109, 40, 217, 0.3);
       background:rgba(15,15,20,0.9);
     }
 
-    .qty-controls button{
-      width:40px;
-      height:40px;
+    .qtyAction{
+      width:48px;
+      height:48px;
       border-radius:var(--radius);
       border:1px solid rgba(255,255,255,0.2);
       background:rgba(255,255,255,0.08);
       color:var(--text);
       cursor:pointer;
-      font-size:18px;
+      font-size:20px;
       font-weight:bold;
       display:flex;
       align-items:center;
@@ -188,7 +186,7 @@
       transition:all 0.2s ease;
     }
 
-    .qty-controls button:hover{
+    .qtyAction:hover{
       background:rgba(255,255,255,0.15);
       transform:scale(1.05);
     }
@@ -208,12 +206,7 @@
       margin-left:4px;
     }
 
-    /* Иконки для кнопок */
-.plus-icon::after{content:"+";}
-.minus-icon::after{content:"−";}
-
-/* Анимация изменения количества */
-@keyframes highlightQty {
+   @keyframes highlightQty {
   0% { background-color: rgba(109, 40, 217, 0.1); }
   50% { background-color: rgba(109, 40, 217, 0.3); }
   100% { background-color: transparent; }
@@ -327,16 +320,16 @@
 
 /* Адаптация для мобильных устройств */
 @media (max-width: 768px) {
-  .qty-controls input {
+  .qtyInput {
     width: 100%;
     font-size: 18px;
     padding: 12px 16px;
   }
 
-  .qty-controls button {
-    width: 48px;
-    height: 48px;
-    font-size: 20px;
+  .qtyAction {
+    width: 52px;
+    height: 52px;
+    font-size: 22px;
   }
 
   .qty-row {
@@ -396,7 +389,7 @@
     </div>
   </div>
 
-<script>
+  <script>
 /* =========================
    БАЗЫ: ТОВАРЫ + ШК
 ========================= */
@@ -420,20 +413,21 @@ function loadDB() {
     barcodeDB = {};
   }
 
- try {
-  const rawCodes = localStorage.getItem("barcodeCodes");
-  if (rawCodes) {
-    const parsed = JSON.parse(rawCodes);
-    if (parsed && typeof parsed === "object") {
-      barcodeCodes = parsed;
+  try {
+    const rawCodes = localStorage.getItem("barcodeCodes");
+    if (rawCodes) {
+      const parsed = JSON.parse(rawCodes);
+      if (parsed && typeof parsed === "object") {
+        barcodeCodes = parsed;
+      }
     }
   }
-} catch (e) {
-  barcodeCodes = {};
-}
+    } catch (e) {
+    barcodeCodes = {};
+  }
 
-barcodeDB = barcodeDB || {};
-barcodeCodes = barcodeCodes || {};
+  barcodeDB = barcodeDB || {};
+  barcodeCodes = barcodeCodes || {};
 }
 
 function saveDB() {
@@ -503,12 +497,13 @@ function render(items) {
         <div class="qty-section-title">Приход</div>
         <div class="qty-row">
           <div class="qty-controls">
-            <button class="minusPlus minus-icon" data-code="${item.code}"></button>
+            <button class="qtyAction plus-icon" data-code="${item.code}" data-type="plus">+</button>
             <div class="qty-input-wrapper">
               <input
                 type="number"
-                class="qtyPlusInput"
+                class="qtyInput"
                 data-code="${item.code}"
+                data-type="plus"
                 value="0"
                 min="0"
                 placeholder="0"
@@ -517,19 +512,19 @@ function render(items) {
               >
               <span class="input-hint">Количество для прихода</span>
             </div>
-            <button class="plusPlus plus-icon" data-code="${item.code}"></button>
           </div>
         </div>
 
         <div class="qty-section-title">Расход</div>
         <div class="qty-row">
           <div class="qty-controls">
-            <button class="minusMinus minus-icon" data-code="${item.code}"></button>
+            <button class="qtyAction minus-icon" data-code="${item.code}" data-type="minus">−</button>
             <div class="qty-input-wrapper">
               <input
                 type="number"
-                class="qtyMinusInput"
+                class="qtyInput"
                 data-code="${item.code}"
+                data-type="minus"
                 value="0"
                 min="0"
                 placeholder="0"
@@ -538,7 +533,6 @@ function render(items) {
               >
               <span class="input-hint">Количество для расхода</span>
             </div>
-            <button class="plusMinus plus-icon" data-code="${item.code}"></button>
           </div>
         </div>
       </div>
@@ -554,13 +548,12 @@ function render(items) {
    ПРИХОД / РАСХОД
 ========================= */
 
-function applyChange(code) {
-  const plusInput = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
-  const minusInput = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
-  if (!plusInput || !minusInput) return;
+function applyChange(code, type) {
+  const input = document.querySelector(`.qtyInput[data-code="${code}"][data-type="${type}"]`);
+  if (!input) return;
 
-  let plus = Math.max(0, Number(plusInput.value || 0));
-  let minus = Math.max(0, Number(minusInput.value || 0));
+  let value = Math.max(0, Number(input.value || 0));
+  if (value === 0) return; // ничего не делаем, если 0
 
   // старый остаток
   let oldQty = 0;
@@ -570,18 +563,21 @@ function applyChange(code) {
     if (typeof rec === "object" && rec !== null) {
       oldQty = Number(rec.qty || 0);
     } else {
-      // если там строка (старый формат) — qty считаем 0
-      oldQty = 0;
+      oldQty = 0; // старый формат
     }
   }
 
-  let newQty = oldQty + plus - minus;
-  if (newQty < 0) newQty = 0;
+  let newQty;
+  if (type === "plus") {
+    newQty = oldQty + value;
+  } else { // type === "minus"
+    newQty = Math.max(0, oldQty - value);
+  }
 
-  // если товара нет или он в виде строки — нормализуем в объект
+  // нормализуем запись в базе
   if (!rec) {
     barcodeDB[code] = {
-      name: barcodeCodes[item.code] || code,
+      name: barcodeCodes[code] || code,
       qty: newQty
     };
   } else if (typeof rec === "string") {
@@ -603,54 +599,20 @@ function applyChange(code) {
     setTimeout(() => card.classList.remove("highlight-qty"), 600);
   }
 
-  plusInput.value = "0";
-  minusInput.value = "0";
+  input.value = "0"; // сбрасываем поле ввода
 }
 
 function attachQtyHandlers() {
-  document.querySelectorAll(".plusPlus").forEach(btn => {
+  document.querySelectorAll(".qtyAction").forEach(btn => {
     btn.onclick = () => {
       const code = btn.dataset.code;
-      const input = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
-      input.value = Math.max(0, Number(input.value || 0) + 1);
-      applyChange(code);
+      const type = btn.dataset.type; // "plus" или "minus"
+      applyChange(code, type);
     };
   });
 
-  document.querySelectorAll(".minusPlus").forEach(btn => {
-    btn.onclick = () => {
-      const code = btn.dataset.code;
-      const input = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
-      let v = Math.max(0, Number(input.value || 0) - 1);
-      input.value = v;
-      applyChange(code);
-    };
-  });
-
-  document.querySelectorAll(".plusMinus").forEach(btn => {
-    btn.onclick = () => {
-      const code = btn.dataset.code;
-      const input = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
-      input.value = Math.max(0, Number(input.value || 0) + 1);
-      applyChange(code);
-    };
-  });
-
-  document.querySelectorAll(".minusMinus").forEach(btn => {
-    btn.onclick = () => {
-      const code = btn.dataset.code;
-      const input = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
-      let v = Math.max(0, Number(input.value || 0) - 1);
-      input.value = v;
-      applyChange(code);
-    };
-  });
-
-  document.querySelectorAll(".qtyPlusInput").forEach(inp => {
-    inp.onchange = () => applyChange(inp.dataset.code);
-  });
-  document.querySelectorAll(".qtyMinusInput").forEach(inp => {
-    inp.onchange = () => applyChange(inp.dataset.code);
+  document.querySelectorAll(".qtyInput").forEach(inp => {
+    inp.onchange = () => applyChange(inp.dataset.code, inp.dataset.type);
   });
 }
 
@@ -721,7 +683,7 @@ async function startScanner() {
           }
 
           if (result) {
-            clearTimeout(scanTimeout);
+                      clearTimeout(scanTimeout);
             scanResult.textContent = `Найден код: ${result.text}`;
 
             // Выделяем найденный элемент в списке
@@ -879,3 +841,4 @@ window.onload = () => {
 </script>
 </body>
 </html>
+
