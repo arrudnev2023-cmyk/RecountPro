@@ -13,8 +13,11 @@
       --accent-light:#a78bfa;
       --text:#e6eef8;
       --muted:#9aa3b2;
+      --danger:#f87171;
+      --success:#34d399;
       --card-bg: linear-gradient(135deg,#1e1e2f,#2a2a40);
       --maxw:980px;
+      --radius:12px;
     }
 
     *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
@@ -46,7 +49,7 @@
     #search{
       width:100%;
       padding:10px 56px 10px 12px;
-      border-radius:10px;
+      border-radius:var(--radius);
       border:1px solid rgba(255,255,255,0.04);
       background:rgba(20,20,24,0.6);
       color:var(--text);
@@ -71,14 +74,14 @@
     .item{
       width:100%;
       margin:10px 0;
-      padding:12px;
-      border-radius:12px;
+      padding:16px;
+      border-radius:var(--radius);
       background:var(--card-bg);
       box-shadow:0 8px 30px rgba(0,0,0,0.6);
       border-left:6px solid transparent;
       display:flex;
       flex-direction:column;
-      gap:8px;
+      gap:12px;
     }
 
     .item.found{
@@ -104,170 +107,253 @@
       justify-content:space-between;
     }
 
+    /* Улучшенные стили для блока количества */
     .qty-block{
-      margin-top:6px;
-      padding-top:6px;
-      border-top:1px solid rgba(255,255,255,0.06);
+      margin-top:12px;
+      padding-top:12px;
+      border-top:1px solid rgba(255,255,255,0.08);
       display:flex;
       flex-direction:column;
-      gap:6px;
+      gap:12px;
+    }
+
+    .qty-section-title{
+      font-weight:600;
+      font-size:15px;
+      color:var(--accent-light);
+      margin-bottom:8px;
     }
 
     .qty-row{
       display:flex;
       align-items:center;
-      gap:8px;
+      gap:12px;
       flex-wrap:wrap;
     }
 
     .qty-row-label{
-      min-width:60px;
-      font-size:13px;
+      min-width:80px;
+      font-size:14px;
       color:var(--muted);
+      font-weight:500;
     }
 
     .qty-controls{
       display:flex;
       align-items:center;
-      gap:6px;
+      gap:8px;
+    }
+
+    .qty-input-wrapper{
+      position:relative;
+      flex:1;
+      min-width:120px;
     }
 
     .qty-controls input{
-      width:70px;
-      padding:6px;
-      border-radius:8px;
+      width:100%;
+      padding:10px 40px 10px 16px;
+      border-radius:var(--radius);
       border:1px solid rgba(255,255,255,0.12);
-      background:rgba(10,10,16,0.7);
+      background:rgba(10,10,16,0.8);
       color:var(--text);
       text-align:center;
-      font-size:14px;
+      font-size:16px;
+      font-weight:600;
+      transition:all 0.2s ease;
+    }
+
+    .qty-controls input:focus{
+      outline:none;
+      border-color:var(--accent);
+      box-shadow:0 0 0 3px rgba(109, 40, 217, 0.3);
+      background:rgba(15,15,20,0.9);
     }
 
     .qty-controls button{
-      width:34px;
-      height:32px;
-      border-radius:8px;
-      border:1px solid rgba(255,255,255,0.18);
-      background:rgba(255,255,255,0.06);
+      width:40px;
+      height:40px;
+      border-radius:var(--radius);
+      border:1px solid rgba(255,255,255,0.2);
+      background:rgba(255,255,255,0.08);
       color:var(--text);
       cursor:pointer;
-      font-size:16px;
+      font-size:18px;
+      font-weight:bold;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      transition:all 0.2s ease;
+    }
+
+    .qty-controls button:hover{
+      background:rgba(255,255,255,0.15);
+      transform:scale(1.05);
     }
 
     .qty-current{
-      font-size:13px;
+      font-size:14px;
+      color:var(--accent-light);
+      font-weight:600;
+      margin-left:8px;
+    }
+
+    /* Подсказки для полей ввода */
+    .input-hint{
+      font-size:12px;
       color:var(--muted);
+      margin-top:4px;
+      margin-left:4px;
     }
 
-    #fabMenu{
-      position:fixed; bottom:1rem; right:1rem; z-index:1001;
-      background: linear-gradient(135deg, #6a11cb, #2575fc);
-      color:#fff; border:none;
-      padding:0.9rem 1.2rem;
-      border-radius:14px;
-      font-size:1.2rem; font-weight:600;
-      cursor:pointer;
-      box-shadow:0 6px 20px rgba(0,0,0,0.35), 0 0 12px rgba(106,17,203,0.6);
-      transition:all .3s ease;
-      backdrop-filter:blur(6px);
-      display:flex; align-items:center; justify-content:center;
-    }
+    /* Иконки для кнопок */
+   .plus-icon::after{content:"+";}
+.minus-icon::after{content:"−";}
 
-    #sheetOverlay{
-      position:fixed; inset:0;
-      background:rgba(0,0,0,0.55);
-      backdrop-filter:blur(4px);
-      opacity:0; pointer-events:none;
-      transition:opacity .25s ease;
-      z-index:999;
-    }
-    #sheetOverlay.show{
-      opacity:1; pointer-events:auto;
-    }
+/* Анимация изменения количества */
+@keyframes highlightQty {
+  0% { background-color: rgba(109, 40, 217, 0.1); }
+  50% { background-color: rgba(109, 40, 217, 0.3); }
+  100% { background-color: transparent; }
+}
 
-    #bottomSheet{
-      position:fixed; left:0; right:0; bottom:-60vh;
-      padding:1.2rem;
-      background:rgba(20,20,20,0.7);
-      backdrop-filter:blur(12px) saturate(180%);
-      border-radius:20px 20px 0 0;
-      box-shadow:0 -12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
-      transition:bottom .35s ease;
-      z-index:1002;
-    }
-    #bottomSheet.show{ bottom:0; }
+.highlight-qty {
+  animation: highlightQty 0.6s ease;
+}
 
-    .sheet-content{
-      display:flex; flex-direction:column; gap:0.7rem;
-    }
-    .sheet-btn{
-      background:linear-gradient(145deg, #1f1f1f, #2c2c2c);
-      color:#f9f9f9; border:none;
-      padding:0.9rem 1rem;
-      border-radius:12px;
-      font-size:1rem; font-weight:500;
-      cursor:pointer;
-      transition:all .25s ease;
-      box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 14px rgba(0,0,0,0.4);
-      display:flex; align-items:center; gap:10px;
-    }
+/* Стили для FAB-кнопки */
+#fabMenu{
+  position:fixed; bottom:1rem; right:1rem; z-index:1001;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color:#fff; border:none;
+  padding:0.9rem 1.2rem;
+  border-radius:14px;
+  font-size:1.2rem; font-weight:600;
+  cursor:pointer;
+  box-shadow:0 6px 20px rgba(0,0,0,0.35), 0 0 12px rgba(106,17,203,0.6);
+  transition:all .3s ease;
+  backdrop-filter:blur(6px);
+  display:flex; align-items:center; justify-content:center;
+}
 
-    @keyframes fadeIn{
-      from{opacity:0; transform:translateY(12px) scale(0.95);}
-      to{opacity:1; transform:translateY(0) scale(1);}
-    }
+/* Стили для оверлея и нижнего листа */
+#sheetOverlay{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.55);
+  backdrop-filter:blur(4px);
+  opacity:0; pointer-events:none;
+  transition:opacity .25s ease;
+  z-index:999;
+}
+#sheetOverlay.show{
+  opacity:1; pointer-events:auto;
+}
 
-    .preview-wrap.camera-1-3 {
-      position: relative;
-      width: 100%;
-      max-width:var(--maxw);
-      margin:0 auto 10px;
-      padding-top: 33%;
-      overflow: hidden;
-      border-radius: 12px;
-      background: #000;
-    }
+#bottomSheet{
+  position:fixed; left:0; right:0; bottom:-60vh;
+  padding:1.2rem;
+  background:rgba(20,20,20,0.7);
+  backdrop-filter:blur(12px) saturate(180%);
+  border-radius:20px 20px 0 0;
+  box-shadow:0 -12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+  transition:bottom .35s ease;
+  z-index:1002;
+}
+#bottomSheet.show{ bottom:0; }
 
-    .preview-wrap.camera-1-3 video {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+.sheet-content{
+  display:flex; flex-direction:column; gap:0.7rem;
+}
+.sheet-btn{
+  background:linear-gradient(145deg, #1f1f1f, #2c2c2c);
+  color:#f9f9f9; border:none;
+  padding:0.9rem 1rem;
+  border-radius:12px;
+  font-size:1rem; font-weight:500;
+  cursor:pointer;
+  transition:all .2s ease;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 14px rgba(0,0,0,0.4);
+  display:flex; align-items:center; gap:10px;
+}
 
-    #scannerCard.card{
-      max-width:var(--maxw);
-      margin:0 auto 10px;
-      padding:10px;
-      border-radius:12px;
-      background:rgba(10,10,16,0.9);
-      box-shadow:0 8px 30px rgba(0,0,0,0.6);
-    }
+/* Стили для сканера */
+.preview-wrap.camera-1-3 {
+  position: relative;
+  width: 100%;
+  max-width:var(--maxw);
+  margin:0 auto 10px;
+  padding-top: 33%;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #000;
+}
 
-    .controls{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      align-items:center;
-      margin-top:8px;
-      font-size:13px;
-    }
+.preview-wrap.camera-1-3 video {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
-    .controls .btn{
-      padding:6px 10px;
-      border-radius:8px;
-      border:1px solid rgba(255,255,255,0.18);
-      background:rgba(255,255,255,0.04);
-      color:var(--text);
-      cursor:pointer;
-    }
+#scannerCard.card{
+  max-width:var(--maxw);
+  margin:0 auto 10px;
+  padding:10px;
+  border-radius:12px;
+  background:rgba(10,10,16,0.9);
+  box-shadow:0 8px 30px rgba(0,0,0,0.6);
+}
 
-    #bg{
-      position:fixed;
-      inset:0;
-      z-index:-1;
-    }
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  margin-top:8px;
+  font-size:13px;
+}
+
+.controls .btn{
+  padding:6px 10px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.18);
+  background:rgba(255,255,255,0.04);
+  color:var(--text);
+  cursor:pointer;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 768px) {
+  .qty-controls input {
+    width: 100%;
+    font-size: 18px;
+    padding: 12px 16px;
+  }
+
+  .qty-controls button {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+
+  .qty-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .qty-row-label {
+    align-self: flex-start;
+  }
+
+  #search-wrap {
+    margin: 8px auto;
+  }
+
+  .item {
+    padding: 14px;
+  }
+}
   </style>
 </head>
 
@@ -333,9 +419,8 @@ function loadDB(){
     const rawCodes = localStorage.getItem("barcodeCodes");
     if(rawCodes){
       const parsed = JSON.parse(rawCodes);
-      if(parsed && typeof parsed === "object"){
-        barcodeCodes = parsed;
-      }
+          if(parsed && typeof parsed === "object"){
+      barcodeCodes = parsed;
     }
   }catch(e){ barcodeCodes = {}; }
 
@@ -382,8 +467,6 @@ function buildItems(){
   });
 }
 
-
-
 /* =========================
    РЕНДЕР
 ========================= */
@@ -419,21 +502,45 @@ function render(items){
       <div class="field qty-current"><span class="label">Остаток:</span> <span class="curQty">${item.qty}</span></div>
 
       <div class="qty-block">
+        <div class="qty-section-title">Приход</div>
         <div class="qty-row">
-          <div class="qty-row-label">Приход</div>
           <div class="qty-controls">
-            <button class="plusPlus" data-code="${item.code}">+1</button>
-            <input type="number" class="qtyPlusInput" data-code="${item.code}" value="0" min="0">
-            <button class="minusPlus" data-code="${item.code}">-1</button>
+            <button class="minusPlus minus-icon" data-code="${item.code}"></button>
+            <div class="qty-input-wrapper">
+              <input
+                type="number"
+                class="qtyPlusInput"
+                data-code="${item.code}"
+                value="0"
+                min="0"
+                placeholder="0"
+                inputmode="numeric"
+                pattern="[0-9]*"
+              >
+              <span class="input-hint">Количество для прихода</span>
+            </div>
+            <button class="plusPlus plus-icon" data-code="${item.code}"></button>
           </div>
         </div>
 
+        <div class="qty-section-title">Расход</div>
         <div class="qty-row">
-          <div class="qty-row-label">Расход</div>
           <div class="qty-controls">
-            <button class="plusMinus" data-code="${item.code}">+1</button>
-            <input type="number" class="qtyMinusInput" data-code="${item.code}" value="0" min="0">
-            <button class="minusMinus" data-code="${item.code}">-1</button>
+            <button class="minusMinus minus-icon" data-code="${item.code}"></button>
+            <div class="qty-input-wrapper">
+              <input
+                type="number"
+                class="qtyMinusInput"
+                data-code="${item.code}"
+                value="0"
+                min="0"
+                placeholder="0"
+                inputmode="numeric"
+                pattern="[0-9]*"
+              >
+              <span class="input-hint">Количество для расхода</span>
+            </div>
+            <button class="plusMinus plus-icon" data-code="${item.code}"></button>
           </div>
         </div>
       </div>
@@ -444,12 +551,6 @@ function render(items){
 
   attachQtyHandlers();
 }
-
-
-
-
-
-
 
 /* =========================
    ПРИХОД / РАСХОД
@@ -502,15 +603,13 @@ function applyChange(code) {
   if(card){
     const cur = card.querySelector(".curQty");
     if(cur) cur.textContent = newQty;
-    card.classList.add("highlight-purple");
-    setTimeout(()=> card.classList.remove("highlight-purple"), 600);
+    card.classList.add("highlight-qty");
+    setTimeout(()=> card.classList.remove("highlight-qty"), 600);
   }
 
   plusInput.value = "0";
   minusInput.value = "0";
 }
-
-
 
 function attachQtyHandlers(){
   document.querySelectorAll(".plusPlus").forEach(btn=>{
@@ -556,443 +655,178 @@ function attachQtyHandlers(){
   document.querySelectorAll(".qtyPlusInput").forEach(inp=>{
     inp.onchange = ()=> applyChange(inp.dataset.code);
   });
-  document.querySelectorAll(".qtyMinusInput").forEach(inp=>{
-    inp.onchange = ()=> applyChange(inp.dataset.code);
-  });
+ document.querySelectorAll(".qtyMinusInput").forEach(inp=>{
+  inp.onchange = ()=> applyChange(inp.dataset.code);
+});
 }
 
 /* =========================
    ПОИСК
 ========================= */
 
-const searchEl = document.getElementById("search");
-const clearSearchBtn = document.getElementById("clear-search");
-
-function normalize(s){
-  return String(s||"")
-    .toLowerCase()
-    .replace(/ё/g,"е")
-    .replace(/\s+/g," ")
-    .trim();
-}
-
-function matchesQuery(text, query){
-  const words = query.split(" ").filter(Boolean);
-  return words.every(w => text.includes(w));
-}
-
-searchEl.addEventListener("input", () => {
-  const q = normalize(searchEl.value);
-
-  document.querySelectorAll("#list .item").forEach(div => {
-    const code = normalize(div.dataset.code);
-    const rec = barcodeDB[div.dataset.code] || { name: barcodeCodes[div.dataset.code] || "" };
-    const name = normalize(typeof rec === "string" ? rec : (rec?.name || ""));
-    const match = q === "" || matchesQuery(name, q) || matchesQuery(code, q);
-    div.classList.toggle("hidden", !match);
-  });
-});
-
-clearSearchBtn.addEventListener("click", () => {
-  searchEl.value = "";
-  document.querySelectorAll("#list .item").forEach(d => d.classList.remove("hidden"));
-});
-
-/* =========================
-   ПОДСВЕТКА
-========================= */
-
-function highlightItem(code){
-  const card = document.querySelector(`.item[data-code="${code}"]`);
-  if(!card) return;
-
-  card.classList.remove("found");
-  card.classList.remove("highlight-purple");
-  card.classList.add("highlight-purple");
-
-  setTimeout(() => {
-    card.classList.remove("highlight-purple");
-  }, 2000);
-
-  setTimeout(() => {
-    card.scrollIntoView({ behavior:"smooth", block:"center" });
-  }, 150);
+function filterItems(query){
+  const filtered = allItems.filter(item =>
+    item.name.toLowerCase().includes(query.toLowerCase()) ||
+    item.code.includes(query)
+  );
+  render(filtered);
 }
 
 /* =========================
-   СКАНЕР
+   СКАНЕР ШТРИХ‑КОДОВ
 ========================= */
 
-let stream = null;
-let scanning = false;
-let currentDeviceId = null;
-let reader = null;
-let detector = ('BarcodeDetector' in window)
-  ? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]})
-  : null;
+let codeReader = null;
+let currentStream = null;
 
-let canvasPool = [];
-let lastDetected = {code:null, ts:0};
-const DEBOUNCE_MS = 900;
-
-const scannerCard = document.getElementById("scannerCard");
-const preview = document.getElementById("preview");
-const deviceSelect = document.getElementById("deviceSelect");
-const torchBtn = document.getElementById("torchBtn");
-const closeScannerBtn = document.getElementById("closeScannerBtn");
-const scanResult = document.getElementById("scanResult");
-const scanBtn = document.getElementById("scan-btn");
-
-function showToast(text, ms=1200){
-  scanResult.innerText = text;
-  setTimeout(()=>{ if(scanResult.innerText===text) scanResult.innerText=''; }, ms);
-}
-
-async function enumerateCameras(){
-  try{
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const cams = devices.filter(d => d.kind === "videoinput");
-    deviceSelect.innerHTML = "";
-    cams.forEach((c, idx)=>{
-      const opt = document.createElement("option");
-      opt.value = c.deviceId;
-      opt.text = c.label || `Камера ${idx+1}`;
-      deviceSelect.appendChild(opt);
-    });
-    if(cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
-    if(currentDeviceId) deviceSelect.value = currentDeviceId;
-  }catch(e){}
-}
-
-function getCanvas(w,h){
-  for(const c of canvasPool) if(c.width===w && c.height===h) return c;
-  const c = document.createElement("canvas");
-  c.width = w; c.height = h;
-  canvasPool.push(c);
-  return c;
-}
-
-async function tryDecodeCanvas(canvas){
-  if(detector){
-    try{
-      const ctx = canvas.getContext("2d");
-      const img = ctx.getImageData(0,0,canvas.width,canvas.height);
-      const res = await detector.detect(img);
-      if(res && res.length) return res[0].rawValue;
-    }catch(e){}
-  }
-
-  try{
-    const src = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
-    const bin = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
-    const result = new ZXing.MultiFormatReader().decode(bin);
-    if(result && result.text) return result.text;
-  }catch(e){}
-
-  return null;
-}
-
-async function startCamera(){
-  if(scanning) return;
-  stopCamera();
-  scanning = true;
-
-  await enumerateCameras();
-
-  const constraints = {
-    audio:false,
-    video:{
-      deviceId: deviceSelect.value || currentDeviceId || undefined,
-      facingMode:{ideal:"environment"},
-      width:{ideal:1280},
-      height:{ideal:720}
+async function initScanner(){
+  try {
+    const codeReaderClass = window.ZXing.BrowserMultiFormatReader;
+    if (!codeReaderClass) {
+      alert("Библиотека сканера не загружена");
+      return;
     }
-  };
+    codeReader = new codeReaderClass();
 
-  try{
-    stream = await navigator.mediaDevices.getUserMedia(constraints);
-    preview.srcObject = stream;
-    await preview.play();
+    // Получаем список камер
+    const videoInputDevices = await codeReader.getVideoInputDevices();
+    const deviceSelect = document.getElementById("deviceSelect");
+    deviceSelect.innerHTML = "";
 
-    currentDeviceId = stream.getVideoTracks()[0].getSettings().deviceId || currentDeviceId;
-    if(currentDeviceId) deviceSelect.value = currentDeviceId;
+    videoInputDevices.forEach((device, i) => {
+      const option = document.createElement("option");
+      option.value = device.deviceId;
+      option.textContent = device.label || `Камера ${i + 1}`;
+      deviceSelect.appendChild(option);
+    });
 
-    if(!reader) reader = new ZXing.BrowserMultiFormatReader();
-
-    scannerCard.style.display = "block";
-    showToast("Сканер включён");
-
-    requestAnimationFrame(scanLoop);
-  }catch(err){
-    console.error(err);
-    showToast("Ошибка доступа к камере");
-    scanning = false;
+    if (videoInputDevices.length > 0) {
+      deviceSelect.value = videoInputDevices[0].deviceId;
+    }
+  } catch (err) {
+    console.error("Ошибка инициализации сканера:", err);
+    alert("Не удалось инициализировать сканер. Проверьте разрешения камеры.");
   }
 }
 
-function stopCamera(){
-  scanning = false;
-  if(preview.srcObject){
-    try{ preview.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){}
-    preview.srcObject = null;
+async function startScanner(){
+  const scannerCard = document.getElementById("scannerCard");
+  const preview = document.getElementById("preview");
+  const deviceSelect = document.getElementById("deviceSelect");
+
+  scannerCard.style.display = "block";
+
+  try {
+    await codeReader.decodeFromVideoDevice(
+      (deviceSelect.value || null),
+      "preview",
+      (result, err) => {
+        if (result) {
+          const code = result.getText();
+          document.getElementById("scanResult").textContent = `Найден: ${code}`;
+
+          // Автоматически добавляем товар, если его нет
+          if (!barcodeDB[code]) {
+            barcodeDB[code] = {
+              name: `Товар ${code}`,
+              qty: 0
+            };
+            saveDB();
+          }
+
+          // Показываем товар в списке
+          buildItems();
+          render(allItems);
+
+          // Закрываем сканер через 1 сек после успешного сканирования
+          setTimeout(() => {
+            stopScanner();
+          }, 1000);
+        }
+        if (err && !(err instanceof window.ZXing.NotFoundException)) {
+          console.error(err);
+        }
+      }
+    );
+  } catch (err) {
+    console.error("Ошибка запуска сканера:", err);
+    alert("Не удалось запустить камеру. Проверьте разрешения.");
+    stopScanner();
   }
+}
+
+function stopScanner(){
+  if (codeReader) {
+    codeReader.reset();
+  }
+  const scannerCard = document.getElementById("scannerCard");
   scannerCard.style.display = "none";
+  document.getElementById("scanResult").textContent = "";
 }
 
-async function scanLoop(){
-  if(!scanning || !preview.videoWidth || !preview.videoHeight){
-    if(scanning) requestAnimationFrame(scanLoop);
-    return;
-  }
+/* =========================
+   ИНИЦИАЛИЗАЦИЯ
+========================= */
 
-  const w = preview.videoWidth;
-  const h = preview.videoHeight;
-  const canvas = getCanvas(w,h);
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(preview,0,0,w,h);
-
-  const code = await tryDecodeCanvas(canvas);
-  const now = Date.now();
-  if(code && (lastDetected.code !== code || now - lastDetected.ts > DEBOUNCE_MS)){
-    lastDetected = {code, ts:now};
-    onBarcodeDetected(code);
-  }
-
-  if(scanning) requestAnimationFrame(scanLoop);
-}
-
-function onBarcodeDetected(code){
-  showToast(code);
-
-  // если нет ни в базе товаров, ни в базе штрих‑кодов — создаём в базе штрих‑кодов
-  if(!barcodeDB[code] && !barcodeCodes[code]){
-    barcodeCodes[code] = code;
-    localStorage.setItem("barcodeCodes", JSON.stringify(barcodeCodes));
-  }
-
-  // если нет в базе товаров — создадим с qty=0 (появится после изменения)
-  if(!barcodeDB[code]){
-    barcodeDB[code] = {
-      code,
-      name: barcodeCodes[code] || code,
-      qty: 0
-    };
-    saveDB();
-  }
-
+document.addEventListener("DOMContentLoaded", () => {
+  loadDB();
   buildItems();
   render(allItems);
-  highlightItem(code);
-}
 
-/* =========================
-   КНОПКИ СКАНЕРА
-========================= */
-
-scanBtn.addEventListener("click", startCamera);
-closeScannerBtn.addEventListener("click", stopCamera);
-deviceSelect.addEventListener("change", ()=>{
-  currentDeviceId = deviceSelect.value;
-  if(scanning) startCamera();
-});
-torchBtn.addEventListener("click", ()=>{
-  showToast("Фонарик зависит от поддержки браузера");
-});
-
-/* =========================
-   FAB / BOTTOM SHEET
-========================= */
-
-const fabMenu = document.getElementById("fabMenu");
-const sheetOverlay = document.getElementById("sheetOverlay");
-const bottomSheet = document.getElementById("bottomSheet");
-const toggleZeroBtn = document.getElementById("toggleZeroBtn");
-const backToMenuBtn = document.getElementById("backToMenuBtn");
-
-function openSheet(){
-  sheetOverlay.classList.add("show");
-  bottomSheet.classList.add("show");
-}
-function closeSheet(){
-  sheetOverlay.classList.remove("show");
-  bottomSheet.classList.remove("show");
-}
-
-fabMenu.addEventListener("click", openSheet);
-sheetOverlay.addEventListener("click", closeSheet);
-
-toggleZeroBtn.addEventListener("click", ()=>{
-  showZero = !showZero;
-  toggleZeroBtn.textContent = showZero ? "🙈 Скрыть товары с 0" : "🔍 Показать товары с 0";
-  render(allItems);
-  closeSheet();
-});
-
-backToMenuBtn.addEventListener("click", ()=>{
-  window.location.href = "index.html";
-});
-
-/* =========================
-   КОСМИЧЕСКИЙ ФОН
-========================= */
-
-const canvas = document.getElementById('bg');
-const ctx = canvas.getContext('2d');
-
-function resizeCanvas(){
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = Math.max(1, Math.floor(window.innerWidth * dpr));
-  canvas.height = Math.max(1, Math.floor(window.innerHeight * dpr));
-  canvas.style.width = window.innerWidth + 'px';
-  canvas.style.height = window.innerHeight + 'px';
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
-const stars = [];
-const STAR_COUNT = Math.max(120, Math.floor((window.innerWidth * window.innerHeight) / 6000));
-for(let i=0;i<STAR_COUNT;i++){
-  stars.push({
-    x: Math.random()*window.innerWidth,
-    y: Math.random()*window.innerHeight,
-    r: Math.random()*1.6 + 0.4,
-    alpha: Math.random()*0.9 + 0.1,
-    speed: Math.random()*0.25 + 0.02,
-    twinkle: Math.random()*0.02 + 0.005
+  // Поиск
+  const searchInput = document.getElementById("search");
+  searchInput.addEventListener("input", (e) => {
+    filterItems(e.target.value);
   });
-}
 
-const comets = [];
-
-function spawnComet(){
-  const startY = Math.random() * window.innerHeight * 0.6;
-  const speed = 6 + Math.random()*6;
-  const angle = (Math.random()*30 - 10) * (Math.PI/180);
-  const length = 120 + Math.random()*220;
-  comets.push({
-    x: -80 - Math.random()*120,
-    y: startY,
-    vx: speed * Math.cos(angle),
-    vy: speed * Math.sin(angle) + 0.6,
-    life: 0,
-    maxLife: 400 + Math.random()*200,
-    length,
-    glow: 0.9 + Math.random()*0.6
+  document.getElementById("clear-search").addEventListener("click", () => {
+    searchInput.value = "";
+    filterItems("");
   });
-}
 
-let clickParticles = [];
-canvas.addEventListener('click', (e)=>{
-  const rect = canvas.getBoundingClientRect();
-  const x = (e.clientX - rect.left);
-  const y = (e.clientY - rect.top);
-  for(let i=0;i<18;i++){
-    clickParticles.push({
-      x, y,
-      vx: (Math.random()-0.5)*4,
-      vy: (Math.random()-0.5)*4,
-      life: 0,
-      maxLife: 60,
-      r: Math.random()*2 + 1
-    });
-  }
+  // Сканер
+  document.getElementById("scan-btn").addEventListener("click", async () => {
+    if (!codeReader) await initScanner();
+    startScanner();
+  });
+
+  document.getElementById("closeScannerBtn").addEventListener("click", stopScanner);
+
+  // Фонарик
+  document.getElementById("torchBtn").addEventListener("click", () => {
+    // Реализация включения фонарика (зависит от браузера и устройства)
+    alert("Функция фонарика пока не реализована");
+  });
+
+  // FAB-меню
+  document.getElementById("fabMenu").addEventListener("click", () => {
+    document.getElementById("sheetOverlay").classList.add("show");
+    document.getElementById("bottomSheet").classList.add("show");
+  });
+
+  document.getElementById("sheetOverlay").addEventListener("click", () => {
+    document.getElementById("sheetOverlay").classList.remove("show");
+    document.getElementById("bottomSheet").classList.remove("show");
+  });
+
+  // Показать/скрыть товары с нулевым остатком
+  document.getElementById("toggleZeroBtn").addEventListener("click", () => {
+    showZero = !showZero;
+    buildItems();
+    render(allItems);
+    document.getElementById("sheetOverlay").classList.remove("show");
+    document.getElementById("bottomSheet").classList.remove("show");
+  });
+
+  document.getElementById("backToMenuBtn").addEventListener("click", () => {
+    // Здесь можно добавить переход в главное меню
+    alert("Переход в главное меню");
+    document.getElementById("sheetOverlay").classList.remove("show");
+    document.getElementById("bottomSheet").classList.remove("show");
+  });
 });
-
-function drawClickParticles(){
-  for(let i = clickParticles.length-1; i>=0; i--){
-    const p = clickParticles[i];
-    ctx.fillStyle = `rgba(255,255,200,${1 - p.life / p.maxLife})`;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-    ctx.fill();
-    p.x += p.vx;
-    p.y += p.vy;
-    p.life++;
-    if(p.life > p.maxLife) clickParticles.splice(i,1);
-  }
-}
-
-function drawComet(c){
-  const tailLen = c.length;
-  const tx = c.x - c.vx * (tailLen/ (c.vx||1));
-  const ty = c.y - c.vy * (tailLen/ (c.vy||1));
-  const grad = ctx.createLinearGradient(c.x, c.y, tx, ty);
-  grad.addColorStop(0, `rgba(255,255,255,${0.95 * c.glow})`);
-  grad.addColorStop(0.4, `rgba(200,108,255,${0.45 * c.glow})`);
-  grad.addColorStop(1, `rgba(200,108,255,0)`);
-  ctx.strokeStyle = grad;
-  ctx.lineWidth = 3.5;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(c.x, c.y);
-  ctx.lineTo(tx, ty);
-  ctx.stroke();
-
-  const headRadius = 4 + (c.glow*2);
-  ctx.beginPath();
-  ctx.fillStyle = `rgba(255,255,255,${0.95 * c.glow})`;
-  ctx.arc(c.x, c.y, headRadius, 0, Math.PI*2);
-  ctx.fill();
-
-  const g = ctx.createRadialGradient(c.x, c.y, headRadius*0.2, c.x, c.y, headRadius*6);
-  g.addColorStop(0, `rgba(200,108,255,${0.18 * c.glow})`);
-  g.addColorStop(1, 'rgba(200,108,255,0)');
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(c.x, c.y, headRadius*6, 0, Math.PI*2);
-  ctx.fill();
-}
-
-function animate(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  for(let s of stars){
-    s.alpha += (Math.random()-0.5)*s.twinkle;
-    if(s.alpha < 0.05) s.alpha = 0.05;
-    if(s.alpha > 1) s.alpha = 1;
-    s.y += s.speed;
-    if(s.y > window.innerHeight){
-      s.y = -2;
-      s.x = Math.random()*window.innerWidth;
-    }
-    ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
-    ctx.fill();
-  }
-
-  if(Math.random() < 0.02) spawnComet();
-
-  for(let i = comets.length-1; i>=0; i--){
-    const c = comets[i];
-    drawComet(c);
-    c.x += c.vx;
-    c.y += c.vy;
-    c.life++;
-    c.glow *= 0.9995;
-    if(c.x > window.innerWidth + 200 || c.y > window.innerHeight + 200 || c.life > c.maxLife){
-      comets.splice(i,1);
-    }
-  }
-
-  drawClickParticles();
-  requestAnimationFrame(animate);
-}
-animate();
-
-document.addEventListener('touchstart', function preventZoom(e){
-  if(e.touches && e.touches.length > 1) e.preventDefault();
-}, { passive: false });
-
-/* =========================
-   СТАРТ
-========================= */
-
-loadDB();
-buildItems();
-render(allItems);
 </script>
 </body>
 </html>
+
 
