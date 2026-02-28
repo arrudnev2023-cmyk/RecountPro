@@ -416,6 +416,8 @@ function render(items) {
     const div = document.createElement("div");
     div.className = "item";
     div.dataset.code = item.code;
+    // Сохраняем фактическое отображаемое название в дата‑атрибуте
+    div.dataset.displayname = name;
 
     div.innerHTML = `
       <div class="field"><span class="label">Название:</span> ${escapeHtml(name)}</div>
@@ -441,19 +443,14 @@ function render(items) {
           </div>
         </div>
       </div>
-
-      <!-- Кнопка для редактирования названия -->
-      <div style="margin-top: 8px; text-align: right;">
-        <button class="edit-name btn" data-code="${item.code}" style="padding: 4px 8px; font-size: 12px;">✏️ Изменить название</button>
-      </div>
     `;
 
     listEl.appendChild(div);
   });
 
   attachQtyHandlers();
- 
 }
+
 
 
 
