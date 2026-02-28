@@ -1,274 +1,372 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Добавить товар — Быстрое добавление </title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Добавить товар — Быстрое добавление</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --panel: #ffffff;
+      --text: #333;
+      --muted: #6c757d;
+      --accent: #007bff;
+      --danger: #dc3545;
+      --success: #28a745;
+      --border: #dee2e6;
+      --radius: 8px;
+    }
 
-<style>
-  :root{
-    --bg:#07040a;
-    --card:#0f0b16;
-    --muted:#9aa0b4;
-    --neon1:#8a2be2;
-    --neon2:#c86cff;
-    --accent: linear-gradient(90deg,var(--neon1),var(--neon2));
-    --radius:12px;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:
-    radial-gradient(800px 400px at 10% 10%, rgba(138,43,226,0.06), transparent),
-    radial-gradient(600px 300px at 90% 90%, rgba(200,108,255,0.04), transparent),
-    linear-gradient(180deg,#05030a,#0b0710);color:#eef0ff}
-  .app{max-width:480px;margin:0 auto;padding:14px}
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-  .title{font-weight:700;font-size:18px}
-  .small{font-size:13px;color:var(--muted)}
-  .card{background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.03); box-shadow:0 8px 30px rgba(0,0,0,0.6)}
-  .preview-wrap{position:relative;border-radius:12px;overflow:hidden;background:#000;margin-bottom:12px}
-  /* camera area set to one third of viewport height */
-  .preview-wrap.camera-1-3{
-    height: 33vh;
-    min-height: 140px;
-    max-height: 300px;
-  }
-  video#preview{width:100%;height:100%;object-fit:cover;display:block}
-  .controls{display:flex;gap:8px;align-items:center;margin-bottom:10px}
-  .btn{
-    background:var(--accent);
-    color:#07040a;
-    padding:10px 12px;
-    border-radius:10px;
-    border:none;
-    font-weight:700;
-    cursor:pointer;
-    box-shadow: 0 10px 30px rgba(138,43,226,0.12);
-  }
-  .ghost{
-    background:transparent;
-    border:1px solid rgba(255,255,255,0.06);
-    color:var(--muted);
-    padding:10px 12px;
-    border-radius:10px;
-    cursor:pointer;
-  }
-  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
-  input[type="text"], input[type="number"]{
-    width:100%;
-    padding:12px;
-    border-radius:10px;
-    border:1px solid rgba(255,255,255,0.06);
-    background:transparent;
-    color:inherit;
-    font-size:15px;
-    outline:none;
-  }
-  .row{display:flex;gap:8px}
-  .note{font-size:13px;color:var(--muted);margin-top:8px}
-  .toast{
-    position:fixed;
-    left:50%;
-    transform:translateX(-50%);
-    bottom:22px;
-    background:rgba(0,0,0,0.6);
-    color:#fff;
-    padding:10px 14px;
-    border-radius:10px;
-    font-size:14px;
-    box-shadow:0 8px 30px rgba(0,0,0,0.6);
-    display:none;
-    z-index:9999;
-  }
-  @media (min-width:481px){
-    .preview-wrap.camera-1-3{min-height:180px}
-  }
-</style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 16px;
+    }
+
+    .container {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    /* Camera area */
+    .camera-section {
+      margin-bottom: 20px;
+    }
+    
+    .preview-wrap {
+      width: 100%;
+      height: 250px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: #000;
+      margin-bottom: 15px;
+    }
+    
+    video#preview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Form */
+    .form-section {
+      background: var(--panel);
+      padding: 20px;
+      border-radius: var(--radius);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+
+    .field {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 16px;
+    }
+
+    .btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+
+    .btn-primary {
+      background-color: var(--accent);
+      color: white;
+    }
+
+    .btn-secondary {
+      background-color: var(--muted);
+      color: white;
+      margin-left: 10px;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--success);
+      color: white;
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
 </head>
 <body>
-
-<div class="app">
-  <header>
-    <div>
-      <div class="title">Добавить товар</div>
-    </div>
-    <button id="closeBtn" class="ghost" aria-label="Закрыть">Закрыть</button>
-  </header>
-
-  <main class="card" role="main" aria-labelledby="pageTitle">
-    <h1 id="pageTitle" style="display:none">Добавить товар</h1>
-
-    <!-- Camera area (1/3 height) -->
-    <div class="preview-wrap camera-1-3" aria-hidden="false">
-      <video id="preview" playsinline muted></video>
+  <div class="container">
+    <div class="header">
+      <h1 class="title">Добавить товар</h1>
     </div>
 
-    <!-- Fields: Штрих-код (заполняется автоматически), Название (редактируемое), Сохранить -->
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div>
+    <div class="camera-section">
+      <div class="preview-wrap">
+        <video id="preview" playsinline muted></video>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="field">
         <label for="barcodeInput">Штрих-код</label>
         <input id="barcodeInput" type="text" placeholder="Ожидание сканирования..." autocomplete="off" />
       </div>
 
-      <div>
+      <div class="field">
         <label for="nameInput">Название</label>
         <input id="nameInput" type="text" placeholder="Введите название товара" autocomplete="off" />
       </div>
 
-      <div class="row">
-        <button id="saveBtn" class="btn" style="flex:1">Сохранить в базу</button>
-        <button id="clearBtn" class="ghost" style="width:120px">Очистить</button>
+      <div class="controls">
+        <button id="saveBtn" class="btn btn-primary">Сохранить в базу</button>
+        <button id="clearBtn" class="btn btn-secondary">Очистить</button>
       </div>
-  </main>
-</div>
+    </div>
 
-<div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <button id="closeBtn" class="btn btn-secondary" style="width: 100%;">Закрыть</button>
+  </div>
 
-<!-- ZXing fallback -->
-<script src="https://unpkg.com/@zxing/library@latest"></script>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<script>
-/* ===== State ===== */
-let barcodeDB = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
-let stream = null;
-let scanning = false;
-let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
-let reader = null;
-let lastDetected = {code:null, ts:0};
-const DEBOUNCE_MS = 900;
+  <!-- ZXing fallback -->
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
 
-/* ===== Elements ===== */
-const preview = document.getElementById('preview');
-const barcodeInput = document.getElementById('barcodeInput');
-const nameInput = document.getElementById('nameInput');
-const saveBtn = document.getElementById('saveBtn');
-const clearBtn = document.getElementById('clearBtn');
-const closeBtn = document.getElementById('closeBtn');
-const toast = document.getElementById('toast');
+  <script>
+    /* ===== State ===== */
+    let barcodeDB = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
+    let stream = null;
+    let scanning = false;
+    let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
+    let reader = null;
+    let lastDetected = {code:null, ts:0};
+    const DEBOUNCE_MS = 900;
 
-/* ===== Helpers ===== */
-function showToast(text, ms = 1600){
-  toast.textContent = text;
-  toast.style.display = 'block';
-  clearTimeout(toast._t);
-  toast._t = setTimeout(()=>{ toast.style.display = 'none'; }, ms);
-}
-function saveBarcodeDB(){
-  localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
-}
-function beep(){
-  try{ navigator.vibrate?.(60); }catch(e){}
-}
+    /* ===== Elements ===== */
+    const preview = document.getElementById('preview');
+    const barcodeInput = document.getElementById('barcodeInput');
+    const nameInput = document.getElementById('nameInput');
+    const saveBtn = document.getElementById('saveBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const closeBtn = document.getElementById('closeBtn');
+    const toast = document.getElementById('toast');
 
-/* ===== Camera & scanning ===== */
-async function startCamera(){
-  stopCamera();
-  scanning = true;
-  const constraints = {
-    audio:false,
-    video:{
-      facingMode: { ideal: "environment" },
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
+    /* ===== Helpers ===== */
+    function showToast(text, ms = 1600) {
+      toast.textContent = text;
+      toast.classList.add('show');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => {
+        toast.classList.remove('show');
+      }, ms);
     }
-  };
-  try{
-    stream = await navigator.mediaDevices.getUserMedia(constraints);
-    preview.srcObject = stream;
-    await preview.play();
-    reader = new ZXing.BrowserMultiFormatReader();
-    requestAnimationFrame(scanLoop);
-  }catch(err){
-    console.error('camera error', err);
-    showToast('Не удалось получить доступ к камере');
-    scanning = false;
-  }
-}
 
-function stopCamera(){
+    function saveBarcodeDB() {
+      localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
+    }
+
+    function beep() {
+      try { navigator.vibrate?.(60); } catch(e) {}
+    }
+
+    /* ===== Camera & scanning ===== */
+    async function startCamera() {
+      stopCamera();
+      scanning = true;
+      const constraints = {
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      };
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        preview.srcObject = stream;
+        await preview.play();
+        reader = new ZXing.BrowserMultiFormatReader();
+        requestAnimationFrame(scanLoop);
+      } catch(err) {
+        console.error('camera error', err);
+        showToast('Не удалось получить доступ к камере');
+        scanning = false;
+      }
+    }
+    function stopCamera() {
   scanning = false;
-  if(preview.srcObject){
-    preview.srcObject.getTracks().forEach(t=>t.stop());
+  if (preview.srcObject) {
+    preview.srcObject.getTracks().forEach(t => t.stop());
     preview.srcObject = null;
   }
-  if(reader){
-    try{ reader.reset(); }catch(e){}
+  if (reader) {
+    try { reader.reset(); } catch (e) {}
     reader = null;
   }
 }
 
 /* Preprocessing helpers */
-function createCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
-function toGrayscale(ctx,w,h){ const img=ctx.getImageData(0,0,w,h); const d=img.data; for(let i=0;i<d.length;i+=4){ const v=(d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114)|0; d[i]=d[i+1]=d[i+2]=v; } ctx.putImageData(img,0,0); }
-function increaseContrast(ctx,w,h,contrast=30){ const img=ctx.getImageData(0,0,w,h); const d=img.data; const factor=(259*(contrast+255))/(255*(259-contrast)); for(let i=0;i<d.length;i+=4){ for(let c=0;c<3;c++){ let col=d[i+c]; col=factor*(col-128)+128; d[i+c]=Math.max(0,Math.min(255,col)); } } ctx.putImageData(img,0,0); }
+function createCanvas(w, h) {
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  return c;
+}
+
+function toGrayscale(ctx, w, h) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
+    d[i] = d[i + 1] = d[i + 2] = v;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function increaseContrast(ctx, w, h, contrast = 30) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+  for (let i = 0; i < d.length; i += 4) {
+    for (let c = 0; c < 3; c++) {
+      let col = d[i + c];
+      col = factor * (col - 128) + 128;
+      d[i + c] = Math.max(0, Math.min(255, col));
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
 
 /* Try decode with detector or ZXing, including rotated attempts */
-async function tryDecodeCanvas(canvas){
-  if(detector){
-    try{
-      const imageData = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+async function tryDecodeCanvas(canvas) {
+  if (detector) {
+    try {
+      const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
       const res = await detector.detect(imageData);
-      if(res && res.length) return res[0].rawValue;
-    }catch(e){}
+      if (res && res.length) return res[0].rawValue;
+    } catch (e) {}
   }
-  try{
+
+  try {
     const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
     const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
     const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
-    if(result && result.text) return result.text;
-  }catch(e){}
-  const w = canvas.width, h = canvas.height;
-  const temp = createCanvas(w,h);
+    if (result && result.text) return result.text;
+  } catch (e) {}
+
+  const w = canvas.width;
+  const h = canvas.height;
+  const temp = createCanvas(w, h);
   const tctx = temp.getContext('2d');
-  for(let angle of [90,180,270]){
-    tctx.clearRect(0,0,w,h);
+
+  for (let angle of [90, 180, 270]) {
+    tctx.clearRect(0, 0, w, h);
     tctx.save();
-    tctx.translate(w/2,h/2);
-    tctx.rotate(angle*Math.PI/180);
-    tctx.drawImage(canvas, -w/2, -h/2);
+    tctx.translate(w / 2, h / 2);
+    tctx.rotate(angle * Math.PI / 180);
+    tctx.drawImage(canvas, -w / 2, -h / 2);
     tctx.restore();
-    try{
+
+    try {
       const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(temp);
       const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
       const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
-      if(result && result.text) return result.text;
-    }catch(e){}
+      if (result && result.text) return result.text;
+    } catch (e) {}
   }
   return null;
 }
 
 /* Main scanning loop (full frame) */
 let canvasPool = [];
-function getCanvas(w,h){
-  for(let c of canvasPool) if(c.width===w && c.height===h) return c;
-  const c = createCanvas(w,h); canvasPool.push(c); return c;
+function getCanvas(w, h) {
+  for (let c of canvasPool) if (c.width === w && c.height === h) return c;
+  const c = createCanvas(w, h);
+  canvasPool.push(c);
+  return c;
 }
 
-async function scanLoop(){
-  if(!scanning) return;
-  try{
+async function scanLoop() {
+  if (!scanning) return;
+  try {
     const w = preview.videoWidth;
     const h = preview.videoHeight;
-    if(w===0 || h===0){ requestAnimationFrame(scanLoop); return; }
+    if (w === 0 || h === 0) {
+      requestAnimationFrame(scanLoop);
+      return;
+    }
 
-    const canvas = getCanvas(w,h);
+    const canvas = getCanvas(w, h);
     const ctx = canvas.getContext('2d');
     ctx.drawImage(preview, 0, 0, w, h);
 
     // downscale for speed
-    const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
-    const sw = Math.floor(w/scale);
-    const sh = Math.floor(h/scale);
-    const small = getCanvas(sw,sh);
+    const scale = Math.max(1, Math.floor(Math.max(w, h) / 900));
+    const sw = Math.floor(w / scale);
+    const sh = Math.floor(h / scale);
+    const small = getCanvas(sw, sh);
     const sctx = small.getContext('2d');
     sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
     toGrayscale(sctx, sw, sh);
     increaseContrast(sctx, sw, sh, 30);
 
     const code = await tryDecodeCanvas(small);
-    if(code) handleDetected(code);
-  }catch(e){
+    if (code) handleDetected(code);
+  } catch (e) {
     // ignore
   } finally {
     requestAnimationFrame(scanLoop);
@@ -276,82 +374,82 @@ async function scanLoop(){
 }
 
 /* Handle detection: populate barcode field and name if exists */
-function handleDetected(code){
+function handleDetected(code) {
   const now = Date.now();
-  if(code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+  if (code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
 
-  lastDetected = {code, ts: now};
+  lastDetected = { code, ts: now };
   beep();
   barcodeInput.value = code;
 
   let entry = barcodeDB[code];
-  let name = "";
+  let name = '';
 
   if (entry) {
     // Если в базе лежит объект — достаём название
-    if (typeof entry === "object" && entry !== null) {
+    if (typeof entry === 'object' && entry !== null) {
       name =
         entry.name ||
         entry.title ||
         entry.product_name ||
         entry.label ||
-        "";
+        '';
     } else {
       // Если строка — используем как есть
       name = entry;
     }
 
     nameInput.value = name;
-    showToast("Найден в базе: название подставлено");
+    showToast('Найден в базе: название подставлено');
   } else {
-    nameInput.value = "";
-    showToast("Код найден — введите название и сохраните");
+    nameInput.value = '';
+    showToast('Код найден — введите название и сохраните');
   }
 }
 
-
 /* Save to barcodeDB */
-saveBtn.addEventListener('click', ()=>{
+saveBtn.addEventListener('click', () => {
   const code = (barcodeInput.value || '').trim();
   const name = (nameInput.value || '').trim();
-  if(!code) return showToast('Штрих-код пустой');
-  if(!name) return showToast('Введите название товара');
+
+  if (!code) return showToast('Штрих-код пустой');
+  if (!name) return showToast('Введите название товара');
+
   barcodeDB[code] = name;
   saveBarcodeDB();
   showToast('Сохранено в базе');
-  // keep fields for further edits; optionally clear barcodeInput if desired
 });
 
 /* Clear fields */
-clearBtn.addEventListener('click', ()=>{
+clearBtn.addEventListener('click', () => {
   barcodeInput.value = '';
   nameInput.value = '';
   showToast('Поля очищены');
 });
 
-/* Close button (if you want to navigate back) */
-closeBtn.addEventListener('click', ()=>{
+/* Close button */
+closeBtn.addEventListener('click', () => {
   stopCamera();
-  // If this page is opened as a modal in your app, you can call history.back() or close overlay.
-  // For now, just show toast and stop camera.
+  // В зависимости от архитектуры приложения:
+  // history.back() или закрытие модального окна
   showToast('Камера остановлена');
 });
 
 /* Start camera automatically on load */
-window.addEventListener('DOMContentLoaded', async ()=>{
+window.addEventListener('DOMContentLoaded', async () => {
   // Try to warm permissions so device labels appear later if needed
-  try{
-    await navigator.mediaDevices.getUserMedia({video:true});
-  }catch(e){}
+  try {
+    await navigator.mediaDevices.getUserMedia({ video: true });
+  } catch (e) {}
   startCamera();
 });
 
 /* Stop camera on unload */
-window.addEventListener('pagehide', ()=>{ stopCamera(); });
-window.addEventListener('beforeunload', ()=>{ stopCamera(); });
-
-</script>
+window.addEventListener('pagehide', () => stopCamera());
+window.addEventListener('beforeunload', () => stopCamera());
+  </script>
 </body>
 </html>
+
 
 
