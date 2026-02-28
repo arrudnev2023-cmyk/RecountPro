@@ -397,27 +397,11 @@ function render(items) {
   items.forEach(item => {
     if (!showZero && item.qty === 0) return;
 
-    // Улучшенная логика определения названия товара
-    let name;
-
-    // 1. Сначала берём из базы штрих‑кодов (самый приоритетный источник)
-    if (barcodeCodes[item.code] && barcodeCodes[item.code].trim() !== '') {
-      name = barcodeCodes[item.code];
-    }
-    // 2. Затем из данных товара (если есть и не совпадает со штрих‑кодом)
-    else if (item.name && item.name.trim() !== '' && item.name !== item.code) {
-      name = item.name;
-    }
-    // 3. Если ничего не найдено — создаём информативное название с штрих‑кодом
-    else {
-      name = `Товар (штрих‑код: ${item.code})`;
-    }
+    let name = barcodeCodes[item.code] || item.name || item.code;
 
     const div = document.createElement("div");
     div.className = "item";
     div.dataset.code = item.code;
-    // Сохраняем фактическое отображаемое название в дата‑атрибуте
-    div.dataset.displayname = name;
 
     div.innerHTML = `
       <div class="field"><span class="label">Название:</span> ${escapeHtml(name)}</div>
