@@ -142,10 +142,23 @@
       border-radius: var(--radius);
       z-index: 1002;
       right: 0;
+      transition: all 0.3s ease; /* ИЗМЕНЕНО: добавлена плавная анимация */
     }
 
     .dropdown-content.show {
       display: block;
+      animation: fadeIn 0.3s ease; /* ИЗМЕНЕНО: анимация появления */
+    }
+
+    @keyframes fadeIn { /* ИЗМЕНЕНО: определение анимации */
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .menu-item {
@@ -254,7 +267,7 @@
       width: 90%;
     }
 
-    .modal-buttons {
+       .modal-buttons {
       display: flex;
       justify-content: flex-end;
       gap: 10px;
@@ -275,6 +288,108 @@
         padding: 8px 10px;
         font-size: 14px;
       }
+
+      /* Адаптация меню действий для мобильных устройств */
+      .actions-menu {
+        width: 100%;
+        margin-bottom: 15px;
+      }
+
+      #menuBtn {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+      }
+
+      .dropdown-content {
+        position: fixed;
+        top: 60px; /* отступ от верха, чтобы не перекрывать шапку */
+        left: 10px;
+        right: 10px;
+        min-width: auto;
+        max-width: calc(100% - 20px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        z-index: 1003;
+      }
+
+      .menu-item {
+        padding: 16px 20px;
+        font-size: 16px;
+        text-align: center;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .menu-item:last-child {
+        border-bottom: none;
+      }
+
+      .menu-item:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+      }
+
+      /* Уменьшаем отступы в формах на мобильных */
+      .form-section {
+        padding: 15px;
+      }
+
+      .field {
+        margin-bottom: 12px;
+      }
+
+      label {
+        font-size: 15px;
+      }
+
+      input[type="text"], textarea {
+        padding: 10px;
+        font-size: 15px;
+      }
+
+      textarea {
+        min-height: 80px;
+      }
+
+      /* Корректировка таблицы на мобильных */
+      .table-container {
+        overflow-x: auto;
+      }
+
+      table {
+        min-width: 600px; /* минимальная ширина для читаемости */
+      }
+
+      th, td {
+        padding: 6px 8px;
+        font-size: 13px;
+      }
+
+      .actions {
+        white-space: normal;
+      }
+
+      .action-btn {
+        display: block;
+        width: 100%;
+        margin-bottom: 5px;
+        padding: 8px 12px;
+        font-size: 14px;
+      }
+
+      /* Корректировка модальных окон */
+      .modal-content {
+        max-width: 95%;
+        padding: 15px;
+        margin: 20px;
+      }
+
+      .modal-buttons {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -282,7 +397,7 @@
   <div class="container">
     <header class="header">
       <h1 class="title">База штрих‑кодов</h1>
-          </header>
+    </header>
 
     <!-- Search -->
     <div class="search-container">
@@ -391,339 +506,266 @@
       db = {};
     }
 
-    // Элементы DOM
+        // Элементы DOM
     const codeInput = document.getElementById('codeInput');
     const nameInput = document.getElementById('nameInput');
     const saveBtn = document.getElementById('saveBtn');
     const clearBtn = document.getElementById('clearBtn');
+    const searchInput = document.getElementById('searchInput');
+    const tableBody = document.getElementById('tableBody');
+    const toast = document.getElementById('toast');
+
+    // Меню действий
+    const menuBtn = document.getElementById('menuBtn');
+    const menuDropdown = document.getElementById('menuDropdown');
     const exportBtn = document.getElementById('exportBtn');
     const importFileBtn = document.getElementById('importFileBtn');
     const massImportBtn = document.getElementById('massImportBtn');
     const clearDBBtn = document.getElementById('clearDBBtn');
-    const searchInput = document.getElementById('searchInput');
-    const tableBody = document.getElementById('tableBody');
-    const toast = document.getElementById('toast');
-    const confirmModal = document.getElementById('confirmModal');
-    const confirmMessage = document.getElementById('confirmMessage');
-    const confirmOk = document.getElementById('confirmOk');
-    const confirmCancel = document.getElementById('confirmCancel');
-    const menuBtn = document.getElementById('menuBtn');
-    const menuDropdown = document.getElementById('menuDropdown');
-    const fileImportModal = document.getElementById('fileImportModal');
-    const fileInput = document.getElementById('fileInput');
-    const fileImportConfirm = document.getElementById('fileImportConfirm');
-    const fileImportCancel = document.getElementById('fileImportCancel');
-    const massImportModal = document.getElementById('massImportModal');
-    const massImportData = document.getElementById('massImportData');
-    const massImportConfirm = document.getElementById('massImportConfirm');
-    const massImportCancel = document.getElementById('massImportCancel');
 
-    let editingCode = null; // Для отслеживания редактируемой записи
+    // Модальные окна
+    const massImportModal = document.getElementById('massImportModal');
+    const fileImportModal = document.getElementById('fileImportModal');
+    const confirmModal = document.getElementById('confirmModal');
+    const massImportData = document.getElementById('massImportData');
+    const fileInput = document.getElementById('fileInput');
+    const confirmTitle = document.getElementById('confirmTitle');
+    const confirmMessage = document.getElementById('confirmMessage');
+
+    // Кнопки модальных окон
+    const massImportCancel = document.getElementById('massImportCancel');
+    const massImportConfirm = document.getElementById('massImportConfirm');
+    const fileImportCancel = document.getElementById('fileImportCancel');
+    const fileImportConfirm = document.getElementById('fileImportConfirm');
+    const confirmCancel = document.getElementById('confirmCancel');
+    const confirmOk = document.getElementById('confirmOk');
 
     // Функции
-    function showToast(text, ms = 2000) {
-      toast.textContent = text;
+
+    function showToast(message) {
+      toast.textContent = message;
       toast.classList.add('show');
       setTimeout(() => {
         toast.classList.remove('show');
-      }, ms);
+      }, 3000);
     }
 
-    function saveDB() {
-      try {
-        localStorage.setItem('barcodeDB', JSON.stringify(db));
-        renderTable(searchInput.value);
-        return true;
-      } catch (e) {
-        console.error('Ошибка сохранения:', e);
-        showToast('Недостаточно места для сохранения', 3000);
-        return false;
-      }
-    }
-
-    function renderTable(searchQuery = '') {
+    function renderTable(data) {
       tableBody.innerHTML = '';
-      const keys = Object.keys(db);
-
-      // Если база пуста
-      if (keys.length === 0) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="3" style="text-align:center;padding:20px">База штрих‑кодов пуста</td>';
-        tableBody.appendChild(tr);
-        return;
-      }
-
-      let filteredKeys = keys;
-
-      // Фильтрация только при наличии запроса
-      if (searchQuery) {
-        const lowerQuery = searchQuery.toLowerCase();
-        filteredKeys = keys.filter(key =>
-          key.includes(lowerQuery) ||
-          (db[key] || '').toLowerCase().includes(lowerQuery)
-        );
-
-        if (!filteredKeys.length) {
-          const tr = document.createElement('tr');
-          tr.innerHTML = '<td colspan="3" style="text-align:center;padding:20px">Ничего не найдено по запросу</td>';
-          tableBody.appendChild(tr);
-          return;
-        }
-      }
-
-      filteredKeys.forEach(code => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
+      Object.entries(data).forEach(([code, name]) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
           <td>${code}</td>
-          <td>${db[code] || ''}</td>
+          <td>${name}</td>
           <td class="actions">
             <button class="action-btn edit-btn" data-code="${code}">Редактировать</button>
             <button class="action-btn delete-btn" data-code="${code}">Удалить</button>
           </td>
         `;
-        tableBody.appendChild(tr);
-      });
-
-      // Обработчики для кнопок
-      document.querySelectorAll('.edit-btn')      .forEach(btn => {
-        btn.addEventListener('click', () => editItem(btn.dataset.code));
-      });
-      document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', () => showDeleteConfirmation(btn.dataset.code));
+        tableBody.appendChild(row);
       });
     }
 
-    function editItem(code) {
-      codeInput.value = code;
-      nameInput.value = db[code] || '';
-      editingCode = code;
-      saveBtn.textContent = 'Обновить';
-      showToast('Редактирование записи', 1500);
-    }
-
-    function showDeleteConfirmation(code) {
-      confirmMessage.textContent = `Вы уверены, что хотите удалить запись "${code}"?`;
-      confirmOk.onclick = () => {
-        delete db[code];
-        saveDB();
-        showToast('Запись удалена', 1500);
-        closeConfirmModal();
-      };
-      confirmModal.style.display = 'flex';
-    }
-
-    function closeConfirmModal() {
-      confirmModal.style.display = 'none';
-    }
-
-    function exportDatabase() {
-      if (!Object.keys(db).length) {
-        showToast('База пуста, нечего экспортировать', 2000);
-        return;
-      }
-
-      const dataStr = JSON.stringify(db, null, 2);
-      const blob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `barcodeDB_${new Date().toISOString().split('T')[0].replace(/:/g, '-')}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    function importDatabase(file) {
-      const reader = new FileReader();
-
-      reader.onload = function(e) {
-        try {
-          const importedData = JSON.parse(e.target.result);
-
-          // Проверка структуры: объект, не массив, не null
-          if (typeof importedData !== 'object' || importedData === null || Array.isArray(importedData)) {
-            throw new Error('Неверный формат файла');
-          }
-
-          // Валидация штрих‑кодов
-          let validCount = 0;
-          for (const [code, name] of Object.entries(importedData)) {
-            if (/^\d+$/.test(code) && code.length >= 8 && code.length <= 14) {
-              db[code] = name;
-              validCount++;
-            } else {
-              console.warn(`Пропущен некорректный штрих‑код: ${code}`);
-            }
-          }
-
-          saveDB();
-          showToast(`Успешно импортировано ${validCount} записей из файла`, 3000);
-          closeImportModal();
-        } catch (e) {
-          console.error('Ошибка импорта:', e);
-          showToast('Ошибка: неверный формат JSON-файла', 4000);
-        }
-      };
-
-      reader.readAsText(file);
-    }
-
-    function importFromText(text) {
-      try {
-        // Разбиваем текст на строки и фильтруем пустые
-        const lines = text.split('\n').map(line => line.trim()).filter(line => line);
-        let count = 0;
-
-        for (const line of lines) {
-          // Ищем соответствие шаблону "код": "название"
-          const match = line.match(/^"([^"]+)":\s*"([^"]*)"/);
-          if (!match) {
-            console.warn(`Пропущен некорректный формат строки: ${line}`);
-            continue;
-          }
-
-          const code = match[1].trim();
-          const name = match[2].trim();
-
-          // Валидация штрих‑кода: только цифры, длина 8–14
-          if (!/^\d+$/.test(code) || code.length < 8 || code.length > 14) {
-            console.warn(`Пропущен некорректный штрих‑код: ${code}`);
-            continue;
-          }
-
-          db[code] = name;
-          count++;
-        }
-
-        if (count > 0) {
-          saveDB();
-          showToast(`Успешно импортировано ${count} записей`, 3000);
-        } else {
-          showToast('Не найдено корректных данных для импорта', 3000);
-        }
-        closeMassImportModal();
-      } catch (e) {
-        console.error('Ошибка импорта:', e);
-        showToast('Ошибка при импорте данных. Проверьте формат.', 4000);
-      }
-    }
-
-    function closeMassImportModal() {
-      massImportModal.style.display = 'none';
-      massImportData.value = '';
-    }
-
-    function closeFileImportModal() {
-      fileImportModal.style.display = 'none';
-      fileInput.value = '';
-    }
-
-    function clearDatabase() {
-      confirmMessage.textContent = 'Вы уверены, что хотите очистить всю базу данных? Это действие нельзя отменить!';
-      confirmOk.onclick = () => {
-        db = {};
-        saveDB();
-        showToast('База данных очищена', 2000);
-        closeConfirmModal();
-      };
-      confirmModal.style.display = 'flex';
+    function saveToStorage() {
+      localStorage.setItem('barcodeDB', JSON.stringify(db));
     }
 
     // Обработчики событий
+
+    // Сохранение записи
     saveBtn.addEventListener('click', () => {
       const code = codeInput.value.trim();
       const name = nameInput.value.trim();
 
-      if (!code) {
-        showToast('Введите штрих‑код', 2000);
-        return;
-      }
-
-      // Валидация штрих‑кода
-      if (!/^\d+$/.test(code) || code.length < 8 || code.length > 14) {
-        showToast('Некорректный штрих‑код: должны быть только цифры, 8–14 символов', 3000);
+      if (!code || !name) {
+        showToast('Заполните оба поля!');
         return;
       }
 
       db[code] = name;
-      if (editingCode && editingCode !== code) {
-        delete db[editingCode];
-      }
-      saveDB();
+      saveToStorage();
+      renderTable(db);
       codeInput.value = '';
       nameInput.value = '';
-      saveBtn.textContent = 'Сохранить';
-      editingCode = null;
-      showToast('Запись сохранена', 1500);
+      showToast('Запись сохранена!');
     });
 
+    // Очистка формы
     clearBtn.addEventListener('click', () => {
       codeInput.value = '';
       nameInput.value = '';
-      saveBtn.textContent = 'Сохранить';
-      editingCode = null;
     });
 
-    exportBtn.addEventListener('click', exportDatabase);
-
-    importFileBtn.addEventListener('click', () => {
-      fileImportModal.style.display = 'flex';
+    // Поиск
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase();
+      const filtered = Object.entries(db)
+        .filter(([code, name]) =>
+          code.includes(query) || name.toLowerCase().includes(query)
+        )
+        .reduce((obj, [code, name]) => ({ ...obj, [code]: name }), {});
+      renderTable(filtered);
     });
 
-    fileImportCancel.addEventListener('click', closeFileImportModal);
-
-    fileImportConfirm.addEventListener('click', () => {
-      const file = fileInput.files[0];
-      if (file) {
-        importDatabase(file);
-      } else {
-        showToast('Выберите файл для импорта', 2000);
-      }
+    // Экспорт базы
+    exportBtn.addEventListener('click', () => {
+      const dataStr = JSON.stringify(db, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `barcodeDB_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('База экспортирована!');
     });
 
+    // Массовый импорт текста
     massImportBtn.addEventListener('click', () => {
       massImportModal.style.display = 'flex';
     });
 
-    massImportCancel.addEventListener('click', closeMassImportModal);
+    massImportCancel.addEventListener('click', () => {
+      massImportModal.style.display = 'none';
+    });
 
     massImportConfirm.addEventListener('click', () => {
-      const text = massImportData.value.trim();
-      if (!text) {
-        showToast('Введите данные для импорта', 2000);
-        return;
+      try {
+        const rawData = massImportData.value;
+        const imported = JSON.parse(rawData);
+        if (typeof imported === 'object' && imported !== null && !Array.isArray(imported)) {
+          db = { ...db, ...imported };
+          saveToStorage();
+          renderTable(db);
+          massImportModal.style.display = 'none';
+          massImportData.value = '';
+          showToast('Данные импортированы!');
+        } else {
+          throw new Error('Неверный формат данных');
+        }
+      } catch (e) {
+        showToast('Ошибка импорта: проверьте формат данных');
       }
-      importFromText(text);
     });
 
-    clearDBBtn.addEventListener('click', clearDatabase);
+    // Импорт файла
+    importFileBtn.addEventListener('click', () => {
+      fileImportModal.style.display = 'flex';
+    });
 
-    confirmCancel.addEventListener('click', closeConfirmModal);
+    fileImportCancel.addEventListener('click', () => {
+      fileImportModal.style.display = 'none';
+      fileInput.value = '';
+    });
 
-    // Закрытие меню и модальных окон кликом вне их
-    window.addEventListener('click', (e) => {
-      if (!e.target.matches('#menuBtn')) {
-        menuDropdown.classList.remove('show');
+    fileImportConfirm.addEventListener('click', () => {
+      const file = fileInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const imported = JSON.parse(e.target.result);
+            if (typeof imported === 'object' && imported !== null && !Array.isArray(imported)) {
+              db = imported;
+              saveToStorage();
+              renderTable(db);
+              fileImportModal.style.display = 'none';
+              fileInput.value = '';
+              showToast('База импортирована!');
+            } else {
+              throw new Error('Неверный формат файла');
+            }
+          } catch (err) {
+            showToast('Ошибка чтения файла');
+          }
+        };
+        reader.readAsText(file);
+      } else {
+        showToast('Выберите файл');
       }
-      if (e.target === confirmModal) closeConfirmModal();
-      if (e.target === fileImportModal) closeFileImportModal();
-      if (e.target === massImportModal) closeMassImportModal();
     });
 
-    searchInput.addEventListener('input', () => {
-      renderTable(searchInput.value);
+    // Очистка базы
+    clearDBBtn.addEventListener('click', () => {
+      confirmTitle.textContent = 'Очистка базы данных';
+      confirmMessage.textContent = 'Вы уверены, что хотите очистить всю базу штрих‑кодов? Это действие нельзя отменить.';
+      confirmModal.style.display = 'flex';
     });
 
-    // Инициализация
-    renderTable();
-    // Обработчик для кнопки «Действия»
+    confirmCancel.addEventListener('click', () => {
+      confirmModal.style.display = 'none';
+    });
+
+    confirmOk.addEventListener('click', () => {
+      db = {};
+      saveToStorage();
+      renderTable(db);
+      confirmModal.style.display = 'none';
+      showToast('База очищена!');
+    });
+
+    // Редактирование и удаление записей
+    tableBody.addEventListener('click', (e) => {
+      if (e.target.classList.contains('edit-btn')) {
+        const code = e.target.dataset.code;
+        const name = db[code];
+        codeInput.value = code;
+        nameInput.value = name;
+        showToast('Данные для редактирования загружены в форму');
+      } else if (e.target.classList.contains('delete-btn')) {
+        const code = e.target.dataset.code;
+        confirmTitle.textContent = 'Удаление записи';
+        confirmMessage.textContent = `Вы уверены, что хотите удалить штрих‑код "${code}"?`;
+        confirmModal.style.display = 'flex';
+
+        // Временный обработчик для подтверждения удаления конкретной записи
+        const tempHandler = () => {
+          delete db[code];
+          saveToStorage();
+          renderTable(db);
+          confirmModal.style.display = 'none';
+          showToast('Запись удалена!');
+          confirmOk.removeEventListener('click', tempHandler);
+        };
+        confirmOk.addEventListener('click', tempHandler);
+      }
+    });
+
+    // Закрытие модальных окон кликом вне области
+   [massImportModal, fileImportModal, confirmModal].forEach(modal => {
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.style.display = 'none';
+      // Сбрасываем содержимое полей при закрытии модальных окон
+      if (modal === massImportModal) {
+        massImportData.value = '';
+      } else if (modal === fileImportModal) {
+        fileInput.value = '';
+      }
+    }
+  });
+});
+
+// Обработчик для кнопки «Действия» с мобильной адаптацией
 menuBtn.addEventListener('click', (e) => {
-  e.stopPropagation(); // предотвращаем всплытие события, чтобы меню не закрывалось сразу
-  menuDropdown.classList.toggle('show'); // переключаем видимость меню
+  e.stopPropagation();
+  menuDropdown.classList.toggle('show');
+
+  // Для мобильных устройств — корректировка позиции
+  if (window.innerWidth <= 768) {
+    setTimeout(() => {
+      const btnRect = menuBtn.getBoundingClientRect();
+      menuDropdown.style.top = (btnRect.bottom + window.pageYOffset + 5) + 'px';
+      menuDropdown.style.left = '10px';
+      menuDropdown.style.right = '10px';
+    }, 10);
+  }
 });
 
 // Закрытие меню при клике вне его области
 document.addEventListener('click', (e) => {
-  // Проверяем, что клик был не по кнопке меню и не по элементам внутри меню
   if (!e.target.closest('#menuBtn') && !e.target.closest('.dropdown-content')) {
     menuDropdown.classList.remove('show');
   }
@@ -731,12 +773,67 @@ document.addEventListener('click', (e) => {
 
 // Предотвращение закрытия меню при клике внутри него
 menuDropdown.addEventListener('click', (e) => {
-  e.stopPropagation(); // останавливаем всплытие события
+  e.stopPropagation();
 });
 
-  </script>
+// Перерасчёт позиции меню при изменении размера окна
+window.addEventListener('resize', () => {
+  if (menuDropdown.classList.contains('show') && window.innerWidth <= 768) {
+    const btnRect = menuBtn.getBoundingClientRect();
+    menuDropdown.style.top = (btnRect.bottom + window.pageYOffset + 5) + 'px';
+  }
+});
+
+// Инициализация — отображаем все данные при загрузке
+renderTable(db);
+
+// Дополнительная обработка для мобильных устройств
+function initMobileOptimizations() {
+  if (window.innerWidth <= 768) {
+    // Увеличиваем размер шрифта для лучшей читаемости на мобильных
+    document.querySelectorAll('input, textarea, .btn, .menu-item').forEach(el => {
+      el.style.fontSize = '16px';
+    });
+
+    // Корректируем отступы для лучшей тактильной обратной связи
+    document.querySelectorAll('.action-btn, .btn').forEach(btn => {
+      btn.style.padding = '12px 16px';
+    });
+  }
+}
+
+// Вызываем оптимизацию для мобильных
+initMobileOptimizations();
+
+// Перезапускаем оптимизацию при изменении размера окна
+window.addEventListener('resize', initMobileOptimizations);
+
+// Обработка ориентации экрана на мобильных устройствах
+window.addEventListener('orientationchange', () => {
+  setTimeout(initMobileOptimizations, 300);
+});
+
+// Предотвращаем двойной клик на мобильных устройствах
+document.addEventListener('dblclick', (e) => {
+  if (e.target.tagName === 'BUTTON') {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+// Улучшенная обработка тапов на мобильных
+document.addEventListener('touchstart', (e) => {
+  // Добавляем визуальный фидбек для тапов
+  if (e.target.matches('button, .action-btn')) {
+    e.target.style.opacity = '0.7';
+    setTimeout(() => {
+      e.target.style.opacity = '';
+    }, 150);
+  }
+});
+
+console.log('База штрих‑кодов инициализирована. Загружено записей:', Object.keys(db).length);
+</script>
 </body>
 </html>
-
 
                                                                 
