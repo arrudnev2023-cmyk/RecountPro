@@ -391,12 +391,13 @@ function buildItems(){
 const listEl = document.getElementById("list");
 
   
-function render(items) {
+function render(items){
   listEl.innerHTML = "";
 
   items.forEach(item => {
     if (!showZero && item.qty === 0) return;
 
+    // --- Берём название из базы ШТРИХ-КОДОВ ---
     let name = barcodeCodes[item.code] || item.name || item.code;
 
     const div = document.createElement("div");
@@ -433,7 +434,7 @@ function render(items) {
   });
 
   attachQtyHandlers();
-}
+} 
 
 
 
