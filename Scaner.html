@@ -623,32 +623,76 @@
     });
 
     // Массовый импорт текста
-    massImportBtn.addEventListener('click', () => {
-      massImportModal.style.display = 'flex';
-    });
+   // Массовый импорт текста
+massImportBtn.addEventListener('click', () => {
+  massImportModal.style.display = 'flex';
+  massImportData.value = ''; // Очищаем поле при открытии
+});
 
-    massImportCancel.addEventListener('click', () => {
-      massImportModal.style.display = 'none';
-    });
+massImportCancel.addEventListener('click', () => {
+  massImportModal.style.display = 'none';
+  massImportData.value = '';
+});
 
-    massImportConfirm.addEventListener('click', () => {
-      try {
-        const rawData = massImportData.value;
-        const imported = JSON.parse(rawData);
-        if (typeof imported === 'object' && imported !== null && !Array.isArray(imported)) {
-          db = { ...db, ...imported };
-          saveToStorage();
-          renderTable(db);
-          massImportModal.style.display = 'none';
-          massImportData.value = '';
-          showToast('Данные импортированы!');
-        } else {
-          throw new Error('Неверный формат данных');
-        }
-      } catch (e) {
-        showToast('Ошибка импорта: проверьте формат данных');
+massImportConfirm.addEventListener('click', () => {
+  const rawData = massImportData.value.trim();
+
+  if (!rawData) {
+    showToast('Введите данные для импорта');
+    return;
+  }
+
+  try {
+    // Пробуем распарсить как JSON объект
+    let imported;
+    try {
+      imported = JSON.parse(rawData);
+      if (typeof imported !== 'object' || imported === null || Array.isArray(imported)) {
+        throw new Error('Данные должны быть JSON‑объектом');
       }
-    });
+    } catch (jsonError) {
+      // Если JSON не получился, пробуем обработать построчно
+      imported = {};
+      const lines = rawData.split('\n');
+
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine) continue;
+
+        // Ищем формат: "код": "название" или код,название
+        const jsonMatch = trimmedLine.match(/"([^"]+)":\s*"([^"]+)"/);
+        if (jsonMatch) {
+          imported[jsonMatch[1]] = jsonMatch[2];
+          continue;
+        }
+
+        const commaMatch = trimmedLine.split(',');
+        if (commaMatch.length >= 2) {
+          imported[commaMatch[0].trim()] = commaMatch[1].trim();
+          continue;
+        }
+
+        // Если просто код без названия — добавляем с пустым названием
+        if (trimmedLine.length > 0) {
+          imported[trimmedLine] = '';
+        }
+      }
+    }
+
+    // Объединяем с существующей базой, перезаписывая дубликаты
+    db = { ...db, ...imported };
+    saveToStorage();
+    renderTable(db);
+    massImportModal.style.display = 'none';
+    massImportData.value = '';
+    showToast(`Импортировано ${Object.keys(imported).length} записей`);
+
+  } catch (e) {
+    console.error('Ошибка импорта:', e);
+    showToast('Ошибка импорта: проверьте формат данных. Используйте JSON или формат "код, название"');
+  }
+});
+
 
     // Импорт файла
     importFileBtn.addEventListener('click', () => {
