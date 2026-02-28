@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Добавить товар — Быстрое добавление</title>
+  <title>Сканер штрих‑кодов</title>
 
   <style>
     :root {
@@ -136,7 +136,7 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1 class="title">Добавить товар</h1>
+      <h1 class="title">Сканер штрих‑кодов</h1>
     </div>
 
     <div class="camera-section">
@@ -147,7 +147,7 @@
 
     <div class="form-section">
       <div class="field">
-        <label for="barcodeInput">Штрих-код</label>
+        <label for="barcodeInput">Штрих‑код</label>
         <input id="barcodeInput" type="text" placeholder="Ожидание сканирования..." autocomplete="off" />
       </div>
 
@@ -166,6 +166,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <!-- ZXing для fallback -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
   <script>
@@ -173,7 +174,10 @@
     let barcodeDB = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
     let stream = null;
     let scanning = false;
-    const DEBOUNCE_MS = 900;
+    let detector = null; // Встроенный BarcodeDetector
+    let reader = null;  // ZXing
+    let lastDetected = { code: null, ts: 0 };
+    const DEBOUNCE_MS = 1000; // Защита от дубликатов
 
     /* ===== Elements ===== */
     const preview = document.getElementById('preview');
@@ -196,55 +200,168 @@
     function saveBarcodeDB() {
       try {
         localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
-        console.log('База штрих-кодов успешно сохранена:', barcodeDB);
+        console.log('База штрих-кодов сохранена:', barcodeDB);
         showToast('Сохранено в базе');
       } catch (e) {
         console.error('Ошибка сохранения в localStorage:', e);
-        showToast('Ошибка сохранения в базе');
+        showToast('Ошибка сохранения');
       }
     }
 
-    function startCamera() {
-      stopCamera();
-      scanning = true;
-      const constraints = {
-        audio: false,
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+    function beep() {
+      try { navigator.vibrate?.(60); } catch(e) {}
+    }
+
+    /* ===== Camera & scanning ===== */
+ async function startCamera() {
+  stopCamera();
+  scanning = true;
+
+  // Инициализируем встроенный детектор (только штрих‑коды)
+  try {
+    if ('BarcodeDetector' in window) {
+      detector = new BarcodeDetector({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'code_128', 'code_39']
+      });
+      await detector.detect(document.createElement('canvas')); // Warm-up
+    }
+  } catch (e) {
+    console.warn('Встроенный BarcodeDetector недоступен, используем ZXing fallback');
+    detector = null;
+  }
+
+  const constraints = {
+    audio: false,
+    video: {
+      facingMode: { ideal: 'environment' },
+      width: { ideal: 1920 },
+      height: { ideal: 1080 }
+    }
+  };
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    preview.srcObject = stream;
+    await preview.play();
+
+    // Инициализируем ZXing как fallback
+    if (!detector) {
+      reader = new ZXing.BrowserMultiFormatReader();
+      // Отключаем QR-коды, оставляем только штрих-коды
+      const hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+        ZXing.BarcodeFormat.EAN_13,
+        ZXing.BarcodeFormat.EAN_8,
+        ZXing.BarcodeFormat.UPC_A,
+        ZXing.BarcodeFormat.CODE_128,
+        ZXing.BarcodeFormat.CODE_39
+      ]);
+      reader.decodeWithOptions = hints;
+    }
+
+    showToast('Камера запущена. Наведите на штрих-код');
+    requestAnimationFrame(scanLoop);
+  } catch (err) {
+    console.error('Ошибка доступа к камере:', err);
+    showToast('Не удалось получить доступ к камере');
+    scanning = false;
+  }
+}
+
+function stopCamera() {
+  scanning = false;
+  if (preview.srcObject) {
+    preview.srcObject.getTracks().forEach(track => track.stop());
+    preview.srcObject = null;
+  }
+  detector = null;
+  reader = null;
+}
+
+/* Оптимизированная обработка изображения */
+function preprocessImage(ctx, width, height) {
+  const imgData = ctx.getImageData(0, 0, width, height);
+  const data = imgData.data;
+
+  // 1. Преобразуем в оттенки серого
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) | 0;
+    data[i] = data[i + 1] = data[i + 2] = gray;
+  }
+
+  // 2. Повышаем контрастность
+  const factor = 2.0; // Коэффициент контрастности
+  for (let i = 0; i < data.length; i += 4) {
+    for (let c = 0; c < 3; c++) {
+      let val = data[i + c];
+      val = ((val - 128) * factor) + 128;
+      data[i + c] = Math.max(0, Math.min(255, val));
+    }
+  }
+
+  // 3. Бинаризация (ч/б) для улучшения распознавания штрих-кодов
+  const threshold = 120; // Порог бинаризации
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = data[i];
+    const bw = gray > threshold ? 255 : 0;
+    data[i] = data[i + 1] = data[i + 2] = bw;
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+}
+
+/* Попытка распознавания штрих-кода с разных углов */
+async function tryDecodeWithRotations(canvas, ctx, width, height) {
+  const rotations = [0, 90, 180, 270];
+
+  for (const angle of rotations) {
+    // Создаём временный canvas для повёрнутого изображения
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = width;
+    tempCanvas.height = height;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    tempCtx.clearRect(0, 0, width, height);
+    tempCtx.save();
+    tempCtx.translate(width / 2, height / 2);
+    tempCtx.rotate(angle * Math.PI / 180);
+    tempCtx.drawImage(canvas, -width / 2, -height / 2);
+    tempCtx.restore();
+
+    // Применяем предобработку к повёрнутому изображению
+    preprocessImage(tempCtx, width, height);
+
+    try {
+      if (detector) {
+        // Используем встроенный детектор
+        const result = await detector.detect(tempCanvas);
+        if (result && result.length > 0) {
+          return result[0].rawValue;
         }
-      };
-
-      navigator.mediaDevices.getUserMedia(constraints)
-        .then(stream => {
-          preview.srcObject = stream;
-          return preview.play();
-        })
-        .then(() => {
-          showToast('Камера запущена');
-          scanLoop();
-        })
-        .catch(err => {
-          console.error('Ошибка доступа к камере:', err);
-          showToast('Не удалось получить доступ к камере');
-          scanning = false;
-        });
-    }
-
-    function stopCamera() {
-      scanning = false;
-      if (preview.srcObject) {
-        preview.srcObject.getTracks().forEach(track => track.stop());
-        preview.srcObject = null;
+      } else if (reader) {
+        // Используем ZXing
+        const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(tempCanvas);
+        const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+        const result = reader.decode(binaryBitmap);
+        if (result && result.text) {
+          return result.text;
+        }
       }
+    } catch (e) {
+      // Игнорируем ошибки распознавания для данного угла
     }
+  }
+  return null;
+}
 
-    async function scanLoop() {
+/* Основной цикл сканирования */
+async function scanLoop() {
   if (!scanning) return;
+
   try {
     const w = preview.videoWidth;
     const h = preview.videoHeight;
+
     if (w === 0 || h === 0) {
       requestAnimationFrame(scanLoop);
       return;
@@ -257,8 +374,8 @@
     const ctx = canvas.getContext('2d');
     ctx.drawImage(preview, 0, 0, w, h);
 
-    // Уменьшаем размер для ускорения обработки
-    const scale = Math.max(1, Math.floor(Math.max(w, h) / 900));
+    // Уменьшаем размер для ускорения обработки (но сохраняем качество)
+    const scale = Math.max(1, Math.floor(Math.max(w, h) / 800));
     const sw = Math.floor(w / scale);
     const sh = Math.floor(h / scale);
 
@@ -268,13 +385,12 @@
     const smallCtx = smallCanvas.getContext('2d');
     smallCtx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
 
-    // Преобразуем в оттенки серого и повышаем контрастность
-    toGrayscale(smallCtx, sw, sh);
-    increaseContrast(smallCtx, sw, sh, 30);
+    // Пытаемся распознать штрих-код с разных углов
+    const code = await tryDecodeWithRotations(smallCanvas, smallCtx, sw, sh);
 
-    // Пытаемся распознать штрих‑код
-    const code = await tryDecodeCanvas(smallCanvas);
-    if (code) handleDetected(code);
+    if (code) {
+      handleDetected(code);
+    }
   } catch (e) {
     console.error('Ошибка в scanLoop:', e);
   } finally {
@@ -282,48 +398,14 @@
   }
 }
 
-/* Вспомогательные функции для обработки изображения */
-function toGrayscale(ctx, w, h) {
-  const img = ctx.getImageData(0, 0, w, h);
-  const d = img.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
-    d[i] = d[i + 1] = d[i + 2] = v;
-  }
-  ctx.putImageData(img, 0, 0);
-}
-
-function increaseContrast(ctx, w, h, contrast = 30) {
-  const img = ctx.getImageData(0, 0, w, h);
-  const d = img.data;
-  const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
-  for (let i = 0; i < d.length; i += 4) {
-    for (let c = 0; c < 3; c++) {
-      let col = d[i + c];
-      col = factor * (col - 128) + 128;
-      d[i + c] = Math.max(0, Math.min(255, col));
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-}
-
-/* Попытка декодирования штрих‑кода с помощью ZXing */
-async function tryDecodeCanvas(canvas) {
-  try {
-    const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
-    const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-    const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
-    return result.text || null;
-  } catch (e) {
-    return null;
-  }
-}
-
-/* Обработка обнаруженного штрих‑кода */
+/* Обработка обнаруженного штрих-кода */
 function handleDetected(code) {
   const now = Date.now();
-  // Защита от дублирования
-  if (code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+
+  // Защита от дубликатов (1 секунда)
+  if (code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) {
+    return;
+  }
 
   lastDetected = { code, ts: now };
   beep();
@@ -339,49 +421,104 @@ function handleDetected(code) {
   }
 }
 
-/* Сохранение в базу */
 saveBtn.addEventListener('click', () => {
   const code = (barcodeInput.value || '').trim();
   const name = (nameInput.value || '').trim();
 
-  if (!code) return showToast('Штрих-код пустой');
-  if (!name) return showToast('Введите название товара');
+  if (!code) {
+    showToast('Штрих‑код пустой — сначала отсканируйте или введите вручную');
+    return;
+  }
+
+  if (!name) {
+    showToast('Введите название товара');
+    return;
+  }
+
+  // Валидация штрих‑кода: проверяем, что это действительно штрих‑код (цифры, длина)
+  if (!/^\d+$/.test(code)) {
+    showToast('Некорректный штрих‑код: должны быть только цифры');
+    return;
+  }
+
+  if (code.length < 8 || code.length > 14) {
+    showToast('Длина штрих‑кода должна быть 8–14 цифр');
+    return;
+  }
 
   // Обновляем базу
   barcodeDB[code] = name;
+
+  // Сохраняем в localStorage
   saveBarcodeDB();
+
+  // Показываем успех
+  showToast(`Сохранено: ${code} — ${name}`);
+
+  // Очищаем поля для следующего сканирования (опционально)
+  // barcodeInput.value = '';
+  // nameInput.value = '';
 });
 
-/* Остановка камеры */
-function stopCamera() {
-  scanning = false;
-  if (preview.srcObject) {
-    preview.srcObject.getTracks().forEach(track => track.stop());
-    preview.srcObject = null;
-  }
-}
-
-/* Запуск камеры при загрузке страницы */
-window.addEventListener('DOMContentLoaded', () => {
-  startCamera();
+// Кнопка закрытия
+closeBtn.addEventListener('click', () => {
+  stopCamera();
+  window.close(); // Для popup‑окон
 });
 
-// Корректное событие загрузки DOM
+/* ===== Инициализация при загрузке ===== */
 document.addEventListener('DOMContentLoaded', () => {
+  // Загружаем базу из localStorage при старте
+  try {
+    const saved = localStorage.getItem('barcodeDB');
+    if (saved) {
+      barcodeDB = JSON.parse(saved);
+      showToast(`Загружено ${Object.keys(barcodeDB).length} записей из базы`);
+    }
+  } catch (e) {
+    console.error('Ошибка загрузки базы:', e);
+    barcodeDB = {};
+  }
+
+  // Запускаем камеру
   startCamera();
 });
 
-/* Остановка камеры при закрытии страницы */
+/* ===== Обработка ошибок и событий ===== */
 window.addEventListener('pagehide', stopCamera);
 window.addEventListener('beforeunload', stopCamera);
 
-/* Звуковой сигнал */
-function beep() {
-  try { navigator.vibrate?.(60); } catch(e) {}
+// Обработка ошибок камеры
+preview.addEventListener('error', () => {
+  console.error('Ошибка видеопотока');
+  showToast('Ошибка камеры');
+});
+
+/* ===== Дополнительные утилиты ===== */
+function formatBarcode(code) {
+  // Форматирование для отображения (например, EAN‑13: 1234567890128 → 123 456 789 012 8)
+  const str = code.toString();
+  if (str.length === 13) {
+    return `${str.slice(0, 3)} ${str.slice(3, 6)} ${str.slice(6, 9)} ${str.slice(9, 12)} ${str.slice(12)}`;
+  } else if (str.length === 8) {
+    return `${str.slice(0, 2)} ${str.slice(2, 5)} ${str.slice(5, 7)} ${str.slice(7)}`;
+  }
+  return str;
 }
+
+/* ===== Отладка ===== */
+// Кнопка для тестирования (раскомментировать для отладки)
+/*
+document.body.insertAdjacentHTML('beforeend', `
+  <button id="debugBtn" style="position: fixed; top: 10px; right: 10px; z-index: 9999;">
+    DEBUG: Показать базу
+  </button>
+`);
+document.getElementById('debugBtn').addEventListener('click', () => {
+  console.log('Текущая база штрих‑кодов:', barcodeDB);
+  alert('База выведена в консоль');
+});
+*/
   </script>
 </body>
 </html>
-
-
-
