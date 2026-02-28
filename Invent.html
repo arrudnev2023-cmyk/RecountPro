@@ -351,11 +351,13 @@ function buildAllItemsFromDB() {
 function render(items) {
   listEl.innerHTML = '';
 
+  // Если список пустой — показываем подсказку
   if (!items.length) {
     listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Отсканируйте первый товар</div>';
     return;
   }
 
+  // Ваша оригинальная логика рендеринга (сохраняем полностью)
   items.forEach(item => {
     const value =
       sessionValues[item.code] ||
@@ -366,6 +368,7 @@ function render(items) {
     div.className = 'item';
     div.dataset.code = item.code;
 
+    // Сохраняем вашу оригинальную разметку карточки товара
     div.innerHTML = `
       <div class="field">
         <span class="label">Название:</span> ${escapeHtml(item.name || '')}
@@ -389,9 +392,9 @@ function render(items) {
         <div style="min-width:70px;text-align:right;color:var(--muted)">
           ${item.docQty} шт
         </div>
-      </div>
-    `;
+      </div>`;
 
+    // Ваша логика раскраски карточек
     let actual = 0;
     try {
       actual = Function("return " + (value || "0").replace(/,/g, '.'))() || 0;
@@ -406,6 +409,7 @@ function render(items) {
 
   attachInputHandlers();
 }
+
 
 
 function addItemToScanList(code) {
