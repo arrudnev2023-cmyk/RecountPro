@@ -2,8 +2,9 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Сканер штрих‑кодов</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#007bff" />
+  <title>Сканер штрих‑кодов — Диагностика</title>
 
   <style>
     :root {
@@ -13,15 +14,13 @@
       --muted: #6c757d;
       --accent: #007bff;
       --success: #28a745;
+      --warning: #ffc107;
+      --danger: #dc3545;
       --border: #dee2e6;
       --radius: 8px;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -31,26 +30,13 @@
       padding: 16px;
     }
 
-    .container {
-      max-width: 100%;
-      margin: 0 auto;
-    }
+    .container { max-width: 100%; margin: 0 auto; }
 
-    .header {
-      text-align: center;
-      margin-bottom: 20px;
-    }
+    .header { text-align: center; margin-bottom: 20px; }
+    .title { font-size: 24px; font-weight: 600; color: var(--accent); }
 
-    .title {
-      font-size: 24px;
-      font-weight: 600;
-      color: var(--accent);
-    }
+    .camera-section { margin-bottom: 20px; position: relative; }
 
-    .camera-section {
-      margin-bottom: 20px;
-    }
-    
     .preview-wrap {
       width: 100%;
       height: 250px;
@@ -58,12 +44,32 @@
       overflow: hidden;
       background: #000;
       margin-bottom: 15px;
+      position: relative;
     }
-    
+
     video#preview {
       width: 100%;
       height: 100%;
       object-fit: cover;
+    }
+
+    /* Рамка зоны сканирования */
+    .scan-zone {
+      position: absolute;
+      top: 20%;
+      left: 10%;
+      width: 80%;
+      height: 60%;
+      border: 3px dashed var(--success);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .status {
+      text-align: center;
+      margin: 10px 0;
+      font-weight: bold;
+      color: var(--muted);
     }
 
     .form-section {
@@ -74,15 +80,8 @@
       margin-bottom: 20px;
     }
 
-    .field {
-      margin-bottom: 15px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: 500;
-    }
+    .field { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: 500; }
 
     input[type="text"] {
       width: 100%;
@@ -102,17 +101,11 @@
       transition: background-color 0.2s;
     }
 
-    .btn-primary {
-      background-color: var(--accent);
-      color: white;
-    }
+    .btn-primary { background-color: var(--accent); color: white; }
+    .btn-secondary { background-color: var(--muted); color: white; }
+    .btn-warning { background-color: var(--warning); color: #333; }
 
-    .controls {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      margin-top: 15px;
-    }
+    .controls { display: flex; justify-content: space-between; gap: 10px; margin-top: 15px; }
 
     .toast {
       position: fixed;
@@ -128,9 +121,7 @@
       transition: opacity 0.3s;
     }
 
-    .toast.show {
-      opacity: 1;
-    }
+    .toast.show { opacity: 1; }
   </style>
 </head>
 <body>
@@ -142,7 +133,9 @@
     <div class="camera-section">
       <div class="preview-wrap">
         <video id="preview" playsinline muted></video>
+        <div class="scan-zone"></div> <!-- Рамка зоны сканирования -->
       </div>
+      <div id="status" class="status">Ожидание доступа к камере...</div>
     </div>
 
     <div class="form-section">
@@ -162,6 +155,7 @@
     </div>
 
     <button id="closeBtn" class="btn btn-secondary" style="width: 100%;">Закрыть</button>
+    <button id="debugBtn" class="btn btn-warning" style="width: 100%; margin-top: 10px;">DEBUG: Показать статус</button>
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -174,10 +168,10 @@
     let barcodeDB = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
     let stream = null;
     let scanning = false;
-    let detector = null; // Встроенный BarcodeDetector
-    let reader = null;  // ZXing
+    let detector = null;
+    let reader = null;
     let lastDetected = { code: null, ts: 0 };
-    const DEBOUNCE_MS = 1000; // Защита от дубликатов
+    const DEBOUNCE_MS = 1000;
 
     /* ===== Elements ===== */
     const preview = document.getElementById('preview');
@@ -185,7 +179,9 @@
     const nameInput = document.getElementById('nameInput');
     const saveBtn = document.getElementById('saveBtn');
     const closeBtn = document.getElementById('closeBtn');
+    const debugBtn = document.getElementById('debugBtn');
     const toast = document.getElementById('toast');
+    const status = document.getElementById('status');
 
     /* ===== Helpers ===== */
     function showToast(text, ms = 1600) {
@@ -197,6 +193,11 @@
       }, ms);
     }
 
+    function updateStatus(text, color = 'var(--muted)') {
+      status.textContent = text;
+      status.style.color = color;
+    }
+
     function saveBarcodeDB() {
       try {
         localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
@@ -204,18 +205,18 @@
         showToast('Сохранено в базе');
       } catch (e) {
         console.error('Ошибка сохранения в localStorage:', e);
-        showToast('Ошибка сохранения');
+        showToast('Ошибка сохранения в базе');
       }
     }
+function beep() {
+  try { navigator.vibrate?.(60); } catch(e) {}
+}
 
-    function beep() {
-      try { navigator.vibrate?.(60); } catch(e) {}
-    }
-
-    /* ===== Camera & scanning ===== */
- async function startCamera() {
+/* ===== Camera & scanning ===== */
+async function startCamera() {
   stopCamera();
   scanning = true;
+  updateStatus('Инициализация камеры...', 'var(--accent)');
 
   // Инициализируем встроенный детектор (только штрих‑коды)
   try {
@@ -224,6 +225,7 @@
         formats: ['ean_13', 'ean_8', 'upc_a', 'code_128', 'code_39']
       });
       await detector.detect(document.createElement('canvas')); // Warm-up
+      console.log('Встроенный BarcodeDetector инициализирован');
     }
   } catch (e) {
     console.warn('Встроенный BarcodeDetector недоступен, используем ZXing fallback');
@@ -247,7 +249,6 @@
     // Инициализируем ZXing как fallback
     if (!detector) {
       reader = new ZXing.BrowserMultiFormatReader();
-      // Отключаем QR-коды, оставляем только штрих-коды
       const hints = new Map();
       hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
         ZXing.BarcodeFormat.EAN_13,
@@ -259,10 +260,12 @@
       reader.decodeWithOptions = hints;
     }
 
-    showToast('Камера запущена. Наведите на штрих-код');
+    updateStatus('Камера готова. Наведите на штрих-код', 'var(--success)');
+    showToast('Камера запущена');
     requestAnimationFrame(scanLoop);
   } catch (err) {
     console.error('Ошибка доступа к камере:', err);
+    updateStatus('Ошибка камеры: ' + err.message, 'var(--danger)');
     showToast('Не удалось получить доступ к камере');
     scanning = false;
   }
@@ -276,6 +279,7 @@ function stopCamera() {
   }
   detector = null;
   reader = null;
+  updateStatus('Сканирование остановлено', 'var(--muted)');
 }
 
 /* Оптимизированная обработка изображения */
@@ -290,7 +294,7 @@ function preprocessImage(ctx, width, height) {
   }
 
   // 2. Повышаем контрастность
-  const factor = 2.0; // Коэффициент контрастности
+  const factor = 2.0;
   for (let i = 0; i < data.length; i += 4) {
     for (let c = 0; c < 3; c++) {
       let val = data[i + c];
@@ -300,7 +304,7 @@ function preprocessImage(ctx, width, height) {
   }
 
   // 3. Бинаризация (ч/б) для улучшения распознавания штрих-кодов
-  const threshold = 120; // Порог бинаризации
+  const threshold = 120;
   for (let i = 0; i < data.length; i += 4) {
     const gray = data[i];
     const bw = gray > threshold ? 255 : 0;
@@ -336,6 +340,7 @@ async function tryDecodeWithRotations(canvas, ctx, width, height) {
         // Используем встроенный детектор
         const result = await detector.detect(tempCanvas);
         if (result && result.length > 0) {
+          console.log(`Штрих-код распознан (угол ${angle}°):`, result[0].rawValue);
           return result[0].rawValue;
         }
       } else if (reader) {
@@ -344,6 +349,7 @@ async function tryDecodeWithRotations(canvas, ctx, width, height) {
         const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
         const result = reader.decode(binaryBitmap);
         if (result && result.text) {
+          console.log(`Штрих-код распознан ZXing (угол ${angle}°):`, result.text);
           return result.text;
         }
       }
@@ -374,7 +380,7 @@ async function scanLoop() {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(preview, 0, 0, w, h);
 
-    // Уменьшаем размер для ускорения обработки (но сохраняем качество)
+    // Уменьшаем размер для ускорения обработки
     const scale = Math.max(1, Math.floor(Math.max(w, h) / 800));
     const sw = Math.floor(w / scale);
     const sh = Math.floor(h / scale);
@@ -390,15 +396,25 @@ async function scanLoop() {
 
     if (code) {
       handleDetected(code);
-    }
+    } else {
+      // Для отладки: показываем, что сканирование идёт, но код не найден
+      updateStatus('Наведите штрих‑код в рамку и убедитесь, что он хорошо освещён', 'var(--warning)');
+      // Ограничиваем частоту вывода в консоль
+      if (!scanLoop.statusUpdateCounter) scanLoop.statusUpdateCounter = 0;
+      scanLoop.statusUpdateCounter++;
+      if (scanLoop.statusUpdateCounter % 10 === 0) {
+        console.log('Сканирование... Код пока не распознан');
+      }
+
+
+        }
   } catch (e) {
-    console.error('Ошибка в scanLoop:', e);
-  } finally {
-    requestAnimationFrame(scanLoop); // Продолжаем сканирование
+    console.error('Ошибка в цикле сканирования:', e);
   }
+
+  requestAnimationFrame(scanLoop);
 }
 
-/* Обработка обнаруженного штрих-кода */
 function handleDetected(code) {
   const now = Date.now();
 
@@ -411,16 +427,28 @@ function handleDetected(code) {
   beep();
   barcodeInput.value = code;
 
+  // Визуальная индикация успеха — мигание рамки
+  const scanZone = document.querySelector('.scan-zone');
+  scanZone.style.borderColor = 'var(--success)';
+  setTimeout(() => {
+    scanZone.style.borderColor = 'var(--accent)';
+  }, 300);
+
   // Если код уже есть в базе — подставляем название
   if (barcodeDB[code]) {
     nameInput.value = barcodeDB[code];
-    showToast('Найден в базе: название подставлено');
+    updateStatus(`Найден в базе: ${code}`, 'var(--success)');
+    showToast(`Код распознан: ${code} — ${barcodeDB[code]}`);
   } else {
     nameInput.value = '';
-    showToast('Код найден — введите название и сохраните');
+    updateStatus(`Новый код распознан: ${code}. Введите название и сохраните`, 'var(--accent)');
+    showToast(`Новый штрих‑код: ${code}`);
   }
+
+  console.log('Штрих‑код успешно распознан:', code);
 }
 
+/* ===== Event Listeners ===== */
 saveBtn.addEventListener('click', () => {
   const code = (barcodeInput.value || '').trim();
   const name = (nameInput.value || '').trim();
@@ -454,16 +482,17 @@ saveBtn.addEventListener('click', () => {
 
   // Показываем успех
   showToast(`Сохранено: ${code} — ${name}`);
-
-  // Очищаем поля для следующего сканирования (опционально)
-  // barcodeInput.value = '';
-  // nameInput.value = '';
 });
 
 // Кнопка закрытия
 closeBtn.addEventListener('click', () => {
   stopCamera();
   window.close(); // Для popup‑окон
+});
+
+// Отладочная кнопка
+debugBtn.addEventListener('click', () => {
+  alert(`Статус:\nСканирование: ${scanning}\nДетектор: ${detector ? 'встроенный' : 'ZXing'}\nБаза: ${Object.keys(barcodeDB).length} записей`);
 });
 
 /* ===== Инициализация при загрузке ===== */
@@ -491,34 +520,9 @@ window.addEventListener('beforeunload', stopCamera);
 // Обработка ошибок камеры
 preview.addEventListener('error', () => {
   console.error('Ошибка видеопотока');
+  updateStatus('Ошибка камеры', 'var(--danger)');
   showToast('Ошибка камеры');
 });
-
-/* ===== Дополнительные утилиты ===== */
-function formatBarcode(code) {
-  // Форматирование для отображения (например, EAN‑13: 1234567890128 → 123 456 789 012 8)
-  const str = code.toString();
-  if (str.length === 13) {
-    return `${str.slice(0, 3)} ${str.slice(3, 6)} ${str.slice(6, 9)} ${str.slice(9, 12)} ${str.slice(12)}`;
-  } else if (str.length === 8) {
-    return `${str.slice(0, 2)} ${str.slice(2, 5)} ${str.slice(5, 7)} ${str.slice(7)}`;
-  }
-  return str;
-}
-
-/* ===== Отладка ===== */
-// Кнопка для тестирования (раскомментировать для отладки)
-/*
-document.body.insertAdjacentHTML('beforeend', `
-  <button id="debugBtn" style="position: fixed; top: 10px; right: 10px; z-index: 9999;">
-    DEBUG: Показать базу
-  </button>
-`);
-document.getElementById('debugBtn').addEventListener('click', () => {
-  console.log('Текущая база штрих‑кодов:', barcodeDB);
-  alert('База выведена в консоль');
-});
-*/
   </script>
 </body>
 </html>
