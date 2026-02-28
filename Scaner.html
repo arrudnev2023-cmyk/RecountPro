@@ -715,6 +715,25 @@
 
     // Инициализация
     renderTable();
+    // Обработчик для кнопки «Действия»
+menuBtn.addEventListener('click', (e) => {
+  e.stopPropagation(); // предотвращаем всплытие события, чтобы меню не закрывалось сразу
+  menuDropdown.classList.toggle('show'); // переключаем видимость меню
+});
+
+// Закрытие меню при клике вне его области
+document.addEventListener('click', (e) => {
+  // Проверяем, что клик был не по кнопке меню и не по элементам внутри меню
+  if (!e.target.closest('#menuBtn') && !e.target.closest('.dropdown-content')) {
+    menuDropdown.classList.remove('show');
+  }
+});
+
+// Предотвращение закрытия меню при клике внутри него
+menuDropdown.addEventListener('click', (e) => {
+  e.stopPropagation(); // останавливаем всплытие события
+});
+
   </script>
 </body>
 </html>
