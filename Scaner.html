@@ -86,6 +86,7 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       font-size: 16px;
+      autocomplete: off;
     }
 
     textarea {
@@ -116,7 +117,6 @@
     .btn-secondary {
       background-color: var(--muted);
       color: white;
-      margin-left: 10px;
     }
 
     .btn-danger {
@@ -128,12 +128,39 @@
       opacity: 0.9;
     }
 
-    .controls {
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 15px;
+    .actions-menu {
+      position: relative;
+      display: inline-block;
+    }
+
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background-color: var(--panel);
+      min-width: 200px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+      border-radius: var(--radius);
+      z-index: 1002;
+      right: 0;
+    }
+
+    .dropdown-content.show {
+      display: block;
+    }
+
+    .menu-item {
+      width: 100%;
+      padding: 12px 16px;
+      margin: 0;
+      border: none;
+      text-align: left;
+      cursor: pointer;
+      background: none;
+      font-size: 16px;
+    }
+
+    .menu-item:hover {
+      background-color: rgba(0, 123, 255, 0.05);
     }
 
     /* Table */
@@ -255,7 +282,7 @@
   <div class="container">
     <header class="header">
       <h1 class="title">База штрих‑кодов</h1>
-    </header>
+          </header>
 
     <!-- Search -->
     <div class="search-container">
@@ -263,356 +290,434 @@
     </div>
 
     <!-- Add/Edit Form -->
-   <section class="form-section">
-  <div class="field">
-    <label for="codeInput">Штрих‑код</label>
-    <input type="text" id="codeInput" placeholder="Введите штрих‑код" autocomplete="off">
-  </div>
-  <div class="field">
-    <label for="nameInput">Название</label>
-    <input type="text" id="nameInput" placeholder="Название товара" autocomplete="off">
-  </div>
-  <div class="controls">
-    <button type="button" id="saveBtn" class="btn btn-primary">Сохранить</button>
-    <button type="button" id="clearBtn" class="btn btn-secondary">Очистить</button>
-    <button type="button" id="exportBtn" class="btn btn-secondary">Экспорт базы</button>
-    <button type="button" id="importBtn" class="btn btn-primary">Массовый импорт</button>
-    <button type="button" id="clearDBBtn" class="btn btn-danger">Очистить базу</button>
-  </div>
-</section>
+    <section class="form-section">
+      <div class="field">
+        <label for="codeInput">Штрих‑код</label>
+        <input type="text" id="codeInput" placeholder="Введите штрих‑код" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="nameInput">Название</label>
+        <input type="text" id="nameInput" placeholder="Название товара" autocomplete="off">
+      </div>
+      <div class="controls">
+        <button type="button" id="saveBtn" class="btn btn-primary">Сохранить</button>
+        <button type="button" id="clearBtn" class="btn btn-secondary">Очистить</button>
+      </div>
+    </section>
 
-
-  <!-- Import Modal -->
-  <div id="importModal" class="modal">
-    <div class="modal-content">
-      <h3>Массовый импорт штрих‑кодов</h3>
-      <p>Вставьте данные в формате:<br>
-        "4601728016135": "Водка особая Хаски Северная Смородина 38% 0,5"</p>
-      <textarea id="importData" placeholder="Вставьте данные для импорта..."></textarea>
-      <div class="modal-buttons">
-        <button id="importCancel" class="btn btn-secondary">Отмена</button>
-        <button id="importConfirm" class="btn btn-primary">Импортировать</button>
+    <!-- Actions Menu -->
+    <div class="actions-menu">
+      <button id="menuBtn" class="btn btn-secondary">⋮ Действия</button>
+      <div id="menuDropdown" class="dropdown-content">
+        <button id="exportBtn" class="menu-item">Экспорт базы (JSON)</button>
+        <button id="importFileBtn" class="menu-item">Импорт базы (JSON)</button>
+        <button id="massImportBtn" class="menu-item">Массовый импорт текста</button>
+        <button id="clearDBBtn" class="menu-item" style="color: var(--danger);">Очистить базу</button>
       </div>
     </div>
-  </div>
 
-  <!-- Data Table -->
-  <div class="table-container">
-    <table id="dataTable">
-      <thead>
-        <tr>
-          <th>Штрих‑код</th>
-          <th>Название</th>
-          <th class="actions">Действия</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody">
-        <!-- Данные будут заполняться через JavaScript -->
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Confirmation Modal -->
-  <div id="confirmModal" class="modal">
-    <div class="modal-content">
-      <h3 id="confirmTitle">Подтверждение</h3>
-      <p id="confirmMessage">Вы уверены?</p>
-      <div class="modal-buttons">
-        <button id="confirmCancel" class="btn btn-secondary">Отмена</button>
-        <button id="confirmOk" class="btn btn-primary">Да, выполнить</button>
+    <!-- Modals -->
+    <!-- Mass Import Modal -->
+    <div id="massImportModal" class="modal">
+      <div class="modal-content">
+        <h3>Массовый импорт штрих‑кодов</h3>
+        <p>Формат: <code>"4601728016135": "Водка особая Хаски..."</code></p>
+        <textarea id="massImportData" placeholder="Вставьте данные для импорта..."></textarea>
+        <div class="modal-buttons">
+          <button id="massImportCancel" class="btn btn-secondary">Отмена</button>
+          <button id="massImportConfirm" class="btn btn-primary">Импортировать</button>
+        </div>
       </div>
     </div>
+
+    <!-- File Import Modal -->
+    <div id="fileImportModal" class="modal">
+      <div class="modal-content">
+        <h3>Импорт базы данных</h3>
+        <p>Выберите JSON‑файл, экспортированный ранее</p>
+        <input type="file" id="fileInput" accept=".json">
+        <div class="modal-buttons">
+          <button id="fileImportCancel" class="btn btn-secondary">Отмена</button>
+          <button id="fileImportConfirm" class="btn btn-primary">Загрузить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal">
+      <div class="modal-content">
+        <h3 id="confirmTitle">Подтверждение</h3>
+        <p id="confirmMessage">Вы уверены?</p>
+        <div class="modal-buttons">
+          <button id="confirmCancel" class="btn btn-secondary">Отмена</button>
+          <button id="confirmOk" class="btn btn-primary">Да, выполнить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="table-container">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th>Штрих‑код</th>
+            <th>Название</th>
+            <th class="actions">Действия</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <!-- Данные будут заполняться через JavaScript -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </div>
 
-  <!-- Toast Notification -->
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-</div>
-
-<script>
-// Инициализация базы данных
-let db = {};
-try {
-  const saved = localStorage.getItem('barcodeDB');
-  if (saved) {
-    const parsed = JSON.parse(saved);
-    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-      db = parsed;
+  <script>
+    // Инициализация базы данных
+    let db = {};
+    try {
+      const saved = localStorage.getItem('barcodeDB');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+          db = parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Ошибка загрузки базы:', e);
+      db = {};
     }
-  }
-} catch (e) {
-  console.error('Ошибка загрузки базы:', e);
-  db = {};
-}
 
-// Элементы DOM
-const codeInput = document.getElementById('codeInput');
-const nameInput = document.getElementById('nameInput');
-const saveBtn = document.getElementById('saveBtn');
-const clearBtn = document.getElementById('clearBtn');
-const exportBtn = document.getElementById('exportBtn');
-const importBtn = document.getElementById('importBtn');
-const clearDBBtn = document.getElementById('clearDBBtn');
-const searchInput = document.getElementById('searchInput');
-const tableBody = document.getElementById('tableBody');
-const toast = document.getElementById('toast');
-const confirmModal = document.getElementById('confirmModal');
-const confirmMessage = document.getElementById('confirmMessage');
-const confirmOk = document.getElementById('confirmOk');
-const confirmCancel = document.getElementById('confirmCancel');
-const importModal = document.getElementById('importModal');
-const importData = document.getElementById('importData');
-const importCancel = document.getElementById('importCancel');
-const importConfirm = document.getElementById('importConfirm');
+    // Элементы DOM
+    const codeInput = document.getElementById('codeInput');
+    const nameInput = document.getElementById('nameInput');
+    const saveBtn = document.getElementById('saveBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const importFileBtn = document.getElementById('importFileBtn');
+    const massImportBtn = document.getElementById('massImportBtn');
+    const clearDBBtn = document.getElementById('clearDBBtn');
+    const searchInput = document.getElementById('searchInput');
+    const tableBody = document.getElementById('tableBody');
+    const toast = document.getElementById('toast');
+    const confirmModal = document.getElementById('confirmModal');
+    const confirmMessage = document.getElementById('confirmMessage');
+    const confirmOk = document.getElementById('confirmOk');
+    const confirmCancel = document.getElementById('confirmCancel');
+    const menuBtn = document.getElementById('menuBtn');
+    const menuDropdown = document.getElementById('menuDropdown');
+    const fileImportModal = document.getElementById('fileImportModal');
+    const fileInput = document.getElementById('fileInput');
+    const fileImportConfirm = document.getElementById('fileImportConfirm');
+    const fileImportCancel = document.getElementById('fileImportCancel');
+    const massImportModal = document.getElementById('massImportModal');
+    const massImportData = document.getElementById('massImportData');
+    const massImportConfirm = document.getElementById('massImportConfirm');
+    const massImportCancel = document.getElementById('massImportCancel');
 
-let editingCode = null; // Для отслеживания редактируемой записи
+    let editingCode = null; // Для отслеживания редактируемой записи
 
-// Функции
-function showToast(text, ms = 2000) {
-  toast.textContent = text;
-  toast.classList.add('show');
-  setTimeout(() => {
-    toast.classList.remove('show');
-  }, ms);
-}
-
-function saveDB() {
-  try {
-    localStorage.setItem('barcodeDB', JSON.stringify(db));
-    renderTable(searchInput.value);
-    return true;
-  } catch (e) {
-    console.error('Ошибка сохранения:', e);
-    showToast('Недостаточно места для сохранения', 3000);
-    return false;
-  }
-}
-
-function renderTable(searchQuery = '') {
-  tableBody.innerHTML = '';
-  const keys = Object.keys(db);
-
-  // Если база пуста
-  if (keys.length === 0) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="3" style="text-align:center;padding:20px">База штрих‑кодов пуста</td>';
-    tableBody.appendChild(tr);
-    return;
-  }
-
-  let filteredKeys = keys;
-
-  // Фильтрация только при наличии запроса
-  if (searchQuery) {
-    const lowerQuery = searchQuery.toLowerCase();
-    filteredKeys = keys.filter(key =>
-      key.includes(lowerQuery) ||
-      (db[key] || '').toLowerCase().includes(lowerQuery)
-    );
-
-    if (!filteredKeys.length) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = '<td colspan="3" style="text-align:center;padding:20px">Ничего не найдено по запросу</td>';
-      tableBody.appendChild(tr);
-      return;
+    // Функции
+    function showToast(text, ms = 2000) {
+      toast.textContent = text;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, ms);
     }
-  }
 
-  filteredKeys.forEach(code => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${code}</td>
-      <td>${db[code] || ''}</td>
-      <td class="actions">
-        <button class="action-btn edit-btn" data-code="${code}">Редактировать</button>
-        <button class="action-btn delete-btn" data-code="${code}">Удалить</button>
-      </td>
-    `;
-    tableBody.appendChild(tr);
-  });
+    function saveDB() {
+      try {
+        localStorage.setItem('barcodeDB', JSON.stringify(db));
+        renderTable(searchInput.value);
+        return true;
+      } catch (e) {
+        console.error('Ошибка сохранения:', e);
+        showToast('Недостаточно места для сохранения', 3000);
+        return false;
+      }
+    }
 
-  // Обработчики для кнопок
-  document.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.addEventListener('click', () => editItem(btn.dataset.code));
-  });
-  document.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', () => showDeleteConfirmation(btn.dataset.code));
-  });
-}
+    function renderTable(searchQuery = '') {
+      tableBody.innerHTML = '';
+      const keys = Object.keys(db);
 
-function editItem(code) {
-  codeInput.value = code;
-  nameInput.value = db[code] || '';
-  editingCode = code;
-  saveBtn.textContent = 'Обновить';
-  showToast('Редактирование записи', 1500);
-}
-
-function showDeleteConfirmation(code) {
-  confirmMessage.textContent = `Вы уверены, что хотите удалить запись "${code}"?`;
-  confirmOk.onclick = () => {
-    delete db[code];
-    saveDB();
-    showToast('Запись удалена', 1500);
-    closeConfirmModal();
-  };
-  confirmModal.style.display = 'flex';
-}
-
-function closeConfirmModal() {
-  confirmModal.style.display = 'none';
-}
-
-function exportToCSV() {
-  if (!Object.keys(db).length) {
-    showToast('База пуста, нечего экспортировать', 2000);
-    return;
-  }
-
-  let csv = 'Штрих-код,Название\n';
-  for (const code in db) {
-    const name = (db[code] || '').replace(/"/g, '""');
-    csv += `"${code}","${name}"\n`;
-  }
-
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `barcodeDB_${new Date().toISOString().split('T')[0].replace(/:/g, '-')}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function importFromText(text) {
-  try {
-    // Разбиваем текст на строки и фильтруем пустые
-    const lines = text.split('\n').map(line => line.trim()).filter(line => line);
-    let count = 0;
-
-    for (const line of lines) {
-      // Ищем соответствие шаблону "код": "название"
-      const match = line.match(/^"([^"]+)":\s*"([^"]*)"/);
-      if (!match) {
-        console.warn(`Пропущен некорректный формат строки: ${line}`);
-        continue;
+      // Если база пуста
+      if (keys.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="3" style="text-align:center;padding:20px">База штрих‑кодов пуста</td>';
+        tableBody.appendChild(tr);
+        return;
       }
 
-      const code = match[1].trim();
-      const name = match[2].trim();
+      let filteredKeys = keys;
 
-      // Валидация штрих‑кода: только цифры, длина 8–14
+      // Фильтрация только при наличии запроса
+      if (searchQuery) {
+        const lowerQuery = searchQuery.toLowerCase();
+        filteredKeys = keys.filter(key =>
+          key.includes(lowerQuery) ||
+          (db[key] || '').toLowerCase().includes(lowerQuery)
+        );
+
+        if (!filteredKeys.length) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = '<td colspan="3" style="text-align:center;padding:20px">Ничего не найдено по запросу</td>';
+          tableBody.appendChild(tr);
+          return;
+        }
+      }
+
+      filteredKeys.forEach(code => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${code}</td>
+          <td>${db[code] || ''}</td>
+          <td class="actions">
+            <button class="action-btn edit-btn" data-code="${code}">Редактировать</button>
+            <button class="action-btn delete-btn" data-code="${code}">Удалить</button>
+          </td>
+        `;
+        tableBody.appendChild(tr);
+      });
+
+      // Обработчики для кнопок
+      document.querySelectorAll('.edit-btn')      .forEach(btn => {
+        btn.addEventListener('click', () => editItem(btn.dataset.code));
+      });
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => showDeleteConfirmation(btn.dataset.code));
+      });
+    }
+
+    function editItem(code) {
+      codeInput.value = code;
+      nameInput.value = db[code] || '';
+      editingCode = code;
+      saveBtn.textContent = 'Обновить';
+      showToast('Редактирование записи', 1500);
+    }
+
+    function showDeleteConfirmation(code) {
+      confirmMessage.textContent = `Вы уверены, что хотите удалить запись "${code}"?`;
+      confirmOk.onclick = () => {
+        delete db[code];
+        saveDB();
+        showToast('Запись удалена', 1500);
+        closeConfirmModal();
+      };
+      confirmModal.style.display = 'flex';
+    }
+
+    function closeConfirmModal() {
+      confirmModal.style.display = 'none';
+    }
+
+    function exportDatabase() {
+      if (!Object.keys(db).length) {
+        showToast('База пуста, нечего экспортировать', 2000);
+        return;
+      }
+
+      const dataStr = JSON.stringify(db, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `barcodeDB_${new Date().toISOString().split('T')[0].replace(/:/g, '-')}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importDatabase(file) {
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        try {
+          const importedData = JSON.parse(e.target.result);
+
+          // Проверка структуры: объект, не массив, не null
+          if (typeof importedData !== 'object' || importedData === null || Array.isArray(importedData)) {
+            throw new Error('Неверный формат файла');
+          }
+
+          // Валидация штрих‑кодов
+          let validCount = 0;
+          for (const [code, name] of Object.entries(importedData)) {
+            if (/^\d+$/.test(code) && code.length >= 8 && code.length <= 14) {
+              db[code] = name;
+              validCount++;
+            } else {
+              console.warn(`Пропущен некорректный штрих‑код: ${code}`);
+            }
+          }
+
+          saveDB();
+          showToast(`Успешно импортировано ${validCount} записей из файла`, 3000);
+          closeImportModal();
+        } catch (e) {
+          console.error('Ошибка импорта:', e);
+          showToast('Ошибка: неверный формат JSON-файла', 4000);
+        }
+      };
+
+      reader.readAsText(file);
+    }
+
+    function importFromText(text) {
+      try {
+        // Разбиваем текст на строки и фильтруем пустые
+        const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+        let count = 0;
+
+        for (const line of lines) {
+          // Ищем соответствие шаблону "код": "название"
+          const match = line.match(/^"([^"]+)":\s*"([^"]*)"/);
+          if (!match) {
+            console.warn(`Пропущен некорректный формат строки: ${line}`);
+            continue;
+          }
+
+          const code = match[1].trim();
+          const name = match[2].trim();
+
+          // Валидация штрих‑кода: только цифры, длина 8–14
+          if (!/^\d+$/.test(code) || code.length < 8 || code.length > 14) {
+            console.warn(`Пропущен некорректный штрих‑код: ${code}`);
+            continue;
+          }
+
+          db[code] = name;
+          count++;
+        }
+
+        if (count > 0) {
+          saveDB();
+          showToast(`Успешно импортировано ${count} записей`, 3000);
+        } else {
+          showToast('Не найдено корректных данных для импорта', 3000);
+        }
+        closeMassImportModal();
+      } catch (e) {
+        console.error('Ошибка импорта:', e);
+        showToast('Ошибка при импорте данных. Проверьте формат.', 4000);
+      }
+    }
+
+    function closeMassImportModal() {
+      massImportModal.style.display = 'none';
+      massImportData.value = '';
+    }
+
+    function closeFileImportModal() {
+      fileImportModal.style.display = 'none';
+      fileInput.value = '';
+    }
+
+    function clearDatabase() {
+      confirmMessage.textContent = 'Вы уверены, что хотите очистить всю базу данных? Это действие нельзя отменить!';
+      confirmOk.onclick = () => {
+        db = {};
+        saveDB();
+        showToast('База данных очищена', 2000);
+        closeConfirmModal();
+      };
+      confirmModal.style.display = 'flex';
+    }
+
+    // Обработчики событий
+    saveBtn.addEventListener('click', () => {
+      const code = codeInput.value.trim();
+      const name = nameInput.value.trim();
+
+      if (!code) {
+        showToast('Введите штрих‑код', 2000);
+        return;
+      }
+
+      // Валидация штрих‑кода
       if (!/^\d+$/.test(code) || code.length < 8 || code.length > 14) {
-        console.warn(`Пропущен некорректный штрих‑код: ${code}`);
-        continue;
+        showToast('Некорректный штрих‑код: должны быть только цифры, 8–14 символов', 3000);
+        return;
       }
 
       db[code] = name;
-      count++;
-    }
-
-    if (count > 0) {
+      if (editingCode && editingCode !== code) {
+        delete db[editingCode];
+      }
       saveDB();
-      showToast(`Успешно импортировано ${count} записей`, 3000);
-    } else {
-      showToast('Не найдено корректных данных для импорта', 3000);
-    }
-    closeImportModal();
-  } catch (e) {
-    console.error('Ошибка импорта:', e);
-    showToast('Ошибка при импорте данных. Проверьте формат.', 4000);
-  }
-}
+      codeInput.value = '';
+      nameInput.value = '';
+      saveBtn.textContent = 'Сохранить';
+      editingCode = null;
+      showToast('Запись сохранена', 1500);
+    });
 
+    clearBtn.addEventListener('click', () => {
+      codeInput.value = '';
+      nameInput.value = '';
+      saveBtn.textContent = 'Сохранить';
+      editingCode = null;
+    });
 
-function showImportModal() {
-  importModal.style.display = 'flex';
-  importData.value = ''; // Очищаем поле при открытии
-}
+    exportBtn.addEventListener('click', exportDatabase);
 
-function closeImportModal() {
-  importModal.style.display = 'none';
-  importData.value = '';
-}
+    importFileBtn.addEventListener('click', () => {
+      fileImportModal.style.display = 'flex';
+    });
 
-function clearDatabase() {
-  confirmMessage.textContent = 'Вы уверены, что хотите очистить всю базу данных? Это действие нельзя отменить!';
-  confirmOk.onclick = () => {
-    db = {};
-    saveDB();
-    showToast('База данных очищена', 2000);
-    closeConfirmModal();
-  };
-  confirmModal.style.display = 'flex';
-}
+    fileImportCancel.addEventListener('click', closeFileImportModal);
 
-// Обработчики событий
-saveBtn.addEventListener('click', () => {
-  const code = codeInput.value.trim();
-  const name = nameInput.value.trim();
+    fileImportConfirm.addEventListener('click', () => {
+      const file = fileInput.files[0];
+      if (file) {
+        importDatabase(file);
+      } else {
+        showToast('Выберите файл для импорта', 2000);
+      }
+    });
 
-  if (!code) {
-    showToast('Введите штрих‑код', 2000);
-    return;
-  }
+    massImportBtn.addEventListener('click', () => {
+      massImportModal.style.display = 'flex';
+    });
 
-  // Валидация штрих‑кода
-  if (!/^\d+$/.test(code) || code.length < 8 || code.length > 14) {
-    showToast('Некорректный штрих‑код: должны быть только цифры, 8–14 символов', 3000);
-    return;
-  }
+    massImportCancel.addEventListener('click', closeMassImportModal);
 
-  db[code] = name;
-  if (editingCode && editingCode !== code) {
-    delete db[editingCode];
-  }
-  saveDB();
-  codeInput.value = '';
-  nameInput.value = '';
-  saveBtn.textContent = 'Сохранить';
-  editingCode = null;
-  showToast('Запись сохранена', 1500);
-});
+    massImportConfirm.addEventListener('click', () => {
+      const text = massImportData.value.trim();
+      if (!text) {
+        showToast('Введите данные для импорта', 2000);
+        return;
+      }
+      importFromText(text);
+    });
 
-clearBtn.addEventListener('click', () => {
-  codeInput.value = '';
-  nameInput.value = '';
-  saveBtn.textContent = 'Сохранить';
-  editingCode = null;
-});
+    clearDBBtn.addEventListener('click', clearDatabase);
 
-exportBtn.addEventListener('click', exportToCSV);
+    confirmCancel.addEventListener('click', closeConfirmModal);
 
-importBtn.addEventListener('click', showImportModal);
+    // Закрытие меню и модальных окон кликом вне их
+    window.addEventListener('click', (e) => {
+      if (!e.target.matches('#menuBtn')) {
+        menuDropdown.classList.remove('show');
+      }
+      if (e.target === confirmModal) closeConfirmModal();
+      if (e.target === fileImportModal) closeFileImportModal();
+      if (e.target === massImportModal) closeMassImportModal();
+    });
 
-importCancel.addEventListener('click', closeImportModal);
+    searchInput.addEventListener('input', () => {
+      renderTable(searchInput.value);
+    });
 
-importConfirm.addEventListener('click', () => {
-  const text = importData.value.trim();
-  if (!text) {
-    showToast('Введите данные для импорта', 2000);
-    return;
-  }
-  importFromText(text);
-});
-
-clearDBBtn.addEventListener('click', clearDatabase);
-
-confirmCancel.addEventListener('click', closeConfirmModal);
-
-// Закрытие модальных окон кликом вне их
-window.addEventListener('click', (e) => {
-  if (e.target === confirmModal) closeConfirmModal();
-  if (e.target === importModal) closeImportModal();
-});
-
-searchInput.addEventListener('input', () => {
-  renderTable(searchInput.value);
-});
-
-// Инициализация
-renderTable();
-</script>
+    // Инициализация
+    renderTable();
+  </script>
 </body>
 </html>
+
 
                                                                 
