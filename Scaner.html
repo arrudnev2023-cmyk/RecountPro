@@ -1,406 +1,481 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>База штрих‑кодов</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>База штрих‑кодов</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --panel: #ffffff;
+      --text: #333;
+      --muted: #6c757d;
+      --accent: #007bff;
+      --danger: #dc3545;
+      --success: #28a745;
+      --border: #dee2e6;
+      --radius: 8px;
+    }
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-<style>
-:root{
-  --bg:#07060b;
-  --panel:#0f0c16;
-  --muted:#9aa0b4;
-  --neon1:#8a2be2;
-  --neon2:#c86cff;
-  --accent:linear-gradient(90deg,var(--neon1),var(--neon2));
-  --radius:12px;
-  --glass: rgba(255,255,255,0.03);
-}
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 16px;
+    }
 
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;background:linear-gradient(180deg,#05030a,#0b0710);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#eae9f8;-webkit-font-smoothing:antialiased}
-.container{
-  max-width:520px;margin:18px auto;padding:16px;display:flex;flex-direction:column;gap:12px;
-}
+    .container {
+      max-width: 100%;
+      margin: 0 auto;
+    }
 
-/* Header */
-.header{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,0.03);
-  box-shadow:0 10px 30px rgba(0,0,0,0.6);
-}
-.brand{display:flex;gap:12px;align-items:center}
-.logo{width:44px;height:44px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;color:#0b0710}
-.title{font-size:18px;font-weight:700}
-.subtitle{font-size:13px;color:var(--muted)}
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
 
-/* Card */
-.card{
-  background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
-  border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.03);
-  box-shadow:0 8px 24px rgba(0,0,0,0.6);
-}
+    .title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--accent);
+    }
 
-/* Camera area: 1/3 viewport height */
+    /* Search */
+    .search-container {
+      margin-bottom: 20px;
+    }
 
-/* Controls */
-.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.btn{
-  padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;
-  background:linear-gradient(90deg,#22202a,#1a1620);color:#eae9f8;
-  box-shadow:0 6px 18px rgba(0,0,0,0.6);
-}
-.btn.primary{
-  background:var(--accent);color:#0b0710;box-shadow:0 12px 36px rgba(138,43,226,0.12);
-}
-.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+    #searchInput {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 16px;
+    }
 
-/* Inputs */
-.field{display:flex;flex-direction:column;gap:6px;margin-top:10px}
-label{font-size:13px;color:var(--muted)}
-input[type="text"], textarea{
-  width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);
-  background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
-  color:#eae9f8;font-size:15px;outline:none;
-}
+    /* Form */
+    .form-section {
+      background: var(--panel);
+      padding: 20px;
+      border-radius: var(--radius);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
 
-/* Table */
-.table-wrap{overflow:auto;max-height:220px;margin-top:8px;border-radius:8px}
-table{width:100%;border-collapse:collapse;font-size:14px;color:#eae9f8}
-thead th{text-align:left;padding:10px;font-weight:700;color:var(--muted);border-bottom:1px solid rgba(255,255,255,0.03)}
-tbody td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.02)}
+    .field {
+      margin-bottom: 15px;
+    }
 
-/* small */
-.small{font-size:13px;color:var(--muted)}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:rgba(10,8,14,0.9);color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:9999}
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
 
-/* Bulk import modal */
-#bulkImportModal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9998}
-.modal-backdrop{position:absolute;inset:0;background:rgba(5,4,8,0.6);backdrop-filter:blur(4px)}
-.modal-card{position:relative;z-index:9999;max-width:720px;width:92%;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 20px 60px rgba(0,0,0,0.6)}
-#bulkImportTextarea{width:100%;height:260px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));color:#eae9f8;font-size:14px;outline:none;resize:vertical}
+    input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 16px;
+    }
 
-/* responsive */
-@media (max-width:420px){ .container{padding:12px} .logo{width:40px;height:40px} }
-</style>
+    .btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+
+    .btn-primary {
+      background-color: var(--accent);
+      color: white;
+    }
+
+    .btn-secondary {
+      background-color: var(--muted);
+      color: white;
+      margin-left: 10px;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    /* Table */
+    .table-container {
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background-color: rgba(0, 123, 255, 0.05);
+      font-weight: 600;
+    }
+
+    tr:hover {
+      background-color: rgba(0, 123, 255, 0.02);
+    }
+
+    .actions {
+      white-space: nowrap;
+    }
+
+    .action-btn {
+      padding: 6px 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .edit-btn {
+      background-color: #ffc107;
+      color: #333;
+    }
+
+    .delete-btn {
+      background-color: var(--danger);
+      color: white;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--success);
+      color: white;
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    /* Confirmation modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 1001;
+    }
+
+    .modal-content {
+      background: var(--panel);
+      padding: 25px;
+      border-radius: var(--radius);
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .controls {
+        flex-direction: column;
+      }
+      
+      .btn-secondary {
+        margin-left: 0;
+        margin-top: 10px;
+      }
+      
+      th, td {
+        padding: 8px 10px;
+        font-size: 14px;
+      }
+    }
+  </style>
 </head>
 <body>
+  <div class="container">
+    <header class="header">
+      <h1 class="title">База штрих‑кодов</h1>
+    </header>
 
-<div class="container" role="main" aria-label="База штрих-кодов — тёмная неоновая тема">
-  <header class="header">
-    <div class="brand">
-      <div class="logo">BC</div>
-      <div>
-        <div class="title">База штрих‑кодов</div>
-        <div class="subtitle">Тёмная минималка • Неоновый акцент</div>
+    <!-- Search -->
+    <div class="search-container">
+      <input type="text" id="searchInput" placeholder="Поиск по штрих‑коду или названию...">
+    </div>
+
+    <!-- Add/Edit Form -->
+    <section class="form-section">
+      <div class="field">
+        <label for="codeInput">Штрих‑код</label>
+        <input type="text" id="codeInput" placeholder="Введите штрих‑код">
       </div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <button id="exportBtn" class="btn ghost" aria-label="Экспорт">Экспорт</button>
-      <button id="importBtn" class="btn ghost" aria-label="Импорт">Импорт</button>
-      <button id="bulkImportBtn" class="btn ghost" aria-label="Массовый импорт">Массовый импорт</button>
-      <button id="clearDBBtn" class="btn ghost" aria-label="Очистить базу">Очистить базу</button>
-    </div>
-  </header>
+      <div class="field">
+        <label for="nameInput">Название</label>
+        <input type="text" id="nameInput" placeholder="Название товара">
+      </div>
+      <div class="controls">
+        <button id="saveBtn" class="btn btn-primary">Сохранить</button>
+        <button id="clearBtn" class="btn btn-secondary">Очистить</button>
+      </div>
+    </section>
 
-
-  <section class="card" aria-labelledby="editTitle">
-    <h3 id="editTitle" style="margin:0 0 8px 0">Добавить / Редактировать</h3>
-
-    <div class="field">
-      <label for="codeInput">Штрих‑код</label>
-      <input id="codeInput" type="text" placeholder="Сканируйте или введите код" autocomplete="off" />
-    </div>
-
-    <div class="field">
-      <label for="nameInput">Название</label>
-      <input id="nameInput" type="text" placeholder="Название товара" autocomplete="off" />
-    </div>
-
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button id="saveBtn" class="btn primary" style="flex:1">Сохранить</button>
-      <button id="clearBtn" class="btn ghost" style="width:120px">Очистить</button>
-    </div>
-
-    <div class="small" style="margin-top:8px">Данные сохраняются локально в <code>localStorage</code> под ключом <strong>barcodeDB</strong>.</div>
-  </section>
-
-  <section class="card" aria-labelledby="tableTitle">
-    <h3 id="tableTitle" style="margin:0 0 8px 0">База товаров</h3>
-    <div class="table-wrap">
-      <table id="table" aria-live="polite">
-        <thead><tr><th>Штрих‑код</th><th>Название</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </section>
+    <!-- Data Table -->
+  <div class="table-container">
+  <table id="dataTable">
+    <thead>
+      <tr>
+        <th>Штрих‑код</th>
+        <th>Название</th>
+        <th class="actions">Действия</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      <!-- Данные будут заполняться через JavaScript -->
+    </tbody>
+  </table>
 </div>
 
-<div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-<!-- Bulk import modal (вставлен перед закрывающим body) -->
-<div id="bulkImportModal" aria-hidden="true">
-  <div class="modal-backdrop" id="bulkImportBackdrop"></div>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="bulkImportTitle">
-    <h3 id="bulkImportTitle" style="margin:0 0 8px 0">Массовый импорт штрих‑кодов</h3>
-    <p class="small" style="margin:0 0 8px 0">Вставь список в формате JSON или в виде строк: <code>"4660001609068": "Название"</code></p>
-    <textarea id="bulkImportTextarea" placeholder='"4660001609068": "Название товара"' aria-label="Поле для массового импорта"></textarea>
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button id="bulkImportApply" class="btn primary" style="flex:1">Импортировать</button>
-      <button id="bulkImportCancel" class="btn ghost" style="width:120px">Отмена</button>
+<!-- Confirmation Modal -->
+<div id="confirmModal" class="modal">
+  <div class="modal-content">
+    <h3 id="confirmTitle">Подтверждение</h3>
+    <p id="confirmMessage">Вы уверены?</p>
+    <div class="modal-buttons">
+      <button id="confirmCancel" class="btn btn-secondary">Отмена</button>
+      <button id="confirmOk" class="btn btn-primary">Да, выполнить</button>
     </div>
-    <div id="bulkImportResult" class="small" style="margin-top:8px;color:var(--muted)"></div>
   </div>
 </div>
 
-<!-- ZXing fallback -->
-<script src="https://unpkg.com/@zxing/library@latest"></script>
+<!-- Toast Notification -->
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+</div>
 
 <script>
-let db = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
- 
+// Инициализация базы данных
+let db = {};
+try {
+  const saved = localStorage.getItem('barcodeDB');
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      db = parsed;
+    }
+  }
+} catch (e) {
+  console.error('Ошибка загрузки базы:', e);
+  db = {};
+}
 
-
-/* ===== Elements ===== */
-const preview = document.getElementById('preview');
-const startScannerBtn = document.getElementById('startScannerBtn');
-const stopScannerBtn = document.getElementById('stopScannerBtn');
-const deviceSelect = document.getElementById('deviceSelect');
-const torchBtn = document.getElementById('torchBtn');
-const scanResult = document.getElementById('scanResult');
-
+// Элементы DOM
 const codeInput = document.getElementById('codeInput');
 const nameInput = document.getElementById('nameInput');
 const saveBtn = document.getElementById('saveBtn');
 const clearBtn = document.getElementById('clearBtn');
-
-const tableBody = document.querySelector('#table tbody');
-const exportBtn = document.getElementById('exportBtn');
-const importBtn = document.getElementById('importBtn');
+const searchInput = document.getElementById('searchInput');
+const tableBody = document.getElementById('tableBody');
 const toast = document.getElementById('toast');
+const confirmModal = document.getElementById('confirmModal');
+const confirmMessage = document.getElementById('confirmMessage');
+const confirmOk = document.getElementById('confirmOk');
+const confirmCancel = document.getElementById('confirmCancel');
 
-const bulkImportBtn = document.getElementById('bulkImportBtn');
-const clearDBBtn = document.getElementById('clearDBBtn');
+let editingCode = null; // Для отслеживания редактируемой записи
 
-/* ===== Utilities ===== */
-function showToast(text, ms = 1400){
+// Функции
+function showToast(text, ms = 2000) {
   toast.textContent = text;
-  toast.style.display = 'block';
-  clearTimeout(toast._t);
-  toast._t = setTimeout(()=>{ toast.style.display = 'none'; }, ms);
+  toast.classList.add('show');
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, ms);
 }
-function saveDB(){ localStorage.setItem('barcodeDB', JSON.stringify(db)); renderTable(); }
-  // Нормализация: превращаем объекты в строки
-// Нормализация: превращаем объекты в строки
-for (const k in db) {
-  const v = db[k];
 
-  // Если объект — берём поле name
-  if (typeof v === 'object' && v !== null) {
-    if (typeof v.name === 'string') {
-      db[k] = v.name;
-    } else {
-      db[k] = '';
-    }
+function saveDB() {
+  try {
+    localStorage.setItem('barcodeDB', JSON.stringify(db));
+    renderTable();
+    return true;
+  } catch (e) {
+    console.error('Ошибка сохранения:', e);
+    showToast('Недостаточно места для сохранения', 3000);
+    return false;
   }
 }
-saveDB();
 
-function renderTable(){ tableBody.innerHTML = ‘’; const keys = Object.keys(db); if(!keys.length){ tableBody.innerHTML = ‘База пуста’; return; } keys.forEach(code=>{ const tr = document.createElement(‘tr’);
+function renderTable(searchQuery = '') {
+  tableBody.innerHTML = '';
+  const keys = Object.keys(db);
+  let filteredKeys = keys;
 
-let value = db[code];
-if (typeof value === 'object' && value !== null) {
-  value = value.name || '';
-}
-
-tr.innerHTML = `<td>${code}</td><td>${value}</td>`;
-tableBody.appendChild(tr);
-
-
-}); }
-
-function beep(){ try{ navigator.vibrate?.(60); }catch(e){} }
-
-/* ===== Camera & devices ===== */
-
-
-
-/* ===== Decoding helpers ===== */
-
-
-/* Main scanning loop */
-let canvasPool = [];
-function getCanvas(w,h){
-  for(let c of canvasPool) if(c.width===w && c.height===h) return c;
-  const c = createCanvas(w,h); canvasPool.push(c); return c;
-}
-
-
-
-/* Handle detection */
-
-
-/* Export / Import JSON */
-exportBtn.addEventListener('click', ()=>{
-  const data = JSON.stringify(db, null, 2);
-  const blob = new Blob([data], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'barcodeDB.json'; a.click();
-  URL.revokeObjectURL(url);
-});
-
-importBtn.addEventListener('click', ()=>{
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'application/json';
-  input.onchange = e=>{
-    const file = e.target.files[0];
-    if(!file) return;
-    const readerFile = new FileReader();
-    readerFile.onload = ev=>{
-      try{
-        const obj = JSON.parse(ev.target.result);
-        db = Object.assign({}, db, obj);
-        saveDB();
-        showToast('Импорт завершён');
-      }catch(err){ showToast('Ошибка парсинга JSON'); }
-    };
-    readerFile.readAsText(file);
-  };
-  input.click();
-});
-
-/* ===== Bulk import UI & logic ===== */
-const bulkModal = document.getElementById('bulkImportModal');
-const bulkBackdrop = document.getElementById('bulkImportBackdrop');
-const bulkTextarea = document.getElementById('bulkImportTextarea');
-const bulkApply = document.getElementById('bulkImportApply');
-const bulkCancel = document.getElementById('bulkImportCancel');
-const bulkResult = document.getElementById('bulkImportResult');
-
-function openBulkImportModal(){
-  bulkTextarea.value = '';
-  bulkResult.textContent = '';
-  bulkModal.style.display = 'flex';
-  bulkModal.setAttribute('aria-hidden','false');
-  setTimeout(()=>bulkTextarea.focus(), 80);
-}
-function closeBulkImportModal(){
-  bulkModal.style.display = 'none';
-  bulkModal.setAttribute('aria-hidden','true');
-}
-
-/* Парсер: поддерживает JSON-объект или строки вида "code": "name" */
-function parseBulkImport(text){
-  const out = {};
-  let trimmed = text.trim();
-  if(!trimmed) return out;
-
-  // Попробуем распарсить как JSON целиком
-  try{
-    const maybe = JSON.parse(trimmed);
-    if(maybe && typeof maybe === 'object'){
-      for(const k in maybe) if(Object.prototype.hasOwnProperty.call(maybe,k)){
-        const key = String(k).trim();
-        const val = String(maybe[k]).trim();
-        if(key) out[key] = val;
-      }
-      return out;
-    }
-  }catch(e){ /* не JSON, продолжим */ }
-
-  // Разбиваем по строкам и ищем пары через регулярку
-  const lines = trimmed.split(/\r?\n/);
-  const re = /["']?([\dA-Za-z\-_.]+)["']?\s*[:=]\s*["'](.+?)["']\s*$/;
-  for(let line of lines){
-    line = line.trim();
-    if(!line) continue;
-    // Попробуем найти "key": "value"
-    const m = line.match(re);
-    if(m){
-      const key = m[1].trim();
-      const val = m[2].trim();
-      if(key) out[key] = val;
-      continue;
-    }
-    // Альтернативный формат: "key": value без кавычек у value
-    const re2 = /["']?([\dA-Za-z\-_.]+)["']?\s*[:=]\s*(.+)$/;
-    const m2 = line.match(re2);
-    if(m2){
-      const key = m2[1].trim();
-      let val = m2[2].trim();
-      // убираем возможные кавычки вокруг значения
-      val = val.replace(/^["']|["']$/g,'').trim();
-      if(key) out[key] = val;
-      continue;
-    }
-    // Если строка сама по себе — возможно "key" "value" через таб/запятую
-    const parts = line.split(/\s{2,}|,\s*|\t/).filter(Boolean);
-    if(parts.length >= 2){
-      const key = parts[0].replace(/["']/g,'').trim();
-      const val = parts.slice(1).join(' ').replace(/["']/g,'').trim();
-      if(key) out[key] = val;
-    }
+  // Фильтрация по поиску
+  if (searchQuery) {
+    const lowerQuery = searchQuery.toLowerCase();
+    filteredKeys = keys.filter(key =>
+      key.includes(lowerQuery) ||
+      (db[key] || '').toLowerCase().includes(lowerQuery)
+    );
   }
-  return out;
-}
 
-/* Обработчик кнопки Импорт в модале */
-bulkApply.addEventListener('click', ()=>{
-  const text = bulkTextarea.value;
-  const parsed = parseBulkImport(text);
-  const keys = Object.keys(parsed);
-  if(!keys.length){
-    bulkResult.textContent = 'Не найдено пар штрих‑код → название. Проверь формат.';
+  if (!filteredKeys.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td colspan="3" style="text-align:center;padding:20px">База пуста или ничего не найдено</td>';
+    tableBody.appendChild(tr);
     return;
   }
-  let added = 0, updated = 0;
-  for(const k of keys){
-    const v = parsed[k];
-    if(!k) continue;
-    if(db[k] === undefined){ db[k] = v; added++; }
-    else if(db[k] !== v){ db[k] = v; updated++; }
+
+  filteredKeys.forEach(code => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${code}</td>
+      <td>${db[code] || ''}</td>
+      <td class="actions">
+        <button class="action-btn edit-btn" data-code="${code}">Редактировать</button>
+        <button class="action-btn delete-btn" data-code="${code}">Удалить</button>
+      </td>
+    `;
+    tableBody.appendChild(tr);
+  });
+
+  // Добавляем обработчики событий для кнопок
+  document.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => editItem(btn.dataset.code));
+  });
+  document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => showDeleteConfirmation(btn.dataset.code));
+  });
+}
+
+function editItem(code) {
+  codeInput.value = code;
+  nameInput.value = db[code] || '';
+  editingCode = code;
+  saveBtn.textContent = 'Обновить';
+  showToast('Редактирование записи', 1500);
+}
+
+function showDeleteConfirmation(code) {
+  confirmMessage.textContent = `Вы уверены, что хотите удалить запись "${code}"?`;
+  confirmOk.onclick = () => {
+    delete db[code];
+    saveDB();
+    showToast('Запись удалена', 1500);
+    closeConfirmModal();
+  };
+  confirmModal.style.display = 'flex';
+}
+
+function closeConfirmModal() {
+  confirmModal.style.display = 'none';
+}
+
+function exportToCSV() {
+  if (!Object.keys(db).length) {
+    showToast('База пуста, нечего экспортировать', 2000);
+    return;
+  }
+
+  let csv = 'Штрих-код,Название\n';
+  for (const code in db) {
+    const name = (db[code] || '').replace(/"/g, '""');
+    csv += `"${code}","${name}"\n`;
+  }
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `barcodeDB_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Обработчики событий
+saveBtn.addEventListener('click', () => {
+  const code = codeInput.value.trim();
+  const name = nameInput.value.trim();
+
+  if (!code) {
+    showToast('Введите штрих‑код', 2000);
+    return;
+  }
+
+  db[code] = name;
+  if (editingCode && editingCode !== code) {
+    delete db[editingCode];
   }
   saveDB();
-  bulkResult.textContent = `Импортировано: ${added} новых, обновлено: ${updated}. Всего в базе: ${Object.keys(db).length}.`;
-  showToast(`Импорт: ${added} добавлено, ${updated} обновлено`, 2200);
-  setTimeout(()=>{ closeBulkImportModal(); }, 900);
+  codeInput.value = '';
+  nameInput.value = '';
+  saveBtn.textContent = 'Сохранить';
+  editingCode = null;
+  showToast('Запись сохранена', 1500);
 });
 
-/* Открытие/закрытие модала */
-bulkImportBtn.addEventListener('click', openBulkImportModal);
-bulkCancel.addEventListener('click', closeBulkImportModal);
-bulkBackdrop.addEventListener('click', closeBulkImportModal);
-
-/* Поддержка Ctrl+Enter для быстрого импорта */
-bulkTextarea.addEventListener('keydown', (e)=>{
-  if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ bulkApply.click(); }
+clearBtn.addEventListener('click', () => {
+  codeInput.value = '';
+  nameInput.value = '';
+  saveBtn.textContent = 'Сохранить';
+  editingCode = null;
 });
 
-/* ===== Clear DB button ===== */
-clearDBBtn.addEventListener('click', ()=>{
-  const ok = confirm('Подтвердите: удалить все записи из базы штрих‑кодов? Это действие необратимо.');
-  if(!ok) return;
-  db = {};
-  saveDB();
-  showToast('База очищена', 1600);
+searchInput.addEventListener('input', () => {
+  renderTable(searchInput.value);
 });
 
-/* Init */
+document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+
+confirmCancel.addEventListener('click', closeConfirmModal);
+window.addEventListener('click', (e) => {
+  if (e.target === confirmModal) closeConfirmModal();
+});
+
+// Инициализация
 renderTable();
-enumerateCameras();
-navigator.mediaDevices.getUserMedia({video:true}).then(s=>{
-  s.getTracks().forEach(t=>t.stop());
-  enumerateCameras();
-}).catch(()=>{ /* ignore */ });
-
-window.addEventListener('pagehide', ()=>{ stopCamera(); });
-window.addEventListener('beforeunload', ()=>{ stopCamera(); });
-
 </script>
 </body>
 </html>
