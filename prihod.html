@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
@@ -27,7 +27,7 @@
     html, body {
       height: 100%;
       margin: 0;
-      background: #fff; /* Белый фон */
+      background: #fff;
       color: var(--text);
       font-family: Inter, Segoe UI, system-ui, Arial;
       overflow: hidden;
@@ -35,9 +35,7 @@
 
     header {
       position: fixed;
-      left: 0;
-      right: 0;
-      top: 0;
+      left: 0; right: 0; top: 0;
       padding: 16px;
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(8px);
@@ -45,10 +43,7 @@
       border-bottom: 1px solid #eee;
     }
     header h1 {
-      margin: 0;
-      text-align: center;
-      font-size: 1.15rem;
-      color: var(--accent);
+      margin: 0; text-align: center; font-size: 1.15rem; color: var(--accent);
     }
 
     #search-wrap {
@@ -58,7 +53,7 @@
     }
     #search {
       width: 100%;
-      padding: 14px 60px 14px 16px; /* Увеличенная высота и отступы */
+      padding: 14px 60px 14px 16px;
       border-radius: var(--radius);
       border: 1px solid #ddd;
       background: #fafafa;
@@ -75,20 +70,15 @@
     /* Кнопка сканера */
     #scan-btn {
       position: absolute;
-      right: 12px;
-      top: 50%;
+      right: 12px; top: 50%;
       transform: translateY(-50%);
-      width: 52px;
-      height: 52px;
+      width: 52px; height: 52px;
       border-radius: var(--radius);
       border: 1px solid rgba(255, 255, 255, 0.2);
       background: linear-gradient(135deg, var(--accent), #8b5cf6);
-      color: #fff;
-      cursor: pointer;
-      font-size: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      color: #fff; cursor: pointer;
+      font-size: 20px; display: flex;
+      align-items: center; justify-content: center;
       transition: all 0.2s ease;
       box-shadow: 0 4px 12px rgba(109, 40, 217, 0.4);
     }
@@ -98,147 +88,48 @@
     }
 
     #clear-search {
-      position: absolute;
-      right: 68px; /* Смещение для корректного расположения */
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
-      color: var(--muted);
-      cursor: pointer;
-      font-size: 20px;
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position: absolute; right: 68px; top: 50%;
+      transform: translateY(-50%); background: none; border: none;
+      color: var(--muted); cursor: pointer; font-size: 20px;
+      width: 40px; height: 40px; display: flex;
+      align-items: center; justify-content: center;
     }
 
     #content {
-      position: fixed;
-      left: 0;
-      right: 0;
-      top: 112px; /* Учёт увеличенного header */
-      bottom: 0;
-      overflow: auto;
-      padding: 16px;
+      position: fixed; left: 0; right: 0; top: 112px; bottom: 0;
+      overflow: auto; padding: 16px;
     }
 
     .list {
-      max-width: var(--maxw);
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 16px;
+      max-width: var(--maxw); margin: 0 auto;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;
     }
 
     .item {
-      width: 100%;
-      padding: 16px;
-      border-radius: var(--radius);
-      background: var(--card-bg);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-      border-left: 6px solid transparent;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      border: 1px solid #f0f0f0;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      width: 100%; padding: 16px; border-radius: var(--radius);
+      background: var(--card-bg); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      border-left: 6px solid transparent; display: flex; flex-direction: column; gap: 12px;
+      border: 1px solid #f0f0f0; transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
+    .item:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(106, 17, 203, 0.12); }
 
-    .item:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(106, 17, 203, 0.12);
-    }
+    .field { font-size: 14px; }
+    .label { font-weight: 700; color: #444; margin-right: 8px; }
 
-    .field {
-      font-size: 14px;
-    }
-    .label {
-      font-weight: 700;
-      color: #444;
-      margin-right: 8px;
-    }
-    .hidden {
-      display: none !important;
-    }
+    .qty-block { margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; display: flex; flex-direction: column; gap: 12px; }
+    .qty-section-title { font-weight: 600; font-size: 14px; color: var(--accent-light); margin-bottom: 8px; }
+    .qty-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-    .qty-block {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #eee;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+    .qty-input-wrapper { flex: 1; min-width: 120px; position: relative; }
+    .qtyInput { width: 100%; padding: 10px 40px 10px 16px; border-radius: var(--radius); border: 1px solid #ddd; background: #fafafa; color: var(--text); font-size: 14px; transition: all 0.2s ease; }
+    .qtyInput:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.2); background: #fff; }
 
-    .qty-section-title {
-      font-weight: 600;
-      font-size: 14px;
-      color: var(--accent-light);
-      margin-bottom: 8px;
-    }
+    .qtyAction { width: 44px; height: 44px; border-radius: var(--radius); border: 1px solid rgba(255, 255, 255, 0.2); background: linear-gradient(135deg, var(--accent), #8b5cf6); color: #fff; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(109, 40, 217, 0.4); }
+    .qtyAction:hover { background: linear-gradient(135deg, #5a20b8, #7a4fd6); transform: scale(1.05); box-shadow: 0 6px 16px rgba(109, 40, 217, 0.6); }
+    .qtyAction:active { transform: scale(0.98); box-shadow: 0 2px 8px rgba(109, 40, 217, 0.4); }
 
-    .qty-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .qty-input-wrapper {
-      flex: 1;
-      min-width: 120px;
-      position: relative;
-    }
-
-    .qtyInput {
-      width: 100%;
-      padding: 10px 40px 10px 16px;
-      border-radius: var(--radius);
-      border: 1px solid #ddd;
-      background: #fafafa;
-      color: var(--text);
-      font-size: 14px;
-      transition: all 0.2s ease;
-    }
-
-    .qtyInput:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.2);
-      background: #fff;
-    }
-
-   .qtyAction {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
-  color: #fff;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(109, 40, 217, 0.4);
-}
-
-.qtyAction:hover {
-  background: linear-gradient(135deg, #5a20b8, #7a4fd6);
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(109, 40, 217, 0.6);
-}
-
-.qtyAction:active {
-  transform: scale(0.98);
-  box-shadow: 0 2px 8px rgba(109, 40, 217, 0.4);
-}
-
-/* Стили для FAB‑кнопки в едином стиле */
+    /* FAB-кнопка в едином стиле */
+  /* FAB-кнопка в едином стиле */
 #fabMenu {
   position: fixed;
   bottom: 1.2rem;
@@ -271,7 +162,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 10px rgba(106, 17, 203, 0.5);
 }
 
-/* Стили для сканера — полноэкранный режим */
+/* Стили для полноэкранного сканера */
 .scanner-fullscreen {
   position: fixed;
   top: 0;
@@ -299,6 +190,7 @@
   flex: 1;
   position: relative;
   overflow: hidden;
+  background: #000;
 }
 
 #preview {
@@ -322,6 +214,7 @@
   color: #fff;
   font-size: 24px;
   cursor: pointer;
+  padding: 8px;
 }
 
 .scanner-controls {
@@ -347,6 +240,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.torch-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
 }
 
 /* Поля для ввода прихода/расхода */
@@ -400,20 +298,262 @@
   box-shadow: 0 6px 16px rgba(109, 40, 217, 0.6);
 }
 
-/* Адаптация для мобильных */
+.action-btn:active {
+  transform: scale(0.98);
+}
+
+/* Нижний лист меню */
+#sheetOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1500;
+  display: none;
+}
+
+#bottomSheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  background: var(--card-bg);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 24px 16px;
+  z-index: 1501;
+  display: none;
+}
+
+.sheet-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sheet-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sheet-btn:first-child {
+  background: var(--accent);
+  color: #fff;
+}
+
+.sheet-btn:last-child {
+  background: #f0f0f0;
+  color: var(--text);
+}
+
+.sheet-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+/* Карточка операции */
+#operationCard {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 500px;
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 24px;
+  z-index: 2500;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  display: none;
+}
+
+.operation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.operation-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0;
+}
+
+.current-balance {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+#currentBalance {
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Поля формы операции */
+.field {
+  margin-bottom: 16px;
+}
+
+.label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #444;
+}
+
+.form-control {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: 1px solid #ddd;
+  background: #fafafa;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.2);
+  background: #fff;
+}
+
+.qty-block {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: var(--radius);
+  border: 1px solid #f0f0f0;
+}
+
+.qty-section-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--accent-light);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.input-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.input-label {
+  min-width: 80px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.action-input {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  border: 1px solid #ddd;
+  background: #fafafa;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.action-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.2);
+  background: #fff;
+}
+
+.action-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, var(--accent-light), var(--accent));
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(109, 40, 217, 0.6);
+}
+
+.action-btn:active {
+  transform: scale(0.98);
+}
+
+/* Кнопки управления операцией */
+.controls-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.btn {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-secondary {
+  background: #f0f0f0;
+  color: var(--text);
+}
+
+.btn:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+/* Адаптивность */
 @media (max-width: 768px) {
   .list {
     grid-template-columns: 1fr;
   }
   
-  .qty-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
   .input-group {
     flex-direction: column;
     gap: 8px;
+  }
+  
+  .controls-row {
+    flex-direction: column;
   }
 }
 
@@ -421,6 +561,11 @@
   .list {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* Классы состояний */
+.hidden {
+  display: none !important;
 }
 <body>
   <canvas id="bg"></canvas>
@@ -440,75 +585,73 @@
     </div>
   </main>
 
- <!-- Кнопка меню -->
-<button id="fabMenu">☰</button>
+  <!-- Кнопка меню -->
+  <button id="fabMenu">☰</button>
 
-<!-- Нижний лист меню -->
-<div id="sheetOverlay" class="hidden">
-  <div id="bottomSheet" class="hidden">
-    <div class="sheet-content">
-      <button class="sheet-btn" id="toggleZeroBtn">
-        <span>Показать товары с 0</span>
-      </button>
-      <button class="sheet-btn" id="backToMenuBtn">
-        <span>В меню</span>
-      </button>
+  <!-- Нижний лист меню -->
+  <div id="sheetOverlay" class="hidden">
+    <div id="bottomSheet" class="hidden">
+      <div class="sheet-content">
+        <button class="sheet-btn" id="toggleZeroBtn">
+          <span>Показать товары с 0</span>
+        </button>
+        <button class="sheet-btn" id="backToMenuBtn">
+          <span>В меню</span>
+        </button>
+      </div>
     </div>
+  </div>
+
+  <!-- Полноэкранный сканер -->
+  <div id="scannerFullscreen" class="scanner-fullscreen">
+    <div class="scanner-content">
+      <div class="scanner-header">
+        <h2>Сканирование штрих‑кода</h2>
+        <button class="close-scanner" id="closeScanner">×</button>
+      </div>
+      <div class="preview-wrap">
+        <video id="preview"></video>
+      </div>
+      <div class="scanner-controls">
+        <button class="torch-btn" id="torchBtn">⚡</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Карточка операции прихода/расхода -->
+  <div id="operationCard" class="hidden">
+    <div class="operation-header">
+      <h2 class="operation-title">Операция</h2>
+      <div class="current-balance">Баланс: <span id="currentBalance">0</span></div>
+    </div>
+    
+    <div class="field">
+      <label class="label">Товар</label>
+      <input type="text" class="form-control" id="productName" readonly>
+    </div>
+    
+   <div class="qty-block">
+  <div class="qty-section-title">Приход</div>
+  <div class="input-group">
+    <span class="input-label">Количество:</span>
+    <input type="number" class="action-input" id="incomingQty" placeholder="Введите количество" min="1">
+    <button class="action-btn" id="addOneIncoming">+1</button>
   </div>
 </div>
 
-<!-- Полноэкранный сканер -->
-<div id="scannerFullscreen" class="scanner-fullscreen">
-  <div class="scanner-content">
-    <div class="scanner-header">
-      <h2>Сканирование штрих‑кода</h2>
-      <button class="close-scanner" id="closeScanner">×</button>
-    </div>
-    <div class="preview-wrap">
-      <video id="preview"></video>
-    </div>
-    <div class="scanner-controls">
-      <button class="torch-btn" id="torchBtn">⚡</button>
-    </div>
+<div class="qty-block">
+  <div class="qty-section-title">Расход</div>
+  <div class="input-group">
+    <span class="input-label">Количество:</span>
+    <input type="number" class="action-input" id="outgoingQty" placeholder="Введите количество" min="1">
+    <button class="action-btn" id="addOneOutgoing">−1</button>
   </div>
 </div>
 
-<!-- Карточка операции прихода/расхода -->
-<div id="operationCard" class="hidden">
-  <div class="operation-header">
-    <h2 class="operation-title">Операция</h2>
-    <div class="current-balance">Баланс: <span id="currentBalance">0</span></div>
-  </div>
-  
-  <div class="field">
-    <label class="label">Товар</label>
-    <input type="text" class="form-control" id="productName" readonly>
-  </div>
-  
-  <div class="qty-block">
-    <div class="qty-section-title">Приход</div>
-    <div class="input-group">
-      <span class="input-label">Количество:</span>
-      <input type="number" class="action-input" id="incomingQty" placeholder="Введите количество" min="1">
-      <button class="action-btn" id="addOneIncoming">+1</button>
-    </div>
-  </div>
-  
-  <div class="qty-block">
-    <div class="qty-section-title">Расход</div>
-    <div class="input-group">
-      <span class="input-label">Количество:</span>
-      <input type="number" class="action-input" id="outgoingQty" placeholder="Введите количество" min="1">
-      <button class="action-btn" id="addOneOutgoing">−1</button>
-    </div>
-  </div>
-  
-  <div class="controls-row">
-    <button class="btn btn-secondary" id="cancelOperation">Отмена</button>
-    <button class="btn btn-primary" id="confirmOperation">Подтвердить</button>
-  </div>
+<div class="controls-row">
+  <button class="btn btn-secondary" id="cancelOperation">Отмена</button>
+  <button class="btn btn-primary" id="confirmOperation">Подтвердить</button>
 </div>
-
 <script>
 // Инициализация элементов
 const fabMenu = document.getElementById('fabMenu');
@@ -524,9 +667,18 @@ const operationCard = document.getElementById('operationCard');
 const cancelOperation = document.getElementById('cancelOperation');
 const confirmOperation = document.getElementById('confirmOperation');
 
+// Элементы формы операции
+const productName = document.getElementById('productName');
+const incomingQty = document.getElementById('incomingQty');
+const outgoingQty = document.getElementById('outgoingQty');
+const currentBalance = document.getElementById('currentBalance');
+const addOneIncoming = document.getElementById('addOneIncoming');
+const addOneOutgoing = document.getElementById('addOneOutgoing');
+
 // Переменные для сканера
 let codeReader = null;
 let currentStream = null;
+let torchEnabled = false;
 
 // Обработчики событий
 fabMenu.addEventListener('click', () => {
@@ -573,25 +725,48 @@ closeScanner.addEventListener('click', () => {
   }
 });
 
-// Обработчики для кнопок +1 и −1
-document.getElementById('addOneIncoming').addEventListener('click', () => {
-  const input = document.getElementById('incomingQty');
-  input.value = (parseInt(input.value) || 0) + 1;
+torchBtn.addEventListener('click', async () => {
+  if (!currentStream) return;
+  
+  const track = currentStream.getVideoTracks()[0];
+  const capabilities = track.getCapabilities();
+  
+  if ('torch' in capabilities && capabilities.torch) {
+    torchEnabled = !torchEnabled;
+    await track.applyConstraints({
+      advanced: [{ torch: torchEnabled }]
+    });
+    torchBtn.style.background = torchEnabled ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.2)';
+  }
 });
 
-document.getElementById('addOneOutgoing').addEventListener('click', () => {
-  const input = document.getElementById('outgoingQty');
-  input.value = (parseInt(input.value) || 0) + 1;
+// Обработчики для кнопок +1 и −1
+addOneIncoming.addEventListener('click', () => {
+  incomingQty.value = (parseInt(incomingQty.value) || 0) + 1;
+});
+
+addOneOutgoing.addEventListener('click', () => {
+  outgoingQty.value = (parseInt(outgoingQty.value) || 0) + 1;
 });
 
 // Обработчики закрытия карточки операции
 cancelOperation.addEventListener('click', () => {
   operationCard.classList.add('hidden');
+  resetOperationForm();
 });
 
 confirmOperation.addEventListener('click', () => {
+  const incoming = parseInt(incomingQty.value) || 0;
+  const outgoing = parseInt(outgoingQty.value) || 0;
+  
+  if (incoming === 0 && outgoing === 0) {
+    alert('Введите количество для прихода или расхода');
+    return;
+  }
+  
   // Здесь логика подтверждения операции
-  alert('Операция подтверждена!');
+  alert(`Операция подтверждена!\nПриход: ${incoming}\nРасход: ${outgoing}`);
+  resetOperationForm();
   operationCard.classList.add('hidden');
 });
 
@@ -599,6 +774,22 @@ confirmOperation.addEventListener('click', () => {
 function handleScanResult(code) {
   console.log('Отсканирован код:', code);
   // Здесь можно добавить логику поиска товара по штрих‑коду
+  showOperationCard('Товар по штрихкоду ' + code, 50); // Пример вызова с тестовыми данными
+}
+
+// Функция показа карточки операции
+function showOperationCard(productNameValue, balance) {
+  productName.value = productNameValue;
+  currentBalance.textContent = balance;
+  incomingQty.value = '';
+  outgoingQty.value = '';
+  operationCard.classList.remove('hidden');
+}
+
+// Сброс формы операции
+function resetOperationForm() {
+  incomingQty.value = '';
+  outgoingQty.value = '';
 }
 
 // Пример заполнения списка товаров (замените на реальную загрузку данных)
@@ -609,6 +800,7 @@ function loadSampleItems() {
   for (let i = 1; i <= 6; i++) {
     const item = document.createElement('div');
     item.className = 'item';
+    const balance = Math.floor(Math.random() * 50);
     item.innerHTML = `
       <div class="field">
         <span class="label">Название:</span>
@@ -620,7 +812,7 @@ function loadSampleItems() {
       </div>
       <div class="field">
         <span class="label">Остаток:</span>
-        <span>${Math.floor(Math.random() * 50)}</span>
+        <span>${balance}</span>
       </div>
       <div class="qty-block">
         <div class="qty-section-title">Управление</div>
@@ -637,10 +829,129 @@ function loadSampleItems() {
   }
 }
 
+// Обработчики действий для карточек товаров
+function handleIncoming(button) {
+  const card = button.closest('.item');
+  const input = card.querySelector('.qtyInput');
+  const balance = parseInt(card.querySelector('.field:nth-child(3) span:last-child').textContent);
+  
+  input.value = (parseInt(input.value) || 0) + 1;
+  showOperationCard(card.querySelector('.field:first-child span:last-child').textContent, balance);
+}
+
+function handleOutgoing(button) {
+  const card = button.closest('.item');
+  const input = card.querySelector('.qtyInput');
+  const balance = parseInt(card.querySelector('.field:nth-child(3) span:last-child').textContent);
+  
+  input.value = (parseInt(input.value) || 0) + 1;
+   showOperationCard(card.querySelector('.field:first-child span:last-child').textContent, balance);
+}
+
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
   loadSampleItems();
+  
+  // Обработчик очистки поиска
+  document.getElementById('clear-search').addEventListener('click', () => {
+    document.getElementById('search').value = '';
+    loadSampleItems(); // Перезагружаем список без фильтрации
+  });
+  
+  // Обработчик поиска
+  document.getElementById('search').addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    const items = document.querySelectorAll('.item');
+    
+    items.forEach(item => {
+      const name = item.querySelector('.field:first-child span:last-child').textContent.toLowerCase();
+      const code = item.querySelector('.field:nth-child(2) span:last-child').textContent;
+      
+      if (name.includes(searchTerm) || code.includes(searchTerm)) {
+        item.style.display = 'block';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  });
+});
+
+// Функция обновления баланса в карточке товара
+function updateItemBalance(card, newBalance) {
+  card.querySelector('.field:nth-child(3) span:last-child').textContent = newBalance;
+}
+
+// Обработчик кнопки «Показать товары с 0»
+toggleZeroBtn.addEventListener('click', () => {
+  const items = document.querySelectorAll('.item');
+  items.forEach(item => {
+    const balance = parseInt(item.querySelector('.field:nth-child(3) span:last-child').textContent);
+    if (balance === 0) {
+      item.style.display = 'block';
+    }
+  });
+  sheetOverlay.classList.add('hidden');
+  bottomSheet.classList.add('hidden');
+});
+
+// Базовая логика обработки операций прихода/расхода
+function processOperation(productName, incoming, outgoing, currentBalance) {
+  const newBalance = currentBalance + incoming - outgoing;
+  
+  // Здесь можно добавить отправку данных на сервер
+  console.log('Операция обработана:', {
+    product: productName,
+    incoming: incoming,
+    outgoing: outgoing,
+    oldBalance: currentBalance,
+    newBalance: newBalance
+  });
+  
+  return newBalance;
+}
+
+// Расширенная функция показа карточки операции с предварительной обработкой
+function showOperationCard(productNameValue, balance) {
+  productName.value = productNameValue;
+  currentBalance.textContent = balance;
+  incomingQty.value = '';
+  outgoingQty.value = '';
+  operationCard.classList.remove('hidden');
+}
+
+// Сброс формы операции
+function resetOperationForm() {
+  incomingQty.value = '';
+  outgoingQty.value = '';
+}
+
+// Обработка подтверждения операции с обновлением данных
+confirmOperation.addEventListener('click', () => {
+  const incoming = parseInt(incomingQty.value) || 0;
+  const outgoing = parseInt(outgoingQty.value) || 0;
+  const currentBal = parseInt(currentBalance.textContent);
+  
+  if (incoming === 0 && outgoing === 0) {
+    alert('Введите количество для прихода или расхода');
+    return;
+  }
+  
+  const newBalance = processOperation(productName.value, incoming, outgoing, currentBal);
+  
+  // Обновляем баланс в интерфейсе (в реальном приложении — после подтверждения от сервера)
+  currentBalance.textContent = newBalance;
+  
+  alert(`Операция подтверждена!\nПриход: ${incoming}\nРасход: ${outgoing}\nНовый баланс: ${newBalance}`);
+  resetOperationForm();
+  operationCard.classList.add('hidden');
 });
 </script>
+
+
+
+
+
+
+
 </body>
 </html>
