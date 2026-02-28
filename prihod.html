@@ -4,9 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <title>RecountPro — Приход / Расход</title>
-
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
-
   <style>
     :root {
       --accent: #6d28d9;
@@ -129,8 +126,7 @@
     .qtyAction:active { transform: scale(0.98); box-shadow: 0 2px 8px rgba(109, 40, 217, 0.4); }
 
     /* FAB-кнопка в едином стиле */
-  /* FAB-кнопка в едином стиле */
-#fabMenu {
+   #fabMenu {
   position: fixed;
   bottom: 1.2rem;
   right: 1.2rem;
@@ -567,46 +563,42 @@
 .hidden {
   display: none !important;
 }
+  </style>
+</head>
 <body>
-  <canvas id="bg"></canvas>
-
   <header>
-    <h1>RecountPro — Приход / Расход</h1>
-    <div id="search-wrap">
-      <input id="search" placeholder="Поиск по названию или коду..." autocomplete="off" />
-      <button id="scan-btn">📷</button>
-      <button id="clear-search">×</button>
-    </div>
+    <h1>RecountPro</h1>
   </header>
 
-  <main id="content">
-    <div class="list" id="itemsList">
-      <!-- Карточки товаров будут добавляться динамически -->
-    </div>
-  </main>
+  <div id="search-wrap">
+    <input type="text" id="search" placeholder="Поиск товара...">
+    <button id="clear-search">×</button>
+    <button id="scan-btn">🔎</button>
+  </div>
 
-  <!-- Кнопка меню -->
-  <button id="fabMenu">☰</button>
+  <div id="content">
+    <div class="list" id="itemsList">
+      <!-- Здесь будут динамически добавляться карточки товаров -->
+    </div>
+  </div>
+
+  <!-- FAB-кнопка -->
+  <button id="fabMenu">+ Операция</button>
 
   <!-- Нижний лист меню -->
-  <div id="sheetOverlay" class="hidden">
-    <div id="bottomSheet" class="hidden">
-      <div class="sheet-content">
-        <button class="sheet-btn" id="toggleZeroBtn">
-          <span>Показать товары с 0</span>
-        </button>
-        <button class="sheet-btn" id="backToMenuBtn">
-          <span>В меню</span>
-        </button>
-      </div>
+  <div id="sheetOverlay" class="hidden"></div>
+  <div id="bottomSheet" class="hidden">
+    <div class="sheet-content">
+      <button class="sheet-btn" id="toggleZeroBtn">Показать товары с 0</button>
+      <button class="sheet-btn" id="backToMenuBtn">Назад</button>
     </div>
   </div>
 
   <!-- Полноэкранный сканер -->
-  <div id="scannerFullscreen" class="scanner-fullscreen">
+  <div class="scanner-fullscreen hidden" id="scannerFullscreen">
     <div class="scanner-content">
       <div class="scanner-header">
-        <h2>Сканирование штрих‑кода</h2>
+        <h3 style="margin:0;color:#fff;">Сканер штрихкодов</h3>
         <button class="close-scanner" id="closeScanner">×</button>
       </div>
       <div class="preview-wrap">
@@ -618,7 +610,7 @@
     </div>
   </div>
 
-  <!-- Карточка операции прихода/расхода -->
+  <!-- Карточка операции -->
   <div id="operationCard" class="hidden">
     <div class="operation-header">
       <h2 class="operation-title">Операция</h2>
@@ -630,328 +622,198 @@
       <input type="text" class="form-control" id="productName" readonly>
     </div>
     
-   <div class="qty-block">
-  <div class="qty-section-title">Приход</div>
-  <div class="input-group">
-    <span class="input-label">Количество:</span>
-    <input type="number" class="action-input" id="incomingQty" placeholder="Введите количество" min="1">
-    <button class="action-btn" id="addOneIncoming">+1</button>
+    <div class="qty-block">
+      <div class="qty-section-title">Приход</div>
+      <div class="input-group">
+        <span class="input-label">Количество:</span>
+        <input type="number" class="action-input" id="incomingQty" placeholder="Введите количество" min="1">
+        <button class="action-btn" id="addOneIncoming">+1</button>
+      </div>
+    </div>
+       <div class="qty-block">
+      <div class="qty-section-title">Расход</div>
+      <div class="input-group">
+        <span class="input-label">Количество:</span>
+        <input type="number" class="action-input" id="outgoingQty" placeholder="Введите количество" min="1">
+        <button class="action-btn" id="addOneOutgoing">−1</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls-row">
+    <button class="btn btn-secondary" id="cancelOperation">Отмена</button>
+    <button class="btn btn-primary" id="confirmOperation">Подтвердить</button>
   </div>
 </div>
 
-<div class="qty-block">
-  <div class="qty-section-title">Расход</div>
-  <div class="input-group">
-    <span class="input-label">Количество:</span>
-    <input type="number" class="action-input" id="outgoingQty" placeholder="Введите количество" min="1">
-    <button class="action-btn" id="addOneOutgoing">−1</button>
-  </div>
-</div>
+<!-- Подключаем библиотеку для сканирования штрихкодов -->
+<script src="https://unpkg.com/@zxing/library@latest"></script>
 
-<div class="controls-row">
-  <button class="btn btn-secondary" id="cancelOperation">Отмена</button>
-  <button class="btn btn-primary" id="confirmOperation">Подтвердить</button>
-</div>
 <script>
-// Инициализация элементов
-const fabMenu = document.getElementById('fabMenu');
-const sheetOverlay = document.getElementById('sheetOverlay');
-const bottomSheet = document.getElementById('bottomSheet');
-const toggleZeroBtn = document.getElementById('toggleZeroBtn');
-const backToMenuBtn = document.getElementById('backToMenuBtn');
-const scanBtn = document.getElementById('scan-btn');
-const closeScanner = document.getElementById('closeScanner');
-const scannerFullscreen = document.getElementById('scannerFullscreen');
-const torchBtn = document.getElementById('torchBtn');
-const operationCard = document.getElementById('operationCard');
-const cancelOperation = document.getElementById('cancelOperation');
-const confirmOperation = document.getElementById('confirmOperation');
-
-// Элементы формы операции
-const productName = document.getElementById('productName');
-const incomingQty = document.getElementById('incomingQty');
-const outgoingQty = document.getElementById('outgoingQty');
-const currentBalance = document.getElementById('currentBalance');
-const addOneIncoming = document.getElementById('addOneIncoming');
-const addOneOutgoing = document.getElementById('addOneOutgoing');
-
-// Переменные для сканера
-let codeReader = null;
-let currentStream = null;
-let torchEnabled = false;
-
-// Обработчики событий
-fabMenu.addEventListener('click', () => {
-  sheetOverlay.classList.remove('hidden');
-  bottomSheet.classList.remove('hidden');
-});
-
-backToMenuBtn.addEventListener('click', () => {
-  sheetOverlay.classList.add('hidden');
-  bottomSheet.classList.add('hidden');
-});
-
-scanBtn.addEventListener('click', async () => {
-  try {
-    scannerFullscreen.classList.remove('hidden');
+  // Инициализация при загрузке страницы
+  document.addEventListener('DOMContentLoaded', () => {
+    loadSampleItems();
     
-    if (!codeReader) {
-      codeReader = new ZXing.BrowserMultiFormatReader();
-    }
-    
-    await codeReader.decodeFromVideoDevice(
-      null,
-      document.getElementById('preview'),
-      (result, err) => {
-        if (result) {
-          handleScanResult(result.text);
-          closeScanner.click();
-        }
-        if (err && !(err instanceof ZXing.NotFoundException)) {
-          console.error(err);
-        }
-      }
-    );
-  } catch (error) {
-    console.error('Ошибка запуска сканера:', error);
-    alert('Не удалось запустить сканер. Проверьте разрешения камеры.');
-  }
-});
-
-closeScanner.addEventListener('click', () => {
-  scannerFullscreen.classList.add('hidden');
-  if (currentStream) {
-    currentStream.getTracks().forEach(track => track.stop());
-  }
-});
-
-torchBtn.addEventListener('click', async () => {
-  if (!currentStream) return;
-  
-  const track = currentStream.getVideoTracks()[0];
-  const capabilities = track.getCapabilities();
-  
-  if ('torch' in capabilities && capabilities.torch) {
-    torchEnabled = !torchEnabled;
-    await track.applyConstraints({
-      advanced: [{ torch: torchEnabled }]
+    // Обработчик очистки поиска
+    document.getElementById('clear-search').addEventListener('click', () => {
+      document.getElementById('search').value = '';
+      loadSampleItems(); // Перезагружаем список без фильтрации
     });
-    torchBtn.style.background = torchEnabled ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.2)';
-  }
-});
-
-// Обработчики для кнопок +1 и −1
-addOneIncoming.addEventListener('click', () => {
-  incomingQty.value = (parseInt(incomingQty.value) || 0) + 1;
-});
-
-addOneOutgoing.addEventListener('click', () => {
-  outgoingQty.value = (parseInt(outgoingQty.value) || 0) + 1;
-});
-
-// Обработчики закрытия карточки операции
-cancelOperation.addEventListener('click', () => {
-  operationCard.classList.add('hidden');
-  resetOperationForm();
-});
-
-confirmOperation.addEventListener('click', () => {
-  const incoming = parseInt(incomingQty.value) || 0;
-  const outgoing = parseInt(outgoingQty.value) || 0;
-  
-  if (incoming === 0 && outgoing === 0) {
-    alert('Введите количество для прихода или расхода');
-    return;
-  }
-  
-  // Здесь логика подтверждения операции
-  alert(`Операция подтверждена!\nПриход: ${incoming}\nРасход: ${outgoing}`);
-  resetOperationForm();
-  operationCard.classList.add('hidden');
-});
-
-// Функция обработки результата сканирования
-function handleScanResult(code) {
-  console.log('Отсканирован код:', code);
-  // Здесь можно добавить логику поиска товара по штрих‑коду
-  showOperationCard('Товар по штрихкоду ' + code, 50); // Пример вызова с тестовыми данными
-}
-
-// Функция показа карточки операции
-function showOperationCard(productNameValue, balance) {
-  productName.value = productNameValue;
-  currentBalance.textContent = balance;
-  incomingQty.value = '';
-  outgoingQty.value = '';
-  operationCard.classList.remove('hidden');
-}
-
-// Сброс формы операции
-function resetOperationForm() {
-  incomingQty.value = '';
-  outgoingQty.value = '';
-}
-
-// Пример заполнения списка товаров (замените на реальную загрузку данных)
-function loadSampleItems() {
-  const itemsList = document.getElementById('itemsList');
-  itemsList.innerHTML = '';
-  
-  for (let i = 1; i <= 6; i++) {
-    const item = document.createElement('div');
-    item.className = 'item';
-    const balance = Math.floor(Math.random() * 50);
-    item.innerHTML = `
-      <div class="field">
-        <span class="label">Название:</span>
-        <span>Товар ${i}</span>
-      </div>
-      <div class="field">
-        <span class="label">Код:</span>
-        <span>12345${i}</span>
-      </div>
-      <div class="field">
-        <span class="label">Остаток:</span>
-        <span>${balance}</span>
-      </div>
-      <div class="qty-block">
-        <div class="qty-section-title">Управление</div>
-        <div class="qty-row">
-          <div class="qty-input-wrapper">
-            <input type="number" class="qtyInput" placeholder="Кол-во" min="1">
-          </div>
-          <button class="qtyAction" onclick="handleIncoming(this)">+</button>
-          <button class="qtyAction" onclick="handleOutgoing(this)">−</button>
-        </div>
-      </div>
-    `;
-    itemsList.appendChild(item);
-  }
-}
-
-// Обработчики действий для карточек товаров
-function handleIncoming(button) {
-  const card = button.closest('.item');
-  const input = card.querySelector('.qtyInput');
-  const balance = parseInt(card.querySelector('.field:nth-child(3) span:last-child').textContent);
-  
-  input.value = (parseInt(input.value) || 0) + 1;
-  showOperationCard(card.querySelector('.field:first-child span:last-child').textContent, balance);
-}
-
-function handleOutgoing(button) {
-  const card = button.closest('.item');
-  const input = card.querySelector('.qtyInput');
-  const balance = parseInt(card.querySelector('.field:nth-child(3) span:last-child').textContent);
-  
-  input.value = (parseInt(input.value) || 0) + 1;
-   showOperationCard(card.querySelector('.field:first-child span:last-child').textContent, balance);
-}
-
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', () => {
-  loadSampleItems();
-  
-  // Обработчик очистки поиска
-  document.getElementById('clear-search').addEventListener('click', () => {
-    document.getElementById('search').value = '';
-    loadSampleItems(); // Перезагружаем список без фильтрации
-  });
-  
-  // Обработчик поиска
-  document.getElementById('search').addEventListener('input', (e) => {
-    const searchTerm = e.target.value.toLowerCase();
-    const items = document.querySelectorAll('.item');
     
-    items.forEach(item => {
-      const name = item.querySelector('.field:first-child span:last-child').textContent.toLowerCase();
-      const code = item.querySelector('.field:nth-child(2) span:last-child').textContent;
+    // Обработчик поиска
+    document.getElementById('search').addEventListener('input', (e) => {
+      const searchTerm = e.target.value.toLowerCase();
+      const items = document.querySelectorAll('.item');
       
-      if (name.includes(searchTerm) || code.includes(searchTerm)) {
-        item.style.display = 'block';
-      } else {
-        item.style.display = 'none';
-      }
+      items.forEach(item => {
+        const name = item.querySelector('.field:first-child span:last-child').textContent.toLowerCase();
+        const code = item.querySelector('.field:nth-child(2) span:last-child').textContent;
+        
+        if (name.includes(searchTerm) || code.includes(searchTerm)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+
+    // Обработчик FAB‑кнопки
+    document.getElementById('fabMenu').addEventListener('click', () => {
+      showBottomSheet();
+    });
+
+    // Обработчик закрытия нижнего листа
+    document.getElementById('backToMenuBtn').addEventListener('click', () => {
+      hideBottomSheet();
+    });
+
+    // Обработчик кнопки «Показать товары с 0»
+    document.getElementById('toggleZeroBtn').addEventListener('click', () => {
+      toggleZeroItems();
+      hideBottomSheet();
+    });
+
+    // Обработчики кнопок сканера
+    document.getElementById('scan-btn').addEventListener('click', () => {
+      showScanner();
+    });
+
+    document.getElementById('closeScanner').addEventListener('click', () => {
+      hideScanner();
+    });
+
+    // Обработчики операций
+    document.getElementById('addOneIncoming').addEventListener('click', () => {
+      incrementValue('incomingQty', 1);
+    });
+
+    document.getElementById('addOneOutgoing').addEventListener('click', () => {
+      incrementValue('outgoingQty', -1);
+    });
+
+    document.getElementById('cancelOperation').addEventListener('click', () => {
+      hideOperationCard();
+    });
+
+    document.getElementById('confirmOperation').addEventListener('click', () => {
+      confirmOperation();
     });
   });
-});
 
-// Функция обновления баланса в карточке товара
-function updateItemBalance(card, newBalance) {
-  card.querySelector('.field:nth-child(3) span:last-child').textContent = newBalance;
-}
-
-// Обработчик кнопки «Показать товары с 0»
-toggleZeroBtn.addEventListener('click', () => {
-  const items = document.querySelectorAll('.item');
-  items.forEach(item => {
-    const balance = parseInt(item.querySelector('.field:nth-child(3) span:last-child').textContent);
-    if (balance === 0) {
-      item.style.display = 'block';
-    }
-  });
-  sheetOverlay.classList.add('hidden');
-  bottomSheet.classList.add('hidden');
-});
-
-// Базовая логика обработки операций прихода/расхода
-function processOperation(productName, incoming, outgoing, currentBalance) {
-  const newBalance = currentBalance + incoming - outgoing;
-  
-  // Здесь можно добавить отправку данных на сервер
-  console.log('Операция обработана:', {
-    product: productName,
-    incoming: incoming,
-    outgoing: outgoing,
-    oldBalance: currentBalance,
-    newBalance: newBalance
-  });
-  
-  return newBalance;
-}
-
-// Расширенная функция показа карточки операции с предварительной обработкой
-function showOperationCard(productNameValue, balance) {
-  productName.value = productNameValue;
-  currentBalance.textContent = balance;
-  incomingQty.value = '';
-  outgoingQty.value = '';
-  operationCard.classList.remove('hidden');
-}
-
-// Сброс формы операции
-function resetOperationForm() {
-  incomingQty.value = '';
-  outgoingQty.value = '';
-}
-
-// Обработка подтверждения операции с обновлением данных
-confirmOperation.addEventListener('click', () => {
-  const incoming = parseInt(incomingQty.value) || 0;
-  const outgoing = parseInt(outgoingQty.value) || 0;
-  const currentBal = parseInt(currentBalance.textContent);
-  
-  if (incoming === 0 && outgoing === 0) {
-    alert('Введите количество для прихода или расхода');
-    return;
+  // Заглушка для загрузки примеров товаров
+  function loadSampleItems() {
+    const list = document.getElementById('itemsList');
+    list.innerHTML = '';
+    
+    const sampleItems = [
+      { name: 'Товар 1', code: '001', balance: 15 },
+      { name: 'Товар 2', code: '002', balance: 0 },
+      { name: 'Товар 3', code: '003', balance: 42 }
+    ];
+    
+    sampleItems.forEach(item => {
+      const itemEl = document.createElement('div');
+      itemEl.className = 'item';
+      itemEl.innerHTML = `
+        <div class="field">
+          <span class="label">Название:</span>
+          <span>${item.name}</span>
+        </div>
+        <div class="field">
+          <span class="label">Код:</span>
+          <span>${item.code}</span>
+        </div>
+        <div class="field">
+          <span class="label">Баланс:</span>
+          <span>${item.balance}</span>
+        </div>
+        <div class="qty-block">
+          <div class="qty-row">
+            <div class="qty-input-wrapper">
+              <input type="number" class="qtyInput" value="0" min="0">
+            </div>
+            <button class="qtyAction">✓</button>
+          </div>
+        </div>
+      `;
+      list.appendChild(itemEl);
+    });
   }
-  
-  const newBalance = processOperation(productName.value, incoming, outgoing, currentBal);
-  
-  // Обновляем баланс в интерфейсе (в реальном приложении — после подтверждения от сервера)
-  currentBalance.textContent = newBalance;
-  
-  alert(`Операция подтверждена!\nПриход: ${incoming}\nРасход: ${outgoing}\nНовый баланс: ${newBalance}`);
-  resetOperationForm();
-  operationCard.classList.add('hidden');
-});
+
+  function showBottomSheet() {
+    document.getElementById('sheetOverlay').classList.remove('hidden');
+    document.getElementById('bottomSheet').classList.remove('hidden');
+  }
+
+  function hideBottomSheet() {
+    document.getElementById('sheetOverlay').classList.add('hidden');
+    document.getElementById('bottomSheet').classList.add('hidden');
+  }
+
+  function toggleZeroItems() {
+    const items = document.querySelectorAll('.item');
+    items.forEach(item => {
+      const balance = parseInt(item.querySelector('.field:last-child span').textContent);
+      if (balance === 0) {
+        item.style.display = item.style.display === 'none' ? 'flex' : 'flex';
+      }
+    });
+  }
+
+  function showScanner() {
+    document.getElementById('scannerFullscreen').classList.remove('hidden');
+    // Здесь должна быть логика инициализации сканера ZXing
+  }
+
+  function hideScanner() {
+    document.getElementById('scannerFullscreen').classList.add('hidden');
+  }
+
+  function incrementValue(inputId, delta) {
+    const input = document.getElementById(inputId);
+    let value = parseInt(input.value) || 0;
+    value = Math.max(0, value + delta); // Не допускаем отрицательных значений
+    input.value = value;
+  }
+
+  function showOperationCard(productName, balance) {
+    document.getElementById('productName').value = productName;
+    document.getElementById('currentBalance').textContent = balance;
+    document.getElementById('operationCard').classList.remove('hidden');
+  }
+
+  function hideOperationCard() {
+    document.getElementById('operationCard').classList.add('hidden');
+  }
+
+  function confirmOperation() {
+    const incoming = parseInt(document.getElementById('incomingQty').value) || 0;
+    const outgoing = parseInt(document.getElementById('outgoingQty').value) || 0;
+    const newBalance = parseInt(document.getElementById('currentBalance').textContent) + incoming - outgoing;
+
+    alert(`Операция подтверждена! Новый баланс: ${newBalance}`);
+    hideOperationCard();
+  }
 </script>
-
-
-
-
-
-
-
 </body>
 </html>
