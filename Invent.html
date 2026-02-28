@@ -357,8 +357,17 @@ function render(items) {
     return;
   }
 
-  // Ваша оригинальная логика рендеринга (сохраняем полностью)
   items.forEach(item => {
+    // Берём название из базы штрих‑кодов (db), если есть, иначе — «Товар [код]»
+    const nameFromDB = db[item.code]?.name;
+    const displayName = nameFromDB || `Товар ${item.code}`;
+
+    // Берём единицу измерения из базы, если есть
+    const unitFromDB = db[item.code]?.unit || '';
+
+    // Берём цену из базы, если есть
+    const priceFromDB = db[item.code]?.price || 0;
+
     const value =
       sessionValues[item.code] ||
       localStorage.getItem('qty_' + item.code) ||
@@ -368,15 +377,24 @@ function render(items) {
     div.className = 'item';
     div.dataset.code = item.code;
 
-    // Сохраняем вашу оригинальную разметку карточки товара
     div.innerHTML = `
       <div class="field">
-        <span class="label">Название:</span> ${escapeHtml(item.name || '')}
+        <span class="label">Название:</span> ${escapeHtml(displayName)}
       </div>
 
       <div class="field">
         <span class="label">Артикул:</span> ${item.code}
       </div>
+
+      ${unitFromDB ? `
+      <div class="field">
+        <span class="label">Ед. изм.:</span> ${escapeHtml(unitFromDB)}
+      </div>` : ''}
+
+      ${priceFromDB ? `
+      <div class="field">
+        <span class="label">Цена:</span> ${priceFromDB.toFixed(2)} руб.
+      </div>` : ''}
 
       <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
         <div style="flex:1">
@@ -394,7 +412,7 @@ function render(items) {
         </div>
       </div>`;
 
-    // Ваша логика раскраски карточек
+    // Логика раскраски карточек (как у вас было)
     let actual = 0;
     try {
       actual = Function("return " + (value || "0").replace(/,/g, '.'))() || 0;
