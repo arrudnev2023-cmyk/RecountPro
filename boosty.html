@@ -12,7 +12,6 @@
       --text: #333;
       --muted: #6c757d;
       --accent: #007bff;
-      --danger: #dc3545;
       --success: #28a745;
       --border: #dee2e6;
       --radius: 8px;
@@ -37,7 +36,6 @@
       margin: 0 auto;
     }
 
-    /* Header */
     .header {
       text-align: center;
       margin-bottom: 20px;
@@ -49,7 +47,6 @@
       color: var(--accent);
     }
 
-    /* Camera area */
     .camera-section {
       margin-bottom: 20px;
     }
@@ -69,7 +66,6 @@
       object-fit: cover;
     }
 
-    /* Form */
     .form-section {
       background: var(--panel);
       padding: 20px;
@@ -111,25 +107,13 @@
       color: white;
     }
 
-    .btn-secondary {
-      background-color: var(--muted);
-      color: white;
-      margin-left: 10px;
-    }
-
-    .btn:hover {
-      opacity: 0.9;
-    }
-
     .controls {
       display: flex;
       justify-content: space-between;
-      flex-wrap: wrap;
       gap: 10px;
       margin-top: 15px;
     }
 
-    /* Toast */
     .toast {
       position: fixed;
       bottom: 20px;
@@ -174,7 +158,6 @@
 
       <div class="controls">
         <button id="saveBtn" class="btn btn-primary">Сохранить в базу</button>
-        <button id="clearBtn" class="btn btn-secondary">Очистить</button>
       </div>
     </div>
 
@@ -183,7 +166,6 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <!-- ZXing fallback -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
   <script>
@@ -191,9 +173,6 @@
     let barcodeDB = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
     let stream = null;
     let scanning = false;
-    let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
-    let reader = null;
-    let lastDetected = {code:null, ts:0};
     const DEBOUNCE_MS = 900;
 
     /* ===== Elements ===== */
@@ -201,7 +180,6 @@
     const barcodeInput = document.getElementById('barcodeInput');
     const nameInput = document.getElementById('nameInput');
     const saveBtn = document.getElementById('saveBtn');
-    const clearBtn = document.getElementById('clearBtn');
     const closeBtn = document.getElementById('closeBtn');
     const toast = document.getElementById('toast');
 
@@ -216,57 +194,95 @@
     }
 
     function saveBarcodeDB() {
-      localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
+      try {
+        localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
+        console.log('База штрих-кодов успешно сохранена:', barcodeDB);
+        showToast('Сохранено в базе');
+      } catch (e) {
+        console.error('Ошибка сохранения в localStorage:', e);
+        showToast('Ошибка сохранения в базе');
+      }
     }
 
-    function beep() {
-      try { navigator.vibrate?.(60); } catch(e) {}
-    }
-
-    /* ===== Camera & scanning ===== */
-    async function startCamera() {
+    function startCamera() {
       stopCamera();
       scanning = true;
       const constraints = {
         audio: false,
         video: {
-          facingMode: { ideal: "environment" },
+          facingMode: { ideal: 'environment' },
           width: { ideal: 1280 },
           height: { ideal: 720 }
         }
       };
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-        preview.srcObject = stream;
-        await preview.play();
-        reader = new ZXing.BrowserMultiFormatReader();
-        requestAnimationFrame(scanLoop);
-      } catch(err) {
-        console.error('camera error', err);
-        showToast('Не удалось получить доступ к камере');
-        scanning = false;
+
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then(stream => {
+          preview.srcObject = stream;
+          return preview.play();
+        })
+        .then(() => {
+          showToast('Камера запущена');
+          scanLoop();
+        })
+        .catch(err => {
+          console.error('Ошибка доступа к камере:', err);
+          showToast('Не удалось получить доступ к камере');
+          scanning = false;
+        });
+    }
+
+    function stopCamera() {
+      scanning = false;
+      if (preview.srcObject) {
+        preview.srcObject.getTracks().forEach(track => track.stop());
+        preview.srcObject = null;
       }
     }
-    function stopCamera() {
-  scanning = false;
-  if (preview.srcObject) {
-    preview.srcObject.getTracks().forEach(t => t.stop());
-    preview.srcObject = null;
-  }
-  if (reader) {
-    try { reader.reset(); } catch (e) {}
-    reader = null;
+
+    async function scanLoop() {
+  if (!scanning) return;
+  try {
+    const w = preview.videoWidth;
+    const h = preview.videoHeight;
+    if (w === 0 || h === 0) {
+      requestAnimationFrame(scanLoop);
+      return;
+    }
+
+    // Создаём canvas для обработки кадра
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(preview, 0, 0, w, h);
+
+    // Уменьшаем размер для ускорения обработки
+    const scale = Math.max(1, Math.floor(Math.max(w, h) / 900));
+    const sw = Math.floor(w / scale);
+    const sh = Math.floor(h / scale);
+
+    const smallCanvas = document.createElement('canvas');
+    smallCanvas.width = sw;
+    smallCanvas.height = sh;
+    const smallCtx = smallCanvas.getContext('2d');
+    smallCtx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
+
+    // Преобразуем в оттенки серого и повышаем контрастность
+    toGrayscale(smallCtx, sw, sh);
+    increaseContrast(smallCtx, sw, sh, 30);
+
+    // Пытаемся распознать штрих‑код
+    const code = await tryDecodeCanvas(smallCanvas);
+    if (code) handleDetected(code);
+  } catch (e) {
+    console.error('Ошибка в scanLoop:', e);
+  } finally {
+    requestAnimationFrame(scanLoop); // Продолжаем сканирование
   }
 }
 
-/* Preprocessing helpers */
-function createCanvas(w, h) {
-  const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
-  return c;
-}
-
+/* Вспомогательные функции для обработки изображения */
 function toGrayscale(ctx, w, h) {
   const img = ctx.getImageData(0, 0, w, h);
   const d = img.data;
@@ -291,115 +307,31 @@ function increaseContrast(ctx, w, h, contrast = 30) {
   ctx.putImageData(img, 0, 0);
 }
 
-/* Try decode with detector or ZXing, including rotated attempts */
+/* Попытка декодирования штрих‑кода с помощью ZXing */
 async function tryDecodeCanvas(canvas) {
-  if (detector) {
-    try {
-      const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
-      const res = await detector.detect(imageData);
-      if (res && res.length) return res[0].rawValue;
-    } catch (e) {}
-  }
-
   try {
     const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
     const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
     const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
-    if (result && result.text) return result.text;
-  } catch (e) {}
-
-  const w = canvas.width;
-  const h = canvas.height;
-  const temp = createCanvas(w, h);
-  const tctx = temp.getContext('2d');
-
-  for (let angle of [90, 180, 270]) {
-    tctx.clearRect(0, 0, w, h);
-    tctx.save();
-    tctx.translate(w / 2, h / 2);
-    tctx.rotate(angle * Math.PI / 180);
-    tctx.drawImage(canvas, -w / 2, -h / 2);
-    tctx.restore();
-
-    try {
-      const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(temp);
-      const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-      const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
-      if (result && result.text) return result.text;
-    } catch (e) {}
-  }
-  return null;
-}
-
-/* Main scanning loop (full frame) */
-let canvasPool = [];
-function getCanvas(w, h) {
-  for (let c of canvasPool) if (c.width === w && c.height === h) return c;
-  const c = createCanvas(w, h);
-  canvasPool.push(c);
-  return c;
-}
-
-async function scanLoop() {
-  if (!scanning) return;
-  try {
-    const w = preview.videoWidth;
-    const h = preview.videoHeight;
-    if (w === 0 || h === 0) {
-      requestAnimationFrame(scanLoop);
-      return;
-    }
-
-    const canvas = getCanvas(w, h);
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(preview, 0, 0, w, h);
-
-    // downscale for speed
-    const scale = Math.max(1, Math.floor(Math.max(w, h) / 900));
-    const sw = Math.floor(w / scale);
-    const sh = Math.floor(h / scale);
-    const small = getCanvas(sw, sh);
-    const sctx = small.getContext('2d');
-    sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
-    toGrayscale(sctx, sw, sh);
-    increaseContrast(sctx, sw, sh, 30);
-
-    const code = await tryDecodeCanvas(small);
-    if (code) handleDetected(code);
+    return result.text || null;
   } catch (e) {
-    // ignore
-  } finally {
-    requestAnimationFrame(scanLoop);
+    return null;
   }
 }
 
-/* Handle detection: populate barcode field and name if exists */
+/* Обработка обнаруженного штрих‑кода */
 function handleDetected(code) {
   const now = Date.now();
+  // Защита от дублирования
   if (code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
 
   lastDetected = { code, ts: now };
   beep();
   barcodeInput.value = code;
 
-  let entry = barcodeDB[code];
-  let name = '';
-
-  if (entry) {
-    // Если в базе лежит объект — достаём название
-    if (typeof entry === 'object' && entry !== null) {
-      name =
-        entry.name ||
-        entry.title ||
-        entry.product_name ||
-        entry.label ||
-        '';
-    } else {
-      // Если строка — используем как есть
-      name = entry;
-    }
-
-    nameInput.value = name;
+  // Если код уже есть в базе — подставляем название
+  if (barcodeDB[code]) {
+    nameInput.value = barcodeDB[code];
     showToast('Найден в базе: название подставлено');
   } else {
     nameInput.value = '';
@@ -407,7 +339,7 @@ function handleDetected(code) {
   }
 }
 
-/* Save to barcodeDB */
+/* Сохранение в базу */
 saveBtn.addEventListener('click', () => {
   const code = (barcodeInput.value || '').trim();
   const name = (nameInput.value || '').trim();
@@ -415,38 +347,38 @@ saveBtn.addEventListener('click', () => {
   if (!code) return showToast('Штрих-код пустой');
   if (!name) return showToast('Введите название товара');
 
+  // Обновляем базу
   barcodeDB[code] = name;
   saveBarcodeDB();
-  showToast('Сохранено в базе');
 });
 
-/* Clear fields */
-clearBtn.addEventListener('click', () => {
-  barcodeInput.value = '';
-  nameInput.value = '';
-  showToast('Поля очищены');
-});
+/* Остановка камеры */
+function stopCamera() {
+  scanning = false;
+  if (preview.srcObject) {
+    preview.srcObject.getTracks().forEach(track => track.stop());
+    preview.srcObject = null;
+  }
+}
 
-/* Close button */
-closeBtn.addEventListener('click', () => {
-  stopCamera();
-  // В зависимости от архитектуры приложения:
-  // history.back() или закрытие модального окна
-  showToast('Камера остановлена');
-});
-
-/* Start camera automatically on load */
-window.addEventListener('DOMContentLoaded', async () => {
-  // Try to warm permissions so device labels appear later if needed
-  try {
-    await navigator.mediaDevices.getUserMedia({ video: true });
-  } catch (e) {}
+/* Запуск камеры при загрузке страницы */
+window.addEventListener('DOMContentLoaded', () => {
   startCamera();
 });
 
-/* Stop camera on unload */
-window.addEventListener('pagehide', () => stopCamera());
-window.addEventListener('beforeunload', () => stopCamera());
+// Корректное событие загрузки DOM
+document.addEventListener('DOMContentLoaded', () => {
+  startCamera();
+});
+
+/* Остановка камеры при закрытии страницы */
+window.addEventListener('pagehide', stopCamera);
+window.addEventListener('beforeunload', stopCamera);
+
+/* Звуковой сигнал */
+function beep() {
+  try { navigator.vibrate?.(60); } catch(e) {}
+}
   </script>
 </body>
 </html>
