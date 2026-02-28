@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <title>RecountPro — Приход / Расход</title>
 
- <script src="https://unpkg.com/@zxing/library@latest"></script>
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
 
 
   <style>
@@ -209,7 +209,7 @@
     }
 
     /* Иконки для кнопок */
-   .plus-icon::after{content:"+";}
+.plus-icon::after{content:"+";}
 .minus-icon::after{content:"−";}
 
 /* Анимация изменения количества */
@@ -405,17 +405,20 @@ let barcodeDB = {};
 let barcodeCodes = {};
 let allItems = [];
 let showZero = false;
+let scanTimeout = null;
 
-function loadDB(){
-  try{
+function loadDB() {
+  try {
     const raw = localStorage.getItem("barcodeDB");
-    if(raw){
+    if (raw) {
       const parsed = JSON.parse(raw);
-      if(parsed && typeof parsed === "object"){
+      if (parsed && typeof parsed === "object") {
         barcodeDB = parsed;
       }
     }
-  }catch(e){ barcodeDB = {}; }
+  } catch (e) {
+    barcodeDB = {};
+  }
 
  try {
   const rawCodes = localStorage.getItem("barcodeCodes");
@@ -429,27 +432,27 @@ function loadDB(){
   barcodeCodes = {};
 }
 
-if (!barcodeDB) barcodeDB = {};
-if (!barcodeCodes) barcodeCodes = {};
+barcodeDB = barcodeDB || {};
+barcodeCodes = barcodeCodes || {};
+}
 
 function saveDB() {
   localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
 }
 
-
-function escapeHtml(s){
-  return String(s||"")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;");
+function escapeHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 /* =========================
    СБОР СПИСКА ТОВАРОВ
 ========================= */
 
-function buildItems(){
+function buildItems() {
   allItems = Object.keys(barcodeDB).map(code => {
     const rec = barcodeDB[code];
 
@@ -462,10 +465,10 @@ function buildItems(){
       qty = 0;
     } else if (rec && typeof rec === "object") {
       name = rec.name || code;
-      qty  = Number(rec.qty || 0);
+      qty = Number(rec.qty || 0);
     } else {
       name = code;
-      qty  = 0;
+      qty = 0;
     }
 
     return { code, name, qty };
@@ -478,24 +481,14 @@ function buildItems(){
 
 const listEl = document.getElementById("list");
 
-function render(items){
+function render(items) {
   listEl.innerHTML = "";
 
   items.forEach(item => {
     if (!showZero && item.qty === 0) return;
 
-    // --- Правильное получение названия ---
-    // 1) item.name — как на рабочем экране
-    // 2) barcodeCodes — если есть в базе штрихкодов
-    // 3) item.title / product_name — на случай разных форматов
-    // 4) item.code — крайний fallback
-    let name =
-      item.name ||
-      barcodeCodes[item.code] ||
-      item.title ||
-      item.product_name ||
-      item.label ||
-      item.code;
+    // Правильное получение названия
+    let name = item.name || barcodeCodes[item.code] || item.code;
 
     const div = document.createElement("div");
     div.className = "item";
@@ -562,14 +555,12 @@ function render(items){
 ========================= */
 
 function applyChange(code) {
-  const plusInput  = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
+  const plusInput = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
   const minusInput = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
-  if(!plusInput || !minusInput) return;
+  if (!plusInput || !minusInput) return;
 
-  let plus  = Number(plusInput.value || 0);
-  let minus = Number(minusInput.value || 0);
-  if(isNaN(plus)) plus = 0;
-  if(isNaN(minus)) minus = 0;
+  let plus = Math.max(0, Number(plusInput.value || 0));
+  let minus = Math.max(0, Number(minusInput.value || 0));
 
   // старый остаток
   let oldQty = 0;
@@ -590,7 +581,7 @@ function applyChange(code) {
   // если товара нет или он в виде строки — нормализуем в объект
   if (!rec) {
     barcodeDB[code] = {
-      name: barcodeCodes[code] || code,
+      name: barcodeCodes[item.code] || code,
       qty: newQty
     };
   } else if (typeof rec === "string") {
@@ -605,75 +596,79 @@ function applyChange(code) {
   saveDB();
 
   const card = document.querySelector(`.item[data-code="${code}"]`);
-  if(card){
+  if (card) {
     const cur = card.querySelector(".curQty");
-    if(cur) cur.textContent = newQty;
+    if (cur) cur.textContent = newQty;
     card.classList.add("highlight-qty");
-    setTimeout(()=> card.classList.remove("highlight-qty"), 600);
+    setTimeout(() => card.classList.remove("highlight-qty"), 600);
   }
 
   plusInput.value = "0";
   minusInput.value = "0";
 }
 
-function attachQtyHandlers(){
-  document.querySelectorAll(".plusPlus").forEach(btn=>{
-    btn.onclick = ()=>{
+function attachQtyHandlers() {
+  document.querySelectorAll(".plusPlus").forEach(btn => {
+    btn.onclick = () => {
       const code = btn.dataset.code;
       const input = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
-      input.value = Number(input.value||0)+1;
+      input.value = Math.max(0, Number(input.value || 0) + 1);
       applyChange(code);
     };
   });
 
-  document.querySelectorAll(".minusPlus").forEach(btn=>{
-    btn.onclick = ()=>{
+  document.querySelectorAll(".minusPlus").forEach(btn => {
+    btn.onclick = () => {
       const code = btn.dataset.code;
       const input = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
-      let v = Number(input.value||0)-1;
-      if(v<0) v=0;
+      let v = Math.max(0, Number(input.value || 0) - 1);
       input.value = v;
       applyChange(code);
     };
   });
 
-  document.querySelectorAll(".plusMinus").forEach(btn=>{
-    btn.onclick = ()=>{
+  document.querySelectorAll(".plusMinus").forEach(btn => {
+    btn.onclick = () => {
       const code = btn.dataset.code;
       const input = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
-      input.value = Number(input.value||0)+1;
+      input.value = Math.max(0, Number(input.value || 0) + 1);
       applyChange(code);
     };
   });
 
-  document.querySelectorAll(".minusMinus").forEach(btn=>{
-    btn.onclick = ()=>{
+  document.querySelectorAll(".minusMinus").forEach(btn => {
+    btn.onclick = () => {
       const code = btn.dataset.code;
       const input = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
-      let v = Number(input.value||0)-1;
-      if(v<0) v=0;
+      let v = Math.max(0, Number(input.value || 0) - 1);
       input.value = v;
       applyChange(code);
     };
   });
 
-  document.querySelectorAll(".qtyPlusInput").forEach(inp=>{
-    inp.onchange = ()=> applyChange(inp.dataset.code);
+  document.querySelectorAll(".qtyPlusInput").forEach(inp => {
+    inp.onchange = () => applyChange(inp.dataset.code);
   });
- document.querySelectorAll(".qtyMinusInput").forEach(inp=>{
-  inp.onchange = ()=> applyChange(inp.dataset.code);
-});
+  document.querySelectorAll(".qtyMinusInput").forEach(inp => {
+    inp.onchange = () => applyChange(inp.dataset.code);
+  });
 }
 
 /* =========================
    ПОИСК
 ========================= */
 
-function filterItems(query){
-  const filtered = allItems.filter(item =>
-    item.name.toLowerCase().includes(query.toLowerCase()) ||
-    item.code.includes(query)
-  );
+function filterItems(query) {
+  const filtered = allItems.filter(item => {
+    if (!query) return true;
+
+    const lowerQuery = query.toLowerCase().trim();
+    const nameMatch = item.name && item.name.toLowerCase().includes(lowerQuery);
+    const codeMatch = item.code && item.code.includes(lowerQuery);
+
+    return nameMatch || codeMatch;
+  });
+
   render(filtered);
 }
 
@@ -684,93 +679,92 @@ function filterItems(query){
 let codeReader = null;
 let currentStream = null;
 
-async function initScanner(){
-  try {
-    const codeReaderClass = window.ZXing.BrowserMultiFormatReader;
-    if (!codeReaderClass) {
-      alert("Библиотека сканера не загружена");
+async function startScanner() {
+  if (!codeReader) {
+    try {
+      codeReader = new ZXing.BrowserMultiFormatReader();
+      await codeReader.getVideoInputDevices();
+    } catch (err) {
+      alert("Ошибка инициализации сканера: " + err.message);
       return;
     }
-    codeReader = new codeReaderClass();
+  }
 
-    // Получаем список камер
-    const videoInputDevices = await codeReader.getVideoInputDevices();
-    const deviceSelect = document.getElementById("deviceSelect");
+  const scannerCard = document.getElementById("scannerCard");
+  const preview = document.getElementById("preview");
+  const deviceSelect = document.getElementById("deviceSelect");
+  const scanResult = document.getElementById("scanResult");
+
+  scannerCard.style.display = "block";
+  document.getElementById("sheetOverlay").classList.add("show");
+  document.getElementById("bottomSheet").classList.remove("show");
+
+  try {
+    const videoDevices = await codeReader.getVideoInputDevices();
+
     deviceSelect.innerHTML = "";
-
-    videoInputDevices.forEach((device, i) => {
+    videoDevices.forEach((device, i) => {
       const option = document.createElement("option");
       option.value = device.deviceId;
       option.textContent = device.label || `Камера ${i + 1}`;
       deviceSelect.appendChild(option);
     });
 
-    if (videoInputDevices.length > 0) {
-      deviceSelect.value = videoInputDevices[0].deviceId;
-    }
-  } catch (err) {
-    console.error("Ошибка инициализации сканера:", err);
-    alert("Не удалось инициализировать сканер. Проверьте разрешения камеры.");
-  }
-}
-
-async function startScanner(){
-  const scannerCard = document.getElementById("scannerCard");
-  const preview = document.getElementById("preview");
-  const deviceSelect = document.getElementById("deviceSelect");
-
-  scannerCard.style.display = "block";
-
-  try {
-    await codeReader.decodeFromVideoDevice(
-      (deviceSelect.value || null),
-      "preview",
-      (result, err) => {
-        if (result) {
-          const code = result.getText();
-          document.getElementById("scanResult").textContent = `Найден: ${code}`;
-
-          // Автоматически добавляем товар, если его нет
-          if (!barcodeDB[code]) {
-            barcodeDB[code] = {
-              name: `Товар ${code}`,
-              qty: 0
-            };
-            saveDB();
+    if (videoDevices.length > 0) {
+      await codeReader.decodeFromVideoDevice(
+        deviceSelect.value || videoDevices[0].deviceId,
+        "preview",
+        (result, err) => {
+          if (err) {
+            console.error(err);
+            return;
           }
 
-          // Показываем товар в списке
-          buildItems();
-          render(allItems);
+          if (result) {
+            clearTimeout(scanTimeout);
+            scanResult.textContent = `Найден код: ${result.text}`;
 
-          // Закрываем сканер через 1 сек после успешного сканирования
-          setTimeout(() => {
-            stopScanner();
-          }, 1000);
+            // Выделяем найденный элемент в списке
+            const itemEl = document.querySelector(`.item[data-code="${result.text}"]`);
+            if (itemEl) {
+              itemEl.classList.add("found", "highlight-purple");
+              setTimeout(() => {
+                itemEl.classList.remove("found");
+              }, 3000);
+            }
+
+            // Автоматически закрываем сканер через 1 сек
+            scanTimeout = setTimeout(() => {
+              stopScanner();
+            }, 1000);
+          }
         }
-        if (err && !(err instanceof window.ZXing.NotFoundException)) {
-          console.error(err);
-        }
-      }
-    );
+      );
+
+      currentStream = codeReader.stream;
+    }
   } catch (err) {
-    console.error("Ошибка запуска сканера:", err);
-    alert("Не удалось запустить камеру. Проверьте разрешения.");
+    alert("Ошибка запуска камеры: " + err.message);
     stopScanner();
   }
 }
 
-function stopScanner(){
-  if (codeReader) {
-    codeReader.reset();
+function stopScanner() {
+  if (currentStream) {
+    currentStream.getTracks().forEach(track => track.stop());
+    currentStream = null;
   }
+
   const scannerCard = document.getElementById("scannerCard");
   scannerCard.style.display = "none";
+  document.getElementById("sheetOverlay").classList.remove("show");
+
   document.getElementById("scanResult").textContent = "";
+  clearTimeout(scanTimeout);
 }
 
 /* =========================
-   ИНИЦИАЛИЗАЦИЯ
+   ОБРАБОТЧИКИ СОБЫТИЙ
 ========================= */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -779,59 +773,109 @@ document.addEventListener("DOMContentLoaded", () => {
   render(allItems);
 
   // Поиск
-  const searchInput = document.getElementById("search");
-  searchInput.addEventListener("input", (e) => {
-    filterItems(e.target.value);
+  const search = document.getElementById("search");
+  search.addEventListener("input", () => {
+    filterItems(search.value);
   });
 
   document.getElementById("clear-search").addEventListener("click", () => {
-    searchInput.value = "";
+    search.value = "";
     filterItems("");
   });
 
   // Сканер
-  document.getElementById("scan-btn").addEventListener("click", async () => {
-    if (!codeReader) await initScanner();
-    startScanner();
-  });
-
+  document.getElementById("scan-btn").addEventListener("click", startScanner);
   document.getElementById("closeScannerBtn").addEventListener("click", stopScanner);
 
-  // Фонарик
-  document.getElementById("torchBtn").addEventListener("click", () => {
-    // Реализация включения фонарика (зависит от браузера и устройства)
-    alert("Функция фонарика пока не реализована");
+  document.getElementById("torchBtn").addEventListener("click", async () => {
+    if (codeReader && currentStream) {
+      try {
+        const track = currentStream.getVideoTracks()[0];
+        const torch = track.getCapabilities().torch;
+        if (torch) {
+          await track.applyConstraints({
+            advanced: [{ torch: !track.getSettings().torch }]
+          });
+        } else {
+          alert("Фонарик недоступен на этой камере");
+        }
+      } catch (e) {
+        alert("Ошибка управления фонариком: " + e.message);
+      }
+    }
   });
 
   // FAB-меню
   document.getElementById("fabMenu").addEventListener("click", () => {
-    document.getElementById("sheetOverlay").classList.add("show");
-    document.getElementById("bottomSheet").classList.add("show");
+    document.getElementById("bottomSheet").classList.toggle("show");
+    document.getElementById("sheetOverlay").classList.toggle("show");
   });
 
-  document.getElementById("sheetOverlay").addEventListener("click", () => {
-    document.getElementById("sheetOverlay").classList.remove("show");
-    document.getElementById("bottomSheet").classList.remove("show");
-  });
-
-  // Показать/скрыть товары с нулевым остатком
   document.getElementById("toggleZeroBtn").addEventListener("click", () => {
     showZero = !showZero;
-    buildItems();
-    render(allItems);
-    document.getElementById("sheetOverlay").classList.remove("show");
+    filterItems(document.getElementById("search").value);
     document.getElementById("bottomSheet").classList.remove("show");
+    document.getElementById("sheetOverlay").classList.remove("show");
   });
 
   document.getElementById("backToMenuBtn").addEventListener("click", () => {
-    // Здесь можно добавить переход в главное меню
-    alert("Переход в главное меню");
-    document.getElementById("sheetOverlay").classList.remove("show");
+    // Здесь можно добавить логику возврата в главное меню
+    alert("Возврат в главное меню (логика будет добавлена)");
     document.getElementById("bottomSheet").classList.remove("show");
+    document.getElementById("sheetOverlay").classList.remove("show");
+  });
+
+  // Закрытие оверлея кликом
+  document.getElementById("sheetOverlay").addEventListener("click", () => {
+    document.getElementById("bottomSheet").classList.remove("show");
+    document.getElementById("sheetOverlay").classList.remove("show");
   });
 });
+
+// Фоновое оформление (опционально)
+window.onload = () => {
+  const canvas = document.getElementById("bg");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const particles = [];
+  for (let i = 0; i < 50; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      radius: Math.random() * 2 + 0.5,
+      vx: Math.random() * 0.2 - 0.1,
+      vy: Math.random() * 0.2 - 0.1
+    });
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "rgba(109, 40, 217, 0.05)";
+
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+      if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  window.addEventListener("resize", () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+};
 </script>
 </body>
 </html>
-
-
