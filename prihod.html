@@ -430,23 +430,22 @@ function escapeHtml(s){
    СБОР СПИСКА ТОВАРОВ
 ========================= */
 
-function buildItems(){
+function buildItems() {
   allItems = Object.keys(barcodeDB).map(code => {
     const rec = barcodeDB[code];
-
     let name;
     let qty = 0;
 
     if (typeof rec === "string") {
-      // старый формат: только название
       name = rec;
       qty = 0;
     } else if (rec && typeof rec === "object") {
-      name = rec.name || code;
-      qty  = Number(rec.qty || 0);
+      // Если name есть и не пустая строка — берём его, иначе — код
+      name = rec.name && rec.name.trim() !== "" ? rec.name : code;
+      qty = Number(rec.qty || 0);
     } else {
       name = code;
-      qty  = 0;
+      qty = 0;
     }
 
     return { code, name, qty };
