@@ -752,30 +752,39 @@ massImportConfirm.addEventListener('click', () => {
 
     // Редактирование и удаление записей
     tableBody.addEventListener('click', (e) => {
-      if (e.target.classList.contains('edit-btn')) {
-        const code = e.target.dataset.code;
-        const name = db[code];
-        codeInput.value = code;
-        nameInput.value = name;
-        showToast('Данные для редактирования загружены в форму');
-      } else if (e.target.classList.contains('delete-btn')) {
-        const code = e.target.dataset.code;
-        confirmTitle.textContent = 'Удаление записи';
-        confirmMessage.textContent = `Вы уверены, что хотите удалить штрих‑код "${code}"?`;
-        confirmModal.style.display = 'flex';
+  if (e.target.classList.contains('edit-btn')) {
+    const code = e.target.dataset.code;
+    const name = db[code];
+    codeInput.value = code;
+    nameInput.value = name;
+    showToast('Данные для редактирования загружены в форму');
+  } else if (e.target.classList.contains('delete-btn')) {
+    const code = e.target.dataset.code;
 
-        // Временный обработчик для подтверждения удаления конкретной записи
-        const tempHandler = () => {
-          delete db[code];
-          saveToStorage();
-          renderTable(db);
-          confirmModal.style.display = 'none';
-          showToast('Запись удалена!');
-          confirmOk.removeEventListener('click', tempHandler);
-        };
-        confirmOk.addEventListener('click', tempHandler);
-      }
-    });
+    confirmTitle.textContent = 'Удаление записи';
+    confirmMessage.textContent = `Вы уверены, что хотите удалить штрих‑код "${code}"?`;
+    confirmModal.style.display = 'flex';
+
+    // Сохраняем код в атрибуте модального окна
+    confirmModal.dataset.deleteCode = code;
+  }
+});
+
+// Отдельный обработчик для подтверждения удаления
+confirmOk.addEventListener('click', () => {
+  const codeToDelete = confirmModal.dataset.deleteCode;
+
+  if (codeToDelete && db[codeToDelete] !== undefined) {
+    delete db[codeToDelete];
+    saveToStorage();
+    renderTable(db);
+    confirmModal.style.display = 'none';
+    showToast('Запись удалена!');
+    // Очищаем атрибут после удаления
+    delete confirmModal.dataset.deleteCode;
+  }
+});
+
 
     // Закрытие модальных окон кликом вне области
    [massImportModal, fileImportModal, confirmModal].forEach(modal => {
