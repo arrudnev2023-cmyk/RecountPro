@@ -506,11 +506,30 @@ function buildAllItemsFromDB() {
   // 1. Товары из основной базы
   for (const code in barcodeDB) {
     const b = barcodeDB[code];
+    let name, unit, price;
+
+    if (typeof b === "string") {
+      // Старый формат: только название
+      name = b;
+      unit = "";
+      price = 0;
+    } else if (b && typeof b === "object") {
+      // Новый формат: объект с полями
+      name = b.name && b.name.trim() !== "" ? b.name : code;
+      unit = b.unit || "";
+      price = Number(b.price || 0);
+    } else {
+      // Неизвестный формат — используем код как название
+      name = code;
+      unit = "";
+      price = 0;
+    }
+
     allItems.push({
       code,
-      name: b.name || "",
-      unit: b.unit || "",
-      price: b.price || 0,
+      name,
+      unit,
+      price,
       docQty: 0
     });
   }
@@ -520,14 +539,19 @@ function buildAllItemsFromDB() {
     if (!barcodeDB[code]) {
       allItems.push({
         code,
-        name: barcodeCodes[code] || "",
+        name: barcodeCodes[code] && barcodeCodes[code].trim() !== ""
+          ? barcodeCodes[code]
+          : code,
         unit: "",
         price: 0,
         docQty: 0
       });
     }
   }
+
+  return allItems; // Возвращаем результат
 }
+
 
 /* =========================
    Render UI (title first, then barcode)
