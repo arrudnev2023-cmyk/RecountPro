@@ -8,180 +8,364 @@
   <!-- ZXing -->
   <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 
+<style>
+  :root {
+    --accent: #4361ee; /* спокойный синий */
+    --accent-light: #82b1ff;
+    --bg: #ffffff; /* белый фон страницы */
+    --card: #ffffff; /* белый фон карточек */
+    --muted: #666; /* приглушённый текст */
+    --text: #333; /* тёмный текст */
+    --radius: 8px;
+    --maxw: 980px;
+    --border: #e0e0e0; /* светлый серый для границ */
+  }
 
-  <style>
-    :root{
-      --accent:#6d28d9;
-      --accent-light:#a78bfa;
-      --bg:#000;
-      --card:#111;
-      --muted:#9aa3b2;
-      --text:#e6eef8;
-      --radius:12px;
-      --maxw:980px;
-      --card-bg: linear-gradient(135deg,#1e1e2f,#2a2a40);
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: Inter, Segoe UI, system-ui, Arial, sans-serif;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  /* prevent double-tap zoom */
+  html, body, button, input, select, textarea {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  #bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-color: white;
+  }
+
+  header {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    padding: 12px;
+    background-color: white;
+    border-bottom: 1px solid var(--border);
+    z-index: 1000;
+    border-radius: 0 0 14px 14px;
+  }
+  header h1 {
+    margin: 0;
+    text-align: center;
+    font-size: 1.15rem;
+    color: var(--accent);
+  }
+
+  #search-wrap {
+    max-width: var(--maxw);
+    margin: 10px auto;
+    position: relative;
+  }
+  #search {
+    width: 100%;
+    padding: 10px 56px 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background-color: white;
+    color: var(--text);
+    font-size: 15px;
+  }
+  #scan-btn,
+  #clear-search {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  #clear-search {
+    right: 44px;
+  }
+
+  #content {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 96px;
+    bottom: 0;
+    overflow: auto;
+    padding: 12px;
+    box-sizing: border-box;
+  }
+
+  .card {
+    max-width: var(--maxw);
+    margin: 10px auto;
+    padding: 12px;
+    border-radius: 8px;
+    background-color: var(--card);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .preview-wrap {
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #f8f8f8;
+    border: 1px solid var(--border);
+  }
+  .preview-wrap.camera-1-3 {
+    height: 34vh;
+    min-height: 140px;
+  }
+  video#preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 10px;
+  }
+  .btn {
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background-color: white;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .btn:hover {
+    background-color: #f0f0f0;
+    border-color: var(--accent);
+  }
+  .btn.primary {
+    background-color: var(--accent);
+    color: white;
+    font-weight: 700;
+  }
+  .btn.primary:hover {
+    background-color: #3a56d6;
+  }
+
+  .list {
+    max-width: var(--maxw);
+    margin: 12px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .item {
+    width: 100%;
+    margin: 10px 0;
+    padding: 12px;
+    border-radius: 8px;
+    background-color: var(--card);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid transparent;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .item.match {
+    border-left-color: #22c55e;
+  }
+  .item.missing {
+    border-left-color: #ef4444;
+  }
+  .item.excess {
+    border-left-color: #3b82f6;
+  }
+  .item.found {
+    box-shadow: 0 4px 16px rgba(67, 97, 238, 0.15);
+    transform: translateY(-3px);
+  }
+
+  .field {
+    margin-bottom: 8px;
+  }
+  .label {
+    font-weight: 700;
+    color: var(--accent);
+    margin-right: 6px;
+  }
+  input[data-code] {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background-color: white;
+    color: var(--text);
+    font-size: 15px;
+  }
+
+  /* keyboard */
+  #custom-keyboard {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: -40vh;
+    height: 34vh;
+    background-color: white;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    z-index: 3000;
+    transition: bottom 0.28s;
+    border-top: 1px solid var(--border);
+  }
+  #custom-keyboard.show {
+    bottom: 0;
+  }
+  #custom-keyboard button {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background-color: white;
+    color: var(--text);
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  #custom-keyboard button:hover {
+    background-color: #f5f5f5;
+  }
+  .hidden {
+    display: none !important;
+  }
+
+  @media (min-width: 900px) {
+    #content {
+      padding-left: 24px;
+      padding-right: 24px;
     }
-    *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
-    html,body{height:100%;margin:0;background:linear-gradient(180deg,#05030a,#0b0710);color:var(--text);font-family:Inter,Segoe UI,system-ui,Arial;overflow:hidden; touch-action: manipulation;}
-    /* prevent double-tap zoom */
-    html,body,button,input,select,textarea{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
-    #bg{position:fixed;inset:0;z-index:-1;background:#000}
-    header{position:fixed;left:0;right:0;top:0;padding:12px;background:rgba(10,10,12,0.7);backdrop-filter:blur(8px);z-index:1000;border-radius:0 0 14px 14px}
-    header h1{margin:0;text-align:center;font-size:1.15rem}
-    #search-wrap{max-width:var(--maxw);margin:10px auto;position:relative}
-    #search{width:100%;padding:10px 56px 10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(20,20,24,0.6);color:var(--text);font-size:15px}
-    #scan-btn{position:absolute;right:44px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer}
-    #clear-search{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer}
-    #content{position:fixed;left:0;right:0;top:96px;bottom:0;overflow:auto;padding:12px;box-sizing:border-box}
-    .card{max-width:var(--maxw);margin:10px auto;padding:12px;border-radius:12px;background:linear-gradient(135deg,#121018,#1b1724);box-shadow:0 10px 30px rgba(0,0,0,0.6)}
-    .preview-wrap{border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,0.03)}
-    .preview-wrap.camera-1-3{height:34vh;min-height:140px}
-    video#preview{width:100%;height:100%;object-fit:cover;display:block}
-    .controls{display:flex;gap:8px;align-items:center;margin-top:10px}
-    .btn{padding:8px 10px;border-radius:8px;border:none;cursor:pointer;background:#222;color:var(--text)}
-    .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-light));color:#07060b;font-weight:700}
-    .list{max-width:var(--maxw);margin:12px auto;display:flex;flex-direction:column;gap:8px}
+  }
 
-    /* === Card design restored to original but full width === */
-    .item{
-      width:100%;
-      margin:10px 0;
-      padding:12px;
-      border-radius:12px;
-      background:var(--card-bg);
-      box-shadow:0 8px 30px rgba(0,0,0,0.6);
-      border-left:6px solid transparent;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
+  /* FAB кнопка меню */
+   #fabMenu {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 1001;
+    background-color: var(--accent);
+    color: white;
+    border: none;
+    padding: 0.9rem 1.2rem;
+    border-radius: 8px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #fabMenu:hover {
+    background-color: #3a56d6;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(67, 97, 238, 0.4);
+  }
+  #fabMenu:active {
+    transform: scale(0.96);
+    box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Затемнение фона */
+  #sheetOverlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    z-index: 999;
+  }
+  #sheetOverlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Bottom Sheet */
+  #bottomSheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: -60vh;
+    padding: 1.2rem;
+    background-color: white;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    transition: bottom 0.35s ease;
+    z-index: 1002;
+    animation: fadeIn 0.35s ease;
+  }
+  #bottomSheet.show {
+    bottom: 0;
+  }
+
+  /* Контейнер кнопок */
+  .sheet-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+
+  /* Кнопки внутри меню */
+  .sheet-btn {
+    background-color: #f5f5f5;
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 0.9rem 1rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sheet-btn:hover {
+    background-color: #e9e9e9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  .sheet-btn:active {
+    transform: scale(0.97);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Анимация */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.95);
     }
-    .item.match{border-left-color:#22c55e}
-    .item.missing{border-left-color:#ef4444}
-    .item.excess{border-left-color:#3b82f6}
-    .item.found{box-shadow:0 18px 50px rgba(106,17,203,0.18);transform:translateY(-6px)}
-    .field{margin-bottom:8px}
-    .label{font-weight:700;color:#dbeafe;margin-right:6px}
-    input[data-code]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#fff;color:#000;font-size:15px}
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+</style>
+ 
 
-    /* keyboard */
-    #custom-keyboard{position:fixed;left:0;right:0;bottom:-40vh;height:34vh;background:#0b0b0d;padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;z-index:3000;transition:bottom .28s}
-    #custom-keyboard.show{bottom:0}
-    #custom-keyboard button{border:none;border-radius:8px;background:#222;color:#fff;font-size:20px;cursor:pointer}
-    .hidden{display:none!important}
-    @media(min-width:900px){#content{padding-left:24px;padding-right:24px}}
-
-    /* === FAB кнопка меню (в стиле твоего примера) === */
-#fabMenu{
-  position:fixed;
-  bottom:1rem;
-  right:1rem;
-  z-index:1001;
-  background: linear-gradient(135deg, #6a11cb, #2575fc);
-  color:#fff;
-  border:none;
-  padding:0.9rem 1.2rem;
-  border-radius:14px;
-  font-size:1.2rem;
-  font-weight:600;
-  cursor:pointer;
-  box-shadow:0 6px 20px rgba(0,0,0,0.35), 0 0 12px rgba(106,17,203,0.6);
-  transition:all .3s ease;
-  backdrop-filter:blur(6px);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-#fabMenu:hover{
-  transform:translateY(-3px) scale(1.03);
-  box-shadow:0 10px 28px rgba(0,0,0,0.5), 0 0 18px rgba(37,117,252,0.8);
-}
-
-#fabMenu:active{
-  transform:scale(0.96);
-  box-shadow:inset 0 3px 8px rgba(0,0,0,0.6);
-}
-
-/* === Затемнение фона === */
-#sheetOverlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.55);
-  backdrop-filter:blur(4px);
-  opacity:0;
-  pointer-events:none;
-  transition:opacity .25s ease;
-  z-index:999;
-}
-
-#sheetOverlay.show{
-  opacity:1;
-  pointer-events:auto;
-}
-
-/* === Bottom Sheet (в стиле твоего меню) === */
-#bottomSheet{
-  position:fixed;
-  left:0;
-  right:0;
-  bottom:-60vh;
-  padding:1.2rem;
-  background:rgba(20,20,20,0.7);
-  backdrop-filter:blur(12px) saturate(180%);
-  border-radius:20px 20px 0 0;
-  box-shadow:0 -12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
-  transition:bottom .35s ease;
-  z-index:1002;
-  animation:fadeIn .35s ease;
-}
-
-#bottomSheet.show{
-  bottom:0;
-}
-
-/* Контейнер кнопок */
-.sheet-content{
-  display:flex;
-  flex-direction:column;
-  gap:0.7rem;
-}
-
-/* Кнопки внутри меню */
-.sheet-btn{
-  background:linear-gradient(145deg, #1f1f1f, #2c2c2c);
-  color:#f9f9f9;
-  border:none;
-  padding:0.9rem 1rem;
-  border-radius:12px;
-  font-size:1rem;
-  font-weight:500;
-  cursor:pointer;
-  transition:all .25s ease;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 14px rgba(0,0,0,0.4);
-  letter-spacing:0.3px;
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-
-.sheet-btn:hover{
-  background:linear-gradient(145deg, #2c2c2c, #3a3a3a);
-  transform:translateX(-3px);
-  box-shadow:0 8px 20px rgba(0,0,0,0.6), 0 0 10px rgba(255,255,255,0.15);
-}
-
-.sheet-btn:active{
-  transform:scale(0.97);
-  box-shadow:inset 0 3px 8px rgba(0,0,0,0.6);
-}
-
-/* Анимация */
-@keyframes fadeIn{
-  from{opacity:0; transform:translateY(12px) scale(0.95);}
-  to{opacity:1; transform:translateY(0) scale(1);}
-}
-
-  </style>
 </head>
 <body>
   <canvas id="bg"></canvas>
