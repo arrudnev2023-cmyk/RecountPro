@@ -502,6 +502,7 @@ th, td {
 
   <script>
 // Инициализация баз данных
+// Инициализация баз данных
 let db = {}; // название → массив штрих‑кодов (до 3 шт.)
 let quantities = {}; // название → количество (для других экранов)
 
@@ -615,8 +616,6 @@ function closeAllModals() {
   });
 }
 
-
-
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
   loadFromStorage();
@@ -687,31 +686,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Меню действий
-  // Открытие окна действий
-const menuBtn = document.getElementById('menuBtn');
-if (menuBtn) {
-  menuBtn.addEventListener('click', () => {
-    closeAllModals();
-    document.getElementById('actionsModal').style.display = 'flex';
-  });
-}
-
-// Закрытие при клике вне
-// Обработчик для закрытия модальных окон при клике вне их
-document.addEventListener('click', (e) => {
-  const actionsModal = document.getElementById('actionsModal');
   const menuBtn = document.getElementById('menuBtn');
-
-  // Проверяем, открыто ли окно действий
-  if (actionsModal && actionsModal.style.display === 'flex') {
-    // Если клик был вне модального окна И вне кнопки «Действия»
-    if (!actionsModal.contains(e.target) && !menuBtn.contains(e.target)) {
+  if (menuBtn) {
+    menuBtn.addEventListener('click', () => {
       closeAllModals();
-    }
+      document.getElementById('actionsModal').style.display = 'flex';
+    });
   }
-});
-
-
 
   // Экспорт базы
   const exportBtn = document.getElementById('exportBtn');
@@ -727,215 +708,211 @@ document.addEventListener('click', (e) => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      if (menuDropdown) menuDropdown.classList.remove('show');
+      closeAllModals();
       showToast('База экспортирована');
     });
   }
 
-  // Обработчики для модальных окон
   // Массовый импорт
- const massImportBtn = document.getElementById('massImportBtn');
-if (massImportBtn) {
-  massImportBtn.addEventListener('click', () => {
-    closeAllModals();
-    const modal = document.getElementById('massImportModal');
-    if (modal) {
-      modal.style.display = 'flex';
-    }
-    if (menuDropdown) {
-      menuDropdown.classList.remove('show');
-    }
-  });
-}
-
-// Кнопка отмены массового импорта
-const massImportCancel = document.getElementById('massImportCancel');
-if (massImportCancel) {
-  massImportCancel.addEventListener('click', closeAllModals);
-}
-
-// Импорт файла
-const fileImportBtn = document.getElementById('fileImportBtn'); // Исправлен ID: было importFileBtn
-if (fileImportBtn) {
-  fileImportBtn.addEventListener('click', () => {
-    closeAllModals();
-    const modal = document.getElementById('fileImportModal');
-    if (modal) {
-      modal.style.display = 'flex';
-    }
-    if (menuDropdown) {
-      menuDropdown.classList.remove('show');
-    }
-  });
-}
-
-// Кнопка отмены импорта файла
-const fileImportCancel = document.getElementById('fileImportCancel');
-if (fileImportCancel) {
-  fileImportCancel.addEventListener('click', closeAllModals);
-}
-
-// Очистка базы
-const clearDBBtn = document.getElementById('clearDBBtn');
-if (clearDBBtn) {
-  clearDBBtn.addEventListener('click', () => {
-    closeAllModals();
-    const confirmModal = document.getElementById('confirmModal');
-    if (confirmModal) {
-      confirmModal.style.display = 'flex';
-      document.getElementById('confirmTitle').textContent = 'Очистка базы';
-      document.getElementById('confirmMessage').textContent =
-        'Вы уверены, что хотите очистить всю базу данных? Это действие нельзя отменить.';
-    }
-  });
-}
-
-// Отмена подтверждения очистки
-const confirmCancel = document.getElementById('confirmCancel');
-if (confirmCancel) {
-  confirmCancel.addEventListener('click', closeAllModals);
-}
-
-// Подтверждение очистки
-const confirmOk = document.getElementById('confirmOk');
-if (confirmOk) {
-  confirmOk.addEventListener('click', () => {
-    db = {};
-    quantities = {};
-    saveToStorage();
-    renderTable(db);
-    closeAllModals();
-    showToast('База данных очищена');
-  });
-}
-
-// Массовый импорт — подтверждение
-const massImportConfirm = document.getElementById('massImportConfirm');
-if (massImportConfirm) {
-  massImportConfirm.addEventListener('click', () => {
-    const input = document.getElementById('massImportData')?.value || '';
-    const lines = input.split('\n').filter(line => line.trim());
-    const imported = {};
-
-    lines.forEach(line => {
-      const trimmedLine = line.trim();
-      const colonMatch = trimmedLine.match(/^"([^"]+)":\s*"([^"]+)"/);
-      const commaMatch = trimmedLine.match(/^([^,]+),\s*(.+)$/);
-
-      if (colonMatch) {
-        const name = colonMatch[1].trim();
-        const code = colonMatch[2].trim();
-        if (!imported[name]) imported[name] = [];
-        imported[name].push(code);
-        return;
-      }
-
-      if (commaMatch) {
-        const code = commaMatch[1].trim();
-        const name = commaMatch[2].trim();
-        if (!imported[name]) imported[name] = [];
-        imported[name].push(code);
-        return;
-      }
-
-      // Если просто код без названия — добавляем с пустым названием
-      if (trimmedLine.length > 0) {
-        if (!imported['']) imported[''] = [];
-        imported[''].push(trimmedLine);
+  const massImportBtn = document.getElementById('massImportBtn');
+  if (massImportBtn) {
+    massImportBtn.addEventListener('click', () => {
+      closeAllModals();
+      const modal = document.getElementById('massImportModal');
+      if (modal) {
+        modal.style.display = 'flex';
       }
     });
+  }
 
-    // Объединяем с существующей базой, обрабатываем до 3 штрих‑кодов на товар
-    Object.entries(imported).forEach(([name, codes]) => {
-      if (!Array.isArray(codes)) codes = [codes];
+  // Кнопка отмены массового импорта
+  const massImportCancel = document.getElementById('massImportCancel');
+  if (massImportCancel) {
+    massImportCancel.addEventListener('click', closeAllModals);
+  }
 
-      if (db[name]) {
-        // Объединяем массивы и убираем дубликаты
-        const existingCodes = new Set([...db[name], ...codes]);
-        db[name] = Array.from(existingCodes).slice(0, 3);
-      } else {
-        // Создаём новую запись, ограничиваем до 3 кодов
-        db[name] = [...new Set(codes)].slice(0, 3);
-        quantities[name] = quantities[name] || 0; // инициализируем количество
+  // Импорт файла
+    // Импорт файла
+  const fileImportBtn = document.getElementById('fileImportBtn');
+  if (fileImportBtn) {
+    fileImportBtn.addEventListener('click', () => {
+      closeAllModals();
+      const modal = document.getElementById('fileImportModal');
+      if (modal) {
+        modal.style.display = 'flex';
       }
     });
+  }
 
-    saveToStorage();
-    renderTable(db);
-    closeAllModals();
-    const massImportData = document.getElementById('massImportData');
-    if (massImportData) {
-      massImportData.value = '';
-    }
-    showToast('Массовый импорт завершён');
-  });
-}
+  // Кнопка отмены импорта файла
+  const fileImportCancel = document.getElementById('fileImportCancel');
+  if (fileImportCancel) {
+    fileImportCancel.addEventListener('click', closeAllModals);
+  }
 
-// Импорт файла — подтверждение
-const fileImportConfirm = document.getElementById('fileImportConfirm');
-if (fileImportConfirm) {
-  fileImportConfirm.addEventListener('click', () => {
-    const fileInput = document.getElementById('fileInput');
-    const file = fileInput?.files[0];
+  // Очистка базы
+  const clearDBBtn = document.getElementById('clearDBBtn');
+  if (clearDBBtn) {
+    clearDBBtn.addEventListener('click', () => {
+      closeAllModals();
+      const confirmModal = document.getElementById('confirmModal');
+      if (confirmModal) {
+        confirmModal.style.display = 'flex';
+        document.getElementById('confirmTitle').textContent = 'Очистка базы';
+        document.getElementById('confirmMessage').textContent =
+          'Вы уверены, что хотите очистить всю базу данных? Это действие нельзя отменить.';
+      }
+    });
+  }
 
-    if (!file) {
-      showToast('Выберите файл для импорта');
-      return;
-    }
+  // Отмена подтверждения очистки
+  const confirmCancel = document.getElementById('confirmCancel');
+  if (confirmCancel) {
+    confirmCancel.addEventListener('click', closeAllModals);
+  }
 
-    const reader = new FileReader();
+  // Подтверждение очистки
+  const confirmOk = document.getElementById('confirmOk');
+  if (confirmOk) {
+    confirmOk.addEventListener('click', () => {
+      db = {};
+      quantities = {};
+      saveToStorage();
+      renderTable(db);
+      closeAllModals();
+      showToast('База данных очищена');
+    });
+  }
 
-    reader.onload = function(e) {
-      try {
-        const importedData = JSON.parse(e.target.result);
+  // Массовый импорт — подтверждение
+  const massImportConfirm = document.getElementById('massImportConfirm');
+  if (massImportConfirm) {
+    massImportConfirm.addEventListener('click', () => {
+      const input = document.getElementById('massImportData')?.value || '';
+      const lines = input.split('\n').filter(line => line.trim());
+      const imported = {};
 
-        if (importedData && typeof importedData === 'object') {
-          db = importedData.db || {};
-          quantities = importedData.quantities || {};
+      lines.forEach(line => {
+        const trimmedLine = line.trim();
+        const colonMatch = trimmedLine.match(/^"([^"]+)":\s*"([^"]+)"/);
+        const commaMatch = trimmedLine.match(/^([^,]+),\s*(.+)$/);
 
-          saveToStorage();
-          renderTable(db);
-          showToast('База успешно импортирована');
-        } else {
-          showToast('Неверный формат файла');
+        if (colonMatch) {
+          const name = colonMatch[1].trim();
+          const code = colonMatch[2].trim();
+          if (!imported[name]) imported[name] = [];
+          imported[name].push(code);
+          return;
         }
-      } catch (error) {
-        console.error('Ошибка парсинга JSON:', error);
-        showToast('Ошибка чтения файла — проверьте формат');
+
+        if (commaMatch) {
+          const code = commaMatch[1].trim();
+          const name = commaMatch[2].trim();
+          if (!imported[name]) imported[name] = [];
+          imported[name].push(code);
+          return;
+        }
+
+        // Если просто код без названия — добавляем с пустым названием
+        if (trimmedLine.length > 0) {
+          if (!imported['']) imported[''] = [];
+          imported[''].push(trimmedLine);
+        }
+      });
+
+      // Объединяем с существующей базой, обрабатываем до 3 штрих‑кодов на товар
+      Object.entries(imported).forEach(([name, codes]) => {
+        if (!Array.isArray(codes)) codes = [codes];
+
+        if (db[name]) {
+          // Объединяем массивы и убираем дубликаты
+          const existingCodes = new Set([...db[name], ...codes]);
+          db[name] = Array.from(existingCodes).slice(0, 3);
+        } else {
+          // Создаём новую запись, ограничиваем до 3 кодов
+          db[name] = [...new Set(codes)].slice(0, 3);
+          quantities[name] = quantities[name] || 0; // инициализируем количество
+        }
+      });
+
+      saveToStorage();
+      renderTable(db);
+      closeAllModals();
+      const massImportData = document.getElementById('massImportData');
+      if (massImportData) {
+        massImportData.value = '';
       }
-    };
+      showToast('Массовый импорт завершён');
+    });
+  }
 
-    reader.onerror = function() {
-      showToast('Ошибка при чтении файла');
-    };
+  // Импорт файла — подтверждение
+  const fileImportConfirm = document.getElementById('fileImportConfirm');
+  if (fileImportConfirm) {
+    fileImportConfirm.addEventListener('click', () => {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput?.files[0];
 
-    reader.readAsText(file);
-    closeAllModals();
-    if (fileInput) {
-      fileInput.value = ''; // Очищаем поле файла
-    }
-  });
-}
-
-// Закрытие модальных окон при клике вне их
-document.addEventListener('click', (e) => {
-  const modals = [
-    document.getElementById('massImportModal'),
-    document.getElementById('fileImportModal'),
-    document.getElementById('confirmModal')
-  ];
-
-  modals.forEach(modal => {
-    if (modal && modal.style.display === 'flex' && !modal.contains(e.target)) {
-      // Проверяем, что клик был вне модального окна и не по кнопкам меню
-      if (!e.target.closest('.actions-menu') && !e.target.closest('.btn')) {
-        closeAllModals();
+      if (!file) {
+        showToast('Выберите файл для импорта');
+        return;
       }
-    }
+
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        try {
+          const importedData = JSON.parse(e.target.result);
+
+          if (importedData && typeof importedData === 'object') {
+            db = importedData.db || {};
+            quantities = importedData.quantities || {};
+
+            saveToStorage();
+            renderTable(db);
+            showToast('База успешно импортирована');
+          } else {
+            showToast('Неверный формат файла');
+          }
+        } catch (error) {
+          console.error('Ошибка парсинга JSON:', error);
+          showToast('Ошибка чтения файла — проверьте формат');
+        }
+      };
+
+      reader.onerror = function() {
+        showToast('Ошибка при чтении файла');
+      };
+
+      reader.readAsText(file);
+      closeAllModals();
+      if (fileInput) {
+        fileInput.value = ''; // Очищаем поле файла
+      }
+    });
+  }
+
+  // Закрытие модальных окон при клике вне их
+  document.addEventListener('click', (e) => {
+    const modals = [
+      document.getElementById('massImportModal'),
+      document.getElementById('fileImportModal'),
+      document.getElementById('confirmModal')
+    ];
+
+    modals.forEach(modal => {
+      if (modal && modal.style.display === 'flex' && !modal.contains(e.target)) {
+        // Проверяем, что клик был вне модального окна и не по кнопкам меню
+        if (!e.target.closest('.actions-menu') && !e.target.closest('.btn')) {
+          closeAllModals();
+        }
+      }
+    });
   });
 });
-});
-    function refreshTable() {
+
+// Функция обновления таблицы
+function refreshTable() {
   loadFromStorage();
   renderTable(db);
   showToast('База обновлена');
@@ -950,6 +927,7 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('storage', () => {
   refreshTable();
 });
+
 
 </script>
 
