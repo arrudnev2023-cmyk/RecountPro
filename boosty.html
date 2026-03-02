@@ -188,7 +188,17 @@
 
   <script>
     /* ===== State ===== */
-    let barcodeDB = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
+   let barcodeDB = {};
+try {
+  const saved = localStorage.getItem('barcodeDB');
+  if (saved) {
+    barcodeDB = JSON.parse(saved);
+  }
+} catch (e) {
+  console.error('Ошибка загрузки базы:', e);
+  barcodeDB = {}; // Безопасный fallback
+}
+
     let stream = null;
     let scanning = false;
     let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
@@ -215,9 +225,16 @@
       }, ms);
     }
 
-    function saveBarcodeDB() {
-      localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
-    }
+   function saveBarcodeDB() {
+  try {
+    localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
+    console.log('База сохранена:', barcodeDB); // Отладочный вывод
+  } catch (e) {
+    console.error('Ошибка сохранения в localStorage:', e);
+    showToast('Не удалось сохранить (проверьте настройки браузера)');
+  }
+}
+
 
     function beep() {
       try { navigator.vibrate?.(60); } catch(e) {}
@@ -382,30 +399,24 @@ function handleDetected(code) {
   beep();
   barcodeInput.value = code;
 
-  let entry = barcodeDB[code];
+  const entry = barcodeDB[code];
   let name = '';
 
-  if (entry) {
-    // Если в базе лежит объект — достаём название
-    if (typeof entry === 'object' && entry !== null) {
-      name =
-        entry.name ||
-        entry.title ||
-        entry.product_name ||
-        entry.label ||
-        '';
-    } else {
-      // Если строка — используем как есть
-      name = entry;
-    }
+  if (entry && typeof entry === 'object') {
+    name = entry.name || '';
+  } else if (typeof entry === 'string') {
+    // Для совместимости со старыми данными
+    name = entry;
+  }
 
-    nameInput.value = name;
+  nameInput.value = name;
+  if (name) {
     showToast('Найден в базе: название подставлено');
   } else {
-    nameInput.value = '';
     showToast('Код найден — введите название и сохраните');
   }
 }
+
 
 /* Save to barcodeDB */
 saveBtn.addEventListener('click', () => {
@@ -415,10 +426,12 @@ saveBtn.addEventListener('click', () => {
   if (!code) return showToast('Штрих-код пустой');
   if (!name) return showToast('Введите название товара');
 
-  barcodeDB[code] = name;
+  // Сохраняем в формате объекта
+  barcodeDB[code] = { name: name };
   saveBarcodeDB();
   showToast('Сохранено в базе');
 });
+
 
 /* Clear fields */
 clearBtn.addEventListener('click', () => {
