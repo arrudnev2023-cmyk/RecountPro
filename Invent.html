@@ -505,133 +505,87 @@ function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,
 /* =========================
    Load DB — пустая база, без образцовых товаров
    ========================= */
-function loadBarcodeDB() {
+function loadDB() {
   try {
-    const raw = localStorage.getItem('barcodeDB');
+    const raw = localStorage.getItem("barcodeDB");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') {
+      // Если старый формат — конвертируем
+      if (parsed.db && parsed.quantities) {
+        barcodeDB = {};
+        Object.entries(parsed.db).forEach(([name, codes]) => {
+          const qty = parsed.quantities[name] || 0;
+          codes.forEach(code => {
+            barcodeDB[code] = { name, unit: "шт", price: 0, qty };
+          });
+        });
+      } else {
+        // Новый формат — просто загружаем
         barcodeDB = parsed;
-        return;
       }
+    } else {
+      // Пустая база по умолчанию
+      barcodeDB = {};
     }
-  } catch (e) {}
-  // Пустая база при отсутствии данных
-  barcodeDB = {};
+  } catch (e) {
+    console.error("Ошибка загрузки базы:", e);
+    barcodeDB = {};
+  }
 }
+
+function saveDB() {
+  try {
+    localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
+  } catch (e) {
+    console.error("Ошибка сохранения:", e);
+  }
+}
+
 
 /* =========================
    Build items list from DB
    ========================= */
-function buildAllItemsFromDB() {
+function buildItems() {
   allItems = [];
-
-  for (const code in barcodeDB) {
-    const b = barcodeDB[code];
-    let name, unit, price, qty;
-
-    if (typeof b === "string") {
-      // Старый формат: только название
-      name = b;
-      unit = "";
-      price = 0;
-      qty = 0;
-    } else if (b && typeof b === "object") {
-      // Новый формат: объект с полями
-      name = b.name && b.name.trim() !== "" ? b.name : code;
-      unit = b.unit || "";
-      price = Number(b.price || 0);
-      qty = Number(b.qty || 0);
-    } else {
-      // Неизвестный формат — используем код как название
-      name = code;
-      unit = "";
-      price = 0;
-      qty = 0;
-    }
-
+  Object.entries(barcodeDB).forEach(([code, data]) => {
     allItems.push({
-      code,
-      name,
-      unit,
-      price,
-      docQty: qty
+      code: code,
+      name: data.name || `Товар ${code}`,
+      unit: data.unit || "шт",
+      price: data.price || 0,
+      qty: data.qty || 0
     });
-  }
-
-  return allItems;
+  });
 }
+
 
 /* =========================
    Render UI
    ========================= */
 function render(items) {
-  listEl.innerHTML = '';
-
-  if (!items.length) {
-    listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Отсканируйте первый товар</div>';
+  listEl.innerHTML = "";
+  if (items.length === 0) {
+    listEl.innerHTML = "<p style='text-align:center;color:var(--muted);padding:20px'>База товаров пуста. Добавьте товары через импорт или сканирование.</p>";
     return;
   }
-
   items.forEach(item => {
-    const nameFromDB = barcodeDB[item.code]?.name;
-    const displayName = nameFromDB || `Товар ${item.code}`;
-    const unitFromDB = barcodeDB[item.code]?.unit || '';
-    const priceFromDB = barcodeDB[item.code]?.price || 0;
-
-    const value =
-      sessionValues[item.code] ||
-      localStorage.getItem('qty_' + item.code) ||
-      '';
-
-    const div = document.createElement('div');
-    div.className = 'item';
+    const div = document.createElement("div");
+    div.className = "item";
     div.dataset.code = item.code;
-
-    // Определяем статус для цветовой индикации
-    const actual = parseFloat(sessionValues[item.code] || 0);
-    const diff = actual - item.docQty;
-
-    if (actual === item.docQty) {
-      div.classList.add('match');
-    } else if (actual < item.docQty) {
-      div.classList.add('missing');
-    } else if (actual > item.docQty) {
-      div.classList.add('excess');
-    }
+    div.dataset.name = item.name;
 
     div.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-        <strong>${escapeHtml(displayName)}</strong>
-        <span style="color:var(--muted);font-size:0.85rem;">${item.code}</span>
-      </div>
-      <div class="field">
-        <span class="label">Учётное кол-во:</span>
-        <span>${item.docQty} ${unitFromDB}</span>
-      </div>
-      <div class="field">
-        <span class="label">Фактическое кол-во:</span>
-        <input
-          type="number"
-          data-code="${item.code}"
-          value="${value}"
-          placeholder="Введите количество"
-          style="width:100%;box-sizing:border-box;"
-        >
-      </div>
-      <div class="field">
-        <span class="label">Разница:</span>
-        <span style="color:${diff === 0 ? 'inherit' : diff > 0 ? '#10b981' : '#ef4444'}">
-          ${diff > 0 ? '+' : ''}${diff} ${unitFromDB}
-        </span>
-      </div>
+      <div class="field"><span class="label">Название:</span> ${escapeHtml(item.name)}</div>
+      <div class="field"><span class="label">Штрих‑код:</span> ${item.code}</div>
+      <div class="field"><span class="label">Единица:</span> ${item.unit}</div>
+      <div class="field"><span class="label">Цена:</span> ${item.price} ₽</div>
+      <div class="field"><span class="label">Остаток:</span> ${item.qty}</div>
     `;
 
     listEl.appendChild(div);
   });
-
-  setupInputHandlers();
 }
+
 
 function setupInputHandlers() {
   document.querySelectorAll('input[data-code]').forEach(input => {
@@ -918,6 +872,35 @@ async function init() {
 
 // Запуск приложения
 document.addEventListener('DOMContentLoaded', init);
+
+  function handleDetected(code) {
+  const now = Date.now();
+  if (code === lastDetected.code && now - lastDetected.ts < DEBOUNCE_MS) return;
+  lastDetected = { code, ts: now };
+
+  // Вибрация для обратной связи
+  try { navigator.vibrate?.(60); } catch (e) {}
+
+  // Прямой поиск по штрих‑коду
+  const item = barcodeDB[code];
+  if (item) {
+    highlightItem(code);
+    showToast(`Найден: ${item.name} (остаток: ${item.qty})`);
+  } else {
+    // Товар не найден — добавляем в базу с нулевым остатком
+    barcodeDB[code] = {
+      name: `Товар ${code}`,
+      unit: "шт",
+      price: 0,
+      qty: 0
+    };
+    saveDB();
+    buildItems();
+    render(allItems);
+    showToast(`Добавлен новый товар: ${code}`);
+  }
+}
+
 </script>
 </body>
 </html>
