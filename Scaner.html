@@ -811,6 +811,7 @@ if (confirmOk) {
 
 // Массовый импорт — подтверждение
 // Массовый импорт — подтверждение
+// Массовый импорт — подтверждение
 const massImportConfirm = document.getElementById('massImportConfirm');
 if (massImportConfirm) {
   massImportConfirm.addEventListener('click', () => {
@@ -852,6 +853,20 @@ if (massImportConfirm) {
         console.warn(`Строка ${index + 1} не соответствует формату: ${trimmedLine}`);
       }
     });
+
+    // Сохраняем и обновляем интерфейс
+    if (successCount > 0) {
+      saveToStorage();
+      renderTable(db);
+      closeAllModals();
+      document.getElementById('massImportData').value = ''; // Очищаем поле ввода
+      showToast(`Успешно импортировано ${successCount} позиций! Ошибок: ${errorCount}`);
+    } else {
+      showToast(`Не удалось распознать ни одного штрихкода. Проверьте формат данных. Ошибок: ${errorCount}`);
+    }
+  });
+
+
 
     // Сохраняем и обновляем интерфейс
     if (successCount > 0) {
