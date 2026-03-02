@@ -935,6 +935,22 @@ document.addEventListener('click', (e) => {
   });
 });
 });
+    function refreshTable() {
+  loadFromStorage();
+  renderTable(db);
+  showToast('База обновлена');
+}
+
+// Обновление при загрузке и при изменении localStorage
+document.addEventListener('DOMContentLoaded', () => {
+  refreshTable();
+});
+
+// Отслеживание изменений localStorage (для синхронизации между вкладками)
+window.addEventListener('storage', () => {
+  refreshTable();
+});
+
 </script>
 
 </body>
