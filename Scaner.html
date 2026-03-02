@@ -195,18 +195,19 @@
     }
 
     /* Modal */
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      align-items: center;
-      justify-content: center;
-      z-index: 1001;
-    }
+   .modal {
+  display: none; /* Изначально скрыто */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+
 
     .modal-content {
       background: var(--panel);
@@ -802,14 +803,61 @@ document.getElementById('fileImportConfirm').addEventListener('click', () => {
 });
 
 // Закрытие модальных окон при клике вне их
+// Закрытие модальных окон при клике вне их
 document.addEventListener('click', (e) => {
-  if (e.target.classList.contains('modal')) {
-    document.getElementById('massImportModal').style.display = 'none';
-    document.getElementById('fileImportModal').style.display = 'none';
-    document.getElementById('confirmModal').style.display = 'none';
-  }
+  const modals = [
+    document.getElementById('massImportModal'),
+    document.getElementById('fileImportModal'),
+    document.getElementById('confirmModal')
+  ];
+
+  modals.forEach(modal => {
+    if (modal && modal.style.display === 'flex' && !modal.contains(e.target)) {
+      modal.style.display = 'none';
+    }
+  });
 });
+
+// Обработчики для кнопок открытия/закрытия модальных окон
+document.getElementById('massImportBtn').addEventListener('click', () => {
+  document.getElementById('massImportModal').style.display = 'flex';
+  menuDropdown.classList.remove('show');
 });
+
+document.getElementById('massImportCancel').addEventListener('click', () => {
+  document.getElementById('massImportModal').style.display = 'none';
+});
+
+document.getElementById('fileImportBtn').addEventListener('click', () => {
+  document.getElementById('fileImportModal').style.display = 'flex';
+  menuDropdown.classList.remove('show');
+});
+
+document.getElementById('fileImportCancel').addEventListener('click', () => {
+  document.getElementById('fileImportModal').style.display = 'none';
+});
+
+document.getElementById('clearDBBtn').addEventListener('click', () => {
+  document.getElementById('confirmTitle').textContent = 'Очистка базы';
+  document.getElementById('confirmMessage').textContent =
+    'Вы уверены, что хотите очистить всю базу данных? Это действие нельзя отменить.';
+  document.getElementById('confirmModal').style.display = 'flex';
+  menuDropdown.classList.remove('show');
+});
+
+document.getElementById('confirmCancel').addEventListener('click', () => {
+  document.getElementById('confirmModal').style.display = 'none';
+});
+
+document.getElementById('confirmOk').addEventListener('click', () => {
+  db = {};
+  quantities = {};
+  saveToStorage();
+  renderTable(db);
+  document.getElementById('confirmModal').style.display = 'none';
+  showToast('База данных очищена');
+});
+
   </script>
 </body>
 </html>
