@@ -605,15 +605,16 @@ function renderTable(data) {
 // Функция закрытия всех модальных окон
 function closeAllModals() {
   const modals = [
+    document.getElementById('actionsModal'), // Добавлено!
     document.getElementById('massImportModal'),
     document.getElementById('fileImportModal'),
     document.getElementById('confirmModal')
   ];
-
   modals.forEach(modal => {
     if (modal) modal.style.display = 'none';
   });
 }
+
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
@@ -685,21 +686,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Меню действий
-  const menuBtn = document.getElementById('menuBtn');
-  const menuDropdown = document.getElementById('menuDropdown');
+  // Открытие окна действий
+const menuBtn = document.getElementById('menuBtn');
+if (menuBtn) {
+  menuBtn.addEventListener('click', () => {
+    closeAllModals();
+    document.getElementById('actionsModal').style.display = 'flex';
+  });
+}
 
-  if (menuBtn && menuDropdown) {
-    menuBtn.addEventListener('click', () => {
-      menuDropdown.classList.toggle('show');
-    });
-
-    // Закрытие меню при клике вне его
-    document.addEventListener('click', (e) => {
-      if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
-        menuDropdown.classList.remove('show');
-      }
-    });
+// Закрытие при клике вне
+document.addEventListener('click', (e) => {
+  const actionsModal = document.getElementById('actionsModal');
+  if (actionsModal && actionsModal.style.display === 'flex' &&
+      !actionsModal.contains(e.target) && !menuBtn.contains(e.target)) {
+    closeAllModals();
   }
+});
+
 
   // Экспорт базы
   const exportBtn = document.getElementById('exportBtn');
