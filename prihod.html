@@ -389,34 +389,58 @@ let barcodeCodes = {};
 let allItems = [];
 let showZero = false;
 
-function loadDB(){
-  try{
+function loadDB() {
+  try {
     const raw = localStorage.getItem("barcodeDB");
-    if(raw){
+    if (raw) {
       const parsed = JSON.parse(raw);
-      if(parsed && typeof parsed === "object"){
-        barcodeDB = parsed;
-      }
-    }
-  }catch(e){ barcodeDB = {}; }
 
-  try{
-    const rawCodes = localStorage.getItem("barcodeCodes");
-    if(rawCodes){
-      const parsed = JSON.parse(rawCodes);
-      if(parsed && typeof parsed === "object"){
-        barcodeCodes = parsed;
-      }
-    }
-  }catch(e){ barcodeCodes = {}; }
+      // Если данные уже в новом формате — используем их
+      if (parsed.db && parsed.quantities) {
+        barcodeDB = parsed.db;
+        quantities = parsed.quantities;
+      } else {
+        // Если старый формат — конвертируем
+        barcodeDB = {};
+        quantities = {};
 
-  if(!barcodeDB) barcodeDB = {};
-  if(!barcodeCodes) barcodeCodes = {};
+        Object.entries(parsed).forEach(([code, data]) => {
+          const name = typeof data === "string" ? data : data.name;
+          if (!barcodeDB[name]) {
+            barcodeDB[name] = [];
+            quantities[name] = 0;
+          }
+          barcodeDB[name].push(code);
+          // Если в старых данных был qty — сохраняем
+          if (data.qty !== undefined) {
+            quantities[name] = data.qty;
+          }
+        });
+      }
+    } else {
+      // Если данных нет — инициализируем пустые объекты
+      barcodeDB = {};
+      quantities = {};
+    }
+  } catch (e) {
+    console.error("Ошибка загрузки базы:", e);
+    barcodeDB = {};
+    quantities = {};
+  }
 }
 
-function saveDB(){
-  localStorage.setItem("barcodeDB", JSON.stringify(barcodeDB));
+
+function saveDB() {
+  try {
+    localStorage.setItem("barcodeDB", JSON.stringify({
+      db: barcodeDB,
+      quantities: quantities
+    }));
+  } catch (e) {
+    console.error("Ошибка сохранения:", e);
+  }
 }
+
 
 function escapeHtml(s){
   return String(s||"")
@@ -431,26 +455,19 @@ function escapeHtml(s){
 ========================= */
 
 function buildItems() {
-  allItems = Object.keys(barcodeDB).map(code => {
-    const rec = barcodeDB[code];
-    let name;
-    let qty = 0;
+  allItems = [];
 
-    if (typeof rec === "string") {
-      name = rec;
-      qty = 0;
-    } else if (rec && typeof rec === "object") {
-      // Если name есть и не пустая строка — берём его, иначе — код
-      name = rec.name && rec.name.trim() !== "" ? rec.name : code;
-      qty = Number(rec.qty || 0);
-    } else {
-      name = code;
-      qty = 0;
-    }
-
-    return { code, name, qty };
+  Object.entries(barcodeDB).forEach(([name, codes]) => {
+    codes.forEach(code => {
+      allItems.push({
+        code: code,
+        name: name,
+        qty: quantities[name] || 0
+      });
+    });
   });
 }
+
 
 
 
@@ -461,21 +478,19 @@ function buildItems() {
 const listEl = document.getElementById("list");
 
   
-function render(items){
+function render(items) {
   listEl.innerHTML = "";
 
   items.forEach(item => {
     if (!showZero && item.qty === 0) return;
 
-    // --- Берём название из базы ШТРИХ-КОДОВ ---
-    let name = barcodeCodes[item.code] || item.name || item.code;
-
     const div = document.createElement("div");
     div.className = "item";
     div.dataset.code = item.code;
+    div.dataset.name = item.name; // добавляем имя для поиска
 
     div.innerHTML = `
-      <div class="field"><span class="label">Название:</span> ${escapeHtml(name)}</div>
+      <div class="field"><span class="label">Название:</span> ${escapeHtml(item.name)}</div>
       <div class="field"><span class="label">Штрих‑код:</span> ${item.code}</div>
       <div class="field qty-current"><span class="label">Остаток:</span> <span class="curQty">${item.qty}</span></div>
 
@@ -483,18 +498,18 @@ function render(items){
         <div class="qty-row">
           <div class="qty-row-label">Приход</div>
           <div class="qty-controls">
-            <button class="plusPlus" data-code="${item.code}">+1</button>
-            <input type="number" class="qtyPlusInput" data-code="${item.code}" value="0" min="0">
-            <button class="minusPlus" data-code="${item.code}">-1</button>
+            <button class="plusPlus" data-code="${item.code}" data-name="${item.name}">+1</button>
+            <input type="number" class="qtyPlusInput" data-code="${item.code}" data-name="${item.name}" value="0" min="0">
+            <button class="minusPlus" data-code="${item.code}" data-name="${item.name}">-1</button>
           </div>
         </div>
 
         <div class="qty-row">
           <div class="qty-row-label">Расход</div>
           <div class="qty-controls">
-            <button class="plusMinus" data-code="${item.code}">+1</button>
-            <input type="number" class="qtyMinusInput" data-code="${item.code}" value="0" min="0">
-            <button class="minusMinus" data-code="${item.code}">-1</button>
+            <button class="plusMinus" data-code="${item.code}" data-name="${item.name}">+1</button>
+            <input type="number" class="qtyMinusInput" data-code="${item.code}" data-name="${item.name}" value="0" min="0">
+            <button class="minusMinus" data-code="${item.code}" data-name="${item.name}">-1</button>
           </div>
         </div>
       </div>
@@ -511,59 +526,38 @@ function render(items){
 
 
 
+
 /* =========================
    ПРИХОД / РАСХОД
 ========================= */
 
-function applyChange(code) {
-  const plusInput  = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
+function applyChange(code, name) {
+  const plusInput = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
   const minusInput = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
-  if(!plusInput || !minusInput) return;
+  if (!plusInput || !minusInput) return;
 
-  let plus  = Number(plusInput.value || 0);
+  let plus = Number(plusInput.value || 0);
   let minus = Number(minusInput.value || 0);
-  if(isNaN(plus)) plus = 0;
-  if(isNaN(minus)) minus = 0;
+  if (isNaN(plus)) plus = 0;
+  if (isNaN(minus)) minus = 0;
 
-  // старый остаток
-  let oldQty = 0;
-  const rec = barcodeDB[code];
-
-  if (rec) {
-    if (typeof rec === "object" && rec !== null) {
-      oldQty = Number(rec.qty || 0);
-    } else {
-      // если там строка (старый формат) — qty считаем 0
-      oldQty = 0;
-    }
-  }
-
+  // Старый остаток
+  let oldQty = quantities[name] || 0;
   let newQty = oldQty + plus - minus;
   if (newQty < 0) newQty = 0;
 
-  // если товара нет или он в виде строки — нормализуем в объект
-  if (!rec) {
-    barcodeDB[code] = {
-      name: barcodeCodes[code] || code,
-      qty: newQty
-    };
-  } else if (typeof rec === "string") {
-    barcodeDB[code] = {
-      name: rec,
-      qty: newQty
-    };
-  } else {
-    barcodeDB[code].qty = newQty;
-  }
+  // Обновляем количество
+  quantities[name] = newQty;
 
+  // Сохраняем в унифицированном формате
   saveDB();
 
   const card = document.querySelector(`.item[data-code="${code}"]`);
-  if(card){
+  if (card) {
     const cur = card.querySelector(".curQty");
-    if(cur) cur.textContent = newQty;
+    if (cur) cur.textContent = newQty;
     card.classList.add("highlight-purple");
-    setTimeout(()=> card.classList.remove("highlight-purple"), 600);
+    setTimeout(() => card.classList.remove("highlight-purple"), 600);
   }
 
   plusInput.value = "0";
@@ -572,15 +566,19 @@ function applyChange(code) {
 
 
 
+
 function attachQtyHandlers(){
-  document.querySelectorAll(".plusPlus").forEach(btn=>{
-    btn.onclick = ()=>{
-      const code = btn.dataset.code;
-      const input = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
-      input.value = Number(input.value||0)+1;
-      applyChange(code);
-    };
-  });
+  document.querySelectorAll(".plusPlus").forEach(btn => {
+  btn.onclick = () => {
+    const code = btn.dataset.code;
+    const name = btn.dataset.name;
+    const input = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
+    input.value = Number(input.value || 0) + 1;
+    applyChange(code, name);
+  };
+});
+// Аналогично для остальных кнопок (+1, -1 для прихода и расхода)
+
 
   document.querySelectorAll(".minusPlus").forEach(btn=>{
     btn.onclick = ()=>{
@@ -646,12 +644,12 @@ searchEl.addEventListener("input", () => {
 
   document.querySelectorAll("#list .item").forEach(div => {
     const code = normalize(div.dataset.code);
-    const rec = barcodeDB[div.dataset.code] || { name: barcodeCodes[div.dataset.code] || "" };
-    const name = normalize(typeof rec === "string" ? rec : (rec?.name || ""));
+    const name = normalize(div.dataset.name);
     const match = q === "" || matchesQuery(name, q) || matchesQuery(code, q);
     div.classList.toggle("hidden", !match);
   });
 });
+
 
 clearSearchBtn.addEventListener("click", () => {
   searchEl.value = "";
