@@ -274,23 +274,32 @@ saveBtn.addEventListener('click', () => {
   // Добавление нового штрих‑кода в структуру db
   if (!currentDB.db[name]) {
     currentDB.db[name] = [];
-  }
-  if (!currentDB.db[name].includes(code)) {
-    currentDB.db[name].push(code);
-  } else {
-    showToast('Этот штрих‑код уже есть у данного товара');
+    currentDB.quantities[name] = 0; // инициализация количества
   }
 
-  // Сохранение в localStorage
+  // Проверка на дубликат штрих‑кода для этого товара
+  if (currentDB.db[name].includes(code)) {
+    showToast('Этот штрих‑код уже есть у товара «' + name + '»');
+    return;
+  }
+
+  currentDB.db[name].push(code);
+
+  // Сохранение в унифицированном формате
   try {
     localStorage.setItem('barcodeDB', JSON.stringify(currentDB));
-    console.log('Данные сохранены:', currentDB);
+    console.log('Сохранено в унифицированном формате:', currentDB);
     showToast(`Штрих-код ${code} сохранён для "${name}"`);
+
+    // Очищаем форму
+    barcodeInput.value = '';
+    nameInput.value = '';
   } catch (e) {
     console.error('Ошибка сохранения:', e);
     showToast('Не удалось сохранить — проверьте настройки браузера');
   }
 });
+
 
 
 
