@@ -225,15 +225,46 @@ try {
       }, ms);
     }
 
-  function saveBarcodeDB() {
+ function saveBarcodeDB() {
   try {
-    localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
-    console.log('Данные сохранены в localStorage:', barcodeDB);
+    // Преобразуем формат: из { "123": {name: "Товар"} } в { db: {"Товар": ["123"] } }
+    const unifiedDB = {};
+    Object.entries(barcodeDB).forEach(([code, data]) => {
+      const name = data.name;
+      if (!unifiedDB[name]) unifiedDB[name] = [];
+      unifiedDB[name].push(code);
+    });
+
+    localStorage.setItem('barcodeDB', JSON.stringify({
+      db: unifiedDB,
+      quantities: {} // пока пустые, можно расширить позже
+    }));
+    console.log('Сохранено в унифицированном формате:', unifiedDB);
   } catch (e) {
-    console.error('Критическая ошибка сохранения:', e);
-    showToast('Ошибка сохранения: localStorage недоступен');
+    console.error('Ошибка сохранения:', e);
+    showToast('Не удалось сохранить — проверьте настройки браузера');
   }
 }
+
+saveBtn.addEventListener('click', () => {
+  const code = (barcodeInput.value || '').trim();
+  const name = (nameInput.value || '').trim();
+
+  if (!code) {
+    showToast('Штрих-код пустой — сначала отсканируйте или введите вручную');
+    return;
+  }
+  if (!name) {
+    showToast('Введите название товара');
+    return;
+  }
+
+  // Сохраняем в формате, совместимом с базой
+  barcodeDB[code] = { name: name };
+  saveBarcodeDB();
+  showToast(`Штрих-код ${code} сохранён: ${name}`);
+});
+
 
 
     function beep() {
