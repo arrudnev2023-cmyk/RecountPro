@@ -188,16 +188,31 @@
 
   <script>
     /* ===== State ===== */
-   let barcodeDB = {};
+  let barcodeDB = { db: {}, quantities: {} };
 try {
   const saved = localStorage.getItem('barcodeDB');
   if (saved) {
-    barcodeDB = JSON.parse(saved);
+    const parsed = JSON.parse(saved);
+    if (parsed.db && parsed.quantities) {
+      barcodeDB = parsed;
+    } else {
+      // Конвертируем старый формат при первой загрузке
+      barcodeDB.db = {};
+      barcodeDB.quantities = {};
+      Object.entries(parsed).forEach(([code, data]) => {
+        const name = data.name;
+        if (!barcodeDB.db[name]) {
+          barcodeDB.db[name] = [];
+          barcodeDB.quantities[name] = 0;
+        }
+        barcodeDB.db[name].push(code);
+      });
+    }
   }
 } catch (e) {
   console.error('Ошибка загрузки базы:', e);
-  barcodeDB = {}; // Безопасный fallback
 }
+
 
     let stream = null;
     let scanning = false;
@@ -265,7 +280,23 @@ saveBtn.addEventListener('click', () => {
   try {
     const saved = localStorage.getItem('barcodeDB');
     if (saved) {
-      currentDB = JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      // Если данные уже в новом формате — используем их
+      if (parsed.db && parsed.quantities) {
+        currentDB = parsed;
+      } else {
+        // Если старый формат — конвертируем
+        currentDB.db = {};
+        currentDB.quantities = {};
+        Object.entries(parsed).forEach(([code, data]) => {
+          const name = data.name;
+          if (!currentDB.db[name]) {
+            currentDB.db[name] = [];
+            currentDB.quantities[name] = 0;
+          }
+          currentDB.db[name].push(code);
+        });
+      }
     }
   } catch (e) {
     console.error('Ошибка загрузки базы:', e);
@@ -304,6 +335,7 @@ saveBtn.addEventListener('click', () => {
 
 
 
+
     function beep() {
       try { navigator.vibrate?.(60); } catch(e) {}
     }
@@ -332,8 +364,8 @@ saveBtn.addEventListener('click', () => {
         scanning = false;
       }
     }
-    function stopCamera() {
-  scanning = false;
+   function stopCamera() {
+  scanning = false; // было: scann**i**ng = false
   if (preview.srcObject) {
     preview.srcObject.getTracks().forEach(t => t.stop());
     preview.srcObject = null;
@@ -343,6 +375,7 @@ saveBtn.addEventListener('click', () => {
     reader = null;
   }
 }
+
 
 /* Preprocessing helpers */
 function createCanvas(w, h) {
@@ -470,42 +503,6 @@ function handleDetected(code) {
 }
 
 
-
-
-/* Save to barcodeDB */
-saveBtn.addEventListener('click', () => {
-  const code = (barcodeInput.value || '').trim();
-  const name = (nameInput.value || '').trim();
-
-  // Валидация
-  if (!code) {
-    showToast('Штрих-код пустой — сначала отсканируйте или введите вручную');
-    return;
-  }
-  if (!name) {
-    showToast('Введите название товара');
-    return;
-  }
-
-  // Проверка на дубликат
-  if (barcodeDB[code]) {
-    const isUpdate = confirm(`Штрих-код ${code} уже существует. Обновить название?`);
-    if (!isUpdate) return;
-  }
-
-  // Сохранение в едином формате: объект с полем name
-  barcodeDB[code] = { name: name };
-
-  // Запись в localStorage
-  try {
-    localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
-    showToast(`Штрих-код ${code} сохранён: ${name}`);
-    console.log('Сохранено в базу:', { code, name });
-  } catch (e) {
-    console.error('Ошибка сохранения в localStorage:', e);
-    showToast('Не удалось сохранить — проверьте настройки браузера');
-  }
-});
     function refreshUI() {
   const entries = Object.entries(barcodeDB);
   console.log('Текущая база:', entries);
