@@ -225,13 +225,13 @@ try {
       }, ms);
     }
 
-   function saveBarcodeDB() {
+  function saveBarcodeDB() {
   try {
     localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
-    console.log('База сохранена:', barcodeDB); // Отладочный вывод
+    console.log('Данные сохранены в localStorage:', barcodeDB);
   } catch (e) {
-    console.error('Ошибка сохранения в localStorage:', e);
-    showToast('Не удалось сохранить (проверьте настройки браузера)');
+    console.error('Критическая ошибка сохранения:', e);
+    showToast('Ошибка сохранения: localStorage недоступен');
   }
 }
 
@@ -400,22 +400,15 @@ function handleDetected(code) {
   barcodeInput.value = code;
 
   const entry = barcodeDB[code];
-  let name = '';
-
   if (entry && typeof entry === 'object') {
-    name = entry.name || '';
-  } else if (typeof entry === 'string') {
-    // Для совместимости со старыми данными
-    name = entry;
-  }
-
-  nameInput.value = name;
-  if (name) {
+    nameInput.value = entry.name || '';
     showToast('Найден в базе: название подставлено');
   } else {
+    nameInput.value = '';
     showToast('Код найден — введите название и сохраните');
   }
 }
+
 
 
 /* Save to barcodeDB */
@@ -423,14 +416,51 @@ saveBtn.addEventListener('click', () => {
   const code = (barcodeInput.value || '').trim();
   const name = (nameInput.value || '').trim();
 
-  if (!code) return showToast('Штрих-код пустой');
-  if (!name) return showToast('Введите название товара');
+  // Валидация
+  if (!code) {
+    showToast('Штрих-код пустой — сначала отсканируйте или введите вручную');
+    return;
+  }
+  if (!name) {
+    showToast('Введите название товара');
+    return;
+  }
 
-  // Сохраняем в формате объекта
+  // Проверка на дубликат
+  if (barcodeDB[code]) {
+    const isUpdate = confirm(`Штрих-код ${code} уже существует. Обновить название?`);
+    if (!isUpdate) return;
+  }
+
+  // Сохранение в едином формате: объект с полем name
   barcodeDB[code] = { name: name };
-  saveBarcodeDB();
-  showToast('Сохранено в базе');
+
+  // Запись в localStorage
+  try {
+    localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB));
+    showToast(`Штрих-код ${code} сохранён: ${name}`);
+    console.log('Сохранено в базу:', { code, name });
+  } catch (e) {
+    console.error('Ошибка сохранения в localStorage:', e);
+    showToast('Не удалось сохранить — проверьте настройки браузера');
+  }
 });
+    function refreshUI() {
+  const entries = Object.entries(barcodeDB);
+  console.log('Текущая база:', entries);
+  showToast(`База обновлена. Всего записей: ${entries.length}`);
+}
+
+// Кнопка для ручного обновления (опционально)
+const refreshBtn = document.createElement('button');
+refreshBtn.id = 'refreshBtn';
+refreshBtn.className = 'btn btn-secondary';
+refreshBtn.style.width = '100%';
+refreshBtn.textContent = 'Обновить отображение базы';
+refreshBtn.addEventListener('click', refreshUI);
+closeBtn.parentNode.insertBefore(refreshBtn, closeBtn);
+
+
 
 
 /* Clear fields */
