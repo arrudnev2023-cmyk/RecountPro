@@ -822,54 +822,57 @@ if (massImportConfirm) {
       const colonMatch = trimmedLine.match(/^"([^"]+)":\s*"([^"]+)"/);
       const commaMatch = trimmedLine.match(/^([^,]+),\s*(.+)$/);
 
+      // colonMatch: "Название": "Штрихкод"
       if (colonMatch) {
         const name = colonMatch[1].trim();
         const code = colonMatch[2].trim();
-        if (!imported[name]) imported[name] = [];
-        imported[name].push(code);
+        if (!imported[code]) imported[code] = [];
+        imported[code].push(name);
         return;
       }
 
+      // commaMatch: Штрихкод, Название
       if (commaMatch) {
         const code = commaMatch[1].trim();
         const name = commaMatch[2].trim();
-        if (!imported[name]) imported[name] = [];
-        imported[name].push(code);
+        if (!imported[code]) imported[code] = [];
+        imported[code].push(name);
         return;
       }
 
-      // Если просто код без названия — добавляем с пустым названием
+      // Если просто название без кода — кладём под пустой код
       if (trimmedLine.length > 0) {
         if (!imported['']) imported[''] = [];
         imported[''].push(trimmedLine);
       }
     });
 
-    // Объединяем с существующей базой, обрабатываем до 3 штрих‑кодов на товар
-    Object.entries(imported).forEach(([name, codes]) => {
-      if (!Array.isArray(codes)) codes = [codes];
+    // Объединяем с существующей базой, но теперь ключ — штрихкод
+    Object.entries(imported).forEach(([code, names]) => {
+      if (!Array.isArray(names)) names = [names];
 
-      if (db[name]) {
-        // Объединяем массивы и убираем дубликаты
-        const existingCodes = new Set([...db[name], ...codes]);
-        db[name] = Array.from(existingCodes).slice(0, 3);
+      if (db[code]) {
+        const existingNames = new Set([...db[code], ...names]);
+        db[code] = Array.from(existingNames).slice(0, 3);
       } else {
-        // Создаём новую запись, ограничиваем до 3 кодов
-        db[name] = [...new Set(codes)].slice(0, 3);
-        quantities[name] = quantities[name] || 0; // инициализируем количество
+        db[code] = [...new Set(names)].slice(0, 3);
+        quantities[code] = quantities[code] || 0;
       }
     });
 
     saveToStorage();
     renderTable(db);
     closeAllModals();
+
     const massImportData = document.getElementById('massImportData');
     if (massImportData) {
       massImportData.value = '';
     }
+
     showToast('Массовый импорт завершён');
   });
 }
+
 
 // Импорт файла — подтверждение
 const fileImportConfirm = document.getElementById('fileImportConfirm');
