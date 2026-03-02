@@ -5,17 +5,18 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <title>RecountPro — База товаров</title>
 
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
+  <!-- Исправленный URL библиотеки ZXing -->
+  <script src="https://unpkg.com/@zxing/library@latest/dist/umd/index.min.js"></script>
 
 <style>
   :root {
-    --accent: #4361ee; /* спокойный синий */
+    --accent: #4361ee;
     --accent-light: #82b1ff;
-    --text: #333; /* тёмный текст */
-    --muted: #666; /* приглушённый текст */
-    --bg: #ffffff; /* белый фон страницы */
-    --card-bg: #ffffff; /* белый фон карточек */
-    --border: #e0e0e0; /* светлый серый для границ */
+    --text: #333;
+    --muted: #666;
+    --bg: #ffffff;
+    --card-bg: #ffffff;
+    --border: #e0e0e0;
     --maxw: 980px;
   }
 
@@ -75,6 +76,7 @@
     border: none;
     color: var(--muted);
     cursor: pointer;
+    font-size: 18px;
   }
   #clear-search {
     right: 44px;
@@ -195,17 +197,6 @@
     transform: translateY(0);
   }
 
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(12px) scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-
   .preview-wrap.camera-1-3 {
     position: relative;
     width: 100%;
@@ -217,53 +208,39 @@
     background-color: #f0f0f0;
     border: 1px dashed var(--border);
   }
-  .preview-wrap.camera-1-3 video {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
- #scannerCard.card {
-  max-width: var(--maxw);
-  margin: 0 auto 10px;
-  padding: 10px;
-  border-radius: 8px;
-  background-color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin-top: 8px;
-  font-size: 13px;
+ .preview-wrap.camera-1-3 video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.controls .btn {
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background-color: white;
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.controls .btn:hover {
-  background-color: #f8f8f8;
-  border-color: var(--accent);
-}
-.controls .btn:active {
-  transform: scale(0.98);
+#scanResult {
+  font-weight: 600;
+  color: var(--accent);
+  margin-left: auto;
 }
 
-#bg {
+.hidden {
+  display: none;
+}
+
+.toast {
   position: fixed;
-  inset: 0;
-  z-index: -1;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  z-index: 9999;
+  font-size: 14px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 </style>
 </head>
@@ -282,12 +259,14 @@
 
   <main id="content">
     <div id="scannerCard" class="card" style="display:none">
-      <div class="preview-wrap camera-1-3"><video id="preview" playsinline muted></video></div>
+      <div class="preview-wrap camera-1-3">
+        <video id="preview" playsinline muted></video>
+      </div>
       <div class="controls">
         <select id="deviceSelect" class="btn" style="min-width:160px"></select>
         <button id="torchBtn" class="btn">🔦</button>
         <button id="closeScannerBtn" class="btn">Закрыть</button>
-        <div id="scanResult" style="margin-left:auto;color:var(--muted)"></div>
+        <div id="scanResult" style="margin-left:auto;color:var(--accent)"></div>
       </div>
     </div>
 
@@ -311,7 +290,6 @@
 /* ============================================================
    БАЗА ТОВАРОВ
 ============================================================ */
-
 let barcodeDB = {}; // { [name]: [code1, code2, ...] }
 let quantities = {}; // { [name]: qty }
 let allItems = [];
@@ -321,8 +299,6 @@ function loadDB() {
     const raw = localStorage.getItem("barcodeDB");
     if (raw) {
       const parsed = JSON.parse(raw);
-
-      // Если данные уже в новом формате — используем их
       if (parsed.db && parsed.quantities) {
         barcodeDB = parsed.db;
         quantities = parsed.quantities;
@@ -330,7 +306,6 @@ function loadDB() {
         // Конвертируем старый формат в новый
         barcodeDB = {};
         quantities = {};
-
         Object.entries(parsed).forEach(([code, data]) => {
           const name = typeof data === "string" ? data : data.name;
           if (!barcodeDB[name]) {
@@ -338,14 +313,12 @@ function loadDB() {
             quantities[name] = 0;
           }
           barcodeDB[name].push(code);
-          // Сохраняем остаток, если был указан
           if (data.qty !== undefined) {
             quantities[name] = data.qty;
           }
         });
       }
     } else {
-      // Инициализируем пустые объекты
       barcodeDB = {};
       quantities = {};
     }
@@ -392,11 +365,15 @@ const listEl = document.getElementById("list");
 
 function render(items) {
   listEl.innerHTML = "";
+  if (items.length === 0) {
+    listEl.innerHTML = "<p style='text-align:center;color:var(--muted);padding:20px'>База товаров пуста. Добавьте товары через импорт или сканирование.</p>";
+    return;
+  }
   items.forEach(item => {
     const div = document.createElement("div");
     div.className = "item";
     div.dataset.code = item.code;
-    div.dataset.name = item.name; // добавляем имя для поиска
+    div.dataset.name = item.name;
 
     div.innerHTML = `
       <div class="field"><span class="label">Название:</span> ${escapeHtml(item.name)}</div>
@@ -411,7 +388,6 @@ function render(items) {
 /* ============================================================
    ПОИСК
 ============================================================ */
-
 const searchEl = document.getElementById("search");
 const clearSearchBtn = document.getElementById("clear-search");
 
@@ -430,7 +406,6 @@ function matchesQuery(text, query) {
 
 searchEl.addEventListener("input", () => {
   const q = normalize(searchEl.value);
-
   document.querySelectorAll("#list .item").forEach(div => {
     const code = normalize(div.dataset.code);
     const name = normalize(div.dataset.name);
@@ -446,37 +421,27 @@ clearSearchBtn.addEventListener("click", () => {
 });
 
 /* ============================================================
-   ПОДСВЕТКА
+   ПОДСТВЕТКА
 ============================================================ */
-
 function highlightItem(code) {
-  // Находим все карточки с этим кодом
   document.querySelectorAll(`.item[data-code="${code}"]`).forEach(card => {
-    // Убираем старую подсветку
     card.classList.remove("found");
     card.classList.remove("highlight-purple");
-
-    // Добавляем новую фиолетовую подсветку
     card.classList.add("highlight-purple");
 
-    // Через 2 секунды убираем
     setTimeout(() => {
       card.classList.remove("highlight-purple");
     }, 2000);
 
-    // Скроллим к первой найденной карточке
     setTimeout(() => {
       card.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 150);
   });
 }
 
-}
-
 /* ============================================================
    СКАНЕР
 ============================================================ */
-
 let codeReader = null;
 let currentStream = null;
 const previewEl = document.getElementById("preview");
@@ -491,6 +456,11 @@ let lastDetected = { code: null, ts: 0 };
 
 async function initScanner() {
   try {
+    if (typeof ZXing === 'undefined') {
+      showToast("Библиотека сканера не загружена");
+      return;
+    }
+
     const codeReaderClass = ZXing.BrowserMultiFormatReader;
     codeReader = new codeReaderClass();
 
@@ -498,6 +468,11 @@ async function initScanner() {
     const videoDevices = devices.filter(d => d.kind === "videoinput");
 
     deviceSelectEl.innerHTML = "";
+    if (videoDevices.length === 0) {
+      showToast("Камеры не найдены");
+      return;
+    }
+
     videoDevices.forEach((device, i) => {
       const option = document.createElement("option");
       option.value = device.deviceId;
@@ -505,9 +480,28 @@ async function initScanner() {
       deviceSelectEl.appendChild(option);
     });
 
-    if (videoDevices.length > 0) {
-      await startCamera(videoDevices[0].deviceId);
-    }
+    await startCamera(videoDevices[0].deviceId);
+
+    // Запускаем непрерывное сканирование
+    codeReader.decodeFromVideoElement(previewEl, (result, err) => {
+      if (err) {
+        if (err instanceof ZXing.NotFoundException) {
+          // Ничего не найдено — продолжаем сканирование
+          return;
+        }
+        console.error("Ошибка сканера:", err);
+        return;
+      }
+
+      if (result) {
+        const code = result.getText();
+        handleDetected(code);
+        scanResultEl.textContent = `Найден: ${code}`;
+      }
+    }, (err) => {
+      console.error("Ошибка видеопотока:", err);
+      showToast("Ошибка камеры");
+    });
   } catch (e) {
     console.error("Ошибка инициализации сканера:", e);
     showToast("Не удалось запустить камеру");
@@ -528,11 +522,9 @@ async function startCamera(deviceId) {
 
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
     previewEl.srcObject = currentStream;
-
-    await codeReader.decodeFromVideoElement(previewEl);
   } catch (e) {
     console.error("Ошибка запуска камеры:", e);
-    showToast("Ошибка камеры");
+    showToast("Ошибка доступа к камере");
   }
 }
 
@@ -549,11 +541,10 @@ function handleDetected(code) {
   if (code === lastDetected.code && now - lastDetected.ts < DEBOUNCE_MS) return;
   lastDetected = { code, ts: now };
 
+  // Вибрация для обратной связи
   try { navigator.vibrate?.(60); } catch (e) {}
 
-  stopCamera();
-
-  // Ищем товар по штрих‑коду: перебираем все названия и их коды
+  // Ищем товар по штрих‑коду
   let foundName = null;
   for (const [name, codes] of Object.entries(barcodeDB)) {
     if (codes.includes(code)) {
@@ -567,63 +558,25 @@ function handleDetected(code) {
 
     if (qty > 0) {
       highlightItem(code);
-      showToast("Найден");
-      return;
+      showToast(`Найден: ${foundName}`);
+    } else {
+      // Если остаток 0
+      showToast(`По позиции "${foundName}" остаток 0`);
     }
-
-    // qty == 0 → показываем красную карточку на 10 секунд
-    const temp = document.createElement("div");
-    temp.className = "item";
-    temp.style.borderLeftColor = "#ef4444";
-    temp.innerHTML = `
-      <div class="field"><span class="label">Название:</span> ${escapeHtml(foundName)}</div>
-      <div class="field"><span class="label">Штрих‑код:</span> ${code}</div>
-      <div class="field"><span class="label">Остаток:</span> 0</div>
-    `;
-
-    listEl.prepend(temp);
-    temp.scrollIntoView({ behavior: "smooth", block: "center" });
-
-    setTimeout(() => {
-      temp.style.transition = "opacity .3s ease, transform .3s ease";
-      temp.style.opacity = "0";
-      temp.style.transform = "translateY(10px)";
-    }, 9500);
-
-    setTimeout(() => temp.remove(), 10000);
-
-    showToast("По позиции остаток 0");
-    return;
+  } else {
+    // Товар не найден в базе
+    showToast("Штрих‑код не найден в базе");
   }
-
-  // Вообще нет в базе штрих‑кодов
-  showToast("Нет в базе штрих‑кодов");
 }
 
 /* ============================================================
    ИНТЕРФЕЙС
 ============================================================ */
-
 function showToast(message) {
   let toast = document.querySelector(".toast");
   if (!toast) {
     toast = document.createElement("div");
     toast.className = "toast";
-    toast.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.8);
-      color: white;
-      padding: 12px 24px;
-      border-radius: 8px;
-      z-index: 9999;
-      font-size: 14px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    `;
     document.body.appendChild(toast);
   }
 
@@ -641,7 +594,6 @@ function closeMenu() {
 }
 
 function createConfirm(text, onConfirm) {
-  // Простая реализация подтверждения
   if (confirm(text)) {
     onConfirm();
   }
@@ -650,7 +602,6 @@ function createConfirm(text, onConfirm) {
 /* ============================================================
    ОБРАБОТЧИКИ СОБЫТИЙ
 ============================================================ */
-
 document.getElementById("scan-btn").addEventListener("click", () => {
   scannerCardEl.style.display = "block";
   initScanner();
@@ -659,6 +610,7 @@ document.getElementById("scan-btn").addEventListener("click", () => {
 closeScannerBtnEl.addEventListener("click", () => {
   stopCamera();
   scannerCardEl.style.display = "none";
+  scanResultEl.textContent = "";
 });
 
 deviceSelectEl.addEventListener("change", (e) => {
@@ -672,8 +624,10 @@ torchBtnEl.addEventListener("click", async () => {
       const track = tracks[0];
       const capabilities = track.getCapabilities?.();
       if (capabilities?.torch) {
-        await track.applyConstraints({ advanced: [{ torch: !track.getSettings().torch }] });
-        torchBtnEl.style.color = track.getSettings().torch ? var(--accent) : var(--muted);
+        await track.applyConstraints({
+          advanced: [{ torch: !track.getSettings().torch }]
+        });
+        torchBtnEl.style.color = track.getSettings().torch ? "var(--accent)" : "var(--muted)";
       } else {
         showToast("Фонарик не поддерживается");
       }
@@ -692,7 +646,7 @@ document.getElementById("refreshBtn").onclick = () => {
   closeMenu();
   buildItems();
   render(allItems);
-  showToast("Список обновлен");
+  showToast("Список обновлён");
 };
 
 document.getElementById("exportBtn").onclick = () => {
@@ -702,7 +656,7 @@ document.getElementById("exportBtn").onclick = () => {
   Object.entries(barcodeDB).forEach(([name, codes]) => {
     const qty = quantities[name] || 0;
     codes.forEach(code => {
-      csv += `${code};${name};${qty}\n`;
+      csv += `"${code}";"${name}";${qty}\n`;
     });
   });
 
@@ -722,7 +676,7 @@ document.getElementById("importBtn").onclick = () => {
 
   const input = document.createElement("input");
   input.type = "file";
-    input.accept = ".csv";
+  input.accept = ".csv,text/csv";
   input.onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -734,22 +688,25 @@ document.getElementById("importBtn").onclick = () => {
       // Пропускаем заголовок
       const dataLines = lines.slice(1);
 
-      // Очищаем текущую базу перед импортом (опционально — можно изменить логику на добавление к существующей)
       barcodeDB = {};
       quantities = {};
 
       dataLines.forEach(line => {
-        const [code, name, qtyStr] = line.split(";");
-        if (!code || !name) return;
+        // Поддерживаем разные разделители: точка с запятой, запятая, табуляция
+        const parts = line.split(/[;\t,]/);
+        if (parts.length < 2) return;
 
-        const qty = parseInt(qtyStr, 10) || 0;
+        const code = parts[0].trim();
+        const name = parts[1].trim();
+        const qty = parseInt(parts[2], 10) || 0;
+
+        if (!code || !name) return;
 
         if (!barcodeDB[name]) {
           barcodeDB[name] = [];
           quantities[name] = qty;
         } else {
-          // Если товар уже есть, обновляем остаток только если новый больше (можно изменить логику)
-          quantities[name] = Math.max(quantities[name], qty);
+                   quantities[name] = Math.max(quantities[name], qty);
         }
 
         barcodeDB[name].push(code);
@@ -796,7 +753,7 @@ function init() {
 }
 
 // Запуск при загрузке страницы
-window.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded", init);
 
 // Обработка ошибок сканера
 window.addEventListener("error", (e) => {
@@ -807,5 +764,4 @@ window.addEventListener("error", (e) => {
 </script>
 </body>
 </html>
-
 
