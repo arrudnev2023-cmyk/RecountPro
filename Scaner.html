@@ -605,7 +605,7 @@ function renderTable(data) {
 // Функция закрытия всех модальных окон
 function closeAllModals() {
   const modals = [
-    document.getElementById('actionsModal'), // Добавлено!
+    document.getElementById('actionsModal'),
     document.getElementById('massImportModal'),
     document.getElementById('fileImportModal'),
     document.getElementById('confirmModal')
@@ -614,6 +614,7 @@ function closeAllModals() {
     if (modal) modal.style.display = 'none';
   });
 }
+
 
 
 // Инициализация при загрузке страницы
@@ -696,13 +697,20 @@ if (menuBtn) {
 }
 
 // Закрытие при клике вне
+// Обработчик для закрытия модальных окон при клике вне их
 document.addEventListener('click', (e) => {
   const actionsModal = document.getElementById('actionsModal');
-  if (actionsModal && actionsModal.style.display === 'flex' &&
-      !actionsModal.contains(e.target) && !menuBtn.contains(e.target)) {
-    closeAllModals();
+  const menuBtn = document.getElementById('menuBtn');
+
+  // Проверяем, открыто ли окно действий
+  if (actionsModal && actionsModal.style.display === 'flex') {
+    // Если клик был вне модального окна И вне кнопки «Действия»
+    if (!actionsModal.contains(e.target) && !menuBtn.contains(e.target)) {
+      closeAllModals();
+    }
   }
 });
+
 
 
   // Экспорт базы
