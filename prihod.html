@@ -480,46 +480,44 @@ const listEl = document.getElementById("list");
   
 function render(items) {
   listEl.innerHTML = "";
-
+  if (items.length === 0) {
+    listEl.innerHTML = "<p style='text-align:center;color:var(--muted);padding:20px'>База товаров пуста. Добавьте товары через импорт или сканирование.</p>";
+    return;
+  }
   items.forEach(item => {
-    if (!showZero && item.qty === 0) return;
-
     const div = document.createElement("div");
     div.className = "item";
     div.dataset.code = item.code;
-    div.dataset.name = item.name; // добавляем имя для поиска
+    div.dataset.name = item.name; // Добавляем name в dataset
 
     div.innerHTML = `
       <div class="field"><span class="label">Название:</span> ${escapeHtml(item.name)}</div>
       <div class="field"><span class="label">Штрих‑код:</span> ${item.code}</div>
-      <div class="field qty-current"><span class="label">Остаток:</span> <span class="curQty">${item.qty}</span></div>
-
-      <div class="qty-block">
-        <div class="qty-row">
-          <div class="qty-row-label">Приход</div>
-          <div class="qty-controls">
-            <button class="plusPlus" data-code="${item.code}" data-name="${item.name}">+1</button>
-            <input type="number" class="qtyPlusInput" data-code="${item.code}" data-name="${item.name}" value="0" min="0">
-            <button class="minusPlus" data-code="${item.code}" data-name="${item.name}">-1</button>
-          </div>
+      <div class="field">
+        <span class="label">Остаток:</span>
+        <span class="curQty">${item.qty}</span>
+      </div>
+      <div class="controls-qty">
+        <div>
+          <button class="plusPlus" data-code="${item.code}" data-name="${escapeHtml(item.name)}">+1</button>
+          <button class="minusPlus" data-code="${item.code}" data-name="${escapeHtml(item.name)}">-1</button>
+          <input type="number" class="qtyPlusInput" data-code="${item.code}" value="0" min="0" style="width:60px">
+          <span>Приход</span>
         </div>
-
-        <div class="qty-row">
-          <div class="qty-row-label">Расход</div>
-          <div class="qty-controls">
-            <button class="plusMinus" data-code="${item.code}" data-name="${item.name}">+1</button>
-            <input type="number" class="qtyMinusInput" data-code="${item.code}" data-name="${item.name}" value="0" min="0">
-            <button class="minusMinus" data-code="${item.code}" data-name="${item.name}">-1</button>
-          </div>
+        <div>
+          <button class="plusMinus" data-code="${item.code}" data-name="${escapeHtml(item.name)}">+1</button>
+          <button class="minusMinus" data-code="${item.code}" data-name="${escapeHtml(item.name)}">-1</button>
+          <input type="number" class="qtyMinusInput" data-code="${item.code}" value="0" min="0" style="width:60px">
+          <span>Расход</span>
         </div>
       </div>
     `;
 
     listEl.appendChild(div);
   });
-
-  attachQtyHandlers();
+  attachQtyHandlers(); // Переподключаем обработчики после рендера
 }
+
 
 
 
@@ -532,9 +530,17 @@ function render(items) {
 ========================= */
 
 function applyChange(code, name) {
+  if (!name) {
+    console.error("Не передан name в applyChange для кода:", code);
+    return;
+  }
+
   const plusInput = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
   const minusInput = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
-  if (!plusInput || !minusInput) return;
+  if (!plusInput || !minusInput) {
+    console.warn("Не найдены поля ввода для кода:", code);
+    return;
+  }
 
   let plus = Number(plusInput.value || 0);
   let minus = Number(minusInput.value || 0);
@@ -552,13 +558,13 @@ function applyChange(code, name) {
   // Сохраняем в унифицированном формате
   saveDB();
 
-  const card = document.querySelector(`.item[data-code="${code}"]`);
-  if (card) {
+  // Обновляем отображение
+  document.querySelectorAll(`.item[data-code="${code}"]`).forEach(card => {
     const cur = card.querySelector(".curQty");
     if (cur) cur.textContent = newQty;
     card.classList.add("highlight-purple");
     setTimeout(() => card.classList.remove("highlight-purple"), 600);
-  }
+  });
 
   plusInput.value = "0";
   minusInput.value = "0";
@@ -567,57 +573,81 @@ function applyChange(code, name) {
 
 
 
-function attachQtyHandlers(){
+function attachQtyHandlers() {
+  // Обработчики для кнопок +1 прихода
   document.querySelectorAll(".plusPlus").forEach(btn => {
-  btn.onclick = () => {
-    const code = btn.dataset.code;
-    const name = btn.dataset.name;
-    const input = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
-    input.value = Number(input.value || 0) + 1;
-    applyChange(code, name);
-  };
-});
-// Аналогично для остальных кнопок (+1, -1 для прихода и расхода)
-
-
-  document.querySelectorAll(".minusPlus").forEach(btn=>{
-    btn.onclick = ()=>{
+    btn.onclick = () => {
       const code = btn.dataset.code;
+      const name = btn.dataset.name;
       const input = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
-      let v = Number(input.value||0)-1;
-      if(v<0) v=0;
-      input.value = v;
-      applyChange(code);
+      input.value = Number(input.value || 0) + 1;
+      applyChange(code, name);
     };
   });
 
-  document.querySelectorAll(".plusMinus").forEach(btn=>{
-    btn.onclick = ()=>{
+  // Обработчики для кнопок -1 прихода
+  document.querySelectorAll(".minusPlus").forEach(btn => {
+    btn.onclick = () => {
       const code = btn.dataset.code;
-      const input = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
-      input.value = Number(input.value||0)+1;
-      applyChange(code);
-    };
-  });
-
-  document.querySelectorAll(".minusMinus").forEach(btn=>{
-    btn.onclick = ()=>{
-      const code = btn.dataset.code;
-      const input = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
-      let v = Number(input.value||0)-1;
-      if(v<0) v=0;
+      const name = btn.dataset.name;
+      const input = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
+      let v = Number(input.value || 0) - 1;
+      if (v < 0) v = 0;
       input.value = v;
-      applyChange(code);
+      applyChange(code, name);
     };
   });
 
-  document.querySelectorAll(".qtyPlusInput").forEach(inp=>{
-    inp.onchange = ()=> applyChange(inp.dataset.code);
+  // Обработчики для кнопок +1 расхода
+  document.querySelectorAll(".plusMinus").forEach(btn => {
+    btn.onclick = () => {
+      const code = btn.dataset.code;
+      const name = btn.dataset.name;
+      const input = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
+      input.value = Number(input.value || 0) + 1;
+      applyChange(code, name);
+    };
   });
-  document.querySelectorAll(".qtyMinusInput").forEach(inp=>{
-    inp.onchange = ()=> applyChange(inp.dataset.code);
+
+  // Обработчики для кнопок -1 расхода
+  document.querySelectorAll(".minusMinus").forEach(btn => {
+    btn.onclick = () => {
+      const code = btn.dataset.code;
+      const name = btn.dataset.name;
+      const input = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
+      let v = Number(input.value || 0) - 1;
+      if (v < 0) v = 0;
+      input.value = v;
+      applyChange(code, name);
+    };
+  });
+
+  // Обработчики для ручного ввода
+  document.querySelectorAll(".qtyPlusInput").forEach(inp => {
+    inp.onchange = () => {
+      const code = inp.dataset.code;
+      const name = inp.closest(".item")?.dataset.name; // Получаем name из родительского элемента
+      if (!name) {
+        console.warn("Не найден name для кода:", code);
+        return;
+      }
+      applyChange(code, name);
+    };
+  });
+
+  document.querySelectorAll(".qtyMinusInput").forEach(inp => {
+    inp.onchange = () => {
+      const code = inp.dataset.code;
+      const name = inp.closest(".item")?.dataset.name; // Получаем name из родительского элемента
+      if (!name) {
+        console.warn("Не найден name для кода:", code);
+        return;
+      }
+      applyChange(code, name);
+    };
   });
 }
+
 
 /* =========================
    ПОИСК
@@ -1050,6 +1080,18 @@ document.addEventListener('touchstart', function preventZoom(e){
 loadDB();
 buildItems();
 render(allItems);
+
+  
+  function init() {
+  loadDB();
+  buildItems();
+  render(allItems);
+  attachQtyHandlers(); // Подключаем обработчики при инициализации
+
+  // Закрытие меню по клику на оверлей
+  document.getElementById("sheetOverlay").addEventListener("click", closeMenu);
+}
+
 </script>
 </body>
 </html>
