@@ -233,139 +233,162 @@
   #custom-keyboard.show {
     bottom: 0;
   }
-  #custom-keyboard button {
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background-color: white;
-    color: var(--text);
-    font-size: 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  #custom-keyboard button:hover {
-    background-color: #f5f5f5;
-  }
-  .hidden {
-    display: none !important;
-  }
+ /* keyboard */
+#custom-keyboard button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background-color: white;
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+#custom-keyboard button:hover {
+  background-color: #f5f5f5;
+}
+.hidden {
+  display: none !important;
+}
 
-  @media (min-width: 900px) {
-    #content {
-      padding-left: 24px;
-      padding-right: 24px;
-    }
+@media (min-width: 900px) {
+  #content {
+    padding-left: 24px;
+    padding-right: 24px;
   }
+}
 
-  /* FAB кнопка меню */
-   #fabMenu {
-    position: fixed;
-    bottom: 1rem;
-    right: 1rem;
-    z-index: 1001;
-    background-color: var(--accent);
-    color: white;
-    border: none;
-    padding: 0.9rem 1.2rem;
-    border-radius: 8px;
-    font-size: 1.2rem;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  #fabMenu:hover {
-    background-color: #3a56d6;
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(67, 97, 238, 0.4);
-  }
-  #fabMenu:active {
-    transform: scale(0.96);
-    box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.2);
-  }
+/* FAB кнопка меню */
+#fabMenu {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 1001;
+  background-color: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.9rem 1.2rem;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#fabMenu:hover {
+  background-color: #3a56d6;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(67, 97, 238, 0.4);
+}
+#fabMenu:active {
+  transform: scale(0.96);
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.2);
+}
 
-  /* Затемнение фона */
-  #sheetOverlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+/* Затемнение фона */
+#sheetOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 999;
+}
+#sheetOverlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Bottom Sheet */
+#bottomSheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: -60vh;
+  padding: 1.2rem;
+  background-color: white;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  transition: bottom 0.35s ease;
+  z-index: 1002;
+  animation: fadeIn 0.35s ease;
+}
+#bottomSheet.show {
+  bottom: 0;
+}
+
+/* Контейнер кнопок */
+.sheet-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+/* Кнопки внутри меню */
+.sheet-btn {
+  background-color: #f5f5f5;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.9rem 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sheet-btn:hover {
+  background-color: #e9e9e9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.sheet-btn:active {
+  transform: scale(0.97);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Анимация */
+@keyframes fadeIn {
+  from {
     opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s ease;
-    z-index: 999;
+    transform: translateY(12px) scale(0.95);
   }
-  #sheetOverlay.show {
+  to {
     opacity: 1;
-    pointer-events: auto;
+    transform: translateY(0) scale(1);
   }
+}
 
-  /* Bottom Sheet */
-  #bottomSheet {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: -60vh;
-    padding: 1.2rem;
-    background-color: white;
-    border-radius: 16px 16px 0 0;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-    transition: bottom 0.35s ease;
-    z-index: 1002;
-    animation: fadeIn 0.35s ease;
-  }
-  #bottomSheet.show {
-    bottom: 0;
-  }
+/* Модальное окно итогов */
+#summaryModal {
+  animation: fadeIn 0.25s ease;
+}
 
-  /* Контейнер кнопок */
-  .sheet-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.7rem;
-  }
+/* Таблица в модальном окне */
+#summaryTable th, #summaryTable td {
+  border: none;
+  padding: 8px;
+}
 
-  /* Кнопки внутри меню */
-  .sheet-btn {
-    background-color: #f5f5f5;
-    color: var(--text);
-    border: 1px solid var(--border);
-    padding: 0.9rem 1rem;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    letter-spacing: 0.3px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .sheet-btn:hover {
-    background-color: #e9e9e9;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-  .sheet-btn:active {
-    transform: scale(0.97);
-    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.15);
-  }
+#summaryTable th {
+  background-color: #f0f0f0;
+  font-weight: 600;
+}
 
-  /* Анимация */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(12px) scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
+/* Кнопка в меню FAB */
+#inventoryBtn {
+  background: linear-gradient(135deg, #10b981, #059f67);
+}
+#inventoryBtn:hover {
+  background: linear-gradient(135deg, #0d966b, #048a5a);
+}
 </style>
- 
-
 </head>
 <body>
   <canvas id="bg"></canvas>
@@ -406,16 +429,40 @@
 
   <button id="fabMenu">☰</button>
 
-<div id="sheetOverlay"></div>
+  <div id="sheetOverlay"></div>
 
-<div id="bottomSheet">
-  <div class="sheet-content">
-    <button class="sheet-btn" id="saveBtn">💾 Сохранить</button>
-    <button class="sheet-btn" id="clearBtn">🧹 Очистить пересчёт</button>
-    <button class="sheet-btn" id="totalBtn">📊 Итог</button>
-    <button class="sheet-btn" id="codesBtn">🔍 База штрих‑кодов</button>
+  <div id="bottomSheet">
+    <div class="sheet-content">
+      <button class="sheet-btn" id="saveBtn">💾 Сохранить</button>
+      <button class="sheet-btn" id="clearBtn">🧹 Очистить пересчёт</button>
+      <button class="sheet-btn" id="totalBtn">📊 Итог</button>
+      <button class="sheet-btn" id="codesBtn">🔍 База штрих‑кодов</button>
+      <button class="sheet-btn" id="inventoryBtn">📋 Провести инвентаризацию</button>
+    </div>
+  </div>
+
+  <!-- Модальное окно итогов -->
+<div id="summaryModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:6000;display:flex;align-items:center;justify-content:center;">
+  <div style="background:white;padding:20px;border-radius:12px;max-width:90%;max-height:80%;overflow:auto;">
+    <h3>Итоги инвентаризации</h3>
+    <table id="summaryTable" style="width:100%;border-collapse:collapse;margin-top:10px;">
+      <thead>
+        <tr style="background:#f0f0f0;">
+          <th style="text-align:left;padding:8px;">Товар</th>
+          <th style="text-align:right;padding:8px;">Учётное кол-во</th>
+          <th style="text-align:right;padding:8px;">Фактическое кол-во</th>
+          <th style="text-align:right;padding:8px;">Разница</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button id="summarySaveBtn" class="btn primary" style="flex:1;">Сохранить в базу</button>
+      <button id="summaryCloseBtn" class="btn" style="flex:1;">Закрыть</button>
+    </div>
   </div>
 </div>
+
 <script>
 /* =========================
    State and elements
@@ -454,6 +501,11 @@ const torchBtn = document.getElementById('torchBtn');
 const scanResult = document.getElementById('scanResult');
 
 const keyboard = document.getElementById('custom-keyboard');
+const inventoryBtn = document.getElementById("inventoryBtn");
+const summaryModal = document.getElementById("summaryModal");
+const summaryTable = document.getElementById("summaryTable").querySelector("tbody");
+const summarySaveBtn = document.getElementById("summarySaveBtn");
+const summaryCloseBtn = document.getElementById("summaryCloseBtn");
 
 /* =========================
    Utilities
@@ -465,9 +517,6 @@ function showToast(text, ms = 1200){
 function saveDB(){ localStorage.setItem('barcodeDB', JSON.stringify(barcodeDB)); }
 function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-/* =========================
-   Load DB and build items
-   ========================= */
 /* =========================
    Load DB
    ========================= */
@@ -486,11 +535,11 @@ function loadBarcodeDB() {
 
   // fallback sample if none
   barcodeDB = {
-    "4601234000011": { code: "4601234000011", name: "Молоко 1л", unit: "шт", price: 59.90 },
-    "4601234000028": { code: "4601234000028", name: "Хлеб ржаной", unit: "шт", price: 35.00 },
-    "4601234000035": { code: "4601234000035", name: "Яблоки кг", unit: "кг", price: 120.00 },
-    "4601234000042": { code: "4601234000042", name: "Сыр 200г", unit: "шт", price: 250.00 },
-    "4601234000059": { code: "4601234000059", name: "Кофе 250г", unit: "шт", price: 499.00 }
+    "4601234000011": { code: "4601234000011", name: "Молоко 1л", unit: "шт", price: 59.90, qty: 10 },
+    "4601234000028": { code: "4601234000028", name: "Хлеб ржаной", unit: "шт", price: 35.00, qty: 5 },
+    "4601234000035": { code: "4601234000035", name: "Яблоки кг", unit: "кг", price: 120.00, qty: 8 },
+    "4601234000042": { code: "4601234000042", name: "Сыр 200г", unit: "шт", price: 250.00, qty: 3 },
+    "4601234000059": { code: "4601234000059", name: "Кофе 250г", unit: "шт", price: 499.00, qty: 2 }
   };
 
   db = barcodeDB;
@@ -506,23 +555,26 @@ function buildAllItemsFromDB() {
   // 1. Товары из основной базы
   for (const code in barcodeDB) {
     const b = barcodeDB[code];
-    let name, unit, price;
+    let name, unit, price, qty;
 
     if (typeof b === "string") {
       // Старый формат: только название
       name = b;
       unit = "";
       price = 0;
+      qty = 0;
     } else if (b && typeof b === "object") {
       // Новый формат: объект с полями
       name = b.name && b.name.trim() !== "" ? b.name : code;
       unit = b.unit || "";
       price = Number(b.price || 0);
+      qty = Number(b.qty || 0);
     } else {
       // Неизвестный формат — используем код как название
       name = code;
       unit = "";
       price = 0;
+      qty = 0;
     }
 
     allItems.push({
@@ -530,28 +582,12 @@ function buildAllItemsFromDB() {
       name,
       unit,
       price,
-      docQty: 0
+      docQty: qty
     });
   }
 
-  // 2. Товары, которых нет в barcodeDB, но есть в barcodeCodes
-  for (const code in barcodeCodes) {
-    if (!barcodeDB[code]) {
-      allItems.push({
-        code,
-        name: barcodeCodes[code] && barcodeCodes[code].trim() !== ""
-          ? barcodeCodes[code]
-          : code,
-        unit: "",
-        price: 0,
-        docQty: 0
-      });
-    }
-  }
-
-  return allItems; // Возвращаем результат
+  return allItems;
 }
-
 
 /* =========================
    Render UI (title first, then barcode)
@@ -581,739 +617,248 @@ function render(items) {
       localStorage.getItem('qty_' + item.code) ||
       '';
 
-    const div = document.createElement('div');
+       const div = document.createElement('div');
     div.className = 'item';
     div.dataset.code = item.code;
 
+    // Определяем статус для цветовой индикации
+    const actual = parseFloat(sessionValues[item.code] || 0);
+    const diff = actual - item.docQty;
+
+    if (actual === item.docQty) {
+      div.classList.add('match');
+    } else if (actual < item.docQty) {
+      div.classList.add('missing');
+    } else if (actual > item.docQty) {
+      div.classList.add('excess');
+    }
+
     div.innerHTML = `
-      <div class="field">
-        <span class="label">Название:</span> ${escapeHtml(displayName)}
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <strong>${escapeHtml(displayName)}</strong>
+        <span style="color:var(--muted);font-size:0.85rem;">${item.code}</span>
       </div>
-
       <div class="field">
-        <span class="label">Артикул:</span> ${item.code}
+        <span class="label">Учётное кол-во:</span>
+        <span>${item.docQty} ${unitFromDB}</span>
       </div>
-
-      ${unitFromDB ? `
       <div class="field">
-        <span class="label">Ед. изм.:</span> ${escapeHtml(unitFromDB)}
-      </div>` : ''}
-
-      ${priceFromDB ? `
+        <span class="label">Фактическое кол-во:</span>
+        <input
+          type="number"
+          data-code="${item.code}"
+          value="${value}"
+          placeholder="Введите количество"
+          style="width:100%;box-sizing:border-box;"
+        >
+      </div>
       <div class="field">
-        <span class="label">Цена:</span> ${priceFromDB.toFixed(2)} руб.
-      </div>` : ''}
-
-      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-        <div style="flex:1">
-          <input
-            type="text"
-            data-code="${item.code}"
-            value="${value}"
-            inputmode="none"
-            readonly
-          />
-        </div>
-
-        <div style="min-width:70px;text-align:right;color:var(--muted)">
-          ${item.docQty} шт
-        </div>
-      </div>`;
-
-    // Логика раскраски карточек (как у вас было)
-    let actual = 0;
-    try {
-      actual = Function("return " + (value || "0").replace(/,/g, '.'))() || 0;
-    } catch {}
-
-    if (actual === item.docQty) div.classList.add('match');
-    else if (actual < item.docQty) div.classList.add('missing');
-    else if (actual > item.docQty) div.classList.add('excess');
+        <span class="label">Разница:</span>
+        <span style="color:${diff === 0 ? 'inherit' : diff > 0 ? '#10b981' : '#ef4444'}">
+          ${diff > 0 ? '+' : ''}${diff} ${unitFromDB}
+        </span>
+      </div>
+    `;
 
     listEl.appendChild(div);
   });
 
-  attachInputHandlers();
+  // Добавляем обработчики для полей ввода
+  document.querySelectorAll('input[data-code]').forEach(input => {
+    input.addEventListener('input', e => {
+      const code = e.target.dataset.code;
+      const value = e.target.value;
+      sessionValues[code] = value;
+      localStorage.setItem('qty_' + code, value);
+      // Обновляем отображение разницы
+      render(allItems);
+    });
+  });
 }
 
-
-
-function addItemToScanList(code) {
-  const existingIndex = allItems.findIndex(item => item.code === code);
-  if (existingIndex !== -1) {
-    const card = document.querySelector(`.item[data-code="${code}"]`);
-    if (card) {
-      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      card.classList.add('found');
-      setTimeout(() => card.classList.remove('found'), 2200);
-    }
-    return;
-  }
-
-  let name = db[code]?.name || `Товар ${code}`;
-  let unit = db[code]?.unit || '';
-  let price = db[code]?.price || 0;
-
-  const newItem = {
-    code,
-    name,
-    unit,
-    price,
-    docQty: 0
-  };
-
-  allItems.unshift(newItem);
+/* =========================
+   Load and initialize
+   ========================= */
+function init() {
+  loadBarcodeDB();
+  buildAllItemsFromDB();
   render(allItems);
 
-  setTimeout(() => {
-    const newCard = document.querySelector(`.item[data-code="${code}"]`);
-    if (newCard) {
-      newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      newCard.classList.add('found');
-      setTimeout(() => newCard.classList.remove('found'), 2200);
-      const input = newCard.querySelector('input[data-code]');
-      if (input) {
-        setTimeout(() => { input.focus(); openKeyboardFor(input); }, 320);
-      }
-    }
-  }, 320);
+  // Инициализация сканера и других обработчиков
+  setupEventListeners();
 }
 
-
-/* =========================
-   Keyboard & input handlers
-   - Back button removes one Unicode code point (one character)
-   - Ensure back button is handled only once
-   ========================= */
-function removeLastCodePoint(str){
-  if(!str) return '';
-  const arr = Array.from(str);
-  arr.pop();
-  return arr.join('');
-}
-
-function attachInputHandlers(){
-  document.querySelectorAll('input[data-code]').forEach(input=>{
-    input.addEventListener('focus', ()=> openKeyboardFor(input));
-    input.addEventListener('click', ()=> openKeyboardFor(input));
-  });
-
-  // Attach handlers for keyboard buttons except back/done which are handled separately
-  keyboard.querySelectorAll('button').forEach(btn=>{
-    const id = btn.id || '';
-    if(id === 'back' || id === 'done') return; // skip, will attach separately
-    btn.onclick = ()=>{
-      if(!activeInput) return;
-      const v = btn.textContent;
-      activeInput.value += v;
-      activeInput.dispatchEvent(new Event('input',{bubbles:true}));
-    };
-  });
-
-  // Back button: single handler that removes one code point
-  const backBtn = document.getElementById('back');
-  if(backBtn){
-    backBtn.onclick = ()=>{
-      if(!activeInput) return;
-      activeInput.value = removeLastCodePoint(activeInput.value);
-      activeInput.dispatchEvent(new Event('input',{bubbles:true}));
-    };
-  }
-
-  // Done button
-  const doneBtn = document.getElementById('done');
-  if(doneBtn) doneBtn.onclick = closeKeyboard;
-
-  // Close keyboard when clicking outside
-  document.addEventListener('click', e=>{
-    if(!e.target.closest('#custom-keyboard') && !e.target.matches('input[data-code]')) closeKeyboard();
-  });
-}
-
-function openKeyboardFor(input){
-  activeInput = input;
-  keyboard.classList.add('show');
-  document.getElementById('content').classList.add('with-keyboard');
-  setTimeout(()=>{
-    const rect = input.getBoundingClientRect();
-    const viewportH = window.innerHeight;
-    const padHeight = Math.max(260, Math.round(viewportH * 0.34));
-    const desiredBottom = padHeight + 12;
-    if(rect.bottom > viewportH - desiredBottom){
-      const content = document.getElementById('content');
-      const offset = rect.bottom - (viewportH - desiredBottom);
-      content.scrollBy({ top: offset + 12, behavior: 'smooth' });
-    } else {
-      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  },150);
-}
-
-function closeKeyboard(){
-  activeInput = null;
-  keyboard.classList.remove('show');
-  document.getElementById('content').classList.remove('with-keyboard');
-}
-
-/* handle manual input changes */
-listEl.addEventListener('input', e=>{
-  if(e.target.tagName !== 'INPUT') return;
-  const code = e.target.dataset.code;
-  const value = e.target.value;
-  sessionValues[code] = value;
-  localStorage.setItem('qty_' + code, value);
-
-  const raw = value.replace(',', '.').trim();
-  let actual = NaN;
-  try{
-    let safeRaw = raw;
-    if(/[\+\-\*\/]$/.test(safeRaw)) safeRaw = safeRaw.slice(0,-1);
-    if(safeRaw) actual = Function('return ' + safeRaw)();
-  }catch{ actual = NaN; }
-
-  const item = allItems.find(i=>i.code === code);
-  const card = e.target.closest('.item');
-  card.classList.remove('match','missing','excess');
-  if(!value) {}
-  else if(!isNaN(actual)){
-    if(actual === item.docQty) card.classList.add('match');
-    else if(actual < item.docQty) card.classList.add('missing');
-    else if(actual > item.docQty) card.classList.add('excess');
-  }
-  autosave();
-});
-
-/* =========================
-   Search: hide non-matching cards
-   ========================= */
-function normalize(s){ return String(s||'').toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ').trim(); }
-function matchesQuery(text, query){ const words = query.split(' ').filter(Boolean); return words.every(w => text.includes(w)); }
-
-searchEl.addEventListener('input', ()=>{
-  const q = normalize(searchEl.value);
-  document.querySelectorAll('#list .item').forEach(div=>{
-    const code = normalize(div.dataset.code);
-    const item = allItems.find(i=>i.code === div.dataset.code);
-    if(!item){ div.classList.add('hidden'); return; }
-    const name = normalize(item.name);
-    const match = (q === '') || matchesQuery(name, q) || matchesQuery(code, q);
-    div.classList.toggle('hidden', !match);
-  });
-});
-clearSearchBtn.addEventListener('click', ()=>{ searchEl.value=''; document.querySelectorAll('#list .item').forEach(d=>d.classList.remove('hidden')); });
-
-/* =========================
-   Autosave
-   ========================= */
-function autosave(){
-  const currentLocalkaId = (window.localkaData && window.localkaData.docId) ? window.localkaData.docId : 'loc_' + new Date().toISOString().slice(0,10);
-  const sessionKey = 'autosave_session_' + currentLocalkaId;
-  const session = { items: allItems, values: sessionValues };
-  localStorage.setItem(sessionKey, JSON.stringify(session));
-}
-window.addEventListener('beforeunload', autosave);
-
-/* =========================
-   Camera helpers (from your Scaner.html)
-   ========================= */
-async function enumerateCameras(){
-  try{
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const cams = devices.filter(d => d.kind === 'videoinput');
-    deviceSelect.innerHTML = '';
-    cams.forEach((c, idx)=>{
-      const opt = document.createElement('option');
-      opt.value = c.deviceId;
-      opt.text = c.label || `Камера ${idx+1}`;
-      deviceSelect.appendChild(opt);
-    });
-    if(cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
-    if(currentDeviceId) deviceSelect.value = currentDeviceId;
-  }catch(e){}
-}
-
-/* startCamera / stopCamera and scanning loop (adapted) */
-async function startCamera(){
-  if(scanning) return;
-  stopCamera();
-  scanning = true;
-  await enumerateCameras();
-
-  const constraints = {
-    audio:false,
-    video:{
-      deviceId: deviceSelect.value || currentDeviceId || undefined,
-      facingMode: { ideal: "environment" },
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
-    }
+function setupEventListeners() {
+  // Кнопка сканирования
+  scanBtn.onclick = () => {
+    showScanner();
   };
 
-  try{
-    stream = await navigator.mediaDevices.getUserMedia(constraints);
-    preview.srcObject = stream;
-    await preview.play();
-    currentDeviceId = stream.getVideoTracks()[0].getSettings().deviceId || currentDeviceId;
-    if(currentDeviceId) deviceSelect.value = currentDeviceId;
+  // Очистка поиска
+  clearSearchBtn.onclick = () => {
+    searchEl.value = '';
+    render(allItems);
+  };
 
-    if(!reader) reader = new ZXing.BrowserMultiFormatReader();
+  // Поиск
+  searchEl.addEventListener('input', () => {
+    const query = searchEl.value.toLowerCase();
+    const filtered = allItems.filter(item =>
+      item.name.toLowerCase().includes(query) ||
+      item.code.includes(query)
+    );
+    render(filtered);
+  });
 
-    requestAnimationFrame(scanLoop);
-    scannerCard.style.display = 'block';
-    showToast('Сканер включён');
-  }catch(err){
-    console.error('camera error', err);
-    scanResult.innerText = 'Ошибка доступа к камере';
-    scanning = false;
-    showToast('Не удалось включить камеру');
-  }
-}
+  // FAB меню
+  fabMenu.onclick = () => {
+    openMenu();
+  };
 
-function stopCamera(){
-  scanning = false;
-  if(preview.srcObject){
-    try{ preview.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){}
-    preview.srcObject = null;
-  }
-  if(reader){
-    try{ reader.reset(); }catch(e){}
-  }
-  scannerCard.style.display = 'none';
-  showToast('Сканер остановлен');
-}
+  // Сохранение
+  saveBtn.onclick = () => {
+    saveSession();
+    closeMenu();
+    showToast('Данные сохранены в базу товаров');
+  };
 
-/* Torch toggle */
-let torchOn = false;
-async function toggleTorch(){
-  if(!stream) return showToast('Сначала включите сканер');
-  const track = stream.getVideoTracks()[0];
-  try{
-    await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
-    torchOn = !torchOn;
-    torchBtn.textContent = torchOn ? '🔦 ON' : '🔦';
-  }catch(e){
-    showToast('Torch не поддерживается');
-  }
-}
+  // Очистка пересчёта
+  clearBtn.onclick = () => {
+    sessionValues = {};
+    localStorage.clear();
+    render(allItems);
+    closeMenu();
+    showToast('Пересчёт очищен');
+  };
 
-/* Canvas helpers for decoding */
-function createCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
-function getCanvas(w,h){
-  for(let c of canvasPool) if(c.width===w && c.height===h) return c;
-  const c = createCanvas(w,h); canvasPool.push(c); return c;
-}
+  // Итоги инвентаризации
+  totalBtn.onclick = () => {
+    closeMenu();
+    renderSummary();
+    summaryModal.classList.remove('hidden');
+  };
 
-/* tryDecodeCanvas uses BarcodeDetector if available, otherwise ZXing */
-async function tryDecodeCanvas(canvas){
-  if(detector){
-    try{
-      const imageData = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
-      const res = await detector.detect(imageData);
-      if(res && res.length) return res[0].rawValue;
-    }catch(e){}
-  }
-  try{
-    const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
-    const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-    const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
-    if(result && result.text) return result.text;
-  }catch(e){}
-  // try rotated variants
-  const w = canvas.width, h = canvas.height;
-  const temp = getCanvas(w,h);
-  const tctx = temp.getContext('2d');
-  for(let angle of [90,180,270]){
-    tctx.clearRect(0,0,w,h);
-    tctx.save();
-    tctx.translate(w/2,h/2);
-    tctx.rotate(angle*Math.PI/180);
-    tctx.drawImage(canvas, -w/2, -h/2);
-    tctx.restore();
-    try{
-      const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(temp);
-      const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-      const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
-      if(result && result.text) return result.text;
-    }catch(e){}
-  }
-  return null;
-}
+  // Провести инвентаризацию
+  inventoryBtn.onclick = () => {
+    closeMenu();
 
-/* Main scanning loop */
-async function scanLoop(){
-  if(!scanning) { scanLoopRunning = false; return; }
-  if(scanLoopRunning) return;
-  scanLoopRunning = true;
-
-  try{
-    while(scanning){
-      const w = preview.videoWidth;
-      const h = preview.videoHeight;
-      if(w===0 || h===0){
-        await new Promise(r => requestAnimationFrame(r));
-        continue;
-      }
-
-      const canvas = getCanvas(w,h);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(preview, 0, 0, w, h);
-
-      const scale = Math.max(1, Math.floor(Math.max(w,h)/900));
-      const sw = Math.floor(w/scale);
-      const sh = Math.floor(h/scale);
-      const small = getCanvas(sw,sh);
-      const sctx = small.getContext('2d');
-      sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
-
-      try{
-        const code = await tryDecodeCanvas(small);
-        if(code) {
-          handleDetected(code);
-          // small delay to avoid immediate re-detection
-          await new Promise(r => setTimeout(r, 300));
-        }
-      }catch(e){}
-
-      await new Promise(r => requestAnimationFrame(r));
-    }
-  }finally{
-    scanLoopRunning = false;
-  }
-}
-
-/* Handle detection: stop scanner, show item or prompt to create */
-function handleDetected(code) {
-  const now = Date.now();
-  if (code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
-  lastDetected = { code, ts: now };
-
-  try { navigator.vibrate?.(60); } catch (e) {}
-  scanResult.innerText = `${code} → ${db[code] ? db[code].name : 'Товар не найден'}`;
-
-  // Останавливаем сканер после обнаружения
-  stopCamera();
-
-  // Добавляем только отсканированный товар в список
-  addItemToScanList(code);
-
-  // Сохраняем текущее состояние приложения
-  saveAppState();
-}
-
-/* =========================
-   UI actions wiring
-   ========================= */
-scanBtn.addEventListener('click', async ()=>{
-  if(!scanning) await startCamera();
-  else stopCamera();
-});
-closeScannerBtn.addEventListener('click', stopCamera);
-deviceSelect.addEventListener('change', async ()=>{
-  currentDeviceId = deviceSelect.value;
-  if(scanning){
-    try{ reader.reset(); }catch(e){}
-    scanning = false;
-  }
-  await startCamera();
-});
-torchBtn.addEventListener('click', toggleTorch);
-
-/* =========================
-   Init on load
-   ========================= */
-function saveAppState() {
-  const state = {
-    items: allItems.map(item => ({
+    // Загружаем все товары из базы
+    const allFromDB = Object.values(barcodeDB).map(item => ({
       code: item.code,
       name: item.name,
-      unit: item.unit,
-      price: item.price,
-      docQty: item.docQty
-    })),
-    values: { ...sessionValues },
-    scrollPosition: document.getElementById('content').scrollTop,
-    scannerActive: scanning
+      unit: item.unit || "",
+      price: item.price || 0,
+      docQty: item.qty || 0
+    }));
+
+    allItems = [...allFromDB];
+    render(allItems);
+    showToast('Инвентаризация начата. Отсканируйте товары или введите фактическое количество.');
   };
-  localStorage.setItem('recountProState', JSON.stringify(state));
-}
 
-function restoreAppState() {
-  try {
-    const saved = localStorage.getItem('recountProState');
-    if (!saved) return false;
-
-    const state = JSON.parse(saved);
-    allItems = state.items || [];
-    sessionValues = state.values || {};
-
-    render(allItems);
-
-    setTimeout(() => {
-      document.getElementById('content').scrollTop = state.scrollPosition || 0;
-    }, 100);
-
-    if (state.scannerActive) {
-      startCamera();
-    }
-
-    return true;
-  } catch (e) {
-    console.error('Failed to restore state:', e);
-    return false;
-  }
-}
-
-  
-window.addEventListener('DOMContentLoaded', async () => {
-  if (!restoreAppState()) {
-    loadBarcodeDB();
-    allItems = [];
-    render(allItems);
-  }
-
-  // enumerate cameras (non-blocking)
-  if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices){
-    try{ await enumerateCameras(); }catch(e){}
-  }
-
-  // warm permission check to populate labels on some devices
-  try{
-    const s = await navigator.mediaDevices.getUserMedia({video:true});
-    s.getTracks().forEach(t=>t.stop());
-    await enumerateCameras();
-  }catch(e){ /* ignore */ }
-});
-
-/* stop camera on unload */
-window.addEventListener('pagehide', ()=>{ stopCamera(); });
-window.addEventListener('beforeunload', ()=>{ stopCamera(); });
-
-/* expose for debug */
-window._recount = { db, barcodeDB, allItems, startCamera, stopCamera, render };
-
-</script>
-
-<script>
-/* === ЭЛЕМЕНТЫ === */
-const fab = document.getElementById("fabMenu");
-const sheet = document.getElementById("bottomSheet");
-const overlay = document.getElementById("sheetOverlay");
-const clearBtn = document.getElementById("clearBtn");
-const saveBtn = document.getElementById("saveBtn");
-const list = document.getElementById("list");
-
-/* === ОТКРЫТЬ МЕНЮ === */
-fab.onclick = () => {
-  sheet.classList.add("show");
-  overlay.classList.add("show");
-};
-
-/* === ЗАКРЫТЬ МЕНЮ === */
-overlay.onclick = () => closeMenu();
-function closeMenu(){
-  sheet.classList.remove("show");
-  overlay.classList.remove("show");
-}
-
-/* ============================================================
-   ПОДТВЕРЖДЕНИЕ + АНИМАЦИЯ ОЧИСТКИ
-============================================================ */
-clearBtn.onclick = () => {
-  closeMenu();
-
-  const box = createConfirmBox("Очистить пересчёт?", () => {
-
-    /* 1. Удаляем qty_КОД из localStorage */
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith("qty_")) localStorage.removeItem(key);
-    });
-
-    /* 2. Удаляем autosave_session */
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith("autosave_session_")) localStorage.removeItem(key);
-    });
-
-    /* 3. Чистим sessionValues */
-    sessionValues = {};
-
-    /* 4. Чистим allItems */
-    allItems = [];
-
-    /* 5. Анимация исчезновения карточек */
-    const items = list.querySelectorAll(".item");
-    items.forEach((item) => {
-      item.style.transition = "opacity .25s ease, transform .25s ease";
-      item.style.opacity = "0";
-      item.style.transform = "translateY(10px)";
-    });
-
-    /* 6. Полная очистка DOM */
-    setTimeout(() => {
-      list.innerHTML = "";
-    }, 260);
-
-  });
-};
-
-
-
-/* ============================================================
-   ПОДТВЕРЖДЕНИЕ + СОХРАНЕНИЕ В БАЗУ ТОВАРОВ
-============================================================ */
-saveBtn.onclick = () => {
-  closeMenu();
-
-  const box = createConfirmBox("Сохранить пересчёт?", () => {
-
-    let db = JSON.parse(localStorage.getItem("barcodeDB") || "{}");
-    let codes = JSON.parse(localStorage.getItem("barcodeCodes") || "{}");
-
-    const items = listEl.querySelectorAll(".item");
-
-    items.forEach(item => {
-      const code = item.dataset.code;
-      if (!code || code === "undefined") return;
-
-      // --- КОЛИЧЕСТВО ---
-      const qtyInput = item.querySelector('input[data-code]');
-      const qty = Number(qtyInput?.value || 0);
-
-      // --- НАЗВАНИЕ ---
-      let name = "";
-
-      // 1) название из карточки
-      const nameField = item.querySelector(".field:nth-child(1)");
-      if (nameField) {
-        const text = nameField.textContent.replace("Название:", "").trim();
-        if (text) name = text;
-      }
-
-      // 2) название из базы штрих‑кодов
-      if (!name && codes[code]) name = codes[code];
-
-      // 3) название из базы товаров
-      if (!name && db[code]?.name) name = db[code].name;
-
-      // 4) fallback
-      if (!name) name = "Без названия";
-
-      // === Обновляем базу штрих‑кодов ===
-      codes[code] = name;
-
-      // === Обновляем базу товаров ===
-      if (qty > 0) {
-        db[code] = { name, qty };
-        localStorage.setItem("qty_" + code, qty);
+  // Сохранение итогов в базу
+  summarySaveBtn.onclick = () => {
+    // Обновляем базу товаров
+    Object.keys(sessionValues).forEach(code => {
+      if (barcodeDB[code]) {
+        barcodeDB[code].qty = parseFloat(sessionValues[code]);
+      } else {
+        // Если товара нет в базе, добавляем его
+        barcodeDB[code] = {
+          code: code,
+          name: `Товар ${code}`,
+          qty: parseFloat(sessionValues[code]),
+          unit: "",
+          price: 0
+        };
       }
     });
 
-    localStorage.setItem("barcodeDB", JSON.stringify(db));
-    localStorage.setItem("barcodeCodes", JSON.stringify(codes));
-
+    saveDB(); // Сохраняем в localStorage
     animateSaveSuccess();
-  });
-};
-
-
-
-
-
-/* ============================================================
-   ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-============================================================ */
-
-/* Создание окна подтверждения */
-function createConfirmBox(text, onYes){
-  const box = document.createElement("div");
-  box.style.position = "fixed";
-  box.style.left = "50%";
-  box.style.top = "50%";
-  box.style.transform = "translate(-50%, -50%)";
-  box.style.background = "rgba(20,20,20,0.85)";
-  box.style.backdropFilter = "blur(12px)";
-  box.style.padding = "1.4rem";
-  box.style.borderRadius = "16px";
-  box.style.boxShadow = "0 12px 32px rgba(0,0,0,0.6)";
-  box.style.zIndex = "5000";
-  box.style.width = "80%";
-  box.style.maxWidth = "340px";
-  box.style.textAlign = "center";
-  box.style.animation = "fadeIn .25s ease";
-
-  box.innerHTML = `
-    <div style="font-size:1.1rem; margin-bottom:1rem; color:#fff;">
-      ${text}
-    </div>
-    <div style="display:flex; gap:10px; justify-content:center;">
-      <button id="confirmYes" style="
-        flex:1;
-        padding:0.7rem;
-        border:none;
-        border-radius:10px;
-        background:linear-gradient(135deg,#6a11cb,#2575fc);
-        color:#fff;
-        font-size:1rem;
-        font-weight:600;
-        cursor:pointer;
-      ">Да</button>
-
-      <button id="confirmNo" style="
-        flex:1;
-        padding:0.7rem;
-        border:none;
-        border-radius:10px;
-        background:#2c2c2c;
-        color:#fff;
-        font-size:1rem;
-        font-weight:600;
-        cursor:pointer;
-      ">Нет</button>
-    </div>
-  `;
-
-  document.body.appendChild(box);
-
-  document.getElementById("confirmNo").onclick = () => box.remove();
-
-  document.getElementById("confirmYes").onclick = () => {
-    box.remove();
-    onYes();
+    summaryModal.classList.add('hidden');
+    showToast('База товаров обновлена по результатам инвентаризации');
   };
 
-  return box;
+  // Закрытие модального окна итогов
+  summaryCloseBtn.onclick = () => {
+    summaryModal.classList.add('hidden');
+  };
 }
 
-/* Анимация успешного сохранения */
-function animateSaveSuccess(){
-  const ok = document.createElement("div");
-  ok.style.position = "fixed";
-  ok.style.left = "50%";
-  ok.style.top = "50%";
-  ok.style.transform = "translate(-50%, -50%)";
-  ok.style.background = "rgba(20,20,20,0.85)";
-  ok.style.backdropFilter = "blur(12px)";
-  ok.style.padding = "1.2rem 1.6rem";
-  ok.style.borderRadius = "16px";
-  ok.style.boxShadow = "0 12px 32px rgba(0,0,0,0.6)";
-  ok.style.zIndex = "5000";
-  ok.style.fontSize = "1.2rem";
-  ok.style.color = "#fff";
-  ok.style.animation = "fadeIn .25s ease";
-  ok.innerText = "✔ Сохранено";
+/* =========================
+   Other functions
+   ========================= */
+function saveSession() {
+  Object.keys(sessionValues).forEach(code => {
+    if (barcodeDB[code]) {
+      barcodeDB[code].qty = parseFloat(sessionValues[code]);
+    }
+  });
+  saveDB();
+}
 
-  document.body.appendChild(ok);
-
+function animateSaveSuccess() {
+  const originalBg = saveBtn.style.backgroundColor;
+  saveBtn.style.backgroundColor = '#10b981';
   setTimeout(() => {
-    ok.style.transition = "opacity .3s ease, transform .3s ease";
-    ok.style.opacity = "0";
-    ok.style.transform = "translate(-50%, -40%)";
-  }, 900);
-
-  setTimeout(() => ok.remove(), 1300);
+    saveBtn.style.backgroundColor = originalBg;
+  }, 500);
 }
+
+function openMenu() {
+  bottomSheet.classList.add('show');
+  sheetOverlay.classList.add('show');
+}
+
+function closeMenu() {
+  bottomSheet.classList.remove('show');
+  sheetOverlay.classList.remove('show');
+}
+
+function showScanner() {
+  scannerCard.style.display = 'block';
+  // Здесь должна быть логика запуска сканера
+  showToast('Сканер открыт');
+}
+
+function renderSummary() {
+  summaryTable.innerHTML = '';
+
+  let totalDiff = 0;
+
+  allItems.forEach(item => {
+    const actual = parseFloat(sessionValues[item.code] || 0);
+    const diff = actual - item.docQty;
+    totalDiff += diff;
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td style="padding:8px;border-bottom:1px solid #eee;">${escapeHtml(item.name)}</td>
+      <td style="text-align:right;padding:8px;border-bottom:1px solid #eee;">${item.docQty}</td>
+      <td style="text-align:right;padding:8px;border-bottom:1px solid #eee;">${actual}</td>
+      <td style="text-align:right;padding:8px;border-bottom:1px solid #eee;color:${diff === 0 ? 'inherit' : diff > 0 ? '#10b981' : '#ef4444'}">
+        ${diff > 0 ? '+' : ''}${diff}
+      </td>
+    `;
+    summaryTable.appendChild(row);
+  });
+
+  // Итоговая строка
+  const totalRow = document.createElement('tr');
+  totalRow.innerHTML = `
+    <td style="font-weight:bold;padding:8px;">Итого</td>
+    <td></td>
+    <td></td>
+    <td style="text-align:right;font-weight:bold;color:${totalDiff === 0 ? 'inherit' : totalDiff > 0 ? '#10b981' : '#ef4444'}">
+      ${totalDiff > 0 ? '+' : ''}${totalDiff}
+    </td>
+  `;
+  summaryTable.appendChild(totalRow);
+}
+
+// Запуск приложения
+init();
 </script>
-
-
-
 </body>
 </html>
