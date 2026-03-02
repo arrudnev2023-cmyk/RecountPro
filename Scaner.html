@@ -817,19 +817,19 @@ if (massImportConfirm) {
     const lines = input.split('\n').filter(line => line.trim());
     let successCount = 0;
     let errorCount = 0;
-    const errorDetails = []; // Для сбора деталей об ошибках
+    const errorDetails = [];
 
     lines.forEach((line, index) => {
       const trimmedLine = line.trim();
 
-      // Парсим формат: "штрихкод": "название"
-      const colonMatch = trimmedLine.match(/^"([^"]+)":\s*"([^"]+)"/);
-      // Парсим формат: штрихкод, название
+      // Формат: "штрихкод": "название"
+      const colonMatch = trimmedLine.match(/^"([^"]+)":\s*"([^"]+)"$/);
+      // Формат: штрихкод, название
       const commaMatch = trimmedLine.match(/^([^,]+),\s*(.+)$/);
 
       if (colonMatch) {
-        const barcode = colonMatch[1].trim();
-        const name = colonMatch[2].trim();
+        const barcode = colonMatch[1].trim(); // Первая группа — штрихкод
+        const name = colonMatch[2].trim();   // Вторая группа — название
 
         if (isValidBarcode(barcode) && name) {
           if (!db[name]) {
@@ -844,14 +844,17 @@ if (massImportConfirm) {
               errorCount++;
               errorDetails.push(`Строка ${index + 1}: у товара уже 3 штрихкода, "${barcode}" не добавлен`);
             }
+          } else {
+            errorCount++;
+            errorDetails.push(`Строка ${index + 1}: штрихкод "${barcode}" уже существует для товара "${name}"`);
           }
         } else {
           errorCount++;
           errorDetails.push(`Строка ${index + 1}: некорректный штрихкод или пустое название`);
         }
       } else if (commaMatch) {
-        const barcode = commaMatch[1].trim();
-        const name = commaMatch[2].trim();
+        const barcode = commaMatch[1].trim(); // Первая группа — штрихкод
+        const name = commaMatch[2].trim();  // Вторая группа — название
 
         if (isValidBarcode(barcode) && name) {
           if (!db[name]) {
@@ -866,6 +869,9 @@ if (massImportConfirm) {
               errorCount++;
               errorDetails.push(`Строка ${index + 1}: у товара уже 3 штрихкода, "${barcode}" не добавлен`);
             }
+          } else {
+            errorCount++;
+            errorDetails.push(`Строка ${index + 1}: штрихкод "${barcode}" уже существует для товара "${name}"`);
           }
         } else {
           errorCount++;
@@ -877,7 +883,7 @@ if (massImportConfirm) {
       }
     });
 
-    // Сохраняем и обновляем интерфейс (один раз после обработки всех строк)
+    // Сохраняем и обновляем интерфейс
     if (successCount > 0) {
       saveToStorage();
       renderTable(db);
@@ -899,6 +905,7 @@ if (massImportConfirm) {
     }
   });
 }
+
 
 
 // Импорт файла — подтверждение
