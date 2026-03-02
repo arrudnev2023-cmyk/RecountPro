@@ -365,11 +365,16 @@ const listEl = document.getElementById("list");
 
 function render(items) {
   listEl.innerHTML = "";
-  if (items.length === 0) {
+
+  // Фильтруем: показываем только товары с остатком > 0
+  const visibleItems = items.filter(item => item.qty > 0);
+
+  if (visibleItems.length === 0) {
     listEl.innerHTML = "<p style='text-align:center;color:var(--muted);padding:20px'>База товаров пуста. Добавьте товары через импорт или сканирование.</p>";
     return;
   }
-  items.forEach(item => {
+
+  visibleItems.forEach(item => {
     const div = document.createElement("div");
     div.className = "item";
     div.dataset.code = item.code;
@@ -384,6 +389,7 @@ function render(items) {
     listEl.appendChild(div);
   });
 }
+
 
 /* ============================================================
    ПОИСК
@@ -546,28 +552,32 @@ function handleDetected(code) {
 
   // Ищем товар по штрих‑коду
   let foundName = null;
+  let foundQty = 0;
+
   for (const [name, codes] of Object.entries(barcodeDB)) {
     if (codes.includes(code)) {
       foundName = name;
+      foundQty = quantities[name] || 0;
       break;
     }
   }
 
   if (foundName) {
-    const qty = quantities[foundName] || 0;
-
-    if (qty > 0) {
+    if (foundQty > 0) {
+      // Товар с остатком > 0 — подсвечиваем и скроллим
       highlightItem(code);
       showToast(`Найден: ${foundName}`);
     } else {
-      // Если остаток 0
-      showToast(`По позиции "${foundName}" остаток 0`);
+      // Товар с остатком 0 — временно показываем
+      showTemporaryItem(code, foundName, foundQty);
+      showToast(`По позиции "${foundName}" остаток 0 (показан на 5 с)`);
     }
   } else {
     // Товар не найден в базе
     showToast("Штрих‑код не найден в базе");
   }
 }
+
 
 /* ============================================================
    ИНТЕРФЕЙС
@@ -738,6 +748,36 @@ document.getElementById("clearBaseBtn").onclick = () => {
     showToast("База очищена, остатки сброшены до 0");
   });
 };
+
+
+  // Временное отображение товара с остатком 0 (на 5 секунд)
+function showTemporaryItem(code, name, qty) {
+  // Проверяем, нет ли уже такого элемента
+  const existing = document.querySelector(`.item[data-code="${code}"]`);
+  if (existing) {
+    existing.remove();
+  }
+
+  const div = document.createElement("div");
+  div.className = "item highlight-purple";
+  div.dataset.code = code;
+  div.dataset.name = name;
+
+  div.innerHTML = `
+    <div class="field"><span class="label">Название:</span> ${escapeHtml(name)}</div>
+    <div class="field"><span class="label">Штрих‑код:</span> ${code}</div>
+    <div class="field"><span class="label">Остаток:</span> ${qty}</div>
+  `;
+
+  listEl.prepend(div); // Показываем сверху
+
+  // Автоматически удаляем через 5 секунд
+  setTimeout(() => {
+    if (div.parentNode) {
+      div.remove();
+    }
+  }, 5000);
+}
 
 /* ============================================================
    ИНИЦИАЛИЗАЦИЯ
