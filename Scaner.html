@@ -485,185 +485,186 @@ th, td {
     let quantities = {}; // название → количество (для других экранов)
 
     // Загрузка данных из localStorage с валидацией
-    function loadFromStorage() {
-      try {
-        const saved = localStorage.getItem('barcodeDB');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          // Валидация структуры данных
-          if (parsed && typeof parsed === 'object') {
-            db = parsed.db || {};
-            quantities = parsed.quantities || {};
-          } else {
-            // Если структура повреждена — создаём новые базы
-            db = {};
-            quantities = {};
-          }
-        } else {
-          // Если данных нет — инициализируем пустые базы
-          db = {};
-          quantities = {};
-        }
-      } catch (e) {
-        console.error('Критическая ошибка загрузки базы:', e);
-        // При любой ошибке загрузки — создаём чистые базы
+   function loadFromStorage() {
+  try {
+    const saved = localStorage.getItem('barcodeDB');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Валидация структуры данных
+      if (parsed && typeof parsed === 'object') {
+        db = parsed.db || {};
+        quantities = parsed.quantities || {};
+      } else {
+        // Если структура повреждена — создаём новые базы
         db = {};
         quantities = {};
       }
+    } else {
+      // Если данных нет — инициализируем пустые базы
+      db = {};
+      quantities = {};
+    }
+  } catch (e) {
+    console.error('Критическая ошибка загрузки базы:', e);
+    // При любой ошибке загрузки — создаём чистые базы
+    db = {};
+    quantities = {};
+  }
+}
+
+// Сохранение в localStorage с обработкой ошибок
+function saveToStorage() {
+  try {
+    localStorage.setItem('barcodeDB', JSON.stringify({
+      db: db,
+      quantities: quantities
+    }));
+  } catch (e) {
+    console.error('Ошибка сохранения в localStorage:', e);
+    showToast('Не удалось сохранить данные (проверьте настройки браузера)');
+  }
+}
+
+// Отображение уведомления
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
+}
+
+// Рендеринг таблицы
+function renderTable(data) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+  Object.entries(data).forEach(([name, codes]) => {
+    if (!name || !codes) return;
+
+    const codeStr = codes.join(', ');
+    const match = name.toLowerCase().includes(searchTerm) ||
+                 codeStr.toLowerCase().includes(searchTerm);
+
+    if (searchTerm && !match) return;
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${codeStr}</td>
+      <td>${name}</td>
+      <td>${codes.length}</td>
+      <td class="actions">
+        <button class="action-btn edit-btn" data-name="${name}">Редактировать</button>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  // Добавляем обработчики для кнопок редактирования
+  document.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const name = this.getAttribute('data-name');
+      const codes = db[name];
+
+      document.getElementById('nameInput').value = name;
+      document.getElementById('codeInput').value = codes.join(', ');
+
+      window.currentEdit = name; // Сохраняем имя для редактирования
+    });
+  });
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+  loadFromStorage();
+  renderTable(db);
+
+  // Поиск
+  document.getElementById('searchInput').addEventListener('input', () => {
+    renderTable(db);
+  });
+
+  // Сохранение
+  document.getElementById('saveBtn').addEventListener('click', () => {
+    const name = document.getElementById('nameInput').value.trim();
+    const codesInput = document.getElementById('codeInput').value.trim();
+    const codes = codesInput ? codesInput.split(',').map(c => c.trim()).filter(c => c) : [];
+
+    if (!name) {
+      showToast('Введите название товара');
+      return;
     }
 
-    // Сохранение в local
-        // Сохранение в localStorage с обработкой ошибок
-    function saveToStorage() {
-      try {
-        localStorage.setItem('barcodeDB', JSON.stringify({
-          db: db,
-          quantities: quantities
-        }));
-      } catch (e) {
-        console.error('Ошибка сохранения в localStorage:', e);
-        showToast('Не удалось сохранить данные (проверьте настройки браузера)');
+    // Ограничиваем до 3 штрих‑кодов
+    const limitedCodes = codes.slice(0, 3);
+
+    if (window.currentEdit) {
+      // Редактирование существующей записи
+      delete db[window.currentEdit];
+      db[name] = limitedCodes;
+      if (quantities[window.currentEdit] !== undefined) {
+        quantities[name] = quantities[window.currentEdit];
+        delete quantities[window.currentEdit];
       }
+      delete window.currentEdit;
+    } else {
+      // Добавление новой записи
+      db[name] = limitedCodes;
+      quantities[name] = quantities[name] || 0;
     }
 
-    // Отображение уведомления
-    function showToast(message) {
-      const toast = document.getElementById('toast');
-      toast.textContent = message;
-      toast.classList.add('show');
+    saveToStorage();
+    renderTable(db);
+    showToast('Данные сохранены');
 
-      setTimeout(() => {
-        toast.classList.remove('show');
-      }, 3000);
+    // Очищаем форму
+    document.getElementById('nameInput').value = '';
+    document.getElementById('codeInput').value = '';
+  });
+
+  // Очистка формы
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    document.getElementById('nameInput').value = '';
+    document.getElementById('codeInput').value = '';
+    delete window.currentEdit;
+  });
+
+  // Меню действий
+  const menuBtn = document.getElementById('menuBtn');
+  const menuDropdown = document.getElementById('menuDropdown');
+
+  menuBtn.addEventListener('click', () => {
+    menuDropdown.classList.toggle('show');
+  });
+
+  // Закрытие меню при клике вне его
+  document.addEventListener('click', (e) => {
+    if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
+      menuDropdown.classList.remove('show');
     }
+  });
 
-    // Рендеринг таблицы
-    function renderTable(data) {
-      const tbody = document.getElementById('tableBody');
-      tbody.innerHTML = '';
+  // Экспорт базы
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const dataStr = JSON.stringify({ db, quantities }, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'barcode_database.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    menuDropdown.classList.remove('show');
+    showToast('База экспортирована');
+  });
+});
 
-      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-
-      Object.entries(data).forEach(([name, codes]) => {
-        if (!name || !codes) return;
-
-        const codeStr = codes.join(', ');
-        const match = name.toLowerCase().includes(searchTerm) ||
-                    codeStr.toLowerCase().includes(searchTerm);
-
-        if (searchTerm && !match) return;
-
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${codeStr}</td>
-          <td>${name}</td>
-          <td>${codes.length}</td>
-          <td class="actions">
-            <button class="action-btn edit-btn" data-name="${name}">Редактировать</button>
-          </td>
-        `;
-        tbody.appendChild(row);
-      });
-
-      // Добавляем обработчики для кнопок редактирования
-      document.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const name = this.getAttribute('data-name');
-          const codes = db[name];
-
-          document.getElementById('nameInput').value = name;
-          document.getElementById('codeInput').value = codes.join(', ');
-
-          window.currentEdit = name; // Сохраняем имя для редактирования
-        });
-      });
-    }
-
-    // Инициализация при загрузке страницы
-    document.addEventListener('DOMContentLoaded', () => {
-      loadFromStorage();
-      renderTable(db);
-
-      // Поиск
-      document.getElementById('searchInput').addEventListener('input', () => {
-        renderTable(db);
-      });
-
-      // Сохранение
-      document.getElementById('saveBtn').addEventListener('click', () => {
-        const name = document.getElementById('nameInput').value.trim();
-        const codesInput = document.getElementById('codeInput').value.trim();
-        const codes = codesInput ? codesInput.split(',').map(c => c.trim()).filter(c => c) : [];
-
-        if (!name) {
-          showToast('Введите название товара');
-          return;
-        }
-
-        // Ограничиваем до 3 штрих‑кодов
-        const limitedCodes = codes.slice(0, 3);
-
-        if (window.currentEdit) {
-          // Редактирование существующей записи
-          delete db[window.currentEdit];
-          db[name] = limitedCodes;
-          if (quantities[window.currentEdit] !== undefined) {
-            quantities[name] = quantities[window.currentEdit];
-            delete quantities[window.currentEdit];
-          }
-          delete window.currentEdit;
-        } else {
-          // Добавление новой записи
-          db[name] = limitedCodes;
-          quantities[name] = quantities[name] || 0;
-        }
-
-        saveToStorage();
-        renderTable(db);
-        showToast('Данные сохранены');
-
-        // Очищаем форму
-        document.getElementById('nameInput').value = '';
-        document.getElementById('codeInput').value = '';
-      });
-
-      // Очистка формы
-      document.getElementById('clearBtn').addEventListener('click', () => {
-        document.getElementById('nameInput').value = '';
-        document.getElementById('codeInput').value = '';
-        delete window.currentEdit;
-      });
-
-      // Меню действий
-      const menuBtn = document.getElementById('menuBtn');
-      const menuDropdown = document.getElementById('menuDropdown');
-
-      menuBtn.addEventListener('click', () => {
-        menuDropdown.classList.toggle('show');
-      });
-
-      // Закрытие меню при клике вне его
-      document.addEventListener('click', (e) => {
-        if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
-          menuDropdown.classList.remove('show');
-        }
-      });
-
-      // Экспорт базы
-      document.getElementById('exportBtn').addEventListener('click', () => {
-        const dataStr = JSON.stringify({ db, quantities }, null, 2);
-        const blob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'barcode_database.json';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        menuDropdown.classList.remove('show');
-        showToast('База экспортирована');
-      });
 
       // Массовый импорт
       document.getElementById('massImportBtn').addEventListener('click', () => {
