@@ -127,54 +127,6 @@
       opacity: 0.9;
     }
 
-    .actions-menu {
-      position: relative;
-      display: inline-block;
-    }
-
-    .dropdown-content {
-      display: none;
-      position: absolute;
-      background-color: var(--panel);
-      min-width: 200px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-      border-radius: var(--radius);
-      z-index: 1002;
-      right: 0;
-      transition: all 0.3s ease;
-    }
-
-    .dropdown-content.show {
-      display: block;
-      animation: fadeIn 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .menu-item {
-      width: 100%;
-      padding: 12px 16px;
-      margin: 0;
-      border: none;
-      text-align: left;
-      cursor: pointer;
-      background: none;
-      font-size: 16px;
-    }
-
-    .menu-item:hover {
-      background-color: rgba(0, 123, 255, 0.05);
-    }
-
     /* Table */
     .table-container {
       background: var(--panel);
@@ -205,24 +157,22 @@
 
     .actions {
       white-space: nowrap;
+      width: 1%;
     }
 
     .action-btn {
-      padding: 6px 10px;
+      padding: 8px 12px;
       border: none;
       border-radius: 4px;
       cursor: pointer;
       font-size: 14px;
+      width: 100%;
+      margin-bottom: 5px;
     }
 
     .edit-btn {
       background-color: #ffc107;
       color: #333;
-    }
-
-    .delete-btn {
-      background-color: var(--danger);
-      color: white;
     }
 
     /* Toast */
@@ -278,17 +228,17 @@
         flex-direction: column;
       }
 
-           .btn-secondary, .btn-danger {
+      .btn-secondary, .btn-danger {
         margin-left: 0;
         margin-top: 10px;
       }
-      
+
       th, td {
         padding: 8px 10px;
         font-size: 14px;
       }
 
-      /* Адаптация меню действий для мобильных устройств */
+      /* Адаптация меню действий для мобильных */
       .actions-menu {
         width: 100%;
         margin-bottom: 15px;
@@ -302,7 +252,7 @@
 
       .dropdown-content {
         position: fixed;
-        top: 60px; /* отступ от верха, чтобы не перекрывать шапку */
+        top: 60px;
         left: 10px;
         right: 10px;
         min-width: auto;
@@ -323,73 +273,111 @@
         border-bottom: none;
       }
 
-      .menu-item:hover {
-        background-color: rgba(0, 123, 255, 0.1);
-      }
+     .menu-item:hover {
+  background-color: rgba(0, 123, 255, 0.1);
+}
 
-      /* Уменьшаем отступы в формах на мобильных */
-      .form-section {
-        padding: 15px;
-      }
+/* Уменьшаем отступы в формах на мобильных */
+.form-section {
+  padding: 15px;
+}
 
-      .field {
-        margin-bottom: 12px;
-      }
+.field {
+  margin-bottom: 12px;
+}
 
-      label {
-        font-size: 15px;
-      }
+label {
+  font-size: 15px;
+}
 
-      input[type="text"], textarea {
-        padding: 10px;
-        font-size: 15px;
-      }
+input[type="text"], textarea {
+  padding: 10px;
+  font-size: 15px;
+}
 
-      textarea {
-        min-height: 80px;
-      }
+textarea {
+  min-height: 80px;
+}
 
-      /* Корректировка таблицы на мобильных */
-      .table-container {
-        overflow-x: auto;
-      }
+/* Адаптация таблицы для мобильных — делаем скролл с видимыми кнопками */
+.table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 
-      table {
-        min-width: 600px; /* минимальная ширина для читаемости */
-      }
+table {
+  min-width: 600px; /* минимальная ширина для читаемости */
+}
 
-      th, td {
-        padding: 6px 8px;
-        font-size: 13px;
-      }
+th, td {
+  padding: 6px 8px;
+  font-size: 13px;
+}
 
-      .actions {
-        white-space: normal;
-      }
+.actions {
+  white-space: normal;
+  width: auto; /* Занимает место по содержимому */
+}
 
-      .action-btn {
-        display: block;
-        width: 100%;
-        margin-bottom: 5px;
-        padding: 8px 12px;
-        font-size: 14px;
-      }
+.action-btn {
+  display: block;
+  width: 100%;
+  margin-bottom: 5px;
+  padding: 10px 12px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
 
-      /* Корректировка модальных окон */
-      .modal-content {
-        max-width: 95%;
-        padding: 15px;
-        margin: 20px;
-      }
+/* Кнопки действий в одну колонку */
+.actions .action-btn:last-child {
+  margin-bottom: 0;
+}
 
-      .modal-buttons {
-        flex-direction: column;
-      }
+/* Корректировка модальных окон для мобильных */
+.modal-content {
+  max-width: 95%;
+  padding: 15px;
+  margin: 20px;
+}
 
-      .btn {
-        width: 100%;
-      }
-    }
+.modal-buttons {
+  flex-direction: column;
+}
+
+.btn {
+  width: 100%;
+}
+
+/* Оптимизация таблицы для очень маленьких экранов */
+@media (max-width: 480px) {
+  .table-container {
+    overflow-x: auto;
+  }
+
+  table {
+    min-width: 500px;
+  }
+
+  th, td {
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+
+  .action-btn {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  /* Уменьшаем форму на очень маленьких экранах */
+  .form-section {
+    padding: 10px;
+  }
+
+  .field {
+    margin-bottom: 10px;
+  }
+}
+}
   </style>
 </head>
 <body>
@@ -495,410 +483,335 @@
     let db = {}; // название → массив штрих‑кодов (до 3 шт.)
     let quantities = {}; // название → количество (для других экранов)
 
-    // Загрузка данных из localStorage
-   // Загрузка данных из localStorage
-function loadFromStorage() {
-  try {
-    const saved = localStorage.getItem('barcodeDB');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      db = parsed.db || {};
-      quantities = parsed.quantities || {};
-    }
-  } catch (e) {
-    console.error('Ошибка загрузки базы:', e);
-    db = {};
-    quantities = {};
-  }
-}
-
-// Сохранение в localStorage
-function saveToStorage() {
-  localStorage.setItem('barcodeDB', JSON.stringify({
-    db: db,
-    quantities: quantities
-  }));
-}
-
-// Отображение таблицы
-function renderTable(data) {
-  tableBody.innerHTML = '';
-
-  Object.entries(data).forEach(([name, codes]) => {
-    // Показываем до 3 штрих‑кодов в одной строке
-    const displayCodes = codes.slice(0, 3).join(', ');
-    const codeCount = codes.length;
-
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${displayCodes}</td>
-      <td>${name}</td>
-      <td>${codeCount}</td>
-      <td class="actions">
-        <button class="action-btn edit-btn" data-name="${name}">Редактировать</button>
-        <button class="action-btn delete-btn" data-name="${name}">Удалить товар</button>
-      </td>
-    `;
-    tableBody.appendChild(row);
-  });
-}
-
-// Функция показа уведомлений
-function showToast(message) {
-  toast.textContent = message;
-  toast.classList.add('show');
-  setTimeout(() => {
-    toast.classList.remove('show');
-  }, 3000);
-}
-
-// Элементы DOM
-const codeInput = document.getElementById('codeInput');
-const nameInput = document.getElementById('nameInput');
-const saveBtn = document.getElementById('saveBtn');
-const clearBtn = document.getElementById('clearBtn');
-const searchInput = document.getElementById('searchInput');
-const tableBody = document.getElementById('tableBody');
-const toast = document.getElementById('toast');
-
-// Меню действий
-const menuBtn = document.getElementById('menuBtn');
-const menuDropdown = document.getElementById('menuDropdown');
-const exportBtn = document.getElementById('exportBtn');
-const importFileBtn = document.getElementById('importFileBtn');
-const massImportBtn = document.getElementById('massImportBtn');
-const clearDBBtn = document.getElementById('clearDBBtn');
-
-// Модальные окна
-const massImportModal = document.getElementById('massImportModal');
-const fileImportModal = document.getElementById('fileImportModal');
-const confirmModal = document.getElementById('confirmModal');
-const massImportData = document.getElementById('massImportData');
-const fileInput = document.getElementById('fileInput');
-const confirmTitle = document.getElementById('confirmTitle');
-const confirmMessage = document.getElementById('confirmMessage');
-
-// Кнопки модальных окон
-const massImportCancel = document.getElementById('massImportCancel');
-const massImportConfirm = document.getElementById('massImportConfirm');
-const fileImportCancel = document.getElementById('fileImportCancel');
-const fileImportConfirm = document.getElementById('fileImportConfirm');
-const confirmCancel = document.getElementById('confirmCancel');
-const confirmOk = document.getElementById('confirmOk');
-
-// Обработчики событий
-
-// Сохранение записи
-saveBtn.addEventListener('click', () => {
-  const codesInput = codeInput.value.trim();
-  const name = nameInput.value.trim();
-
-  if (!name) {
-    showToast('Введите название товара!');
-    return;
-  }
-
-  // Обработка штрих‑кодов: разделяем по запятым, убираем пробелы
-  let codes = [];
-  if (codesInput) {
-    codes = codesInput.split(',')
-      .map(code => code.trim())
-      .filter(code => code) // убираем пустые
-      .slice(0, 3); // берём только первые 3
-  } else {
-    // Если штрих‑коды не введены — используем универсальный код
-    codes = ['00000000'];
-  }
-
-  // Если название уже есть — добавляем новые штрих‑коды
-  if (db[name]) {
-    // Объединяем массивы и убираем дубликаты
-    const existingCodes = new Set([...db[name], ...codes]);
-    db[name] = Array.from(existingCodes).slice(0, 3);
-    showToast(`Штрих‑коды добавлены к существующему товару "${name}"`);
-  } else {
-    // Создаём новую запись
-    db[name] = codes;
-    quantities[name] = 0; // инициализируем количество нулём
-    showToast(`Товар "${name}" сохранён с ${codes.length} штрих‑кодом(ами)`);
-  }
-
-  saveToStorage();
-  renderTable(db);
-  codeInput.value = '';
-  nameInput.value = '';
-});
-
-// Очистка формы
-clearBtn.addEventListener('click', () => {
-  codeInput.value = '';
-  nameInput.value = '';
-});
-
-// Поиск
-searchInput.addEventListener('input', (e) => {
-  const query = e.target.value.toLowerCase();
-  const filtered = {};
-
-  Object.entries(db).forEach(([name, codes]) => {
-    // Поиск по названию
-    if (name.toLowerCase().includes(query)) {
-      filtered[name] = codes;
-      return;
-    }
-
-    // Поиск по штрих‑кодам
-    const matchingCodes = codes.filter(code =>
-      code.toLowerCase().includes(query)
-    );
-    if (matchingCodes.length > 0) {
-      filtered[name] = matchingCodes;
-    }
-  });
-
-  renderTable(filtered);
-});
-
-// Экспорт базы
-exportBtn.addEventListener('click', () => {
-  const dataStr = JSON.stringify({ db, quantities }, null, 2);
-  const dataBlob = new Blob([dataStr], { type: 'application/json' });
-  const url = URL.createObjectURL(dataBlob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `barcodeDB_${new Date().toISOString().split('T')[0]}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('База экспортирована!');
-});
-
-// Массовый импорт текста
-massImportBtn.addEventListener('click', () => {
-  massImportModal.style.display = 'flex';
-  massImportData.value = ''; // Очищаем поле при открытии
-});
-
-massImportCancel.addEventListener('click', () => {
-  massImportModal.style.display = 'none';
-  massImportData.value = '';
-});
-
-massImportConfirm.addEventListener('click', () => {
-  const rawData = massImportData.value.trim();
-
-  if (!rawData) {
-    showToast('Введите данные для импорта');
-    return;
-  }
-
-  try {
-    let imported;
-    try {
-      // Пробуем распарсить как JSON объект
-      imported = JSON.parse(rawData);
-      if (typeof imported !== 'object' || imported === null || Array.isArray(imported)) {
-        throw new Error('Данные должны быть JSON‑объектом');
-      }
-
-      // Преобразуем старую структуру в новую (если нужно)
-      const converted = {};
-      Object.entries(imported).forEach(([code, name]) => {
-        if (!converted[name]) converted[name] = [];
-        converted[name].push(code);
-      });
-      imported = converted;
-    } catch (jsonError) {
-      // Если JSON не получился, пробуем обработать построчно
-      imported = {};
-      const lines = rawData.split('\n');
-
-      for (const line of lines) {
-        const trimmedLine = line.trim();
-        if (!trimmedLine) continue;
-
-        // Ищем формат: "код": "название" или код,название
-        const jsonMatch = trimmedLine.match(/"([^"]+)":\s*"([^"]+)"/);
-        if (jsonMatch) {
-          const name = jsonMatch[2];
-          if (!imported[name]) imported[name] = [];
-          imported[name].push(jsonMatch[1]);
-          continue;
-        }
-
-        const commaMatch = trimmedLine.split(',');
-        if (commaMatch.length >= 2) {
-          const name = commaMatch[1].trim();
-          if (!imported[name]) imported[name] = [];
-                  imported[name].push(commaMatch[0].trim());
-          continue;
-        }
-
-        // Если просто код без названия — добавляем с пустым названием
-        if (trimmedLine.length > 0) {
-          if (!imported['']) imported[''] = [];
-          imported[''].push(trimmedLine);
-        }
-      }
-    }
-
-    // Объединяем с существующей базой, обрабатываем до 3 штрих‑кодов на товар
-    Object.entries(imported).forEach(([name, codes]) => {
-      if (!Array.isArray(codes)) codes = [codes];
-
-      if (db[name]) {
-        // Объединяем массивы и убираем дубликаты
-        const existingCodes = new Set([...db[name], ...codes]);
-        db[name] = Array.from(existingCodes).slice(0, 3);
-      } else {
-        // Создаём новую запись, ограничиваем до 3 кодов
-        db[name] = [...new Set(codes)].slice(0, 3);
-        quantities[name] = quantities[name] || 0; // инициализируем количество
-      }
-    });
-
-    saveToStorage();
-    renderTable(db);
-    massImportModal.style.display = 'none';
-    massImportData.value = '';
-    showToast(`Импортировано ${Object.keys(imported).length} товаров`);
-  } catch (e) {
-    console.error('Ошибка импорта:', e);
-    showToast('Ошибка импорта: проверьте формат данных. Используйте JSON или формат "код, название"');
-  }
-});
-
-// Импорт файла
-fileImportBtn.addEventListener('click', () => {
-  fileImportModal.style.display = 'flex';
-  fileInput.value = ''; // Очищаем поле выбора файла
-});
-
-fileImportCancel.addEventListener('click', () => {
-  fileImportModal.style.display = 'none';
-  fileInput.value = '';
-});
-
-fileImportConfirm.addEventListener('click', () => {
-  const file = fileInput.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
+    // Загрузка данных из localStorage с валидацией
+    function loadFromStorage() {
       try {
-        const imported = JSON.parse(e.target.result);
-
-        if (imported.db && imported.quantities) {
-          // Новая структура — просто объединяем
-          Object.entries(imported.db).forEach(([name, codes]) => {
-            if (db[name]) {
-              const existingCodes = new Set([...db[name], ...codes]);
-              db[name] = Array.from(existingCodes).slice(0, 3);
-            } else {
-              db[name] = [...new Set(codes)].slice(0, 3);
-              quantities[name] = imported.quantities[name] || 0;
-            }
-          });
+        const saved = localStorage.getItem('barcodeDB');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          // Валидация структуры данных
+          if (parsed && typeof parsed === 'object') {
+            db = parsed.db || {};
+            quantities = parsed.quantities || {};
+          } else {
+            // Если структура повреждена — создаём новые базы
+            db = {};
+            quantities = {};
+          }
         } else {
-          // Старая структура — конвертируем
-          Object.entries(imported).forEach(([code, name]) => {
-            if (!db[name]) db[name] = [];
-            db[name].push(code);
-            quantities[name] = quantities[name] || 0;
-          });
-          // Ограничиваем до 3 штрих‑кодов
-          Object.keys(db).forEach(name => {
-            db[name] = [...new Set(db[name])].slice(0, 3);
-          });
+          // Если данных нет — инициализируем пустые базы
+          db = {};
+          quantities = {};
+        }
+      } catch (e) {
+        console.error('Критическая ошибка загрузки базы:', e);
+        // При любой ошибке загрузки — создаём чистые базы
+        db = {};
+        quantities = {};
+      }
+    }
+
+    // Сохранение в local
+        // Сохранение в localStorage с обработкой ошибок
+    function saveToStorage() {
+      try {
+        localStorage.setItem('barcodeDB', JSON.stringify({
+          db: db,
+          quantities: quantities
+        }));
+      } catch (e) {
+        console.error('Ошибка сохранения в localStorage:', e);
+        showToast('Не удалось сохранить данные (проверьте настройки браузера)');
+      }
+    }
+
+    // Отображение уведомления
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // Рендеринг таблицы
+    function renderTable(data) {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+      Object.entries(data).forEach(([name, codes]) => {
+        if (!name || !codes) return;
+
+        const codeStr = codes.join(', ');
+        const match = name.toLowerCase().includes(searchTerm) ||
+                    codeStr.toLowerCase().includes(searchTerm);
+
+        if (searchTerm && !match) return;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${codeStr}</td>
+          <td>${name}</td>
+          <td>${codes.length}</td>
+          <td class="actions">
+            <button class="action-btn edit-btn" data-name="${name}">Редактировать</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      // Добавляем обработчики для кнопок редактирования
+      document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const name = this.getAttribute('data-name');
+          const codes = db[name];
+
+          document.getElementById('nameInput').value = name;
+          document.getElementById('codeInput').value = codes.join(', ');
+
+          window.currentEdit = name; // Сохраняем имя для редактирования
+        });
+      });
+    }
+
+    // Инициализация при загрузке страницы
+    document.addEventListener('DOMContentLoaded', () => {
+      loadFromStorage();
+      renderTable(db);
+
+      // Поиск
+      document.getElementById('searchInput').addEventListener('input', () => {
+        renderTable(db);
+      });
+
+      // Сохранение
+      document.getElementById('saveBtn').addEventListener('click', () => {
+        const name = document.getElementById('nameInput').value.trim();
+        const codesInput = document.getElementById('codeInput').value.trim();
+        const codes = codesInput ? codesInput.split(',').map(c => c.trim()).filter(c => c) : [];
+
+        if (!name) {
+          showToast('Введите название товара');
+          return;
+        }
+
+        // Ограничиваем до 3 штрих‑кодов
+        const limitedCodes = codes.slice(0, 3);
+
+        if (window.currentEdit) {
+          // Редактирование существующей записи
+          delete db[window.currentEdit];
+          db[name] = limitedCodes;
+          if (quantities[window.currentEdit] !== undefined) {
+            quantities[name] = quantities[window.currentEdit];
+            delete quantities[window.currentEdit];
+          }
+          delete window.currentEdit;
+        } else {
+          // Добавление новой записи
+          db[name] = limitedCodes;
+          quantities[name] = quantities[name] || 0;
         }
 
         saveToStorage();
         renderTable(db);
-        fileImportModal.style.display = 'none';
-        fileInput.value = '';
-        showToast('База импортирована!');
-      } catch (err) {
-        showToast('Ошибка чтения файла');
-      }
-    };
-    reader.readAsText(file);
-  } else {
-    showToast('Выберите файл');
-  }
+        showToast('Данные сохранены');
+
+        // Очищаем форму
+        document.getElementById('nameInput').value = '';
+        document.getElementById('codeInput').value = '';
+      });
+
+      // Очистка формы
+      document.getElementById('clearBtn').addEventListener('click', () => {
+        document.getElementById('nameInput').value = '';
+        document.getElementById('codeInput').value = '';
+        delete window.currentEdit;
+      });
+
+      // Меню действий
+      const menuBtn = document.getElementById('menuBtn');
+      const menuDropdown = document.getElementById('menuDropdown');
+
+      menuBtn.addEventListener('click', () => {
+        menuDropdown.classList.toggle('show');
+      });
+
+      // Закрытие меню при клике вне его
+      document.addEventListener('click', (e) => {
+        if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
+          menuDropdown.classList.remove('show');
+        }
+      });
+
+      // Экспорт базы
+      document.getElementById('exportBtn').addEventListener('click', () => {
+        const dataStr = JSON.stringify({ db, quantities }, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'barcode_database.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        menuDropdown.classList.remove('show');
+        showToast('База экспортирована');
+      });
+
+      // Массовый импорт
+      document.getElementById('massImportBtn').addEventListener('click', () => {
+        document.getElementById('massImportModal').style.display = 'flex';
+        menuDropdown.classList.remove('show');
+      });
+
+      document.getElementById('massImportCancel').addEventListener('click', () => {
+        document.getElementById('massImportModal').style.display = 'none';
+      });
+
+      document.getElementById('massImportConfirm').addEventListener('click', () => {
+        const input = document.getElementById('massImportData').value;
+        const lines = input.split('\n').filter(line => line.trim());
+        const imported = {};
+
+        lines.forEach(line => {
+          const trimmedLine = line.trim();
+          const colonMatch = trimmedLine.match(/^"([^"]+)":\s*"([^"]+)"/);
+          const commaMatch = trimmedLine.match(/^([^,]+),\s*(.+)$/);
+
+          if (colonMatch) {
+            const name = colonMatch[1].trim();
+            const code = colonMatch[2].trim();
+            if (!imported[name]) imported[name] = [];
+            imported[name].push(code);
+            return;
+          }
+
+          if (commaMatch) {
+            const code = commaMatch[1].trim();
+            const name = commaMatch[2].trim();
+            if (!imported[name]) imported[name] = [];
+            imported[name].push(code);
+            return;
+          }
+
+          // Если просто код без названия — добавляем с пустым названием
+          if (trimmedLine.length > 0) {
+            if (!imported['']) imported[''] = [];
+            imported[''].push(trimmedLine);
+          }
+        });
+
+        // Объединяем с существующей базой, обрабатываем до 3 штрих‑кодов на товар
+        Object.entries(imported).forEach(([name, codes]) => {
+          if (!Array.isArray(codes)) codes = [codes];
+
+          if (db[name]) {
+            // Объединяем массивы и убираем дубликаты
+            const existingCodes = new Set([...db[name], ...codes]);
+            db[name] = Array.from(existingCodes).slice(0, 3);
+          } else {
+            // Создаём новую запись, ограничиваем до 3 кодов
+            db[name] = [...new Set(codes)].slice(0, 3);
+            quantities[name] = quantities[name] || 0; // инициализируем количество
+          }
+        });
+
+        saveToStorage();
+        renderTable(db);
+        document.getElementById('massImportModal').style.display = 'none';
+        document.getElementById('massImportData').value = '';
+        showToast('Массовый импорт завершён');
+      });
+
+      // Очистка базы
+      document.getElementById('clearDBBtn').addEventListener('click', () => {
+        document.getElementById('confirmTitle').textContent = 'Очистка базы';
+        document.getElementById('confirmMessage').textContent =
+          'Вы уверены, что хотите очистить всю базу данных? Это действие нельзя отменить.';
+        document.getElementById('confirmModal').style.display = 'flex';
+        menuDropdown.classList.remove('show');
+      });
+
+     document.getElementById('confirmCancel').addEventListener('click', () => {
+  document.getElementById('confirmModal').style.display = 'none';
 });
 
-// Очистка базы
-clearDBBtn.addEventListener('click', () => {
-  confirmTitle.textContent = 'Очистка базы данных';
-  confirmMessage.textContent = 'Вы уверены, что хотите удалить ВСЕ данные? Это действие нельзя отменить!';
-  confirmModal.style.display = 'flex';
-  confirmModal.dataset.action = 'clearDB';
-});
-
-// Подтверждение действий
-confirmCancel.addEventListener('click', () => {
-  confirmModal.style.display = 'none';
-});
-
-confirmOk.addEventListener('click', () => {
-  const action = confirmModal.dataset.action;
-
-  if (action === 'clearDB') {
-    db = {};
-    quantities = {};
-    saveToStorage();
-    renderTable(db);
-    showToast('База очищена!');
-  } else if (action === 'deleteItem') {
-    const nameToDelete = confirmModal.dataset.deleteName;
-    if (nameToDelete && db[nameToDelete]) {
-      delete db[nameToDelete];
-      delete quantities[nameToDelete];
-      saveToStorage();
-      renderTable(db);
-      showToast('Товар удалён!');
-    }
-  }
-
-  confirmModal.style.display = 'none';
-});
-
-// Редактирование и удаление записей
-tableBody.addEventListener('click', (e) => {
-  if (e.target.classList.contains('edit-btn')) {
-    const name = e.target.dataset.name;
-    codeInput.value = db[name].join(', ');
-    nameInput.value = name;
-    showToast('Данные для редактирования загружены в форму');
-  } else if (e.target.classList.contains('delete-btn')) {
-    const nameToDelete = e.target.dataset.name;
-
-    confirmTitle.textContent = 'Удаление товара';
-    confirmMessage.textContent = `Вы уверены, что хотите удалить товар "${nameToDelete}" со всеми штрих‑кодами?`;
-    confirmModal.style.display = 'flex';
-    confirmModal.dataset.action = 'deleteItem';
-    confirmModal.dataset.deleteName = nameToDelete;
-  }
-});
-
-// Меню действий
-menuBtn.addEventListener('click', () => {
-  menuDropdown.classList.toggle('show');
-});
-
-// Закрытие меню при клике вне его
-document.addEventListener('click', (e) => {
-  if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
-    menuDropdown.classList.remove('show');
-  }
-});
-
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', () => {
-  loadFromStorage();
+document.getElementById('confirmOk').addEventListener('click', () => {
+  db = {};
+  quantities = {};
+  saveToStorage();
   renderTable(db);
+  document.getElementById('confirmModal').style.display = 'none';
+  showToast('База данных очищена');
+});
+
+// Импорт файла
+document.getElementById('fileImportBtn').addEventListener('click', () => {
+  document.getElementById('fileImportModal').style.display = 'flex';
+  menuDropdown.classList.remove('show');
+});
+
+document.getElementById('fileImportCancel').addEventListener('click', () => {
+  document.getElementById('fileImportModal').style.display = 'none';
+});
+
+document.getElementById('fileImportConfirm').addEventListener('click', () => {
+  const fileInput = document.getElementById('fileInput');
+  const file = fileInput.files[0];
+
+  if (!file) {
+    showToast('Выберите файл для импорта');
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    try {
+      const importedData = JSON.parse(e.target.result);
+
+      if (importedData && typeof importedData === 'object') {
+        db = importedData.db || {};
+        quantities = importedData.quantities || {};
+
+        saveToStorage();
+        renderTable(db);
+        showToast('База успешно импортирована');
+      } else {
+        showToast('Неверный формат файла');
+      }
+    } catch (error) {
+      console.error('Ошибка парсинга JSON:', error);
+      showToast('Ошибка чтения файла — проверьте формат');
+    }
+  };
+
+  reader.onerror = function() {
+    showToast('Ошибка при чтении файла');
+  };
+
+  reader.readAsText(file);
+  document.getElementById('fileImportModal').style.display = 'none';
+  fileInput.value = ''; // Очищаем поле файла
+});
+
+// Закрытие модальных окон при клике вне их
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('modal')) {
+    document.getElementById('massImportModal').style.display = 'none';
+    document.getElementById('fileImportModal').style.display = 'none';
+    document.getElementById('confirmModal').style.display = 'none';
+  }
+});
 });
   </script>
 </body>
 </html>
+
                                         
