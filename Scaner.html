@@ -815,98 +815,61 @@ if (massImportConfirm) {
   massImportConfirm.addEventListener('click', () => {
     const input = document.getElementById('massImportData')?.value || '';
     const lines = input.split('\n').filter(line => line.trim());
-    let successCount = 0;
-    let errorCount = 0;
-    const errorDetails = [];
+    const imported = {};
 
-    lines.forEach((line, index) => {
+    lines.forEach(line => {
       const trimmedLine = line.trim();
-
-      // Формат: "штрихкод": "название"
-      const colonMatch = trimmedLine.match(/^"([^"]+)":\s*"([^"]+)"$/);
-      // Формат: штрихкод, название
+      const colonMatch = trimmedLine.match(/^"([^"]+)":\s*"([^"]+)"/);
       const commaMatch = trimmedLine.match(/^([^,]+),\s*(.+)$/);
 
       if (colonMatch) {
-        const barcode = colonMatch[1].trim(); // Первая группа — штрихкод
-        const name = colonMatch[2].trim();   // Вторая группа — название
+        const name = colonMatch[1].trim();
+        const code = colonMatch[2].trim();
+        if (!imported[name]) imported[name] = [];
+        imported[name].push(code);
+        return;
+      }
 
-        if (isValidBarcode(barcode) && name) {
-          if (!db[name]) {
-            db[name] = [];
-            quantities[name] = 0;
-          }
-          if (!db[name].includes(barcode)) {
-            if (db[name].length < 3) {
-              db[name].push(barcode);
-              successCount++;
-            } else {
-              errorCount++;
-              errorDetails.push(`Строка ${index + 1}: у товара уже 3 штрихкода, "${barcode}" не добавлен`);
-            }
-          } else {
-            errorCount++;
-            errorDetails.push(`Строка ${index + 1}: штрихкод "${barcode}" уже существует для товара "${name}"`);
-          }
-        } else {
-          errorCount++;
-          errorDetails.push(`Строка ${index + 1}: некорректный штрихкод или пустое название`);
-        }
-      } else if (commaMatch) {
-        const barcode = commaMatch[1].trim(); // Первая группа — штрихкод
-        const name = commaMatch[2].trim();  // Вторая группа — название
+      if (commaMatch) {
+        const code = commaMatch[1].trim();
+        const name = commaMatch[2].trim();
+        if (!imported[name]) imported[name] = [];
+        imported[name].push(code);
+        return;
+      }
 
-        if (isValidBarcode(barcode) && name) {
-          if (!db[name]) {
-            db[name] = [];
-            quantities[name] = 0;
-          }
-          if (!db[name].includes(barcode)) {
-            if (db[name].length < 3) {
-              db[name].push(barcode);
-              successCount++;
-            } else {
-              errorCount++;
-              errorDetails.push(`Строка ${index + 1}: у товара уже 3 штрихкода, "${barcode}" не добавлен`);
-            }
-          } else {
-            errorCount++;
-            errorDetails.push(`Строка ${index + 1}: штрихкод "${barcode}" уже существует для товара "${name}"`);
-          }
-        } else {
-          errorCount++;
-          errorDetails.push(`Строка ${index + 1}: некорректный штрихкод или пустое название`);
-        }
-      } else {
-        errorCount++;
-        errorDetails.push(`Строка ${index + 1} не соответствует ни одному из форматов`);
+      // Если просто код без названия — добавляем с пустым названием
+      if (trimmedLine.length > 0) {
+        if (!imported['']) imported[''] = [];
+        imported[''].push(trimmedLine);
       }
     });
 
-    // Сохраняем и обновляем интерфейс
-    if (successCount > 0) {
-      saveToStorage();
-      renderTable(db);
-      closeAllModals();
-      document.getElementById('massImportData').value = '';
-      let message = `Успешно импортировано ${successCount} позиций!`;
-      if (errorCount > 0) {
-        message += ` Ошибок: ${errorCount}. Проверьте консоль для деталей.`;
-        console.warn('Ошибки импорта:', errorDetails);
+    // Объединяем с существующей базой, обрабатываем до 3 штрих‑кодов на товар
+    Object.entries(imported).forEach(([name, codes]) => {
+      if (!Array.isArray(codes)) codes = [codes];
+
+      if (db[name]) {
+        // Объединяем массивы и убираем дубликаты
+        const existingCodes = new Set([...db[name], ...codes]);
+        db[name] = Array.from(existingCodes).slice(0, 3);
+      } else {
+        // Создаём новую запись, ограничиваем до 3 кодов
+        db[name] = [...new Set(codes)].slice(0, 3);
+        quantities[name] = quantities[name] || 0; // инициализируем количество
       }
-      showToast(message);
-    } else {
-      let message = `Не удалось распознать ни одного штрихкода. Ошибок: ${errorCount}`;
-      if (errorDetails.length > 0) {
-        console.warn('Детали ошибок импорта:', errorDetails);
-        message += '. Проверьте консоль для подробностей.';
-      }
-      showToast(message);
+    });
+
+    saveToStorage();
+    renderTable(db);
+    closeAllModals();
+    const massImportData = document.getElementById('massImportData');
+    if (massImportData) {
+      massImportData.value = '';
     }
+    showToast('Массовый импорт завершён');
   });
 }
-
-
 
 // Импорт файла — подтверждение
 const fileImportConfirm = document.getElementById('fileImportConfirm');
@@ -976,6 +939,7 @@ document.addEventListener('click', (e) => {
 
 </body>
 </html>
+
 
 
 
