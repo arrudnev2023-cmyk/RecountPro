@@ -353,6 +353,16 @@ th, td {
 .btn {
   width: 100%;
 }
+      .modal-buttons.vertical {
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal-buttons button {
+  width: 100%;
+  text-align: center;
+}
+
 
 /* Оптимизация таблицы для очень маленьких экранов */
 @media (max-width: 480px) {
@@ -413,55 +423,61 @@ th, td {
       </div>
     </section>
 
-    <!-- Actions Menu -->
-    <div class="actions-menu">
-      <button id="menuBtn" class="btn btn-secondary">⋮ Действия</button>
-      <div id="menuDropdown" class="dropdown-content">
-        <button id="exportBtn" class="menu-item">Экспорт базы (JSON)</button>
-        <button id="importFileBtn" class="menu-item">Импорт базы (JSON)</button>
-        <button id="massImportBtn" class="menu-item">Массовый импорт текста</button>
-        <button id="clearDBBtn" class="menu-item" style="color: var(--danger);">Очистить базу</button>
-      </div>
-    </div>
+   <div class="actions-menu">
+  <button id="menuBtn" class="btn btn-secondary">⋮ Действия</button>
+</div>
 
-    <!-- Modals -->
-    <!-- Mass Import Modal -->
-    <div id="massImportModal" class="modal">
-      <div class="modal-content">
-        <h3>Массовый импорт штрих‑кодов</h3>
-        <p>Формат: <code>"4601728016135": "Водка особая Хаски..."</code> или <code>4601728016135, Водка особая Хаски</code></p>
-        <textarea id="massImportData" placeholder="Вставьте данные для импорта..."></textarea>
-        <div class="modal-buttons">
-          <button id="massImportCancel" class="btn btn-secondary">Отмена</button>
-          <button id="massImportConfirm" class="btn btn-primary">Импортировать</button>
-        </div>
-      </div>
+<!-- Modal: Actions Menu -->
+<div id="actionsModal" class="modal">
+  <div class="modal-content">
+    <h3>Действия с базой данных</h3>
+    <div class="modal-buttons vertical">
+      <button id="exportBtn" class="btn btn-primary">Экспорт базы (JSON)</button>
+      <button id="importFileBtn" class="btn btn-primary">Импорт базы (JSON)</button>
+      <button id="massImportBtn" class="btn btn-primary">Массовый импорт текста</button>
+      <button id="clearDBBtn" class="btn btn-danger">Очистить базу</button>
     </div>
+  </div>
+</div>
 
-    <!-- File Import Modal -->
-    <div id="fileImportModal" class="modal">
-      <div class="modal-content">
-        <h3>Импорт базы данных</h3>
-        <p>Выберите JSON‑файл, экспортированный ранее</p>
-        <input type="file" id="fileInput" accept=".json">
-        <div class="modal-buttons">
-          <button id="fileImportCancel" class="btn btn-secondary">Отмена</button>
-          <button id="fileImportConfirm" class="btn btn-primary">Загрузить</button>
-        </div>
-      </div>
+<!-- Mass Import Modal -->
+<div id="massImportModal" class="modal">
+  <div class="modal-content">
+    <h3>Массовый импорт штрих‑кодов</h3>
+    <p>Формат: <code>"4601728016135": "Водка особая Хаски..."</code> или <code>4601728016135, Водка особая Хаски</code></p>
+    <textarea id="massImportData" placeholder="Вставьте данные для импорта..."></textarea>
+    <div class="modal-buttons">
+      <button id="massImportCancel" class="btn btn-secondary">Отмена</button>
+      <button id="massImportConfirm" class="btn btn-primary">Импортировать</button>
     </div>
+  </div>
+</div>
 
-    <!-- Confirmation Modal -->
-    <div id="confirmModal" class="modal">
-      <div class="modal-content">
-        <h3 id="confirmTitle">Подтверждение</h3>
-        <p id="confirmMessage">Вы уверены?</p>
-        <div class="modal-buttons">
-          <button id="confirmCancel" class="btn btn-secondary">Отмена</button>
-          <button id="confirmOk" class="btn btn-primary">Да, выполнить</button>
-        </div>
-      </div>
+<!-- File Import Modal -->
+<div id="fileImportModal" class="modal">
+  <div class="modal-content">
+    <h3>Импорт базы данных</h3>
+    <p>Выберите JSON‑файл, экспортированный ранее</p>
+    <input type="file" id="fileInput" accept=".json">
+    <div class="modal-buttons">
+      <button id="fileImportCancel" class="btn btn-secondary">Отмена</button>
+      <button id="fileImportConfirm" class="btn btn-primary">Загрузить</button>
     </div>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmModal" class="modal">
+  <div class="modal-content">
+    <h3 id="confirmTitle">Подтверждение</h3>
+    <p id="confirmMessage">Вы уверены?</p>
+    <div class="modal-buttons">
+      <button id="confirmCancel" class="btn btn-secondary">Отмена</button>
+      <button id="confirmOk" class="btn btn-primary">Да, выполнить</button>
+    </div>
+  </div>
+</div>
+
 
     <!-- Data Table -->
     <div class="table-container">
