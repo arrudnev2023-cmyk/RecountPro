@@ -819,38 +819,63 @@ if (massImportConfirm) {
     const lines = input.split('\n').filter(line => line.trim());
     let successCount = 0;
     let errorCount = 0;
+    const errorDetails = []; // Для сбора деталей об ошибках
 
     lines.forEach((line, index) => {
       const trimmedLine = line.trim();
 
       // Парсим формат: "штрихкод": "название"
-      const match = trimmedLine.match(/^"([^"]+)":\s*"([^"]+)"/);
+      const colonMatch = trimmedLine.match(/^"([^"]+)":\s*"([^"]+)"/);
+      // Парсим формат: штрихкод, название
+      const commaMatch = trimmedLine.match(/^([^,]+),\s*(.+)$/);
 
-      if (match) {
-        const barcode = match[1].trim(); // Первая группа — штрихкод
-        const name = match[2].trim();   // Вторая группа — название
+      if (colonMatch) {
+        const barcode = colonMatch[1].trim();
+        const name = colonMatch[2].trim();
 
-        if (barcode && name) {
+        if (isValidBarcode(barcode) && name) {
           if (!db[name]) {
             db[name] = [];
-            quantities[name] = 0; // Инициализируем количество
+            quantities[name] = 0;
           }
-          // Добавляем штрихкод, если его ещё нет (убираем дубликаты)
           if (!db[name].includes(barcode)) {
-            db[name].push(barcode);
-            // Ограничиваем до 3 штрихкодов на товар
-            if (db[name].length > 3) {
-              db[name].shift(); // Удаляем самый старый, если превышено 3
+            if (db[name].length < 3) {
+              db[name].push(barcode);
+              successCount++;
+            } else {
+              errorCount++;
+              errorDetails.push(`Строка ${index + 1}: у товара уже 3 штрихкода, "${barcode}" не добавлен`);
             }
           }
-          successCount++;
         } else {
           errorCount++;
-          console.warn(`Строка ${index + 1}: пустые значения штрихкода или названия`);
+          errorDetails.push(`Строка ${index + 1}: некорректный штрихкод или пустое название`);
+        }
+      } else if (commaMatch) {
+        const barcode = commaMatch[1].trim();
+        const name = commaMatch[2].trim();
+
+        if (isValidBarcode(barcode) && name) {
+          if (!db[name]) {
+            db[name] = [];
+            quantities[name] = 0;
+          }
+          if (!db[name].includes(barcode)) {
+            if (db[name].length < 3) {
+              db[name].push(barcode);
+              successCount++;
+            } else {
+              errorCount++;
+              errorDetails.push(`Строка ${index + 1}: у товара уже 3 штрихкода, "${barcode}" не добавлен`);
+            }
+          }
+        } else {
+          errorCount++;
+          errorDetails.push(`Строка ${index + 1}: некорректный штрихкод или пустое название`);
         }
       } else {
         errorCount++;
-        console.warn(`Строка ${index + 1} не соответствует формату: ${trimmedLine}`);
+        errorDetails.push(`Строка ${index + 1} не соответствует ни одному из форматов`);
       }
     });
 
