@@ -428,17 +428,10 @@ function handleDetected(code) {
 
   lastDetected = { code, ts: now };
   beep();
-  barcodeInput.value = code;
-
-  const entry = barcodeDB[code];
-  if (entry && typeof entry === 'object') {
-    nameInput.value = entry.name || '';
-    showToast('Найден в базе: название подставлено');
-  } else {
-    nameInput.value = '';
-    showToast('Код найден — введите название и сохраните');
-  }
+  barcodeInput.value = code; // Записываем в поле «Штрих-код»
+  showToast('Код отсканирован — введите название и сохраните');
 }
+
 
 
 
