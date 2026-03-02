@@ -813,55 +813,37 @@ if (confirmOk) {
 const massImportConfirm = document.getElementById('massImportConfirm');
 if (massImportConfirm) {
   massImportConfirm.addEventListener('click', () => {
-    const input = document.getElementById('importData')?.value || ''; // Обратите внимание: ID поля — importData, а не massImportData
+    const input = document.getElementById('massImportData')?.value || '';
     const lines = input.split('\n').filter(line => line.trim());
-    const importedItems = {}; // Храним объекты в формате { штрихкод: {code, name, qty} }
-    let successCount = 0;
-    let errorCount = 0;
+    const imported = {};
 
-    lines.forEach((line, index) => {
+    lines.forEach(line => {
       const trimmedLine = line.trim();
+      const colonMatch = trimmedLine.match(/^"([^"]+)":\s*"([^"]+)"/);
+      const commaMatch = trimmedLine.match(/^([^,]+),\s*(.+)$/);
 
-      // Парсим формат: "штрихкод": "название"
-      const match = trimmedLine.match(/^"([^"]+)":\s*"([^"]+)"/);
+      if (colonMatch) {
+        const name = colonMatch[1].trim();
+        const code = colonMatch[2].trim();
+        if (!imported[name]) imported[name] = [];
+        imported[name].push(code);
+        return;
+      }
 
-      if (match) {
-        const barcode = match[1].trim(); // Первая группа — штрихкод
-        const name = match[2].trim();   // Вторая группа — название
+      if (commaMatch) {
+        const code = commaMatch[1].trim();
+        const name = commaMatch[2].trim();
+        if (!imported[name]) imported[name] = [];
+        imported[name].push(code);
+        return;
+      }
 
-        if (barcode && name) {
-          importedItems[barcode] = {
-            code: barcode,
-            name: name,
-            qty: 0 // По умолчанию — 0 учётных единиц
-          };
-          successCount++;
-        } else {
-          errorCount++;
-          console.warn(`Строка ${index + 1}: пустые значения штрихкода или названия`);
-        }
-      } else {
-        // Если строка не соответствует формату — считаем ошибкой
-        errorCount++;
-        console.warn(`Строка ${index + 1} не соответствует формату: ${trimmedLine}`);
+      // Если просто код без названия — добавляем с пустым названием
+      if (trimmedLine.length > 0) {
+        if (!imported['']) imported[''] = [];
+        imported[''].push(trimmedLine);
       }
     });
-
-    // Если есть что импортировать
-    if (successCount > 0) {
-      // Объединяем с существующей базой (новые позиции перезаписывают старые при совпадении штрихкода)
-      barcodeDB = { ...barcodeDB, ...importedItems };
-      saveDB(); // Сохраняем в localStorage
-      loadDB();  // Перезагружаем данные и перестраиваем интерфейс
-
-      alert(`Успешно импортировано ${successCount} позиций!\nОшибок: ${errorCount}`);
-      closeAllModals();
-    } else {
-      alert(`Не удалось распознать ни одного штрихкода.\nПроверьте формат данных и повторите попытку.\nОшибок: ${errorCount}`);
-    }
-  });
-}
-
 
     // Объединяем с существующей базой, обрабатываем до 3 штрих‑кодов на товар
     Object.entries(imported).forEach(([name, codes]) => {
@@ -957,5 +939,6 @@ document.addEventListener('click', (e) => {
 
 </body>
 </html>
+
 
                                         
