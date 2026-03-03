@@ -487,15 +487,28 @@ async function initScanner() {
       return;
     }
 
+    // Поиск задней камеры: ищем устройства с "back" в метке
+    let backCamera = videoDevices.find(device =>
+      device.label.toLowerCase().includes('back') ||
+      device.label.toLowerCase().includes('тыльная')
+    );
+
+    // Если задняя камера не найдена, берём первую доступную
+    const targetDevice = backCamera || videoDevices[0];
+
     deviceSelectEl.innerHTML = "";
     videoDevices.forEach((device, i) => {
       const option = document.createElement("option");
       option.value = device.deviceId;
       option.textContent = device.label || `Камера ${i + 1}`;
+      // Отмечаем заднюю камеру в списке
+      if (device === backCamera) {
+        option.textContent += " (задняя)";
+      }
       deviceSelectEl.appendChild(option);
     });
 
-    await startCamera(videoDevices[0].deviceId);
+    await startCamera(targetDevice.deviceId);
 
     // Запускаем сканирование
     codeReader.decodeFromVideoElement(previewEl, (result, err) => {
@@ -521,6 +534,7 @@ async function initScanner() {
 }
 
 
+
 async function startCamera(deviceId) {
   try {
     if (currentStream) {
@@ -540,6 +554,7 @@ async function startCamera(deviceId) {
     showToast("Ошибка доступа к камере");
   }
 }
+
 
 function stopCamera() {
   if (currentStream) {
