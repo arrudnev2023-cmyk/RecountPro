@@ -6,7 +6,8 @@
   <title>RecountPro — База товаров</title>
 
   <!-- Исправленный URL библиотеки ZXing -->
-  <script src="https://unpkg.com/@zxing/library@latest/dist/umd/index.min.js"></script>
+  <script src="https://unpkg.com/@zxing/library@0.19.2/dist/umd/index.min.js"></script>
+
 
 <style>
   :root {
@@ -778,6 +779,19 @@ function showTemporaryItem(code, name, qty) {
     }
   }, 5000);
 }
+
+
+  function checkZXingLoaded() {
+  return typeof ZXing !== 'undefined' && typeof ZXing.BrowserMultiFormatReader === 'function';
+}
+
+// Проверка при загрузке страницы
+document.addEventListener("DOMContentLoaded", () => {
+  if (!checkZXingLoaded()) {
+    console.warn("ZXing библиотека не загружена. Сканер будет недоступен.");
+    showToast("Сканер недоступен: библиотека ZXing не загружена");
+  }
+});
 
 /* ============================================================
    ИНИЦИАЛИЗАЦИЯ
