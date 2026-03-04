@@ -10,273 +10,283 @@
 
   <style>
     :root {
-      --accent: #4361ee;
-      --bg: #ffffff;
-      --card: #ffffff;
-      --muted: #666;
-      --text: #333;
-      --maxw: 980px;
-      --border: #e0e0e0;
-    }
+  --accent: #4361ee;
+  --bg: #ffffff;
+  --card: #ffffff;
+  --muted: #666;
+  --text: #333;
+  --maxw: 980px;
+  --border: #e0e0e0;
+}
 
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-    html, body {
-      height: 100%;
-      margin: 0;
-      background-color: var(--bg);
-      color: var(--text);
-      font-family: Inter, Segoe UI, system-ui, Arial, sans-serif;
-      overflow: hidden;
-      touch-action: manipulation;
-    }
+html, body {
+  height: 100%;
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: Inter, Segoe UI, system-ui, Arial, sans-serif;
+  overflow: hidden;
+  touch-action: manipulation;
+}
 
-    header {
-      position: fixed;
-      left: 0; right: 0; top: 0;
-      padding: 12px;
-      background-color: white;
-      border-bottom: 1px solid var(--border);
-      z-index: 1000;
-      border-radius: 0 0 14px 14px;
-    }
-    header h1 {
-      margin: 0;
-      text-align: center;
-      font-size: 1.15rem;
-      color: var(--accent);
-    }
+/* Header */
+header {
+  position: fixed;
+  left: 0; right: 0; top: 0;
+  padding: 12px;
+  background-color: white;
+  border-bottom: 1px solid var(--border);
+  z-index: 10000;
+  border-radius: 0 0 14px 14px;
+}
+header h1 {
+  margin: 0;
+  text-align: center;
+  font-size: 1.15rem;
+  color: var(--accent);
+}
 
-    #search-wrap {
-      max-width: var(--maxw);
-      margin: 10px auto;
-      position: relative;
-    }
-    #search {
-      width: 100%;
-      padding: 10px 56px 10px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background-color: white;
-      color: var(--text);
-      font-size: 15px;
-    }
-    #scan-btn,
-    #clear-search {
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
-      color: var(--muted);
-      cursor: pointer;
-    }
-    #clear-search { right: 44px; }
+/* Search */
+#search-wrap {
+  max-width: var(--maxw);
+  margin: 10px auto;
+  position: relative;
+}
+#search {
+  width: 100%;
+  padding: 10px 56px 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: white;
+  color: var(--text);
+  font-size: 15px;
+}
+#scan-btn,
+#clear-search {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+#clear-search { right: 44px; }
 
-    #content {
-      position: fixed;
-      left: 0; right: 0;
-      top: 96px; bottom: 0;
-      overflow: auto;
-      padding: 12px;
-    }
+/* Content */
+#content {
+  position: fixed;
+  left: 0; right: 0;
+  top: 96px; bottom: 0;
+  overflow: auto;
+  padding: 12px;
+}
 
-    .card {
-      max-width: var(--maxw);
-      margin: 10px auto;
-      padding: 12px;
-      border-radius: 8px;
-      background-color: var(--card);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
+/* Cards and list */
+.card {
+  max-width: var(--maxw);
+  margin: 10px auto;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: var(--card);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
 
-    .preview-wrap {
-      border-radius: 8px;
-      overflow: hidden;
-      background-color: #f8f8f8;
-      border: 1px solid var(--border);
-      height: 34vh;
-      min-height: 140px;
-    }
-    video#preview {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
+.preview-wrap {
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #f8f8f8;
+  border: 1px solid var(--border);
+  height: 34vh;
+  min-height: 140px;
+  position: relative;
+}
 
-    .controls {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin-top: 10px;
-    }
-    .btn {
-      padding: 8px 10px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background-color: white;
-      color: var(--text);
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .btn.primary {
-      background-color: var(--accent);
-      color: white;
-      font-weight: 700;
-    }
+/* Video: гарантируем видимость и отсутствие серого фона */
+video#preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: transparent !important;
+  z-index: 1000;
+  position: relative;
+}
 
-    .list {
-      max-width: var(--maxw);
-      margin: 12px auto;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+/* Controls */
+.controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.btn {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background-color: white;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn.primary {
+  background-color: var(--accent);
+  color: white;
+  font-weight: 700;
+}
 
-    .item {
-      width: 100%;
-      margin: 10px 0;
-      padding: 12px;
-      border-radius: 8px;
-      background-color: var(--card);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      border-left: 4px solid transparent;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .item.match   { border-left-color: #22c55e; }
-    .item.missing { border-left-color: #ef4444; }
-    .item.excess  { border-left-color: #3b82f6; }
+/* List and items */
+.list {
+  max-width: var(--maxw);
+  margin: 12px auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.item {
+  width: 100%;
+  margin: 10px 0;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: var(--card);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border-left: 4px solid transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+.item.match   { border-left-color: #22c55e; }
+.item.missing { border-left-color: #ef4444; }
+.item.excess  { border-left-color: #3b82f6; }
 
-    .field { margin-bottom: 8px; }
-    .label { font-weight: 700; color: var(--accent); margin-right: 6px; }
+.field { margin-bottom: 8px; }
+.label { font-weight: 700; color: var(--accent); margin-right: 6px; }
 
-    input[data-code] {
-      width: 100%;
-      padding: 10px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background-color: white;
-      color: var(--text);
-      font-size: 15px;
-    }
+/* Input: делаем поверх оверлеев, readonly для предотвращения системной клавиатуры */
+input[data-code] {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background-color: white;
+  color: var(--text);
+  font-size: 15px;
+  position: relative;
+  z-index: 2001;
+  background: transparent;
+}
 
-    /* Кастомная клавиатура */
-    #custom-keyboard {
-      position: fixed;
-      left: 0; right: 0;
-      bottom: -40vh;
-      height: 34vh;
-      background-color: white;
-      padding: 10px;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      z-index: 3000;
-      transition: bottom 0.28s;
-      border-top: 1px solid var(--border);
-    }
-    #custom-keyboard.show { bottom: 0; }
-    #custom-keyboard button {
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background-color: white;
-      color: var(--text);
-      font-size: 20px;
-      cursor: pointer;
-    }
+/* Кастомная клавиатура */
+#custom-keyboard {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: -40vh;
+  height: 34vh;
+  background-color: white;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  z-index: 3000;
+  transition: bottom 0.28s;
+  border-top: 1px solid var(--border);
+  -webkit-user-select: none;
+  user-select: none;
+}
+#custom-keyboard.show { bottom: 0; }
+#custom-keyboard button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background-color: white;
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+}
 
-    .hidden { display: none !important; }
+/* Overlay and bottom sheet */
+.hidden { display: none !important; }
+#fabMenu {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 1001;
+  background-color: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.9rem 1.2rem;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(67,97,238,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#sheetOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0,0,0,0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 999;
+}
+#sheetOverlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+#bottomSheet {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: -60vh;
+  padding: 1.2rem;
+  background-color: white;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+  transition: bottom 0.35s ease;
+  z-index: 1002;
+}
+#bottomSheet.show { bottom: 0; }
+.sheet-content { display: flex; flex-direction: column; gap: 0.7rem; }
+.sheet-btn {
+  background-color: #f5f5f5;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.9rem 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
-    /* FAB меню */
-    #fabMenu {
-      position: fixed;
-      bottom: 1rem;
-      right: 1rem;
-      z-index: 1001;
-      background-color: var(--accent);
-      color: white;
-      border: none;
-      padding: 0.9rem 1.2rem;
-      border-radius: 8px;
-      font-size: 1.2rem;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(67,97,238,0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+/* Modal */
+#summaryModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 6000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+#summaryModal.show { display: flex; }
+#summaryTable th, #summaryTable td { border: none; padding: 8px; }
+#summaryTable th { background-color: #f0f0f0; font-weight: 600; }
 
-    #sheetOverlay {
-      position: fixed;
-      inset: 0;
-      background-color: rgba(0,0,0,0.5);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.25s ease;
-      z-index: 999;
-    }
-    #sheetOverlay.show {
-      opacity: 1;
-      pointer-events: auto;
-    }
+/* Small devices: ensure preview visible */
+@media (max-height: 600px) {
+  .preview-wrap { height: 40vh; min-height: 120px; }
+}
 
-    #bottomSheet {
-      position: fixed;
-      left: 0; right: 0;
-      bottom: -60vh;
-      padding: 1.2rem;
-      background-color: white;
-      border-radius: 16px 16px 0 0;
-      box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-      transition: bottom 0.35s ease;
-      z-index: 1002;
-    }
-    #bottomSheet.show { bottom: 0; }
-
-    .sheet-content {
-      display: flex;
-      flex-direction: column;
-      gap: 0.7rem;
-    }
-    .sheet-btn {
-      background-color: #f5f5f5;
-      color: var(--text);
-      border: 1px solid var(--border);
-      padding: 0.9rem 1rem;
-      border-radius: 8px;
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    /* Модалка итогов */
-    #summaryModal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.8);
-      z-index: 6000;
-      display: none;
-      align-items: center;
-      justify-content: center;
-    }
-    #summaryModal.show { display: flex; }
-
-    #summaryTable th, #summaryTable td {
-      border: none;
-      padding: 8px;
-    }
-    #summaryTable th {
-      background-color: #f0f0f0;
-      font-weight: 600;
-    }
   </style>
 </head>
 
@@ -525,35 +535,30 @@ function renderItems(items) {
       <div class="field">
         <span class="label">Кол-во:</span>
         <input data-code="${item.code}" type="text" value="${expr || ''}" placeholder="0" 
-               class="qty-input" />
+               class="qty-input" readonly />
       </div>
     `;
 
     const input = el.querySelector('input');
-    // защита: убедимся, что input поверх всех оверлеев
+
     input.style.position = 'relative';
-    input.style.zIndex = 1001;
+    input.style.zIndex = 2001;
     input.style.background = 'transparent';
     input.style.color = 'inherit';
 
-    input.addEventListener('focus', () => {
+    const openCustom = (ev) => {
+      ev.preventDefault();
       showCustomKeyboard(input);
-      setTimeout(() => {
-        const container = document.getElementById('content') || document.documentElement;
-        const rect = input.closest('.item').getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
-        const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
-        container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
-        setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
-      }, 80);
-    });
+      input.classList.add('focused-by-custom');
+      ensureVisibleAboveKeyboard(input);
+    };
+    input.addEventListener('touchstart', openCustom, { passive: false });
+    input.addEventListener('click', openCustom);
 
-    // Позволяем ввод с физической клавиатуры (если нужно) — слушаем input
-    input.addEventListener('input', (ev) => {
+    input.addEventListener('input', () => {
       const code = input.dataset.code;
       sessionValues[code] = input.value;
       saveSession();
-      // обновляем только карточку визуально (классы), не перерисовываем весь список
       updateItemState(input.closest('.item'), code);
     });
 
@@ -568,11 +573,12 @@ function showCustomKeyboard(input) {
   customKeyboard.classList.add('show');
   customKeyboard.dataset.target = input.dataset.code;
 }
-
 function hideCustomKeyboard() {
   customKeyboard.classList.remove('show');
+  const targetCode = customKeyboard.dataset.target;
+  const input = document.querySelector(`input[data-code="${targetCode}"]`);
+  if (input) input.classList.remove('focused-by-custom');
 }
-
 function updateItemState(itemEl, code) {
   if (!itemEl) return;
   const expected = quantities[itemEl.dataset.name] || 0;
@@ -584,11 +590,9 @@ function updateItemState(itemEl, code) {
     else if (actual < expected) itemEl.classList.add('missing');
     else itemEl.classList.add('excess');
   }
-  // обновим поле value (на случай, если оно был заменено)
   const input = itemEl.querySelector('input[data-code="'+code+'"]');
   if (input) input.value = expr || '';
 }
-
 function initCustomKeyboard() {
   const keys = customKeyboard.querySelectorAll('button:not(.done)');
   keys.forEach(key => {
@@ -596,34 +600,18 @@ function initCustomKeyboard() {
       const targetCode = customKeyboard.dataset.target;
       const input = document.querySelector(`input[data-code="${targetCode}"]`);
       if (!input) return;
-
       let currentValue = input.value || '';
       const keyValue = key.textContent;
-
-      if (keyValue === '←') {
-        currentValue = currentValue.slice(0, -1);
-      } else {
-        currentValue = currentValue + keyValue;
-      }
-
-      // Обновляем только DOM-элемент и sessionValues, не перерисовываем весь список
+      if (keyValue === '←') currentValue = currentValue.slice(0, -1);
+      else currentValue = currentValue + keyValue;
       input.value = currentValue;
       sessionValues[targetCode] = currentValue;
       saveSession();
       updateItemState(input.closest('.item'), targetCode);
-
-      // Сохраняем фокус на input (в некоторых браузерах фокус теряется при DOM-операциях)
       try { input.focus(); } catch (e) {}
     });
   });
-
-  document.getElementById('done').addEventListener('click', () => {
-    hideCustomKeyboard();
-    // после закрытия клавиатуры убедимся, что поле видно
-    const targetCode = customKeyboard.dataset.target;
-    const input = document.querySelector(`input[data-code="${targetCode}"]`);
-    if (input) ensureVisibleAboveKeyboard(input);
-  });
+  document.getElementById('done').addEventListener('click', hideCustomKeyboard);
 }
 
 /* ========= СКАНЕР / ВОРКЕР / ROI ========= */
@@ -705,10 +693,19 @@ async function startCamera(deviceId) {
     };
 
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+
     previewVideo.playsInline = true;
     previewVideo.muted = true;
     previewVideo.autoplay = true;
     previewVideo.srcObject = currentStream;
+
+    const track = currentStream.getVideoTracks()[0];
+    if (track) {
+      track.onended = () => {
+        console.warn('video track ended');
+        setTimeout(() => { try { startCamera(deviceId); } catch (e) {} }, 500);
+      };
+    }
 
     await new Promise((resolve) => {
       const onLoaded = () => { previewVideo.removeEventListener('loadedmetadata', onLoaded); resolve(); };
@@ -717,6 +714,18 @@ async function startCamera(deviceId) {
     });
 
     try { await previewVideo.play(); } catch (playErr) { setTimeout(() => previewVideo.play().catch(()=>{}), 300); }
+
+    setTimeout(() => {
+      if (!previewVideo.videoWidth || previewVideo.videoWidth === 0) {
+        console.warn('previewVideo has zero width — retrying startCamera');
+        try { startCamera(deviceId); } catch (e) {}
+      }
+    }, 1400);
+
+    previewVideo.onplaying = () => { console.debug('previewVideo playing'); previewVideo.style.background = 'transparent'; };
+    previewVideo.onstalled = () => { console.warn('previewVideo stalled'); };
+    previewVideo.onerror = (ev) => { console.error('previewVideo error', ev); };
+
   } catch (e) {
     console.error('startCamera error:', e);
     if (deviceId) return startCamera(null);
@@ -785,7 +794,6 @@ function captureAndSendFrame(scale = 0.6) {
       if (!blob) return;
       try {
         workerBusy = true;
-        // поддержка fallback: воркер может обрабатывать blob, если реализовать
         scanWorker.postMessage({ type: 'frameBlob', blob }, [blob]);
       } catch (e) {
         workerBusy = false;
@@ -806,7 +814,7 @@ function scheduleNextFrame() {
       if (!scanWorker) return;
       if (!workerBusy) captureAndSendFrame(0.6);
       scheduleNextFrame();
-    }, 66);
+    }, 100);
   }
 }
 
@@ -1176,7 +1184,9 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Итоги сохранены в базу.');
   });
 });
+
 </script>
+
 
 
 
