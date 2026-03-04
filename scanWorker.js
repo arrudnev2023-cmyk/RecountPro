@@ -38,7 +38,7 @@ self.onmessage = async (e) => {
       }
     }
 
-    // Попытка получить ImageData (может быть запрещено в некоторых окружениях)
+    // Попытка получить ImageData (может быть запрещено)
     let imgData;
     try {
       imgData = ctx.getImageData(0, 0, w, h);
@@ -123,5 +123,6 @@ self.onmessage = async (e) => {
     self.postMessage({ type: 'error', message: err?.message || String(err) });
   }
 };
+
 
 
