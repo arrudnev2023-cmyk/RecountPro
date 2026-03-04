@@ -1,24 +1,15 @@
 // scanWorker.js
-// Принимает { type: 'frame', bitmap } (ImageBitmap)
-// Возвращает сообщения:
-// { type: 'detected', results }  -- если BarcodeDetector нашёл коды
-// { type: 'bbox', bbox }         -- если найден потенциальный bbox {x,y,w,h} в координатах исходного bitmap
-// { type: 'blob', blob }         -- уменьшенный blob (fallback)
-// { type: 'error', message }
-
 self.onmessage = async (e) => {
   try {
     if (e.data.type !== 'frame') return;
     const bitmap = e.data.bitmap;
     const w = bitmap.width, h = bitmap.height;
 
-    // OffscreenCanvas для обработки
     const off = new OffscreenCanvas(w, h);
     const ctx = off.getContext('2d');
     ctx.drawImage(bitmap, 0, 0);
     bitmap.close?.();
 
-    // Быстрая попытка нативного BarcodeDetector (если доступен в воркере)
     if (self.BarcodeDetector) {
       try {
         const detector = new BarcodeDetector();
@@ -27,17 +18,13 @@ self.onmessage = async (e) => {
           self.postMessage({ type: 'detected', results });
           return;
         }
-      } catch (bdErr) {
-        // продолжаем к поиску bbox
-      }
+      } catch (bdErr) {}
     }
 
-    // Быстрая grayscale + простая адаптивная бинаризация (локальный порог по блокам)
     let img;
     try {
       img = ctx.getImageData(0, 0, w, h);
     } catch (err) {
-      // если getImageData запрещён в воркере, отправим уменьшенный blob на главный поток
       const small = new OffscreenCanvas(Math.max(1, Math.round(w/3)), Math.max(1, Math.round(h/3)));
       const sctx = small.getContext('2d');
       sctx.drawImage(off, 0, 0, small.width, small.height);
@@ -47,13 +34,11 @@ self.onmessage = async (e) => {
     }
 
     const data = img.data;
-    // grayscale
     for (let i = 0; i < data.length; i += 4) {
       const g = (data[i]*0.3 + data[i+1]*0.59 + data[i+2]*0.11) | 0;
       data[i] = data[i+1] = data[i+2] = g;
     }
 
-    // простая локальная пороговая карта: делим на блоки и порогуем
     const block = 32;
     const cols = Math.ceil(w / block);
     const rows = Math.ceil(h / block);
@@ -71,11 +56,10 @@ self.onmessage = async (e) => {
           }
         }
         const avg = cnt ? (sum / cnt) : 0;
-        bin[by * cols + bx] = avg < 140 ? 1 : 0; // 140 — эмпирический порог
+        bin[by * cols + bx] = avg < 140 ? 1 : 0;
       }
     }
 
-    // Найдём область с высокой плотностью "тёмных" блоков
     let minX = cols, minY = rows, maxX = 0, maxY = 0, found = false;
     for (let by = 0; by < rows; by++) {
       for (let bx = 0; bx < cols; bx++) {
@@ -90,7 +74,6 @@ self.onmessage = async (e) => {
     }
 
     if (found) {
-      // расширим bbox немного
       const pad = 1;
       minX = Math.max(0, minX - pad);
       minY = Math.max(0, minY - pad);
@@ -102,14 +85,12 @@ self.onmessage = async (e) => {
       const bw = Math.min(w - bx, Math.round((maxX - minX + 1) * block));
       const bh = Math.min(h - by, Math.round((maxY - minY + 1) * block));
 
-      // Небольшая проверка: bbox должен быть достаточно широким (штрихкоды обычно широкие)
       if (bw > 20 && bh > 8) {
         self.postMessage({ type: 'bbox', bbox: { x: bx, y: by, w: bw, h: bh } });
         return;
       }
     }
 
-    // Если ничего не найдено — отправим уменьшенный blob как fallback
     const small = new OffscreenCanvas(Math.max(1, Math.round(w/3)), Math.max(1, Math.round(h/3)));
     const sctx = small.getContext('2d');
     sctx.drawImage(off, 0, 0, small.width, small.height);
@@ -120,3 +101,4 @@ self.onmessage = async (e) => {
     self.postMessage({ type: 'error', message: err?.message || String(err) });
   }
 };
+
