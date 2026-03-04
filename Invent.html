@@ -446,9 +446,9 @@
 /* =========================
   State and elements
   ========================= */
-let barcodeDB = JSON.parse(localStorage.getItem('barcodeDB') || '{}');
-let allItems = Object.values(barcodeDB).filter(item => item && item.name && item.code);
-let sessionValues = JSON.parse(localStorage.getItem('sessionValues') || '{}');
+let barcodeDB = {};
+let allItems = [];
+let sessionValues = {};
 
 /* =========================
   Elements
@@ -478,12 +478,9 @@ const summaryTableBody = document.querySelector('#summaryTable tbody');
 const summarySaveBtn = document.getElementById('summarySaveBtn');
 const summaryCloseBtn = document.getElementById('summaryCloseBtn');
 
-/* =========================
-  Scanner variables
-  ========================= */
-let codeReader = null;
-let currentStream = null;
-let torchEnabled = false;
+// Элементы, которые нужно добавить в разметку
+const scanBtn = document.getElementById('scan-btn');
+const clearSearch = document.getElementById('clear-search');
 
 /* =========================
   Functions
@@ -501,12 +498,7 @@ function loadDB() {
       barcodeDB = {};
     }
 
-    allItems = [];
-    for (const [key, item] of Object.entries(barcodeDB)) {
-      if (item && item.name && item.code) {
-        allItems.push(item);
-      }
-    }
+    allItems = Object.values(barcodeDB).filter(item => item && item.name && item.code);
     console.log('Загружено элементов из базы:', allItems.length);
   } catch (error) {
     console.error('Ошибка загрузки базы данных:', error);
@@ -610,16 +602,24 @@ function updateSessionValue(code, value) {
   localStorage.setItem('sessionValues', JSON.stringify(sessionValues));
 }
 
-function initScanner() {
-  codeReader = new ZXing.BrowserMultiFormatReader();
+let codeReader = null;
+let currentStream = null;
+let torchEnabled = false;
 
-  deviceSelect.addEventListener('change', () => {
-    stopScanner();
-    startScanner();
-  });
+async function initScanner() {
+  try {
+    codeReader = new ZXing.BrowserMultiFormatReader();
 
-  torchBtn.addEventListener('click', toggleTorch);
-  closeScannerBtn.addEventListener('click', stopScanner);
+    deviceSelect.addEventListener('change', () => {
+      stopScanner();
+      startScanner();
+    });
+
+    torchBtn.addEventListener('click', toggleTorch);
+    closeScannerBtn.addEventListener('click', stopScanner);
+  } catch (err) {
+    console.error('Ошибка инициализации сканера:', err);
+  }
 }
 
 async function startScanner() {
@@ -644,7 +644,7 @@ async function startScanner() {
       }
     );
   } catch (err) {
-    console.error('Ошибка инициализации сканера:', err);
+    console.error('Ошибка запуска сканера:', err);
     alert('Не удалось запустить камеру. Проверьте разрешения.');
   }
 }
@@ -656,6 +656,7 @@ function stopScanner() {
   }
   scannerCard.style.display = 'none';
   scanResult.textContent = '';
+  searchInput.focus(); // Возвращаем фокус на поле поиска после закрытия сканера
 }
 
 function toggleTorch() {
@@ -680,20 +681,42 @@ function toggleTorch() {
 }
 
 function handleScanResult(barcode) {
-  scanResult.textContent = `Найдён: ${barcode}`;
+  scanResult.textContent = `Найден: ${barcode}`;
   stopScanner();
 
   const foundItem = allItems.find(item => item.code === barcode);
   if (foundItem) {
     searchInput.value = foundItem.name;
     filterItems();
+    // Дополнительно выделяем найденный элемент в списке
+    highlightScannedItem(barcode);
   } else {
     alert(`Товар со штрихкодом ${barcode} не найден в базе. Добавьте его через меню.`);
   }
 }
 
+function highlightScannedItem(code) {
+  // Убираем выделение у всех элементов
+  document.querySelectorAll('.item').forEach(item => {
+    item.style.borderLeftColor = '';
+    item.style.boxShadow = '';
+  });
+
+  // Выделяем найденный элемент
+  const targetItem = document.querySelector(`.item[data-code="${code}"]`);
+  if (targetItem) {
+    targetItem.style.borderLeftColor = 'var(--accent)';
+    targetItem.style.boxShadow = '0 0 0 2px rgba(67, 97, 238, 0.2)';
+
+    // Прокручиваем к найденному элементу
+    targetItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
 function filterItems() {
   const query = searchInput.value.toLowerCase().trim();
+
+  listContainer.innerHTML = '';
 
   if (!query) {
     buildItems();
@@ -704,7 +727,7 @@ function filterItems() {
     item.name.toLowerCase().includes(query) ||
     item.code.includes(query)
   );
-    listContainer.innerHTML = '';
+
   if (filtered.length > 0) {
     filtered.forEach(item => {
       const itemElement = document.createElement('div');
@@ -714,6 +737,7 @@ function filterItems() {
       const currentCount = sessionValues[item.code] || 0;
       const hasCount = currentCount > 0;
 
+      // Добавляем классификацию по статусу
       if (hasCount) {
         const expected = parseInt(item.qty) || 0;
         if (currentCount === expected) {
@@ -734,10 +758,10 @@ function filterItems() {
           <span class="label">Штрихкод:</span>
           <span>${item.code}</span>
         </div>
-        <div class="field">
+        ${item.qty ? `<div class="field">
           <span class="label">Учётное:</span>
           ${item.qty || 0}
-        </div>
+        </div>` : ''}
         <div class="field">
           <span class="label">Кол-во:</span>
           <input data-code="${item.code}" type="text" value="${currentCount}" placeholder="0" readonly>
@@ -756,41 +780,26 @@ function filterItems() {
   }
 }
 
-function showSummary() {
-  summaryTableBody.innerHTML = '';
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+  loadDB();
+  buildItems();
+  initCustomKeyboard();
+  initScanner();
 
-  allItems.forEach(item => {
-    const actual = parseInt(sessionValues[item.code]) || 0;
-    const expected = parseInt(item.qty) || 0;
-    const difference = actual - expected;
-
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td style="text-align:left;padding:8px;">${item.name}</td>
-      <td style="text-align:right;padding:8px;">${expected}</td>
-      <td style="text-align:right;padding:8px;">${actual}</td>
-      <td style="text-align:right;padding:8px;color:${difference === 0 ? 'green' : difference > 0 ? 'blue' : 'red'}">
-        ${difference > 0 ? '+' : ''}${difference}
-      </td>
-    `;
-    summaryTableBody.appendChild(row);
+  // Обработчики для кнопок интерфейса
+  scanBtn.addEventListener('click', () => {
+    startScanner();
   });
 
-  summaryModal.classList.remove('hidden');
-}
-
-function initEventListeners() {
-  // Поиск
-  searchInput.addEventListener('input', filterItems);
   clearSearch.addEventListener('click', () => {
     searchInput.value = '';
     filterItems();
   });
 
-  // Сканер
-  scanBtn.addEventListener('click', startScanner);
+  searchInput.addEventListener('input', filterItems);
 
-  // FAB меню
+  // Обработчики меню FAB
   fabMenu.addEventListener('click', () => {
     bottomSheet.classList.toggle('show');
     sheetOverlay.classList.toggle('show');
@@ -800,82 +809,8 @@ function initEventListeners() {
     bottomSheet.classList.remove('show');
     sheetOverlay.classList.remove('show');
   });
-
-  // Кнопки меню
-  saveBtn.addEventListener('click', () => {
-    saveDB();
-    alert('Данные сохранены в базу!');
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
-
-  clearBtn.addEventListener('click', () => {
-    sessionValues = {};
-    localStorage.removeItem('sessionValues');
-    buildItems();
-    alert('Пересчёт очищен');
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
-
-  totalBtn.addEventListener('click', showSummary);
-
-  inventoryBtn.addEventListener('click', () => {
-    // При нажатии «Провести инвентаризацию» берём все товары из базы
-    allItems.forEach(item => {
-      if (!sessionValues[item.code]) {
-        sessionValues[item.code] = 0;
-      }
-    });
-    localStorage.setItem('sessionValues', JSON.stringify(sessionValues));
-    buildItems();
-    alert('Режим инвентаризации активирован. Начните ввод количества для каждого товара.');
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
-
-  // Модальное окно итогов
-  summarySaveBtn.addEventListener('click', () => {
-    // Сохраняем фактические количества в учётную базу
-    allItems.forEach(item => {
-      const actual = sessionValues[item.code];
-      if (actual !== undefined) {
-        item.qty = actual;
-      }
-    });
-    saveDB();
-    alert('Итоги инвентаризации сохранены в учётную базу!');
-    summaryModal.classList.add('hidden');
-  });
-
-  summaryCloseBtn.addEventListener('click', () => {
-    summaryModal.classList.add('hidden');
-  });
-}
-
-/* =========================
-  Initialization
-  ========================= */
-
-document.addEventListener('DOMContentLoaded', () => {
-  loadDB();
-  initCustomKeyboard();
-  initScanner();
-  initEventListeners();
-
-  if (allItems.length > 0) {
-    buildItems();
-  } else {
-    showEmptyState();
-  }
 });
 
-// Обработка клика вне клавиатуры для её скрытия
-document.addEventListener('click', (e) => {
-  if (!customKeyboard.contains(e.target) && !e.target.matches('input[data-code]')) {
-    hideCustomKeyboard();
-  }
-});
 </script>
 </body>
 </html>
