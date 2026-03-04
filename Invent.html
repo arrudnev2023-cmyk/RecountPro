@@ -371,6 +371,11 @@ let codeToName = new Map();
 
 let codeReader = null;
 let currentStream = null;
+let scanWorker = null;
+let workerBusy = false;
+let useRequestFrame = false;
+let codeReaderInit = false;
+let scannerActive = false; // флаг: сканер открыт
 let lastDetected = { code: null, ts: 0 };
 const DEBOUNCE_MS = 700;
 
@@ -388,11 +393,6 @@ const scanResult       = document.getElementById('scanResult');
 const customKeyboard   = document.getElementById('custom-keyboard');
 const scanBtn          = document.getElementById('scan-btn');
 const clearSearch      = document.getElementById('clear-search');
-
-let scanWorker = null;
-let workerBusy = false;
-let useRequestFrame = false;
-let codeReaderInit = false;
 
 /* ========= УТИЛИТЫ ========= */
 function evalExpression(expr) {
@@ -491,10 +491,18 @@ function renderItems(items) {
     input.style.background = 'transparent';
     input.style.color = 'inherit';
 
-    const openCustom = (ev) => { ev.preventDefault(); showCustomKeyboard(input); input.classList.add('focused-by-custom'); ensureVisibleAboveKeyboard(input); };
+    // Открываем только кастомную клавиатуру, предотвращаем системную
+    const openCustom = (ev) => {
+      ev.preventDefault();
+      showCustomKeyboard(input);
+      input.classList.add('focused-by-custom');
+      // прокрутка так, чтобы поле оказалось над клавиатурой
+      ensureVisibleAboveKeyboard(input);
+    };
     input.addEventListener('touchstart', openCustom, { passive: false });
     input.addEventListener('click', openCustom);
 
+    // Обновляем только карточку, не перерисовываем весь список
     input.addEventListener('input', () => {
       const code = input.dataset.code;
       sessionValues[code] = input.value;
@@ -509,8 +517,16 @@ function renderItems(items) {
 function buildItems() { renderItems(allItems); }
 
 /* ========= КЛАВИАТУРА ========= */
-function showCustomKeyboard(input) { customKeyboard.classList.add('show'); customKeyboard.dataset.target = input.dataset.code; }
-function hideCustomKeyboard() { customKeyboard.classList.remove('show'); const t = customKeyboard.dataset.target; const inp = document.querySelector(`input[data-code="${t}"]`); if (inp) inp.classList.remove('focused-by-custom'); }
+function showCustomKeyboard(input) {
+  customKeyboard.classList.add('show');
+  customKeyboard.dataset.target = input.dataset.code;
+}
+function hideCustomKeyboard() {
+  customKeyboard.classList.remove('show');
+  const t = customKeyboard.dataset.target;
+  const inp = document.querySelector(`input[data-code="${t}"]`);
+  if (inp) inp.classList.remove('focused-by-custom');
+}
 function updateItemState(itemEl, code) {
   if (!itemEl) return;
   const expected = quantities[itemEl.dataset.name] || 0;
@@ -549,6 +565,8 @@ function initCustomKeyboard() {
 
 /* ========= СКАНЕР / ВОРКЕР / ROI ========= */
 async function initScanner() {
+  if (scannerActive) return; // уже открыт
+  scannerActive = true;
   try {
     if (typeof ZXing !== 'undefined' && ZXing.BrowserMultiFormatReader) {
       codeReader = new ZXing.BrowserMultiFormatReader();
@@ -559,13 +577,16 @@ async function initScanner() {
 
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoDevices = devices.filter(d => d.kind === 'videoinput');
-    if (videoDevices.length === 0) { alert('Камеры не найдены'); return; }
+    if (videoDevices.length === 0) { alert('Камеры не найдены'); scannerActive = false; return; }
 
     let backCam = videoDevices.find(d => (d.label || '').toLowerCase().match(/back|rear|зад|environment/));
     const defaultCamId = (backCam || videoDevices[0]).deviceId;
 
-    deviceSelect.innerHTML = videoDevices.map(d => `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`).join('');
-    deviceSelect.value = defaultCamId;
+    const deviceSelectEl = document.getElementById('deviceSelect');
+    if (deviceSelectEl) {
+      deviceSelectEl.innerHTML = videoDevices.map(d => `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`).join('');
+      deviceSelectEl.value = defaultCamId;
+    }
 
     await startCamera(defaultCamId);
 
@@ -573,6 +594,7 @@ async function initScanner() {
     useRequestFrame = !!previewVideo.requestVideoFrameCallback;
     scheduleNextFrame();
 
+    // optional fast path: ZXing decodeFromVideoDevice
     if (codeReaderInit && typeof codeReader.decodeFromVideoDevice === 'function') {
       try {
         codeReader.decodeFromVideoDevice(defaultCamId, previewVideo, (result, err) => {
@@ -585,6 +607,7 @@ async function initScanner() {
     scannerCard.style.display = 'block';
   } catch (e) {
     console.error('initScanner error', e);
+    scannerActive = false;
     alert('Не удалось запустить сканер');
   }
 }
@@ -683,10 +706,19 @@ function captureAndSendFrame(scale = 0.6) {
 }
 
 function scheduleNextFrame() {
+  if (!scannerActive) return;
   if (useRequestFrame && previewVideo.requestVideoFrameCallback) {
-    previewVideo.requestVideoFrameCallback(() => { if (!scanWorker) return; if (!workerBusy) captureAndSendFrame(0.6); scheduleNextFrame(); });
+    previewVideo.requestVideoFrameCallback(() => {
+      if (!scanWorker) return;
+      if (!workerBusy) captureAndSendFrame(0.6);
+      scheduleNextFrame();
+    });
   } else {
-    setTimeout(() => { if (!scanWorker) return; if (!workerBusy) captureAndSendFrame(0.6); scheduleNextFrame(); }, 100);
+    setTimeout(() => {
+      if (!scanWorker) return;
+      if (!workerBusy) captureAndSendFrame(0.6);
+      scheduleNextFrame();
+    }, 100);
   }
 }
 
@@ -775,33 +807,44 @@ async function handleBlobFallback(blob) {
 }
 
 function stopScanner() {
+  // останавливаем поток и воркер, сбрасываем флаги
   try { if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; } } catch (e) { console.warn(e); }
   try { if (codeReader) codeReader.reset(); } catch (e) {}
   try { if (scanWorker) { scanWorker.terminate(); scanWorker = null; } } catch (e) {}
   workerBusy = false;
+  scannerActive = false;
   previewVideo.pause();
   previewVideo.srcObject = null;
   previewVideo.removeAttribute('src');
   previewVideo.load?.();
   scannerCard.style.display = 'none';
   scanResult.textContent = '';
+  // сброс найденного кода, чтобы следующий запуск был "чистым"
+  lastDetected = { code: null, ts: 0 };
 }
 
-/* Быстрая обработка скана с дебаунсом */
 function handleFastScan(code) {
   const now = Date.now();
   if (code === lastDetected.code && now - lastDetected.ts < DEBOUNCE_MS) return;
   lastDetected = { code, ts: now };
+
   try { navigator.vibrate?.(40); } catch (e) {}
+
   scanResult.textContent = `Найден: ${code}`;
+
   const name = codeToName.get(String(code));
   if (name) {
     searchInput.value = name;
     filterItems();
     highlightScannedItemByCode(code);
-    setTimeout(() => { try { stopScanner(); } catch (e) {} scannerCard.style.display = 'none'; }, 300);
+
+    // после подстановки — закрываем сканер и сбрасываем состояние
+    setTimeout(() => {
+      try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
+    }, 300);
   } else {
     showToast('Штрихкод не найден в базе');
+    // попробуем усиленный кадр
     setTimeout(() => { if (!workerBusy && scanWorker) captureAndSendFrame(1.0); }, 120);
   }
 }
@@ -819,13 +862,18 @@ function highlightScannedItemByCode(code) {
   const target = document.querySelector(`.item[data-code="${code}"]`);
   if (target) {
     target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.45)';
+    // прокрутка: сначала к контейнеру, затем обеспечим видимость над клавиатурой
     const container = document.getElementById('content') || document.documentElement;
     const rect = target.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
     const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
     container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
+
     const input = target.querySelector('input');
-    if (input) { showCustomKeyboard(input); setTimeout(() => ensureVisibleAboveKeyboard(input), 180); }
+    if (input) {
+      showCustomKeyboard(input);
+      setTimeout(() => ensureVisibleAboveKeyboard(input), 180);
+    }
   }
 }
 
@@ -839,71 +887,21 @@ function ensureVisibleAboveKeyboard(input) {
   const safeMargin = 12;
   const bottomOverlap = (fieldRect.bottom + safeMargin) - (viewportHeight - kbHeight);
   if (bottomOverlap > 0) {
-    const currentScroll = window.scrollY || document.documentElement.scrollTop;
+    const currentScroll = document.getElementById('content')?.scrollTop || window.scrollY || document.documentElement.scrollTop;
     const scrollBy = bottomOverlap + 40;
-    window.scrollTo({ top: currentScroll + scrollBy, behavior: 'smooth' });
+    const container = document.getElementById('content') || document.documentElement;
+    container.scrollTo({ top: currentScroll + scrollBy, behavior: 'smooth' });
   } else {
     const topGap = fieldRect.top - safeMargin;
     if (topGap < 60) {
-      const currentScroll = window.scrollY || document.documentElement.scrollTop;
-      window.scrollTo({ top: Math.max(0, currentScroll - (60 - topGap)), behavior: 'smooth' });
+      const currentScroll = document.getElementById('content')?.scrollTop || window.scrollY || document.documentElement.scrollTop;
+      const container = document.getElementById('content') || document.documentElement;
+      container.scrollTo({ top: Math.max(0, currentScroll - (60 - topGap)), behavior: 'smooth' });
     }
   }
 }
 
-/* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
-function startInventory() {
-  sessionValues = {};
-  allItems.forEach(item => sessionValues[item.code] = '');
-  saveSession();
-  buildItems();
-  alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
-}
-function clearInventory() {
-  sessionValues = {};
-  saveSession();
-  buildItems();
-  alert('Пересчёт очищен.');
-}
-function applySessionToDB() {
-  const aggregated = {};
-  allItems.forEach(item => {
-    const expr = sessionValues[item.code] || '';
-    const val  = evalExpression(expr);
-    const name = item.name;
-    if (!aggregated[name]) aggregated[name] = 0;
-    aggregated[name] += val;
-  });
-  Object.keys(aggregated).forEach(name => { quantities[name] = aggregated[name]; });
-  saveDB();
-  buildItemsFromDB();
-  buildItems();
-}
-
 /* ========= ИТОГИ / ТОАСТ ========= */
-function openSummary() {
-  const summaryTableBody = document.querySelector('#summaryTable tbody');
-  summaryTableBody.innerHTML = '';
-  const summary = {};
-  allItems.forEach(item => {
-    const name = item.name;
-    const expected = quantities[name] || 0;
-    const expr = sessionValues[item.code] || '';
-    const val  = evalExpression(expr);
-    if (!summary[name]) summary[name] = { expected, actual: 0 };
-    summary[name].actual += val;
-  });
-  Object.entries(summary).forEach(([name, data]) => {
-    const diff = data.actual - data.expected;
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td style="text-align:left;">${name}</td><td style="text-align:right;">${data.expected}</td><td style="text-align:right;">${data.actual}</td><td style="text-align:right;">${diff}</td>`;
-    summaryTableBody.appendChild(tr);
-  });
-  const summaryModal = document.getElementById('summaryModal');
-  if (summaryModal) summaryModal.classList.add('show');
-}
-function closeSummary() { const summaryModal = document.getElementById('summaryModal'); if (summaryModal) summaryModal.classList.remove('show'); }
-
 function showToast(message) {
   let toast = document.querySelector(".toast");
   if (!toast) {
@@ -923,31 +921,23 @@ document.addEventListener('DOMContentLoaded', () => {
   buildItems();
   initCustomKeyboard();
 
-  scanBtn.addEventListener('click', () => { scannerCard.style.display = 'block'; initScanner(); });
-  closeScannerBtn.addEventListener('click', () => { stopScanner(); });
+  scanBtn.addEventListener('click', () => {
+    scannerCard.style.display = 'block';
+    initScanner();
+  });
+
+  closeScannerBtn.addEventListener('click', () => {
+    stopScanner();
+  });
 
   const deviceSelectEl = document.getElementById('deviceSelect');
   if (deviceSelectEl) deviceSelectEl.addEventListener('change', e => { startCamera(e.target.value); });
-
-  const torchBtnEl = document.getElementById('torchBtn');
-  if (torchBtnEl) torchBtnEl.addEventListener('click', () => {
-    try {
-      const tracks = currentStream?.getVideoTracks();
-      if (tracks && tracks.length > 0) {
-        const track = tracks[0];
-        const capabilities = track.getCapabilities?.();
-        if (capabilities?.torch) {
-          const current = track.getSettings().torch;
-          track.applyConstraints({ advanced: [{ torch: !current }] });
-        } else showToast('Фонарик не поддерживается');
-      }
-    } catch (e) { console.error('Torch error', e); showToast('Ошибка управления фонариком'); }
-  });
 
   if (clearSearch) clearSearch.addEventListener('click', () => { searchInput.value = ''; filterItems(); });
   if (searchInput) searchInput.addEventListener('input', filterItems);
 });
 </script>
+
 
 
 
