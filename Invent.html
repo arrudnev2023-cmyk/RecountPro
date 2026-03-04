@@ -884,25 +884,54 @@ function filterItems() {
 }
 
 function highlightScannedItemByCode(code) {
+  // Сброс визуальных эффектов у всех карточек
   document.querySelectorAll('.item').forEach(el => el.style.boxShadow = '');
+
   const target = document.querySelector(`.item[data-code="${code}"]`);
-  if (target) {
-    target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.45)';
+  if (!target) return;
 
-    const container = document.getElementById('content') || document.documentElement;
-    const rect = target.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
+  // Подсветка карточки
+  target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.45)';
 
-    const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
-    container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
+  // Прокрутка контейнера так, чтобы карточка оказалась вверху контента
+  const container = document.getElementById('content') || document.documentElement;
+  const rect = target.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
+  const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
+  container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
 
-    const input = target.querySelector('input');
-    if (input) {
-      showCustomKeyboard(input);
-      setTimeout(() => ensureVisibleAboveKeyboard(input), 180);
+  // Найдём поле ввода факта в карточке
+  const input = target.querySelector('input[data-code]');
+  if (!input) return;
+
+  // Откроем кастомную клавиатуру и подготовим фокус
+  showCustomKeyboard(input);
+
+  // Если поле было readonly — временно снимем атрибут, чтобы focus сработал корректно на всех платформах
+  const hadReadonly = input.hasAttribute('readonly');
+  if (hadReadonly) input.removeAttribute('readonly');
+
+  // Дадим браузеру время на прокрутку/рендер, затем сфокусируем поле
+  setTimeout(() => {
+    try {
+      input.focus({ preventScroll: true });
+      // на мобильных браузерах иногда нужно дополнительно установить caret
+      if (typeof input.setSelectionRange === 'function') {
+        const len = (input.value || '').length;
+        input.setSelectionRange(len, len);
+      }
+    } catch (e) {
+      // ignore focus errors
     }
-  }
+
+    // Через небольшую задержку вернём readonly, чтобы поле оставалось защищённым от системной клавиатуры
+    // но кастомная клавиатура продолжит работать (она управляет value напрямую).
+    setTimeout(() => {
+      if (hadReadonly) input.setAttribute('readonly', '');
+    }, 300);
+  }, 220);
 }
+
 
 /* ========= ВСПОМОГАТЕЛЬНЫЕ ========= */
 function ensureVisibleAboveKeyboard(input) {
