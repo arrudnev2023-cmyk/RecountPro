@@ -524,6 +524,56 @@ function buildItems() {
     itemElement.className = 'item';
     itemElement.dataset.code = item.code;
 
+    // Получаем текущее количество из сессии (может быть 0 или любое другое значение)
+    const currentCount = sessionValues[item.code] || 0;
+    const hasCount = currentCount > 0;
+
+    // Добавляем классификацию по статусу
+    if (hasCount) {
+      const expected = parseInt(item.qty) || 0;
+      if (currentCount === expected) {
+        itemElement.classList.add('match');
+      } else if (currentCount < expected) {
+        itemElement.classList.add('missing');
+      } else {
+        itemElement.classList.add('excess');
+      }
+    }
+
+    itemElement.innerHTML = `
+      <div class="field">
+        <span class="label">Название:</span>
+        <strong>${item.name}</strong>
+      </div>
+      <div class="field">
+        <span class="label">Штрихкод:</span>
+        <span>${item.code}</span>
+      </div>
+      ${item.qty ? `<div class="field">
+        <span class="label">Учётное:</span>
+        ${item.qty || 0}
+      </div>` : ''}
+      <div class="field">
+        <span class="label">Кол-во:</span>
+        <input data-code="${item.code}" type="text" value="${currentCount}" placeholder="0" readonly>
+      </div>
+    `;
+
+    const input = itemElement.querySelector('input');
+    input.addEventListener('focus', () => {
+      showCustomKeyboard(input);
+    });
+
+    listContainer.appendChild(itemElement);
+  });
+}
+
+
+  allItems.forEach(item => {
+    const itemElement = document.createElement('div');
+    itemElement.className = 'item';
+    itemElement.dataset.code = item.code;
+
     const currentCount = sessionValues[item.code] || 0;
     const hasCount = currentCount > 0;
 
@@ -749,24 +799,29 @@ function filterItems() {
         }
       }
 
-      itemElement.innerHTML = `
-        <div class="field">
-          <span class="label">Название:</span>
-          <strong>${item.name}</strong>
-        </div>
-        <div class="field">
-          <span class="label">Штрихкод:</span>
-          <span>${item.code}</span>
-        </div>
-        ${item.qty ? `<div class="field">
-          <span class="label">Учётное:</span>
-          ${item.qty || 0}
-        </div>` : ''}
-        <div class="field">
-          <span class="label">Кол-во:</span>
-          <input data-code="${item.code}" type="text" value="${currentCount}" placeholder="0" readonly>
-        </div>
-      `;
+     inventoryBtn.addEventListener('click', () => {
+  // 1. Очищаем текущие значения сессии — начинаем инвентаризацию с чистого листа
+  sessionValues = {};
+
+  // 2. Инициализируем все товары из базы с нулевым количеством
+  allItems.forEach(item => {
+    sessionValues[item.code] = 0;
+  });
+
+  // 3. Сохраняем в localStorage
+  localStorage.setItem('sessionValues', JSON.stringify(sessionValues));
+
+  // 4. Обновляем интерфейс — перестраиваем список с нулевыми значениями
+  buildItems();
+
+  // 5. Показываем уведомление
+  alert('Режим инвентаризации активирован. Начните ввод количества для каждого товара.');
+
+  // 6. Закрываем меню
+  bottomSheet.classList.remove('show');
+  sheetOverlay.classList.remove('show');
+});
+
 
       const input = itemElement.querySelector('input');
       input.addEventListener('focus', () => {
