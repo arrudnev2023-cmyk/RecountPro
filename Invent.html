@@ -357,9 +357,12 @@ let barcodeDB = {};      // { [name]: [code1, code2...] }
 let quantities = {};     // { [name]: qty }
 let allItems = [];       // [{code,name,qty}]
 let sessionValues = {};  // { [code]: "выражение" }
+let codeToName = new Map(); // быстрый индекс: code -> name
 
 let codeReader = null;
 let currentStream = null;
+let lastDetected = { code: null, ts: 0 };
+const DEBOUNCE_MS = 700; // пауза между распознаваниями одного и того же кода
 
 /* ========= ЭЛЕМЕНТЫ ========= */
 const searchInput      = document.getElementById('search');
@@ -392,6 +395,7 @@ const scanBtn          = document.getElementById('scan-btn');
 const clearSearch      = document.getElementById('clear-search');
 
 /* ========= УТИЛИТЫ ========= */
+/** Безопасное вычисление выражения, разрешены цифры, + и - */
 function evalExpression(expr) {
   if (!expr) return 0;
   const safe = String(expr).replace(/\s+/g, '');
@@ -404,7 +408,19 @@ function evalExpression(expr) {
   }
 }
 
-/* ========= БАЗА / СЕССИЯ ========= */
+/* ========= БАЗА / ИНДЕКС / СЕССИЯ ========= */
+function buildItemsFromDB() {
+  allItems = [];
+  codeToName = new Map();
+  Object.entries(barcodeDB).forEach(([name, codes]) => {
+    const qty = quantities[name] || 0;
+    codes.forEach(code => {
+      allItems.push({ code, name, qty });
+      codeToName.set(String(code), name);
+    });
+  });
+}
+
 function loadDB() {
   try {
     const raw = localStorage.getItem('barcodeDB');
@@ -414,6 +430,7 @@ function loadDB() {
         barcodeDB = parsed.db;
         quantities = parsed.quantities;
       } else {
+        // старый формат — конвертируем
         barcodeDB = {};
         quantities = {};
         Object.entries(parsed).forEach(([code, data]) => {
@@ -423,9 +440,7 @@ function loadDB() {
             quantities[name] = 0;
           }
           barcodeDB[name].push(code);
-          if (data.qty !== undefined) {
-            quantities[name] = data.qty;
-          }
+          if (data.qty !== undefined) quantities[name] = data.qty;
         });
       }
     } else {
@@ -433,6 +448,7 @@ function loadDB() {
       quantities = {};
     }
   } catch (e) {
+    console.error('Ошибка загрузки базы:', e);
     barcodeDB = {};
     quantities = {};
   }
@@ -448,24 +464,19 @@ function loadDB() {
 }
 
 function saveDB() {
-  localStorage.setItem('barcodeDB', JSON.stringify({
-    db: barcodeDB,
-    quantities: quantities
-  }));
+  try {
+    localStorage.setItem('barcodeDB', JSON.stringify({ db: barcodeDB, quantities: quantities }));
+  } catch (e) {
+    console.error('Ошибка сохранения базы:', e);
+  }
 }
 
 function saveSession() {
-  localStorage.setItem('recountSession', JSON.stringify(sessionValues));
-}
-
-function buildItemsFromDB() {
-  allItems = [];
-  Object.entries(barcodeDB).forEach(([name, codes]) => {
-    const qty = quantities[name] || 0;
-    codes.forEach(code => {
-      allItems.push({ code, name, qty });
-    });
-  });
+  try {
+    localStorage.setItem('recountSession', JSON.stringify(sessionValues));
+  } catch (e) {
+    console.error('Ошибка сохранения сессии:', e);
+  }
 }
 
 /* ========= РЕНДЕР ========= */
@@ -516,7 +527,7 @@ function renderItems(items) {
       </div>
       <div class="field">
         <span class="label">Кол-во:</span>
-        <input data-code="${item.code}" type="text" value="${expr}" placeholder="0" readonly>
+        <input data-code="${item.code}" type="text" value="${expr || ''}" placeholder="0" readonly>
       </div>
     `;
 
@@ -524,10 +535,7 @@ function renderItems(items) {
     input.addEventListener('focus', () => {
       showCustomKeyboard(input);
       setTimeout(() => {
-        input.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 150);
     });
 
@@ -563,6 +571,7 @@ function initCustomKeyboard() {
       if (keyValue === '←') {
         currentValue = currentValue.slice(0, -1);
       } else {
+        // плюс — символ, не +1
         currentValue = currentValue + keyValue;
       }
 
@@ -576,10 +585,23 @@ function initCustomKeyboard() {
   document.getElementById('done').addEventListener('click', hideCustomKeyboard);
 }
 
-/* ========= СКАНЕР ========= */
+/* ========= СКАНЕР (оптимизировано) ========= */
+/*
+  Подходы для скорости:
+  - используем decodeFromVideoDevice (оптимизированный поток)
+  - ставим высокое разрешение (идеал) для камеры, чтобы ZXing быстрее распознавал
+  - при успешном считывании даём короткую паузу (DEBOUNCE_MS)
+  - используем индекс codeToName для мгновенного поиска
+*/
 async function initScanner() {
   try {
+    if (typeof ZXing === 'undefined') {
+      alert('Библиотека сканера не загружена');
+      return;
+    }
+
     const BrowserMultiFormatReader = ZXing.BrowserMultiFormatReader;
+    // создаём ридер (внутри он оптимизирован)
     codeReader = new BrowserMultiFormatReader();
 
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -590,9 +612,10 @@ async function initScanner() {
       return;
     }
 
+    // ищем заднюю камеру по метке
     let backCam = videoDevices.find(d => {
       const label = (d.label || '').toLowerCase();
-      return label.includes('back') || label.includes('rear') || label.includes('зад');
+      return label.includes('back') || label.includes('rear') || label.includes('зад') || label.includes('environment');
     });
 
     const defaultCamId = (backCam || videoDevices[0]).deviceId;
@@ -602,17 +625,24 @@ async function initScanner() {
     ).join('');
     deviceSelect.value = defaultCamId;
 
+    // старт камеры с предпочтением задней и высоким разрешением
     await startCamera(defaultCamId);
 
-    codeReader.decodeFromVideoElement(previewVideo, (result, err) => {
+    // используем оптимизированный метод: decodeFromVideoDevice
+    // он сам обрабатывает кадры и вызывает callback при результате
+    codeReader.decodeFromVideoDevice(defaultCamId, previewVideo, (result, err) => {
       if (err && !(err instanceof ZXing.NotFoundException)) {
+        // игнорируем NotFoundException — это нормальное состояние
+        console.debug('Сканер ошибка:', err);
         return;
       }
       if (result) {
-        handleScanResult(result.getText());
+        const code = result.getText();
+        handleFastScan(code);
       }
     });
   } catch (e) {
+    console.error('Ошибка инициализации сканера:', e);
     alert('Не удалось запустить камеру');
   }
 }
@@ -622,11 +652,33 @@ async function startCamera(deviceId) {
     if (currentStream) {
       currentStream.getTracks().forEach(t => t.stop());
     }
-    const constraints = { video: { deviceId: { exact: deviceId } } };
+
+    // предпочтения: задняя камера, высокое разрешение
+    const constraints = {
+      video: {
+        deviceId: { exact: deviceId },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: { ideal: "environment" }
+      },
+      audio: false
+    };
+
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
     previewVideo.srcObject = currentStream;
+    await previewVideo.play().catch(()=>{});
   } catch (e) {
-    alert('Ошибка доступа к камере');
+    console.warn('startCamera fallback, trying without deviceId:', e);
+    try {
+      // fallback: без deviceId, с facingMode
+      const fallback = { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+      currentStream = await navigator.mediaDevices.getUserMedia(fallback);
+      previewVideo.srcObject = currentStream;
+      await previewVideo.play().catch(()=>{});
+    } catch (err) {
+      console.error('Ошибка доступа к камере:', err);
+      alert('Ошибка доступа к камере');
+    }
   }
 }
 
@@ -643,32 +695,32 @@ function stopScanner() {
   scanResult.textContent = '';
 }
 
-function handleScanResult(barcode) {
-  scanResult.textContent = `Найден: ${barcode}`;
+/* Быстрая обработка скана с дебаунсом и мгновенным поиском */
+function handleFastScan(code) {
+  const now = Date.now();
+  if (code === lastDetected.code && now - lastDetected.ts < DEBOUNCE_MS) return;
+  lastDetected = { code, ts: now };
 
-  const foundItem = allItems.find(i => i.code === barcode);
-  if (!foundItem) {
-    alert('Товар не найден в базе');
-    return;
+  try { navigator.vibrate?.(40); } catch (e) {}
+
+  scanResult.textContent = `Найден: ${code}`;
+
+  // мгновенный поиск по индексу
+  const name = codeToName.get(String(code));
+  if (name) {
+    // подставляем в поиск и фильтруем
+    searchInput.value = name;
+    filterItems();
+
+    // подсвечиваем и скроллим
+    highlightScannedItemByCode(code);
+  } else {
+    // если не найден — показываем краткое уведомление
+    showToast('Штрихкод не найден в базе');
   }
-
-  searchInput.value = foundItem.name;
-  filterItems();
-  highlightScannedItem(barcode);
 }
 
-function highlightScannedItem(code) {
-  document.querySelectorAll('.item').forEach(el => {
-    el.style.boxShadow = '';
-  });
-  const target = document.querySelector(`.item[data-code="${code}"]`);
-  if (target) {
-    target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.4)';
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-}
-
-/* ========= ПОИСК ========= */
+/* ========= ПОИСК / ХАЙЛАЙТ ========= */
 function filterItems() {
   const q = searchInput.value.toLowerCase().trim();
   if (!q) {
@@ -684,17 +736,32 @@ function filterItems() {
   renderItems(filtered);
 }
 
-/* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
-function startInventory() {
-  sessionValues = {};
-  allItems.forEach(item => {
-    sessionValues[item.code] = '';
-  });
-  saveSession();
-  buildItems();
-  alert('Режим инвентаризации активирован.');
+function highlightScannedItemByCode(code) {
+  document.querySelectorAll('.item').forEach(el => el.style.boxShadow = '');
+  const target = document.querySelector(`.item[data-code="${code}"]`);
+  if (target) {
+    target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.45)';
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // ставим фокус на поле (но не на строку поиска)
+    const input = target.querySelector('input');
+    if (input) {
+      showCustomKeyboard(input);
+      setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 120);
+    }
+  }
 }
 
+/* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
+/* Начать пересчёт — инициализируем sessionValues (не трогаем quantities) */
+function startInventory() {
+  sessionValues = {};
+  allItems.forEach(item => sessionValues[item.code] = '');
+  saveSession();
+  buildItems();
+  alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
+}
+
+/* Очистить сессию */
 function clearInventory() {
   sessionValues = {};
   saveSession();
@@ -702,6 +769,7 @@ function clearInventory() {
   alert('Пересчёт очищен.');
 }
 
+/* Применить сессию в базу — агрегируем по имени и сохраняем в quantities */
 function applySessionToDB() {
   const aggregated = {};
   allItems.forEach(item => {
@@ -717,6 +785,8 @@ function applySessionToDB() {
   });
 
   saveDB();
+  buildItemsFromDB();
+  buildItems();
 }
 
 /* ========= ИТОГИ ========= */
@@ -730,9 +800,7 @@ function openSummary() {
     const expr = sessionValues[item.code] || '';
     const val  = evalExpression(expr);
 
-    if (!summary[name]) {
-      summary[name] = { expected, actual: 0 };
-    }
+    if (!summary[name]) summary[name] = { expected, actual: 0 };
     summary[name].actual += val;
   });
 
@@ -755,12 +823,41 @@ function closeSummary() {
   summaryModal.classList.remove('show');
 }
 
+/* ========= ТОАСТ ========= */
+function showToast(message) {
+  let toast = document.querySelector(".toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.className = "toast";
+    Object.assign(toast.style, {
+      position: 'fixed',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      bottom: '18vh',
+      background: 'rgba(0,0,0,0.8)',
+      color: 'white',
+      padding: '8px 12px',
+      borderRadius: '8px',
+      zIndex: 9999,
+      opacity: '0',
+      transition: 'opacity 0.25s'
+    });
+    document.body.appendChild(toast);
+  }
+
+  toast.textContent = message;
+  toast.style.opacity = "1";
+
+  setTimeout(() => { toast.style.opacity = "0"; }, 1800);
+}
+
 /* ========= INIT ========= */
 document.addEventListener('DOMContentLoaded', () => {
   loadDB();
   buildItems();
   initCustomKeyboard();
 
+  // Сканер
   scanBtn.addEventListener('click', () => {
     scannerCard.style.display = 'block';
     initScanner();
@@ -775,7 +872,23 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   torchBtn.addEventListener('click', () => {
-    alert('Фонарик пока не реализован.');
+    // попытка включить torch, если поддерживается
+    try {
+      const tracks = currentStream?.getVideoTracks();
+      if (tracks && tracks.length > 0) {
+        const track = tracks[0];
+        const capabilities = track.getCapabilities?.();
+        if (capabilities?.torch) {
+          const current = track.getSettings().torch;
+          track.applyConstraints({ advanced: [{ torch: !current }] });
+        } else {
+          showToast('Фонарик не поддерживается');
+        }
+      }
+    } catch (e) {
+      console.error('Torch error', e);
+      showToast('Ошибка управления фонариком');
+    }
   });
 
   clearSearch.addEventListener('click', () => {
@@ -816,7 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
   saveBtn.addEventListener('click', () => {
     applySessionToDB();
     buildItems();
-    alert('Остатки обновлены.');
+    showToast('Остатки обновлены в базе товаров.');
     bottomSheet.classList.remove('show');
     sheetOverlay.classList.remove('show');
   });
@@ -827,10 +940,11 @@ document.addEventListener('DOMContentLoaded', () => {
     applySessionToDB();
     buildItems();
     closeSummary();
-    alert('Итоги сохранены.');
+    showToast('Итоги сохранены в базу.');
   });
 });
 </script>
+
 </body>
 </html>
 
