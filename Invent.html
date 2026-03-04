@@ -404,7 +404,6 @@ let codeReader = null;
 let currentStream = null;
 let lastDetected = { code: null, ts: 0 };
 const DEBOUNCE_MS = 700;
-
 let frameProcessInterval = null;
 
 /* ========= ЭЛЕМЕНТЫ ========= */
@@ -591,23 +590,16 @@ function initCustomKeyboard() {
 function positionScannerUnderSearch() {
   if (!searchWrap || !scannerCard) return;
   const rect = searchWrap.getBoundingClientRect();
-  const top = rect.bottom + 8 + window.scrollY;
-  const left = rect.left + window.scrollX;
+  const top = rect.bottom + 8;
+  const left = rect.left;
   const width = Math.min(rect.width, Math.max(280, rect.width));
-  scannerCard.style.position = 'absolute';
-  scannerCard.style.top = top + 'px';
+  // используем fixed, чтобы окно было видно при скролле
+  scannerCard.style.position = 'fixed';
+  scannerCard.style.top = (rect.bottom + 8) + 'px';
   scannerCard.style.left = left + 'px';
-  scannerCard.style.right = 'auto';
-  scannerCard.style.bottom = 'auto';
   scannerCard.style.width = width + 'px';
   scannerCard.style.maxWidth = 'calc(100% - 2rem)';
   scannerCard.style.zIndex = 2000;
-  // при мобильном скролле фиксируем поведение: если страница прокручена так, что header перекрывает, используем fixed
-  if (window.scrollY > rect.top - 20) {
-    scannerCard.style.position = 'fixed';
-    scannerCard.style.top = (rect.bottom - window.scrollY + 8) + 'px';
-    scannerCard.style.left = rect.left + 'px';
-  }
 }
 
 /* ========= СКАНЕР (устойчивость) ========= */
@@ -617,6 +609,13 @@ async function initScanner() {
       alert('Библиотека сканера не загружена');
       return;
     }
+
+    // показываем окно до старта камеры, чтобы пользователь видел состояние
+    scannerCard.style.display = 'block';
+    scannerCard.classList.remove('minimized');
+    positionScannerUnderSearch();
+    scanResult.textContent = 'Запуск камеры…';
+    previewVideo.style.backgroundColor = '#000';
 
     const hints = new Map();
     hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
@@ -634,7 +633,7 @@ async function initScanner() {
 
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoDevices = devices.filter(d => d.kind === 'videoinput');
-    if (videoDevices.length === 0) { showToast('Камеры не найдены'); return; }
+    if (videoDevices.length === 0) { showToast('Камеры не найдены'); scanResult.textContent = 'Камера не найдена'; return; }
 
     let backCam = videoDevices.find(d => {
       const label = (d.label || '').toLowerCase();
@@ -645,8 +644,21 @@ async function initScanner() {
     deviceSelect.innerHTML = videoDevices.map(d => `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`).join('');
     deviceSelect.value = defaultCamId;
 
-    await startCamera(defaultCamId);
+    // старт камеры и ожидание play()
+    try {
+      await startCamera(defaultCamId);
+      // гарантируем, что видео запущено
+      await previewVideo.play();
+      scanResult.textContent = 'Сканер готов';
+    } catch (e) {
+      console.warn('Не удалось запустить видео напрямую:', e);
+      scanResult.textContent = 'Ошибка доступа к камере';
+      // не закрываем окно — оставляем свернутым, чтобы пользователь видел сообщение
+      scannerCard.classList.add('minimized');
+      return;
+    }
 
+    // потоковое декодирование
     codeReader.decodeFromVideoDevice(defaultCamId, previewVideo, (result, err) => {
       if (err && !(err instanceof ZXing.NotFoundException)) {
         console.debug('Сканер ошибка:', err);
@@ -663,35 +675,22 @@ async function initScanner() {
 
   } catch (e) {
     console.error('Ошибка инициализации сканера:', e);
+    scanResult.textContent = 'Ошибка инициализации';
     showToast('Не удалось запустить камеру');
-    // не закрываем окно — оставляем свернутым, чтобы пользователь мог увидеть ошибку и попробовать снова
-    scannerCard.classList.add('minimized');
   }
 }
 
 async function startCamera(deviceId) {
-  try {
-    if (currentStream) currentStream.getTracks().forEach(t => t.stop());
-    const constraints = {
-      video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: { ideal: "environment" } },
-      audio: false
-    };
-    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-    previewVideo.srcObject = currentStream;
-    await previewVideo.play().catch(()=>{});
-  } catch (e) {
-    console.warn('startCamera fallback', e);
-    try {
-      const fallback = { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } };
-      currentStream = await navigator.mediaDevices.getUserMedia(fallback);
-      previewVideo.srcObject = currentStream;
-      await previewVideo.play().catch(()=>{});
-    } catch (err) {
-      console.error('Ошибка доступа к камере:', err);
-      showToast('Ошибка доступа к камере');
-      throw err;
-    }
-  }
+  if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+  const constraints = {
+    video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: { ideal: "environment" } },
+    audio: false
+  };
+  currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+  previewVideo.srcObject = currentStream;
+  previewVideo.muted = true;
+  previewVideo.playsInline = true;
+  // попытка play() здесь — вызывается в initScanner с await
 }
 
 function stopScanner(hide=true) {
@@ -700,9 +699,7 @@ function stopScanner(hide=true) {
   if (codeReader) { try { codeReader.reset(); } catch {} }
   previewVideo.srcObject = null;
   scanResult.textContent = '';
-  if (hide) {
-    scannerCard.style.display = 'none';
-  }
+  if (hide) scannerCard.style.display = 'none';
 }
 
 /* Быстрая обработка скана с дебаунсом и мгновенным поиском */
@@ -721,8 +718,6 @@ function handleFastScan(code) {
     searchInput.value = name;
     filterItems();
     highlightScannedItemByCode(code);
-
-    // закрываем сканер через короткую паузу (плавно)
     setTimeout(() => { stopScanner(true); }, 300);
   } else {
     showToast('Штрихкод не найден в базе');
@@ -760,9 +755,7 @@ async function tryProcessFrame() {
     imgEl.onload = async () => {
       try {
         const result = await codeReader.decodeFromImageElement(imgEl);
-        if (result && result.getText) {
-          handleFastScan(result.getText());
-        }
+        if (result && result.getText) handleFastScan(result.getText());
       } catch (e) { /* нормальное поведение */ }
     };
   } catch (e) { console.debug('frame processing error', e); }
@@ -884,7 +877,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initCustomKeyboard();
 
   scanBtn.addEventListener('click', () => {
-    // показываем и позиционируем под строкой поиска
     scannerCard.style.display = 'block';
     scannerCard.classList.remove('minimized');
     positionScannerUnderSearch();
@@ -914,7 +906,6 @@ document.addEventListener('DOMContentLoaded', () => {
   clearSearch.addEventListener('click', () => { searchInput.value = ''; filterItems(); });
   searchInput.addEventListener('input', filterItems);
 
-  // при ресайзе/скролле корректируем позицию сканера под поиском
   window.addEventListener('resize', () => { if (scannerCard.style.display === 'block') positionScannerUnderSearch(); });
   window.addEventListener('scroll', () => { if (scannerCard.style.display === 'block') positionScannerUnderSearch(); });
 
@@ -931,6 +922,7 @@ document.addEventListener('DOMContentLoaded', () => {
   summarySaveBtn.addEventListener('click', () => { applySessionToDB(); buildItems(); closeSummary(); showToast('Итоги сохранены в базу.'); });
 });
 </script>
+
 
 </body>
 </html>
