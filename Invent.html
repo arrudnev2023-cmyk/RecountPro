@@ -498,6 +498,7 @@ function renderItems(items) {
       showCustomKeyboard(input);
       input.classList.add('focused-by-custom');
       ensureVisibleAboveKeyboard(input);
+      scrollToItem(el);
     };
     input.addEventListener('touchstart', openCustom, { passive: false });
     input.addEventListener('click', openCustom);
@@ -875,17 +876,20 @@ function filterItems() {
   renderItems(filtered);
 }
 
+function scrollToItem(itemEl) {
+  const container = document.getElementById('content') || document.documentElement;
+  const rect = itemEl.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
+  const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
+  container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
+}
+
 function highlightScannedItemByCode(code) {
   document.querySelectorAll('.item').forEach(el => el.style.boxShadow = '');
   const target = document.querySelector(`.item[data-code="${code}"]`);
   if (target) {
     target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.45)';
-    const container = document.getElementById('content') || document.documentElement;
-    const rect = target.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
-    const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
-    container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
-
+    scrollToItem(target);
     const input = target.querySelector('input');
     if (input) {
       showCustomKeyboard(input);
@@ -917,7 +921,7 @@ function ensureVisibleAboveKeyboard(input) {
   }
 }
 
-/* ========= ИТОГИ / ТОАСТ ========= */
+/* ========= ТОАСТ / ИНИЦИАЛИЗАЦИЯ ========= */
 function showToast(message) {
   let toast = document.querySelector(".toast");
   if (!toast) {
@@ -931,7 +935,6 @@ function showToast(message) {
   setTimeout(() => { toast.style.opacity = "0"; }, 1800);
 }
 
-/* ========= INIT ========= */
 document.addEventListener('DOMContentLoaded', () => {
   loadDB();
   buildItems();
