@@ -1,15 +1,20 @@
 // scanWorker.js
-// Принимает { type: 'frame', bitmap } или { type: 'frameBlob', blob' }
+// Принимает { type: 'frame', bitmap } или { type: 'frameBlob', blob }
 // Возвращает { type: 'detected', results } | { type: 'bbox', bbox } | { type: 'blob', blob } | { type: 'error', message }
 
 self.onmessage = async (e) => {
   try {
     if (e.data.type === 'frameBlob') {
-      // fallback: получили blob вместо bitmap
       const blob = e.data.blob;
-      const img = await createImageBitmap(blob);
-      e.data.bitmap = img;
+      try {
+        const img = await createImageBitmap(blob);
+        e.data.bitmap = img;
+      } catch (err) {
+        self.postMessage({ type: 'error', message: 'createImageBitmap failed: ' + (err?.message || err) });
+        return;
+      }
     }
+
     if (e.data.type !== 'frame' || !e.data.bitmap) return;
     const bitmap = e.data.bitmap;
     const w = bitmap.width, h = bitmap.height;
@@ -19,7 +24,7 @@ self.onmessage = async (e) => {
     ctx.drawImage(bitmap, 0, 0);
     bitmap.close?.();
 
-    // Попытка нативного BarcodeDetector (быстро)
+    // Быстрая попытка нативного BarcodeDetector
     if (self.BarcodeDetector) {
       try {
         const detector = new BarcodeDetector();
@@ -29,16 +34,16 @@ self.onmessage = async (e) => {
           return;
         }
       } catch (bdErr) {
-        // продолжаем
+        // продолжаем к анализу
       }
     }
 
-    // Попытка получить ImageData (может быть запрещено в некоторых воркерах)
+    // Попытка получить ImageData (может быть запрещено в некоторых окружениях)
     let imgData;
     try {
       imgData = ctx.getImageData(0, 0, w, h);
     } catch (err) {
-      // отправляем уменьшённый blob на главный поток
+      // fallback: отправим уменьшённый blob на главный поток
       const small = new OffscreenCanvas(Math.max(1, Math.round(w/3)), Math.max(1, Math.round(h/3)));
       const sctx = small.getContext('2d');
       sctx.drawImage(off, 0, 0, small.width, small.height);
@@ -54,8 +59,8 @@ self.onmessage = async (e) => {
       data[i] = data[i+1] = data[i+2] = g;
     }
 
-    // локальная блоковая карта (для поиска областей с высокой плотностью тёмных блоков)
-    const block = 28; // чуть меньше для точности
+    // блоковая карта для поиска потенциальных областей штрихкода
+    const block = 28;
     const cols = Math.ceil(w / block);
     const rows = Math.ceil(h / block);
     const bin = new Uint8Array(cols * rows);
@@ -72,7 +77,7 @@ self.onmessage = async (e) => {
           }
         }
         const avg = cnt ? (sum / cnt) : 0;
-        bin[by * cols + bx] = avg < 150 ? 1 : 0; // порог эмпирический
+        bin[by * cols + bx] = avg < 150 ? 1 : 0;
       }
     }
 
