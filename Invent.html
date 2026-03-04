@@ -279,6 +279,7 @@
     }
   </style>
 </head>
+
 <body>
   <header>
     <h1>RecountPro — Пересчёт</h1>
@@ -349,46 +350,58 @@
       </div>
     </div>
   </div>
-
 <script>
 /* ========= СТЕЙТ ========= */
 let barcodeDB = {};      // { [name]: [code1, code2...] }
 let quantities = {};     // { [name]: qty }
 let allItems = [];       // [{code,name,qty}]
-let sessionValues = {};  // { [code]: фактическое кол-во }
+let sessionValues = {};  // { [code]: "выражение" }
 
 let codeReader = null;
 let currentStream = null;
 
 /* ========= ЭЛЕМЕНТЫ ========= */
-const searchInput = document.getElementById('search');
-const listContainer = document.getElementById('list');
+const searchInput      = document.getElementById('search');
+const listContainer    = document.getElementById('list');
 
-const scannerCard = document.getElementById('scannerCard');
-const previewVideo = document.getElementById('preview');
-const deviceSelect = document.getElementById('deviceSelect');
-const torchBtn = document.getElementById('torchBtn');
-const closeScannerBtn = document.getElementById('closeScannerBtn');
-const scanResult = document.getElementById('scanResult');
+const scannerCard      = document.getElementById('scannerCard');
+const previewVideo     = document.getElementById('preview');
+const deviceSelect     = document.getElementById('deviceSelect');
+const torchBtn         = document.getElementById('torchBtn');
+const closeScannerBtn  = document.getElementById('closeScannerBtn');
+const scanResult       = document.getElementById('scanResult');
 
-const fabMenu = document.getElementById('fabMenu');
-const sheetOverlay = document.getElementById('sheetOverlay');
-const bottomSheet = document.getElementById('bottomSheet');
+const fabMenu          = document.getElementById('fabMenu');
+const sheetOverlay     = document.getElementById('sheetOverlay');
+const bottomSheet      = document.getElementById('bottomSheet');
 
-const customKeyboard = document.getElementById('custom-keyboard');
+const customKeyboard   = document.getElementById('custom-keyboard');
 
-const saveBtn = document.getElementById('saveBtn');
-const clearBtn = document.getElementById('clearBtn');
-const totalBtn = document.getElementById('totalBtn');
-const inventoryBtn = document.getElementById('inventoryBtn');
+const saveBtn          = document.getElementById('saveBtn');
+const clearBtn         = document.getElementById('clearBtn');
+const totalBtn         = document.getElementById('totalBtn');
+const inventoryBtn     = document.getElementById('inventoryBtn');
 
-const summaryModal = document.getElementById('summaryModal');
+const summaryModal     = document.getElementById('summaryModal');
 const summaryTableBody = document.querySelector('#summaryTable tbody');
-const summarySaveBtn = document.getElementById('summarySaveBtn');
-const summaryCloseBtn = document.getElementById('summaryCloseBtn');
+const summarySaveBtn   = document.getElementById('summarySaveBtn');
+const summaryCloseBtn  = document.getElementById('summaryCloseBtn');
 
-const scanBtn = document.getElementById('scan-btn');
-const clearSearch = document.getElementById('clear-search');
+const scanBtn          = document.getElementById('scan-btn');
+const clearSearch      = document.getElementById('clear-search');
+
+/* ========= УТИЛИТЫ ========= */
+function evalExpression(expr) {
+  if (!expr) return 0;
+  const safe = String(expr).replace(/\s+/g, '');
+  if (!/^[0-9+\-]+$/.test(safe)) return 0;
+  try {
+    const val = Function('return ' + safe)();
+    return Number.isFinite(val) ? val : 0;
+  } catch {
+    return 0;
+  }
+}
 
 /* ========= БАЗА / СЕССИЯ ========= */
 function loadDB() {
@@ -400,7 +413,6 @@ function loadDB() {
         barcodeDB = parsed.db;
         quantities = parsed.quantities;
       } else {
-        // старый формат — конвертируем
         barcodeDB = {};
         quantities = {};
         Object.entries(parsed).forEach(([code, data]) => {
@@ -420,12 +432,10 @@ function loadDB() {
       quantities = {};
     }
   } catch (e) {
-    console.error('Ошибка загрузки базы:', e);
     barcodeDB = {};
     quantities = {};
   }
 
-  // сессия пересчёта
   try {
     const rawSession = localStorage.getItem('recountSession');
     sessionValues = rawSession ? JSON.parse(rawSession) : {};
@@ -437,14 +447,10 @@ function loadDB() {
 }
 
 function saveDB() {
-  try {
-    localStorage.setItem('barcodeDB', JSON.stringify({
-      db: barcodeDB,
-      quantities: quantities
-    }));
-  } catch (e) {
-    console.error('Ошибка сохранения базы:', e);
-  }
+  localStorage.setItem('barcodeDB', JSON.stringify({
+    db: barcodeDB,
+    quantities: quantities
+  }));
 }
 
 function saveSession() {
@@ -485,11 +491,12 @@ function renderItems(items) {
     el.dataset.name = item.name;
 
     const expected = quantities[item.name] || 0;
-    const current = sessionValues[item.code] || 0;
+    const expr     = sessionValues[item.code] || '';
+    const actual   = evalExpression(expr);
 
-    if (current > 0) {
-      if (current === expected) el.classList.add('match');
-      else if (current < expected) el.classList.add('missing');
+    if (expr) {
+      if (actual === expected) el.classList.add('match');
+      else if (actual < expected) el.classList.add('missing');
       else el.classList.add('excess');
     }
 
@@ -508,12 +515,20 @@ function renderItems(items) {
       </div>
       <div class="field">
         <span class="label">Кол-во:</span>
-        <input data-code="${item.code}" type="text" value="${current}" placeholder="0" readonly>
+        <input data-code="${item.code}" type="text" value="${expr}" placeholder="0" readonly>
       </div>
     `;
 
     const input = el.querySelector('input');
-    input.addEventListener('focus', () => showCustomKeyboard(input));
+    input.addEventListener('focus', () => {
+      showCustomKeyboard(input);
+      setTimeout(() => {
+        input.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }, 150);
+    });
 
     listContainer.appendChild(el);
   });
@@ -533,11 +548,6 @@ function hideCustomKeyboard() {
   customKeyboard.classList.remove('show');
 }
 
-function updateSessionValue(code, value) {
-  sessionValues[code] = isNaN(value) ? 0 : value;
-  saveSession();
-}
-
 function initCustomKeyboard() {
   const keys = customKeyboard.querySelectorAll('button:not(.done)');
   keys.forEach(key => {
@@ -546,21 +556,19 @@ function initCustomKeyboard() {
       const input = document.querySelector(`input[data-code="${targetCode}"]`);
       if (!input) return;
 
-      let currentValue = input.value || '0';
+      let currentValue = input.value || '';
       const keyValue = key.textContent;
 
       if (keyValue === '←') {
-        currentValue = currentValue.slice(0, -1) || '0';
-      } else if (keyValue === '+') {
-        const num = parseInt(currentValue || '0', 10) || 0;
-        currentValue = String(num + 1);
+        currentValue = currentValue.slice(0, -1);
       } else {
-        currentValue = currentValue === '0' ? keyValue : currentValue + keyValue;
+        currentValue = currentValue + keyValue;
       }
 
       input.value = currentValue;
-      updateSessionValue(targetCode, parseInt(currentValue, 10));
-      buildItems(); // обновить цветовую индикацию
+      sessionValues[targetCode] = currentValue;
+      saveSession();
+      buildItems();
     });
   });
 
@@ -570,44 +578,40 @@ function initCustomKeyboard() {
 /* ========= СКАНЕР ========= */
 async function initScanner() {
   try {
-    if (typeof ZXing === 'undefined') {
-      alert('Библиотека сканера не загружена');
-      return;
-    }
-
     const BrowserMultiFormatReader = ZXing.BrowserMultiFormatReader;
     codeReader = new BrowserMultiFormatReader();
 
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoDevices = devices.filter(d => d.kind === 'videoinput');
 
-    deviceSelect.innerHTML = '';
     if (videoDevices.length === 0) {
       alert('Камеры не найдены');
       return;
     }
 
-    videoDevices.forEach((device, i) => {
-      const opt = document.createElement('option');
-      opt.value = device.deviceId;
-      opt.textContent = device.label || `Камера ${i + 1}`;
-      deviceSelect.appendChild(opt);
+    let backCam = videoDevices.find(d => {
+      const label = (d.label || '').toLowerCase();
+      return label.includes('back') || label.includes('rear') || label.includes('зад');
     });
 
-    await startCamera(videoDevices[0].deviceId);
+    const defaultCamId = (backCam || videoDevices[0]).deviceId;
+
+    deviceSelect.innerHTML = videoDevices.map(d =>
+      `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`
+    ).join('');
+    deviceSelect.value = defaultCamId;
+
+    await startCamera(defaultCamId);
 
     codeReader.decodeFromVideoElement(previewVideo, (result, err) => {
       if (err && !(err instanceof ZXing.NotFoundException)) {
-        console.error('Ошибка сканера:', err);
         return;
       }
       if (result) {
-        const code = result.getText();
-        handleScanResult(code);
+        handleScanResult(result.getText());
       }
     });
   } catch (e) {
-    console.error('Ошибка инициализации сканера:', e);
     alert('Не удалось запустить камеру');
   }
 }
@@ -621,7 +625,6 @@ async function startCamera(deviceId) {
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
     previewVideo.srcObject = currentStream;
   } catch (e) {
-    console.error('Ошибка запуска камеры:', e);
     alert('Ошибка доступа к камере');
   }
 }
@@ -648,7 +651,6 @@ function handleScanResult(barcode) {
     return;
   }
 
-  // фильтр по найденному
   searchInput.value = foundItem.name;
   filterItems();
   highlightScannedItem(barcode);
@@ -685,11 +687,11 @@ function filterItems() {
 function startInventory() {
   sessionValues = {};
   allItems.forEach(item => {
-    sessionValues[item.code] = 0;
+    sessionValues[item.code] = '';
   });
   saveSession();
   buildItems();
-  alert('Режим инвентаризации активирован. Введите фактическое количество.');
+  alert('Режим инвентаризации активирован.');
 }
 
 function clearInventory() {
@@ -700,15 +702,13 @@ function clearInventory() {
 }
 
 function applySessionToDB() {
-  // агрегируем по имени товара
   const aggregated = {};
   allItems.forEach(item => {
-    const actual = sessionValues[item.code];
-    if (typeof actual !== 'number') return;
+    const expr = sessionValues[item.code] || '';
+    const val  = evalExpression(expr);
     const name = item.name;
     if (!aggregated[name]) aggregated[name] = 0;
-    // логика: берём максимум по кодам (можно заменить на сумму, если нужно)
-    aggregated[name] = Math.max(aggregated[name], actual);
+    aggregated[name] += val;
   });
 
   Object.keys(aggregated).forEach(name => {
@@ -726,12 +726,13 @@ function openSummary() {
   allItems.forEach(item => {
     const name = item.name;
     const expected = quantities[name] || 0;
-    const actualCode = sessionValues[item.code] || 0;
+    const expr = sessionValues[item.code] || '';
+    const val  = evalExpression(expr);
 
     if (!summary[name]) {
       summary[name] = { expected, actual: 0 };
     }
-    summary[name].actual = Math.max(summary[name].actual, actualCode);
+    summary[name].actual += val;
   });
 
   Object.entries(summary).forEach(([name, data]) => {
@@ -772,9 +773,8 @@ document.addEventListener('DOMContentLoaded', () => {
     startCamera(e.target.value);
   });
 
-  // фонарик можно оставить как заглушку
   torchBtn.addEventListener('click', () => {
-    alert('Фонарик не реализован в этом варианте.');
+    alert('Фонарик пока не реализован.');
   });
 
   clearSearch.addEventListener('click', () => {
@@ -815,7 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
   saveBtn.addEventListener('click', () => {
     applySessionToDB();
     buildItems();
-    alert('Остатки обновлены в базе товаров.');
+    alert('Остатки обновлены.');
     bottomSheet.classList.remove('show');
     sheetOverlay.classList.remove('show');
   });
@@ -826,10 +826,12 @@ document.addEventListener('DOMContentLoaded', () => {
     applySessionToDB();
     buildItems();
     closeSummary();
-    alert('Итоги сохранены в базу.');
+    alert('Итоги сохранены.');
   });
 });
 </script>
 </body>
 </html>
+
+
 
