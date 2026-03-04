@@ -8,8 +8,9 @@
   <!-- ZXing -->
   <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 
-  <style>
-    :root {
+  <!-- Вставьте этот блок в тело страницы (HTML) -->
+<style>
+:root {
   --accent: #4361ee;
   --bg: #ffffff;
   --card: #ffffff;
@@ -18,348 +19,93 @@
   --maxw: 980px;
   --border: #e0e0e0;
 }
-
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-html, body {
-  height: 100%;
-  margin: 0;
-  background-color: var(--bg);
-  color: var(--text);
-  font-family: Inter, Segoe UI, system-ui, Arial, sans-serif;
-  overflow: hidden;
-  touch-action: manipulation;
-}
-
-/* Header */
-header {
-  position: fixed;
-  left: 0; right: 0; top: 0;
-  padding: 12px;
-  background-color: white;
-  border-bottom: 1px solid var(--border);
-  z-index: 10000;
-  border-radius: 0 0 14px 14px;
-}
-header h1 {
-  margin: 0;
-  text-align: center;
-  font-size: 1.15rem;
-  color: var(--accent);
-}
-
-/* Search */
-#search-wrap {
-  max-width: var(--maxw);
-  margin: 10px auto;
-  position: relative;
-}
-#search {
-  width: 100%;
-  padding: 10px 56px 10px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background-color: white;
-  color: var(--text);
-  font-size: 15px;
-}
-#scan-btn,
-#clear-search {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-}
+html, body { height: 100%; margin: 0; background-color: var(--bg); color: var(--text); font-family: Inter, Segoe UI, system-ui, Arial, sans-serif; overflow: hidden; touch-action: manipulation; }
+header { position: fixed; left: 0; right: 0; top: 0; padding: 12px; background-color: white; border-bottom: 1px solid var(--border); z-index: 10000; border-radius: 0 0 14px 14px; }
+header h1 { margin: 0; text-align: center; font-size: 1.15rem; color: var(--accent); }
+#search-wrap { max-width: var(--maxw); margin: 10px auto; position: relative; }
+#search { width: 100%; padding: 10px 56px 10px 12px; border-radius: 8px; border: 1px solid var(--border); background-color: white; color: var(--text); font-size: 15px; }
+#scan-btn, #clear-search { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; }
 #clear-search { right: 44px; }
-
-/* Content */
-#content {
-  position: fixed;
-  left: 0; right: 0;
-  top: 96px; bottom: 0;
-  overflow: auto;
-  padding: 12px;
-}
-
-/* Cards and list */
-.card {
-  max-width: var(--maxw);
-  margin: 10px auto;
-  padding: 12px;
-  border-radius: 8px;
-  background-color: var(--card);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.preview-wrap {
-  border-radius: 8px;
-  overflow: hidden;
-  background-color: #f8f8f8;
-  border: 1px solid var(--border);
-  height: 34vh;
-  min-height: 140px;
-  position: relative;
-}
-
-/* Video: гарантируем видимость и отсутствие серого фона */
-video#preview {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  background: transparent !important;
-  z-index: 1000;
-  position: relative;
-}
-
-/* Controls */
-.controls {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-top: 10px;
-}
-.btn {
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background-color: white;
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.btn.primary {
-  background-color: var(--accent);
-  color: white;
-  font-weight: 700;
-}
-
-/* List and items */
-.list {
-  max-width: var(--maxw);
-  margin: 12px auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.item {
-  width: 100%;
-  margin: 10px 0;
-  padding: 12px;
-  border-radius: 8px;
-  background-color: var(--card);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  border-left: 4px solid transparent;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  position: relative;
-  z-index: 1;
-}
-.item.match   { border-left-color: #22c55e; }
+#content { position: fixed; left: 0; right: 0; top: 96px; bottom: 0; overflow: auto; padding: 12px; }
+.card { max-width: var(--maxw); margin: 10px auto; padding: 12px; border-radius: 8px; background-color: var(--card); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.preview-wrap { border-radius: 8px; overflow: hidden; background-color: #f8f8f8; border: 1px solid var(--border); height: 34vh; min-height: 140px; position: relative; }
+video#preview { width: 100%; height: 100%; object-fit: cover; display: block; background: transparent !important; z-index: 1000; position: relative; }
+.controls { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.btn { padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background-color: white; color: var(--text); cursor: pointer; transition: all 0.2s ease; }
+.btn.primary { background-color: var(--accent); color: white; font-weight: 700; }
+.list { max-width: var(--maxw); margin: 12px auto; display: flex; flex-direction: column; gap: 8px; }
+.item { width: 100%; margin: 10px 0; padding: 12px; border-radius: 8px; background-color: var(--card); box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid transparent; display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 1; }
+.item.match { border-left-color: #22c55e; }
 .item.missing { border-left-color: #ef4444; }
-.item.excess  { border-left-color: #3b82f6; }
-
+.item.excess { border-left-color: #3b82f6; }
 .field { margin-bottom: 8px; }
 .label { font-weight: 700; color: var(--accent); margin-right: 6px; }
-
-/* Input: делаем поверх оверлеев, readonly для предотвращения системной клавиатуры */
-input[data-code] {
-  width: 100%;
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background-color: white;
-  color: var(--text);
-  font-size: 15px;
-  position: relative;
-  z-index: 2001;
-  background: transparent;
-}
-
-/* Кастомная клавиатура */
-#custom-keyboard {
-  position: fixed;
-  left: 0; right: 0;
-  bottom: -40vh;
-  height: 34vh;
-  background-color: white;
-  padding: 10px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  z-index: 3000;
-  transition: bottom 0.28s;
-  border-top: 1px solid var(--border);
-  -webkit-user-select: none;
-  user-select: none;
-}
+input[data-code] { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background-color: white; color: var(--text); font-size: 15px; position: relative; z-index: 2001; background: transparent; }
+#custom-keyboard { position: fixed; left: 0; right: 0; bottom: -40vh; height: 34vh; background-color: white; padding: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; z-index: 3000; transition: bottom 0.28s; border-top: 1px solid var(--border); -webkit-user-select: none; user-select: none; }
 #custom-keyboard.show { bottom: 0; }
-#custom-keyboard button {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background-color: white;
-  color: var(--text);
-  font-size: 20px;
-  cursor: pointer;
-}
-
-/* Overlay and bottom sheet */
+#custom-keyboard button { border: 1px solid var(--border); border-radius: 6px; background-color: white; color: var(--text); font-size: 20px; cursor: pointer; }
 .hidden { display: none !important; }
-#fabMenu {
-  position: fixed;
-  bottom: 1rem;
-  right: 1rem;
-  z-index: 1001;
-  background-color: var(--accent);
-  color: white;
-  border: none;
-  padding: 0.9rem 1.2rem;
-  border-radius: 8px;
-  font-size: 1.2rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(67,97,238,0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-#sheetOverlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0,0,0,0.5);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease;
-  z-index: 999;
-}
-#sheetOverlay.show {
-  opacity: 1;
-  pointer-events: auto;
-}
-#bottomSheet {
-  position: fixed;
-  left: 0; right: 0;
-  bottom: -60vh;
-  padding: 1.2rem;
-  background-color: white;
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-  transition: bottom 0.35s ease;
-  z-index: 1002;
-}
+#fabMenu { position: fixed; bottom: 1rem; right: 1rem; z-index: 1001; background-color: var(--accent); color: white; border: none; padding: 0.9rem 1.2rem; border-radius: 8px; font-size: 1.2rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(67,97,238,0.3); display: flex; align-items: center; justify-content: center; }
+#sheetOverlay { position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.25s ease; z-index: 999; }
+#sheetOverlay.show { opacity: 1; pointer-events: auto; }
+#bottomSheet { position: fixed; left: 0; right: 0; bottom: -60vh; padding: 1.2rem; background-color: white; border-radius: 16px 16px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); transition: bottom 0.35s ease; z-index: 1002; }
 #bottomSheet.show { bottom: 0; }
 .sheet-content { display: flex; flex-direction: column; gap: 0.7rem; }
-.sheet-btn {
-  background-color: #f5f5f5;
-  color: var(--text);
-  border: 1px solid var(--border);
-  padding: 0.9rem 1rem;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Modal */
-#summaryModal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.8);
-  z-index: 6000;
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
+.sheet-btn { background-color: #f5f5f5; color: var(--text); border: 1px solid var(--border); padding: 0.9rem 1rem; border-radius: 8px; font-size: 1rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+#summaryModal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 6000; display: none; align-items: center; justify-content: center; }
 #summaryModal.show { display: flex; }
 #summaryTable th, #summaryTable td { border: none; padding: 8px; }
 #summaryTable th { background-color: #f0f0f0; font-weight: 600; }
+@media (max-height: 600px) { .preview-wrap { height: 40vh; min-height: 120px; } }
+</style>
 
-/* Small devices: ensure preview visible */
-@media (max-height: 600px) {
-  .preview-wrap { height: 40vh; min-height: 120px; }
-}
+<!-- HTML структура -->
+<header>
+  <h1>RecountPro — Пересчёт</h1>
+</header>
 
-  </style>
-</head>
+<div id="search-wrap">
+  <input id="search" placeholder="Поиск по названию или коду..." />
+  <button id="clear-search" title="Очистить">✕</button>
+  <button id="scan-btn" title="Сканировать">📷</button>
+</div>
 
-<body>
-  <header>
-    <h1>RecountPro — Пересчёт</h1>
-    <div id="search-wrap">
-      <input id="search" placeholder="Поиск по названию или коду..." autocomplete="off" />
-      <button id="scan-btn" title="Открыть сканер">📷</button>
-      <button id="clear-search" title="Очистить">×</button>
+<div id="content">
+  <div class="card">
+    <div class="preview-wrap">
+      <video id="preview" playsinline></video>
     </div>
-  </header>
-
-  <main id="content">
-    <!-- Сканер -->
-    <div class="card" id="scannerCard" style="display:none">
-      <div class="preview-wrap">
-        <video id="preview" playsinline muted></video>
-      </div>
-      <div class="controls">
-        <select id="deviceSelect" class="btn" style="min-width:160px"></select>
-        <button id="torchBtn" class="btn">🔦</button>
-        <button id="closeScannerBtn" class="btn">Закрыть</button>
-        <div id="scanResult" style="margin-left:auto;color:var(--muted)"></div>
-      </div>
-    </div>
-
-    <!-- Список товаров -->
-    <div id="list" class="list"></div>
-  </main>
-
-  <!-- Кастомная клавиатура -->
-  <div id="custom-keyboard" aria-hidden="true">
-    <button>1</button><button>2</button><button>3</button>
-    <button>4</button><button>5</button><button>6</button>
-    <button>7</button><button>8</button><button>9</button>
-    <button>+</button><button>0</button><button id="back">←</button>
-    <button class="done" id="done" style="grid-column:1 / -1">Готово</button>
-  </div>
-
-  <!-- FAB меню -->
-  <button id="fabMenu">☰</button>
-  <div id="sheetOverlay"></div>
-  <div id="bottomSheet">
-    <div class="sheet-content">
-      <button class="sheet-btn" id="saveBtn">💾 Сохранить</button>
-      <button class="sheet-btn" id="clearBtn">🧹 Очистить пересчёт</button>
-      <button class="sheet-btn" id="totalBtn">📊 Итог</button>
-      <button class="sheet-btn" id="inventoryBtn">📋 Провести инвентаризацию</button>
+    <div class="controls">
+      <select id="deviceSelect"></select>
+      <button id="torchBtn" class="btn">Фонарик</button>
+      <button id="closeScannerBtn" class="btn">Закрыть</button>
+      <div id="scanResult" style="margin-left:auto;color:var(--muted)"></div>
     </div>
   </div>
 
-  <!-- Модалка итогов -->
-  <div id="summaryModal">
-    <div style="background:white;padding:20px;border-radius:12px;max-width:90%;max-height:80%;overflow:auto;">
-      <h3>Итоги инвентаризации</h3>
-      <table id="summaryTable" style="width:100%;border-collapse:collapse;margin-top:10px;">
-        <thead>
-          <tr>
-            <th style="text-align:left;">Товар</th>
-            <th style="text-align:right;">Учётное</th>
-            <th style="text-align:right;">Фактическое</th>
-            <th style="text-align:right;">Разница</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <div style="display:flex;gap:10px;margin-top:20px;">
-        <button id="summarySaveBtn" class="btn primary" style="flex:1;">Сохранить в базу</button>
-        <button id="summaryCloseBtn" class="btn" style="flex:1;">Закрыть</button>
-      </div>
-    </div>
+  <div id="list" class="list"></div>
+</div>
+
+<!-- Кастомная клавиатура -->
+<div id="custom-keyboard" aria-hidden="true">
+  <button>1</button><button>2</button><button>3</button>
+  <button>4</button><button>5</button><button>6</button>
+  <button>7</button><button>8</button><button>9</button>
+  <button>←</button><button>0</button><button id="done">Готово</button>
+</div>
+
+<!-- Итоги модалка (пример) -->
+<div id="summaryModal">
+  <div style="background:white;padding:16px;border-radius:8px;max-width:720px;width:100%;">
+    <h3>Итоги</h3>
+    <table id="summaryTable" style="width:100%;border-collapse:collapse;">
+      <thead><tr><th>Название</th><th>Учётное</th><th>Фактическое</th><th>Разница</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div style="text-align:right;margin-top:12px;"><button id="summaryCloseBtn" class="btn">Закрыть</button></div>
   </div>
+</div>
 
 <script>
 /* ========= СТЕЙТ ========= */
@@ -610,7 +356,8 @@ async function initScanner() {
       }
     }
 
-    scannerCard.style.display = 'block';
+    // показываем контейнер превью (если скрыт)
+    previewVideo.style.display = 'block';
   } catch (e) {
     scannerActive = false;
     console.error('initScanner error', e);
@@ -836,9 +583,9 @@ function stopScanner() {
     previewVideo.load?.();
   } catch (e) {}
 
-  scannerCard.style.display = 'none';
   scanResult.textContent = '';
   lastDetected = { code: null, ts: 0 };
+  hideCustomKeyboard();
 }
 
 function handleFastScan(code) {
@@ -941,7 +688,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initCustomKeyboard();
 
   if (scanBtn) scanBtn.addEventListener('click', () => {
-    scannerCard.style.display = 'block';
     initScanner();
   });
 
@@ -971,6 +717,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (searchInput) searchInput.addEventListener('input', filterItems);
 });
 </script>
+
 
 
 
