@@ -352,6 +352,7 @@
   </div>
 
 <script>
+<script>
 /* ========= СТЕЙТ ========= */
 let barcodeDB = {};      // { [name]: [code1, code2...] }
 let quantities = {};     // { [name]: qty }
@@ -535,8 +536,16 @@ function renderItems(items) {
     input.addEventListener('focus', () => {
       showCustomKeyboard(input);
       setTimeout(() => {
-        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 150);
+        // прокрутка карточки к верхней части контента
+        const container = document.getElementById('content') || document.documentElement;
+        const rect = input.closest('.item').getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
+        const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
+        container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
+
+        // затем убедимся, что поле видно над клавиатурой
+        setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
+      }, 80);
     });
 
     listContainer.appendChild(el);
@@ -586,13 +595,6 @@ function initCustomKeyboard() {
 }
 
 /* ========= СКАНЕР (оптимизировано) ========= */
-/*
-  Подходы для скорости:
-  - используем decodeFromVideoDevice (оптимизированный поток)
-  - ставим высокое разрешение (идеал) для камеры, чтобы ZXing быстрее распознавал
-  - при успешном считывании даём короткую паузу (DEBOUNCE_MS)
-  - используем индекс codeToName для мгновенного поиска
-*/
 async function initScanner() {
   try {
     if (typeof ZXing === 'undefined') {
@@ -601,7 +603,6 @@ async function initScanner() {
     }
 
     const BrowserMultiFormatReader = ZXing.BrowserMultiFormatReader;
-    // создаём ридер (внутри он оптимизирован)
     codeReader = new BrowserMultiFormatReader();
 
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -612,7 +613,6 @@ async function initScanner() {
       return;
     }
 
-    // ищем заднюю камеру по метке
     let backCam = videoDevices.find(d => {
       const label = (d.label || '').toLowerCase();
       return label.includes('back') || label.includes('rear') || label.includes('зад') || label.includes('environment');
@@ -625,14 +625,10 @@ async function initScanner() {
     ).join('');
     deviceSelect.value = defaultCamId;
 
-    // старт камеры с предпочтением задней и высоким разрешением
     await startCamera(defaultCamId);
 
-    // используем оптимизированный метод: decodeFromVideoDevice
-    // он сам обрабатывает кадры и вызывает callback при результате
     codeReader.decodeFromVideoDevice(defaultCamId, previewVideo, (result, err) => {
       if (err && !(err instanceof ZXing.NotFoundException)) {
-        // игнорируем NotFoundException — это нормальное состояние
         console.debug('Сканер ошибка:', err);
         return;
       }
@@ -653,7 +649,6 @@ async function startCamera(deviceId) {
       currentStream.getTracks().forEach(t => t.stop());
     }
 
-    // предпочтения: задняя камера, высокое разрешение
     const constraints = {
       video: {
         deviceId: { exact: deviceId },
@@ -670,7 +665,6 @@ async function startCamera(deviceId) {
   } catch (e) {
     console.warn('startCamera fallback, trying without deviceId:', e);
     try {
-      // fallback: без deviceId, с facingMode
       const fallback = { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } };
       currentStream = await navigator.mediaDevices.getUserMedia(fallback);
       previewVideo.srcObject = currentStream;
@@ -705,17 +699,18 @@ function handleFastScan(code) {
 
   scanResult.textContent = `Найден: ${code}`;
 
-  // мгновенный поиск по индексу
   const name = codeToName.get(String(code));
   if (name) {
-    // подставляем в поиск и фильтруем
     searchInput.value = name;
     filterItems();
-
-    // подсвечиваем и скроллим
     highlightScannedItemByCode(code);
+
+    // закрываем сканер через короткую паузу, чтобы пользователь увидел подсветку
+    setTimeout(() => {
+      try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
+      scannerCard.style.display = 'none';
+    }, 300);
   } else {
-    // если не найден — показываем краткое уведомление
     showToast('Штрихкод не найден в базе');
   }
 }
@@ -741,18 +736,47 @@ function highlightScannedItemByCode(code) {
   const target = document.querySelector(`.item[data-code="${code}"]`);
   if (target) {
     target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.45)';
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    // ставим фокус на поле (но не на строку поиска)
+
+    const container = document.getElementById('content') || document.documentElement;
+    const rect = target.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
+
+    const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
+    container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
+
     const input = target.querySelector('input');
     if (input) {
       showCustomKeyboard(input);
-      setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 120);
+      setTimeout(() => ensureVisibleAboveKeyboard(input), 180);
+    }
+  }
+}
+
+/* ========= ВСПОМОГАТЕЛЬНЫЕ ========= */
+function ensureVisibleAboveKeyboard(input) {
+  if (!input) return;
+  const kb = document.getElementById('custom-keyboard');
+  const kbHeight = (kb && kb.classList.contains('show')) ? kb.getBoundingClientRect().height : 0;
+
+  const fieldRect = input.getBoundingClientRect();
+  const viewportHeight = window.innerHeight;
+
+  const safeMargin = 12;
+  const bottomOverlap = (fieldRect.bottom + safeMargin) - (viewportHeight - kbHeight);
+  if (bottomOverlap > 0) {
+    const currentScroll = window.scrollY || document.documentElement.scrollTop;
+    const scrollBy = bottomOverlap + 40;
+    window.scrollTo({ top: currentScroll + scrollBy, behavior: 'smooth' });
+  } else {
+    const topGap = fieldRect.top - safeMargin;
+    if (topGap < 60) {
+      const currentScroll = window.scrollY || document.documentElement.scrollTop;
+      window.scrollTo({ top: Math.max(0, currentScroll - (60 - topGap)), behavior: 'smooth' });
     }
   }
 }
 
 /* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
-/* Начать пересчёт — инициализируем sessionValues (не трогаем quantities) */
 function startInventory() {
   sessionValues = {};
   allItems.forEach(item => sessionValues[item.code] = '');
@@ -761,7 +785,6 @@ function startInventory() {
   alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
 }
 
-/* Очистить сессию */
 function clearInventory() {
   sessionValues = {};
   saveSession();
@@ -769,7 +792,6 @@ function clearInventory() {
   alert('Пересчёт очищен.');
 }
 
-/* Применить сессию в базу — агрегируем по имени и сохраняем в quantities */
 function applySessionToDB() {
   const aggregated = {};
   allItems.forEach(item => {
@@ -857,7 +879,6 @@ document.addEventListener('DOMContentLoaded', () => {
   buildItems();
   initCustomKeyboard();
 
-  // Сканер
   scanBtn.addEventListener('click', () => {
     scannerCard.style.display = 'block';
     initScanner();
@@ -872,7 +893,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   torchBtn.addEventListener('click', () => {
-    // попытка включить torch, если поддерживается
     try {
       const tracks = currentStream?.getVideoTracks();
       if (tracks && tracks.length > 0) {
@@ -944,6 +964,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
+
 
 </body>
 </html>
