@@ -393,6 +393,8 @@
   </div>
 
 <script>
+/* Упрощённый и надёжный скрипт сканера + остальная логика (заменить текущий <script> этим) */
+
 /* ========= СТЕЙТ ========= */
 let barcodeDB = {};
 let quantities = {};
@@ -418,10 +420,6 @@ const closeScannerBtn  = document.getElementById('closeScannerBtn');
 const scanResult       = document.getElementById('scanResult');
 const toggleScannerSize = document.getElementById('toggleScannerSize');
 const searchWrap       = document.getElementById('search-wrap');
-
-const fabMenu          = document.getElementById('fabMenu');
-const sheetOverlay     = document.getElementById('sheetOverlay');
-const bottomSheet      = document.getElementById('bottomSheet');
 
 const customKeyboard   = document.getElementById('custom-keyboard');
 
@@ -586,14 +584,13 @@ function initCustomKeyboard() {
   document.getElementById('done').addEventListener('click', hideCustomKeyboard);
 }
 
-/* ========= ПОЗИЦИОНИРОВАНИЕ СКАНЕРА ========= */
+/* ========= ПОЗИЦИОНИРОВАНИЕ СКАНЕРА (под строкой поиска) ========= */
 function positionScannerUnderSearch() {
   if (!searchWrap || !scannerCard) return;
   const rect = searchWrap.getBoundingClientRect();
   const top = rect.bottom + 8;
   const left = rect.left;
   const width = Math.min(rect.width, Math.max(280, rect.width));
-  // используем fixed, чтобы окно было видно при скролле
   scannerCard.style.position = 'fixed';
   scannerCard.style.top = (rect.bottom + 8) + 'px';
   scannerCard.style.left = left + 'px';
@@ -602,21 +599,18 @@ function positionScannerUnderSearch() {
   scannerCard.style.zIndex = 2000;
 }
 
-/* ========= СКАНЕР (устойчивость) ========= */
+/* ========= СКАНЕР (упрощённый, но чувствительный к мелким кодам) ========= */
 async function initScanner() {
   try {
-    if (typeof ZXing === 'undefined') {
-      alert('Библиотека сканера не загружена');
-      return;
-    }
+    if (typeof ZXing === 'undefined') { alert('Библиотека сканера не загружена'); return; }
 
-    // показываем окно до старта камеры, чтобы пользователь видел состояние
+    // показываем окно и позиционируем
     scannerCard.style.display = 'block';
     scannerCard.classList.remove('minimized');
     positionScannerUnderSearch();
     scanResult.textContent = 'Запуск камеры…';
-    previewVideo.style.backgroundColor = '#000';
 
+    // простые hints: TRY_HARDER и набор форматов
     const hints = new Map();
     hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
@@ -644,21 +638,19 @@ async function initScanner() {
     deviceSelect.innerHTML = videoDevices.map(d => `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`).join('');
     deviceSelect.value = defaultCamId;
 
-    // старт камеры и ожидание play()
+    // старт камеры (упрощённый, с разумным разрешением)
     try {
       await startCamera(defaultCamId);
-      // гарантируем, что видео запущено
       await previewVideo.play();
       scanResult.textContent = 'Сканер готов';
     } catch (e) {
-      console.warn('Не удалось запустить видео напрямую:', e);
+      console.warn('Ошибка старта камеры:', e);
       scanResult.textContent = 'Ошибка доступа к камере';
-      // не закрываем окно — оставляем свернутым, чтобы пользователь видел сообщение
       scannerCard.classList.add('minimized');
       return;
     }
 
-    // потоковое декодирование
+    // потоковое декодирование (основной, быстрый путь)
     codeReader.decodeFromVideoDevice(defaultCamId, previewVideo, (result, err) => {
       if (err && !(err instanceof ZXing.NotFoundException)) {
         console.debug('Сканер ошибка:', err);
@@ -670,8 +662,9 @@ async function initScanner() {
       }
     });
 
+    // лёгкая периодическая обработка кадра для мелких/плохих кодов (не тяжёлая)
     if (frameProcessInterval) clearInterval(frameProcessInterval);
-    frameProcessInterval = setInterval(() => tryProcessFrame(), 500);
+    frameProcessInterval = setInterval(() => tryProcessFrameLight(), 700);
 
   } catch (e) {
     console.error('Ошибка инициализации сканера:', e);
@@ -690,9 +683,9 @@ async function startCamera(deviceId) {
   previewVideo.srcObject = currentStream;
   previewVideo.muted = true;
   previewVideo.playsInline = true;
-  // попытка play() здесь — вызывается в initScanner с await
 }
 
+/* Остановить сканер (не закрывать окно, если hide=false) */
 function stopScanner(hide=true) {
   if (frameProcessInterval) { clearInterval(frameProcessInterval); frameProcessInterval = null; }
   if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
@@ -724,23 +717,24 @@ function handleFastScan(code) {
   }
 }
 
-/* Попытка декодирования обработанного кадра через canvas */
-async function tryProcessFrame() {
+/* Лёгкая обработка кадра через canvas для мелких кодов (не нагружает сильно) */
+async function tryProcessFrameLight() {
   if (!previewVideo || previewVideo.readyState < 2) return;
   try {
     const w = previewVideo.videoWidth, h = previewVideo.videoHeight;
     if (!w || !h) return;
     const canvas = document.createElement('canvas');
-    const cw = Math.floor(w / 2), ch = Math.floor(h / 2);
-    const sx = Math.max(0, Math.floor((w - cw) / 2)), sy = Math.max(0, Math.floor((h - ch) / 2));
-    const scale = 1.6;
-    canvas.width = Math.floor(cw * scale); canvas.height = Math.floor(ch * scale);
+    // берём центральную область и немного увеличиваем
+    const cw = Math.floor(w * 0.5), ch = Math.floor(h * 0.5);
+    const sx = Math.floor((w - cw) / 2), sy = Math.floor((h - ch) / 2);
+    canvas.width = cw; canvas.height = ch;
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(previewVideo, sx, sy, cw, ch, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(previewVideo, sx, sy, cw, ch, 0, 0, cw, ch);
 
-    const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+    // лёгкая контрастная коррекция
+    const img = ctx.getImageData(0,0,cw,ch);
     const data = img.data;
-    const contrast = 1.15;
+    const contrast = 1.12;
     const intercept = 128 * (1 - contrast);
     for (let i=0;i<data.length;i+=4){
       data[i] = Math.min(255, Math.max(0, data[i]*contrast + intercept));
@@ -758,7 +752,7 @@ async function tryProcessFrame() {
         if (result && result.getText) handleFastScan(result.getText());
       } catch (e) { /* нормальное поведение */ }
     };
-  } catch (e) { console.debug('frame processing error', e); }
+  } catch (e) { console.debug('frame light error', e); }
 }
 
 /* ========= ПОИСК / ХАЙЛАЙТ ========= */
@@ -909,19 +903,17 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', () => { if (scannerCard.style.display === 'block') positionScannerUnderSearch(); });
   window.addEventListener('scroll', () => { if (scannerCard.style.display === 'block') positionScannerUnderSearch(); });
 
-  fabMenu.addEventListener('click', () => { bottomSheet.classList.toggle('show'); sheetOverlay.classList.toggle('show'); });
-  sheetOverlay.addEventListener('click', () => { bottomSheet.classList.remove('show'); sheetOverlay.classList.remove('show'); });
+  inventoryBtn.addEventListener('click', () => { startInventory(); });
+  clearBtn.addEventListener('click', () => { clearInventory(); });
+  totalBtn.addEventListener('click', () => { openSummary(); });
 
-  inventoryBtn.addEventListener('click', () => { startInventory(); bottomSheet.classList.remove('show'); sheetOverlay.classList.remove('show'); });
-  clearBtn.addEventListener('click', () => { clearInventory(); bottomSheet.classList.remove('show'); sheetOverlay.classList.remove('show'); });
-  totalBtn.addEventListener('click', () => { openSummary(); bottomSheet.classList.remove('show'); sheetOverlay.classList.remove('show'); });
-
-  saveBtn.addEventListener('click', () => { applySessionToDB(); buildItems(); showToast('Остатки обновлены в базе товаров.'); bottomSheet.classList.remove('show'); sheetOverlay.classList.remove('show'); });
+  saveBtn.addEventListener('click', () => { applySessionToDB(); buildItems(); showToast('Остатки обновлены в базе товаров.'); });
 
   summaryCloseBtn.addEventListener('click', closeSummary);
   summarySaveBtn.addEventListener('click', () => { applySessionToDB(); buildItems(); closeSummary(); showToast('Итоги сохранены в базу.'); });
 });
 </script>
+
 
 
 </body>
