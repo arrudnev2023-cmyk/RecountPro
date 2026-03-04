@@ -573,7 +573,6 @@ async function initScanner() {
     useRequestFrame = !!previewVideo.requestVideoFrameCallback;
     scheduleNextFrame();
 
-    // optional fast path: ZXing decodeFromVideoDevice (keeps running but not required)
     if (codeReaderInit && typeof codeReader.decodeFromVideoDevice === 'function') {
       try {
         codeReader.decodeFromVideoDevice(defaultCamId, previewVideo, (result, err) => {
@@ -852,7 +851,59 @@ function ensureVisibleAboveKeyboard(input) {
   }
 }
 
-/* ========= ТОАСТ / ИНИЦИАЛИЗАЦИЯ ========= */
+/* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
+function startInventory() {
+  sessionValues = {};
+  allItems.forEach(item => sessionValues[item.code] = '');
+  saveSession();
+  buildItems();
+  alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
+}
+function clearInventory() {
+  sessionValues = {};
+  saveSession();
+  buildItems();
+  alert('Пересчёт очищен.');
+}
+function applySessionToDB() {
+  const aggregated = {};
+  allItems.forEach(item => {
+    const expr = sessionValues[item.code] || '';
+    const val  = evalExpression(expr);
+    const name = item.name;
+    if (!aggregated[name]) aggregated[name] = 0;
+    aggregated[name] += val;
+  });
+  Object.keys(aggregated).forEach(name => { quantities[name] = aggregated[name]; });
+  saveDB();
+  buildItemsFromDB();
+  buildItems();
+}
+
+/* ========= ИТОГИ / ТОАСТ ========= */
+function openSummary() {
+  const summaryTableBody = document.querySelector('#summaryTable tbody');
+  summaryTableBody.innerHTML = '';
+  const summary = {};
+  allItems.forEach(item => {
+    const name = item.name;
+    const expected = quantities[name] || 0;
+    const expr = sessionValues[item.code] || '';
+    const val  = evalExpression(expr);
+    if (!summary[name]) summary[name] = { expected, actual: 0 };
+    summary[name].actual += val;
+  });
+  Object.entries(summary).forEach(([name, data]) => {
+    const diff = data.actual - data.expected;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td style="text-align:left;">${name}</td><td style="text-align:right;">${data.expected}</td><td style="text-align:right;">${data.actual}</td><td style="text-align:right;">${diff}</td>`;
+    summaryTableBody.appendChild(tr);
+  });
+  const summaryModal = document.getElementById('summaryModal');
+  if (summaryModal) summaryModal.classList.add('show');
+}
+function closeSummary() { const summaryModal = document.getElementById('summaryModal'); if (summaryModal) summaryModal.classList.remove('show'); }
+
 function showToast(message) {
   let toast = document.querySelector(".toast");
   if (!toast) {
@@ -866,6 +917,7 @@ function showToast(message) {
   setTimeout(() => { toast.style.opacity = "0"; }, 1800);
 }
 
+/* ========= INIT ========= */
 document.addEventListener('DOMContentLoaded', () => {
   loadDB();
   buildItems();
@@ -874,11 +926,29 @@ document.addEventListener('DOMContentLoaded', () => {
   scanBtn.addEventListener('click', () => { scannerCard.style.display = 'block'; initScanner(); });
   closeScannerBtn.addEventListener('click', () => { stopScanner(); });
 
-  deviceSelect.addEventListener('change', e => { startCamera(e.target.value); });
-  clearSearch.addEventListener('click', () => { searchInput.value = ''; filterItems(); });
-  searchInput.addEventListener('input', filterItems);
+  const deviceSelectEl = document.getElementById('deviceSelect');
+  if (deviceSelectEl) deviceSelectEl.addEventListener('change', e => { startCamera(e.target.value); });
+
+  const torchBtnEl = document.getElementById('torchBtn');
+  if (torchBtnEl) torchBtnEl.addEventListener('click', () => {
+    try {
+      const tracks = currentStream?.getVideoTracks();
+      if (tracks && tracks.length > 0) {
+        const track = tracks[0];
+        const capabilities = track.getCapabilities?.();
+        if (capabilities?.torch) {
+          const current = track.getSettings().torch;
+          track.applyConstraints({ advanced: [{ torch: !current }] });
+        } else showToast('Фонарик не поддерживается');
+      }
+    } catch (e) { console.error('Torch error', e); showToast('Ошибка управления фонариком'); }
+  });
+
+  if (clearSearch) clearSearch.addEventListener('click', () => { searchInput.value = ''; filterItems(); });
+  if (searchInput) searchInput.addEventListener('input', filterItems);
 });
 </script>
+
 
 
 
