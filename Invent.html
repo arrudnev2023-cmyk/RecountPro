@@ -353,18 +353,17 @@
 
 <script>
 /* ========= СТЕЙТ ========= */
-let barcodeDB = {};      // { [name]: [code1, code2...] }
-let quantities = {};     // { [name]: qty }
-let allItems = [];       // [{code,name,qty}]
-let sessionValues = {};  // { [code]: "выражение" }
-let codeToName = new Map(); // быстрый индекс: code -> name
+let barcodeDB = {};
+let quantities = {};
+let allItems = [];
+let sessionValues = {};
+let codeToName = new Map();
 
 let codeReader = null;
 let currentStream = null;
 let lastDetected = { code: null, ts: 0 };
-const DEBOUNCE_MS = 700; // пауза между распознаваниями одного и того же кода
+const DEBOUNCE_MS = 700;
 
-/* ========= ЭЛЕМЕНТЫ ========= */
 const searchInput      = document.getElementById('search');
 const listContainer    = document.getElementById('list');
 
@@ -395,7 +394,6 @@ const scanBtn          = document.getElementById('scan-btn');
 const clearSearch      = document.getElementById('clear-search');
 
 /* ========= УТИЛИТЫ ========= */
-/** Безопасное вычисление выражения, разрешены цифры, + и - */
 function evalExpression(expr) {
   if (!expr) return 0;
   const safe = String(expr).replace(/\s+/g, '');
@@ -408,7 +406,7 @@ function evalExpression(expr) {
   }
 }
 
-/* ========= БАЗА / ИНДЕКС / СЕССИЯ ========= */
+/* ========= БАЗА / РЕНДЕР ========= */
 function buildItemsFromDB() {
   allItems = [];
   codeToName = new Map();
@@ -478,7 +476,6 @@ function saveSession() {
   }
 }
 
-/* ========= РЕНДЕР ========= */
 function showEmptyState() {
   listContainer.innerHTML = `
     <div style="text-align:center;padding:40px;color:var(--muted);">
@@ -539,7 +536,6 @@ function renderItems(items) {
         const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
         const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
         container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
-
         setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
       }, 80);
     });
@@ -548,20 +544,14 @@ function renderItems(items) {
   });
 }
 
-function buildItems() {
-  renderItems(allItems);
-}
+function buildItems() { renderItems(allItems); }
 
 /* ========= КЛАВИАТУРА ========= */
 function showCustomKeyboard(input) {
   customKeyboard.classList.add('show');
   customKeyboard.dataset.target = input.dataset.code;
 }
-
-function hideCustomKeyboard() {
-  customKeyboard.classList.remove('show');
-}
-
+function hideCustomKeyboard() { customKeyboard.classList.remove('show'); }
 function initCustomKeyboard() {
   const keys = customKeyboard.querySelectorAll('button:not(.done)');
   keys.forEach(key => {
@@ -569,38 +559,33 @@ function initCustomKeyboard() {
       const targetCode = customKeyboard.dataset.target;
       const input = document.querySelector(`input[data-code="${targetCode}"]`);
       if (!input) return;
-
       let currentValue = input.value || '';
       const keyValue = key.textContent;
-
-      if (keyValue === '←') {
-        currentValue = currentValue.slice(0, -1);
-      } else {
-        currentValue = currentValue + keyValue;
-      }
-
+      if (keyValue === '←') currentValue = currentValue.slice(0, -1);
+      else currentValue = currentValue + keyValue;
       input.value = currentValue;
       sessionValues[targetCode] = currentValue;
       saveSession();
       buildItems();
     });
   });
-
   document.getElementById('done').addEventListener('click', hideCustomKeyboard);
 }
 
-/* ========= СКАНЕР (оптимизировано) ========= */
+/* ========= СКАНЕР / ВОРКЕР / ROI ========= */
 let scanWorker = null;
 let workerBusy = false;
 let useRequestFrame = false;
+let codeReaderInit = false;
 
 async function initScanner() {
   try {
     if (typeof ZXing === 'undefined') {
-      console.warn('ZXing не загружен — будем полагаться на BarcodeDetector');
+      console.warn('ZXing не загружен — будем полагаться на BarcodeDetector и fallback blob->ZXing если доступен.');
     } else {
       const BrowserMultiFormatReader = ZXing.BrowserMultiFormatReader;
       codeReader = new BrowserMultiFormatReader();
+      codeReaderInit = true;
     }
 
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -627,16 +612,15 @@ async function initScanner() {
     useRequestFrame = !!previewVideo.requestVideoFrameCallback;
     scheduleNextFrame();
 
-    if (codeReader && typeof codeReader.decodeFromVideoDevice === 'function') {
+    // опционально: параллельно включаем ZXing decodeFromVideoDevice (быстрый путь)
+    if (codeReaderInit && typeof codeReader.decodeFromVideoDevice === 'function') {
       try {
         codeReader.decodeFromVideoDevice(defaultCamId, previewVideo, (result, err) => {
           if (err && !(err instanceof ZXing.NotFoundException)) {
             console.debug('ZXing error:', err);
             return;
           }
-          if (result) {
-            handleFastScan(result.getText());
-          }
+          if (result) handleFastScan(result.getText());
         });
       } catch (e) {
         console.warn('Не удалось запустить decodeFromVideoDevice:', e);
@@ -652,20 +636,16 @@ async function initScanner() {
 
 async function startCamera(deviceId) {
   try {
-    if (currentStream) {
-      currentStream.getTracks().forEach(t => t.stop());
-    }
-
+    if (currentStream) currentStream.getTracks().forEach(t => t.stop());
     const constraints = {
       video: {
-        deviceId: { exact: deviceId },
+        deviceId: deviceId ? { exact: deviceId } : undefined,
         width: { ideal: 1280 },
         height: { ideal: 720 },
         facingMode: { ideal: "environment" }
       },
       audio: false
     };
-
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
     previewVideo.srcObject = currentStream;
     await previewVideo.play().catch(()=>{});
@@ -695,6 +675,9 @@ function createScanWorker() {
           const code = r.rawValue || (r.rawData && String(r.rawData));
           if (code) handleFastScan(code);
         }
+      } else if (msg.type === 'bbox') {
+        // получили bbox в координатах уменьшенного кадра (воркер использует исходный bitmap)
+        handleWorkerBBox(msg.bbox);
       } else if (msg.type === 'blob') {
         handleBlobFallback(msg.blob);
       } else if (msg.type === 'error') {
@@ -707,39 +690,22 @@ function createScanWorker() {
   }
 }
 
-async function handleBlobFallback(blob) {
-  if (!codeReader) return;
-  try {
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = async () => {
-      try {
-        const result = await codeReader.decodeFromImageElement(img);
-        if (result) handleFastScan(result.getText());
-      } catch (err) {
-        // ignore
-      } finally {
-        URL.revokeObjectURL(url);
-      }
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); };
-    img.src = url;
-  } catch (e) {
-    console.warn('handleBlobFallback error', e);
-  }
-}
-
-function captureAndSendFrame(scale = 1.0) {
-  if (!previewVideo || previewVideo.readyState < 2) return;
+function captureFrameToCanvas(scale = 1.0) {
+  if (!previewVideo || previewVideo.readyState < 2) return null;
   const w = Math.round(previewVideo.videoWidth * scale);
   const h = Math.round(previewVideo.videoHeight * scale);
-  if (w === 0 || h === 0) return;
-
+  if (w === 0 || h === 0) return null;
   const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
+  c.width = w; c.height = h;
   const ctx = c.getContext('2d');
   ctx.drawImage(previewVideo, 0, 0, w, h);
+  return c;
+}
+
+function captureAndSendFrame(scale = 0.6) {
+  if (!scanWorker) return;
+  const c = captureFrameToCanvas(scale);
+  if (!c) return;
   createImageBitmap(c).then(bitmap => {
     try {
       workerBusy = true;
@@ -764,6 +730,123 @@ function scheduleNextFrame() {
       if (!workerBusy) captureAndSendFrame(0.6);
       scheduleNextFrame();
     }, 66);
+  }
+}
+
+function handleWorkerBBox(bbox) {
+  // bbox в координатах кадра, вырежем ROI из полного разрешения кадра (scale 1.0)
+  const fullCanvas = captureFrameToCanvas(1.0);
+  if (!fullCanvas) return;
+  // корректируем bbox в пределах canvas
+  const x = Math.max(0, Math.floor(bbox.x));
+  const y = Math.max(0, Math.floor(bbox.y));
+  const w = Math.min(fullCanvas.width - x, Math.floor(bbox.w));
+  const h = Math.min(fullCanvas.height - y, Math.floor(bbox.h));
+  if (w <= 8 || h <= 8) return;
+
+  // вырезаем ROI
+  const roiCanvas = document.createElement('canvas');
+  // upscale ROI 2.5x для мелких кодов
+  const scaleUp = 2.5;
+  roiCanvas.width = Math.round(w * scaleUp);
+  roiCanvas.height = Math.round(h * scaleUp);
+  const rctx = roiCanvas.getContext('2d');
+  rctx.imageSmoothingEnabled = true;
+  rctx.imageSmoothingQuality = 'high';
+  rctx.drawImage(fullCanvas, x, y, w, h, 0, 0, roiCanvas.width, roiCanvas.height);
+
+  // простая предобработка: grayscale + adaptive-ish threshold (local)
+  try {
+    const id = rctx.getImageData(0,0,roiCanvas.width,roiCanvas.height);
+    const data = id.data;
+    // grayscale
+    for (let i=0;i<data.length;i+=4){
+      const g = (data[i]*0.3 + data[i+1]*0.59 + data[i+2]*0.11)|0;
+      data[i]=data[i+1]=data[i+2]=g;
+    }
+    // простая контрастная коррекция (stretch)
+    let min=255,max=0;
+    for (let i=0;i<data.length;i+=4){
+      const v = data[i];
+      if (v<min) min=v;
+      if (v>max) max=v;
+    }
+    const range = Math.max(1, max-min);
+    for (let i=0;i<data.length;i+=4){
+      let v = Math.round((data[i]-min)*255/range);
+      data[i]=data[i+1]=data[i+2]=v;
+    }
+    rctx.putImageData(id,0,0);
+  } catch (err) {
+    // если getImageData запрещён, продолжаем без предобработки
+  }
+
+  // Попытка декодирования: сначала BarcodeDetector (если есть), затем ZXing fallback
+  (async () => {
+    if ('BarcodeDetector' in window) {
+      try {
+        const det = new BarcodeDetector();
+        const results = await det.detect(roiCanvas);
+        if (results && results.length) {
+          for (const r of results) {
+            const code = r.rawValue || (r.rawData && String(r.rawData));
+            if (code) { handleFastScan(code); return; }
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // ZXing fallback: decodeFromImageElement accepts <img> or <canvas> depending on build
+    if (codeReaderInit && codeReader) {
+      try {
+        // decodeFromImageElement может принимать canvas directly in some builds
+        const result = await codeReader.decodeFromImageElement(roiCanvas);
+        if (result) { handleFastScan(result.getText()); return; }
+      } catch (e) {
+        // попробуем сохранить в Image и повторить
+        try {
+          const url = roiCanvas.toDataURL('image/png');
+          const img = new Image();
+          img.src = url;
+          await new Promise(r => img.onload = r);
+          const result2 = await codeReader.decodeFromImageElement(img);
+          if (result2) { handleFastScan(result2.getText()); return; }
+        } catch (e2) {
+          // ignore
+        }
+      }
+    }
+    // если не удалось — отправим roiCanvas как blob на ZXing fallback через handleBlobFallback
+    try {
+      roiCanvas.toBlob(blob => {
+        if (blob) handleBlobFallback(blob);
+      }, 'image/png', 0.9);
+    } catch (e) {}
+  })();
+}
+
+async function handleBlobFallback(blob) {
+  // Попытка декодирования уменьшённого изображения через ZXing
+  if (!codeReaderInit || !codeReader) return;
+  try {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = async () => {
+      try {
+        const result = await codeReader.decodeFromImageElement(img);
+        if (result) handleFastScan(result.getText());
+      } catch (err) {
+        // ignore
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); };
+    img.src = url;
+  } catch (e) {
+    console.warn('handleBlobFallback error', e);
   }
 }
 
@@ -799,17 +882,15 @@ function handleFastScan(code) {
     searchInput.value = name;
     filterItems();
     highlightScannedItemByCode(code);
-
     setTimeout(() => {
       try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
       scannerCard.style.display = 'none';
     }, 300);
   } else {
     showToast('Штрихкод не найден в базе');
+    // при неудаче — попробуем отправить кадр в полном разрешении для усиленной попытки
     setTimeout(() => {
-      if (!workerBusy && scanWorker) {
-        captureAndSendFrame(1.0);
-      }
+      if (!workerBusy && scanWorker) captureAndSendFrame(1.0);
     }, 120);
   }
 }
@@ -817,33 +898,24 @@ function handleFastScan(code) {
 /* ========= ПОИСК / ХАЙЛАЙТ ========= */
 function filterItems() {
   const q = searchInput.value.toLowerCase().trim();
-  if (!q) {
-    buildItems();
-    return;
-  }
-
+  if (!q) { buildItems(); return; }
   const filtered = allItems.filter(item =>
     item.name.toLowerCase().includes(q) ||
     String(item.code).includes(q)
   );
-
   renderItems(filtered);
 }
 
-/* ========= ХАЙЛАЙТ ========= */
 function highlightScannedItemByCode(code) {
   document.querySelectorAll('.item').forEach(el => el.style.boxShadow = '');
   const target = document.querySelector(`.item[data-code="${code}"]`);
   if (target) {
     target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.45)';
-
     const container = document.getElementById('content') || document.documentElement;
     const rect = target.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
-
     const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
     container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
-
     const input = target.querySelector('input');
     if (input) {
       showCustomKeyboard(input);
@@ -857,10 +929,8 @@ function ensureVisibleAboveKeyboard(input) {
   if (!input) return;
   const kb = document.getElementById('custom-keyboard');
   const kbHeight = (kb && kb.classList.contains('show')) ? kb.getBoundingClientRect().height : 0;
-
   const fieldRect = input.getBoundingClientRect();
   const viewportHeight = window.innerHeight;
-
   const safeMargin = 12;
   const bottomOverlap = (fieldRect.bottom + safeMargin) - (viewportHeight - kbHeight);
   if (bottomOverlap > 0) {
@@ -884,14 +954,12 @@ function startInventory() {
   buildItems();
   alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
 }
-
 function clearInventory() {
   sessionValues = {};
   saveSession();
   buildItems();
   alert('Пересчёт очищен.');
 }
-
 function applySessionToDB() {
   const aggregated = {};
   allItems.forEach(item => {
@@ -901,31 +969,24 @@ function applySessionToDB() {
     if (!aggregated[name]) aggregated[name] = 0;
     aggregated[name] += val;
   });
-
-  Object.keys(aggregated).forEach(name => {
-    quantities[name] = aggregated[name];
-  });
-
+  Object.keys(aggregated).forEach(name => { quantities[name] = aggregated[name]; });
   saveDB();
   buildItemsFromDB();
   buildItems();
 }
 
-/* ========= ИТОГИ ========= */
+/* ========= ИТОГИ / ТОАСТ ========= */
 function openSummary() {
   summaryTableBody.innerHTML = '';
-
   const summary = {};
   allItems.forEach(item => {
     const name = item.name;
     const expected = quantities[name] || 0;
     const expr = sessionValues[item.code] || '';
     const val  = evalExpression(expr);
-
     if (!summary[name]) summary[name] = { expected, actual: 0 };
     summary[name].actual += val;
   });
-
   Object.entries(summary).forEach(([name, data]) => {
     const diff = data.actual - data.expected;
     const tr = document.createElement('tr');
@@ -937,15 +998,10 @@ function openSummary() {
     `;
     summaryTableBody.appendChild(tr);
   });
-
   summaryModal.classList.add('show');
 }
+function closeSummary() { summaryModal.classList.remove('show'); }
 
-function closeSummary() {
-  summaryModal.classList.remove('show');
-}
-
-/* ========= ТОАСТ ========= */
 function showToast(message) {
   let toast = document.querySelector(".toast");
   if (!toast) {
@@ -966,10 +1022,8 @@ function showToast(message) {
     });
     document.body.appendChild(toast);
   }
-
   toast.textContent = message;
   toast.style.opacity = "1";
-
   setTimeout(() => { toast.style.opacity = "0"; }, 1800);
 }
 
@@ -1063,45 +1117,8 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Итоги сохранены в базу.');
   });
 });
-
-  async function upscaleAndTryDecode(blob) {
-  const url = URL.createObjectURL(blob);
-  const img = new Image();
-  img.src = url;
-  await new Promise(r => img.onload = r);
-  // рисуем увеличенную копию ROI на canvas
-  const cw = img.width * 2; // upscale 2x
-  const ch = img.height * 2;
-  const c = document.createElement('canvas');
-  c.width = cw; c.height = ch;
-  const ctx = c.getContext('2d');
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(img, 0, 0, cw, ch);
-  URL.revokeObjectURL(url);
-
-  // пробуем декодировать через ZXing
-  try {
-    const result = await codeReader.decodeFromImageElement(c);
-    if (result) handleFastScan(result.getText());
-  } catch (e) {
-    // если не получилось — можно применить простую бинаризацию и повторить
-    const id = ctx.getImageData(0,0,cw,ch);
-    // простая пороговая бинаризация (пример)
-    for (let i=0;i<id.data.length;i+=4){
-      const g = (id.data[i]*0.3 + id.data[i+1]*0.59 + id.data[i+2]*0.11)|0;
-      const v = g > 120 ? 255 : 0;
-      id.data[i]=id.data[i+1]=id.data[i+2]=v;
-    }
-    ctx.putImageData(id,0,0);
-    try {
-      const result2 = await codeReader.decodeFromImageElement(c);
-      if (result2) handleFastScan(result2.getText());
-    } catch {}
-  }
-}
-
 </script>
+
 
 </body>
 </html>
