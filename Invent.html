@@ -393,9 +393,9 @@
   </div>
 
 <script>
-/* Упрощённый и надёжный скрипт сканера + остальная логика (заменить текущий <script> этим) */
+/* Упрощённый рабочий скрипт с устойчивой логикой подтверждения скана */
 
-/* ========= СТЕЙТ ========= */
+/* ====== СТЕЙТ ====== */
 let barcodeDB = {};
 let quantities = {};
 let allItems = [];
@@ -404,11 +404,19 @@ let codeToName = new Map();
 
 let codeReader = null;
 let currentStream = null;
-let lastDetected = { code: null, ts: 0 };
+
 const DEBOUNCE_MS = 700;
+
+/* Стабильное подтверждение: нужно N подряд распознаваний в окне WINDOW_MS */
+let pendingCode = null;
+let stableCount = 0;
+const STABLE_REQUIRED = 2;
+const STABLE_WINDOW_MS = 900;
+let lastDetectTs = 0;
+
 let frameProcessInterval = null;
 
-/* ========= ЭЛЕМЕНТЫ ========= */
+/* ====== ЭЛЕМЕНТЫ ====== */
 const searchInput      = document.getElementById('search');
 const listContainer    = document.getElementById('list');
 
@@ -436,7 +444,7 @@ const summaryCloseBtn  = document.getElementById('summaryCloseBtn');
 const scanBtn          = document.getElementById('scan-btn');
 const clearSearch      = document.getElementById('clear-search');
 
-/* ========= УТИЛИТЫ ========= */
+/* ====== УТИЛИТЫ ====== */
 function evalExpression(expr) {
   if (!expr) return 0;
   const safe = String(expr).replace(/\s+/g, '');
@@ -449,7 +457,7 @@ function evalExpression(expr) {
   }
 }
 
-/* ========= БАЗА / ИНДЕКС / СЕССИЯ ========= */
+/* ====== БАЗА / СЕССИЯ ====== */
 function buildItemsFromDB() {
   allItems = [];
   codeToName = new Map();
@@ -501,7 +509,7 @@ function saveSession() {
   catch (e) { console.error('Ошибка сохранения сессии:', e); }
 }
 
-/* ========= РЕНДЕР ========= */
+/* ====== РЕНДЕР ====== */
 function showEmptyState() {
   listContainer.innerHTML = `
     <div style="text-align:center;padding:40px;color:var(--muted);">
@@ -557,7 +565,7 @@ function renderItems(items) {
 
 function buildItems() { renderItems(allItems); }
 
-/* ========= КЛАВИАТУРА ========= */
+/* ====== КЛАВИАТУРА ====== */
 function showCustomKeyboard(input) {
   customKeyboard.classList.add('show');
   customKeyboard.dataset.target = input.dataset.code;
@@ -584,7 +592,7 @@ function initCustomKeyboard() {
   document.getElementById('done').addEventListener('click', hideCustomKeyboard);
 }
 
-/* ========= ПОЗИЦИОНИРОВАНИЕ СКАНЕРА (под строкой поиска) ========= */
+/* ====== ПОЗИЦИОНИРОВАНИЕ СКАНЕРА ====== */
 function positionScannerUnderSearch() {
   if (!searchWrap || !scannerCard) return;
   const rect = searchWrap.getBoundingClientRect();
@@ -599,7 +607,7 @@ function positionScannerUnderSearch() {
   scannerCard.style.zIndex = 2000;
 }
 
-/* ========= СКАНЕР (упрощённый, но чувствительный к мелким кодам) ========= */
+/* ====== СКАНЕР (поток + стабильное подтверждение) ====== */
 async function initScanner() {
   try {
     if (typeof ZXing === 'undefined') { alert('Библиотека сканера не загружена'); return; }
@@ -610,7 +618,6 @@ async function initScanner() {
     positionScannerUnderSearch();
     scanResult.textContent = 'Запуск камеры…';
 
-    // простые hints: TRY_HARDER и набор форматов
     const hints = new Map();
     hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
@@ -638,7 +645,6 @@ async function initScanner() {
     deviceSelect.innerHTML = videoDevices.map(d => `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`).join('');
     deviceSelect.value = defaultCamId;
 
-    // старт камеры (упрощённый, с разумным разрешением)
     try {
       await startCamera(defaultCamId);
       await previewVideo.play();
@@ -650,19 +656,17 @@ async function initScanner() {
       return;
     }
 
-    // потоковое декодирование (основной, быстрый путь)
+    // потоковое декодирование: результат идёт в обработчик stableDetect
     codeReader.decodeFromVideoDevice(defaultCamId, previewVideo, (result, err) => {
       if (err && !(err instanceof ZXing.NotFoundException)) {
         console.debug('Сканер ошибка:', err);
         return;
       }
       if (result) {
-        const code = result.getText();
-        if (code && String(code).length > 2) handleFastScan(code);
+        stableDetect(result.getText());
       }
     });
 
-    // лёгкая периодическая обработка кадра для мелких/плохих кодов (не тяжёлая)
     if (frameProcessInterval) clearInterval(frameProcessInterval);
     frameProcessInterval = setInterval(() => tryProcessFrameLight(), 700);
 
@@ -685,7 +689,6 @@ async function startCamera(deviceId) {
   previewVideo.playsInline = true;
 }
 
-/* Остановить сканер (не закрывать окно, если hide=false) */
 function stopScanner(hide=true) {
   if (frameProcessInterval) { clearInterval(frameProcessInterval); frameProcessInterval = null; }
   if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
@@ -695,43 +698,58 @@ function stopScanner(hide=true) {
   if (hide) scannerCard.style.display = 'none';
 }
 
-/* Быстрая обработка скана с дебаунсом и мгновенным поиском */
-function handleFastScan(code) {
-  if (!code || String(code).length < 3) return;
+/* ====== СТАБИЛЬНОЕ РАСПОЗНАВАНИЕ ====== */
+function stableDetect(code) {
   const now = Date.now();
-  if (code === lastDetected.code && now - lastDetected.ts < DEBOUNCE_MS) return;
-  lastDetected = { code, ts: now };
+  // если тот же код и в пределах окна — увеличиваем счётчик
+  if (pendingCode === code && (now - lastDetectTs) <= STABLE_WINDOW_MS) {
+    stableCount++;
+  } else {
+    // новый код — сбрасываем счётчик
+    pendingCode = code;
+    stableCount = 1;
+  }
+  lastDetectTs = now;
 
+  // если накопили достаточно подтверждений — считаем валидным
+  if (stableCount >= STABLE_REQUIRED) {
+    // сбрасываем, чтобы не обрабатывать повторно
+    pendingCode = null;
+    stableCount = 0;
+    handleConfirmedCode(code);
+  }
+}
+
+/* Обработка подтверждённого кода */
+function handleConfirmedCode(code) {
   try { navigator.vibrate?.(40); } catch (e) {}
-
-  scanResult.textContent = `Найден: ${code}`;
+  scanResult.textContent = `Подтверждён: ${code}`;
 
   const name = codeToName.get(String(code));
   if (name) {
     searchInput.value = name;
     filterItems();
     highlightScannedItemByCode(code);
-    setTimeout(() => { stopScanner(true); }, 300);
+    // закрываем сканер после небольшой паузы
+    setTimeout(() => stopScanner(true), 300);
   } else {
     showToast('Штрихкод не найден в базе');
   }
 }
 
-/* Лёгкая обработка кадра через canvas для мелких кодов (не нагружает сильно) */
+/* ====== ЛЁГКАЯ ОБРАБОТКА КАДРА (для мелких кодов) ====== */
 async function tryProcessFrameLight() {
   if (!previewVideo || previewVideo.readyState < 2) return;
   try {
     const w = previewVideo.videoWidth, h = previewVideo.videoHeight;
     if (!w || !h) return;
     const canvas = document.createElement('canvas');
-    // берём центральную область и немного увеличиваем
     const cw = Math.floor(w * 0.5), ch = Math.floor(h * 0.5);
     const sx = Math.floor((w - cw) / 2), sy = Math.floor((h - ch) / 2);
     canvas.width = cw; canvas.height = ch;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(previewVideo, sx, sy, cw, ch, 0, 0, cw, ch);
 
-    // лёгкая контрастная коррекция
     const img = ctx.getImageData(0,0,cw,ch);
     const data = img.data;
     const contrast = 1.12;
@@ -749,13 +767,13 @@ async function tryProcessFrameLight() {
     imgEl.onload = async () => {
       try {
         const result = await codeReader.decodeFromImageElement(imgEl);
-        if (result && result.getText) handleFastScan(result.getText());
+        if (result && result.getText) stableDetect(result.getText());
       } catch (e) { /* нормальное поведение */ }
     };
   } catch (e) { console.debug('frame light error', e); }
 }
 
-/* ========= ПОИСК / ХАЙЛАЙТ ========= */
+/* ====== ПОИСК / ХАЙЛАЙТ ====== */
 function filterItems() {
   const q = searchInput.value.toLowerCase().trim();
   if (!q) { buildItems(); return; }
@@ -778,7 +796,7 @@ function highlightScannedItemByCode(code) {
   }
 }
 
-/* ========= ВСПОМОГАТЕЛЬНЫЕ ========= */
+/* ====== ВСПОМОГАТЕЛЬНЫЕ ====== */
 function ensureVisibleAboveKeyboard(input) {
   if (!input) return;
   const kb = document.getElementById('custom-keyboard');
@@ -800,7 +818,7 @@ function ensureVisibleAboveKeyboard(input) {
   }
 }
 
-/* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
+/* ====== ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ====== */
 function startInventory() {
   sessionValues = {};
   allItems.forEach(item => sessionValues[item.code] = '');
@@ -824,7 +842,7 @@ function applySessionToDB() {
   buildItems();
 }
 
-/* ========= ИТОГИ ========= */
+/* ====== ИТОГИ ====== */
 function openSummary() {
   summaryTableBody.innerHTML = '';
   const summary = {};
@@ -846,7 +864,7 @@ function openSummary() {
 }
 function closeSummary() { summaryModal.classList.remove('show'); }
 
-/* ========= ТОАСТ ========= */
+/* ====== ТОАСТ ====== */
 function showToast(message) {
   let toast = document.querySelector(".toast");
   if (!toast) {
@@ -864,7 +882,7 @@ function showToast(message) {
   setTimeout(() => { toast.style.opacity = "0"; }, 1800);
 }
 
-/* ========= INIT ========= */
+/* ====== INIT ====== */
 document.addEventListener('DOMContentLoaded', () => {
   loadDB();
   buildItems();
@@ -913,6 +931,7 @@ document.addEventListener('DOMContentLoaded', () => {
   summarySaveBtn.addEventListener('click', () => { applySessionToDB(); buildItems(); closeSummary(); showToast('Итоги сохранены в базу.'); });
 });
 </script>
+
 
 
 
