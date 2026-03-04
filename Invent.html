@@ -375,7 +375,9 @@ let scanWorker = null;
 let workerBusy = false;
 let useRequestFrame = false;
 let codeReaderInit = false;
-let scannerActive = false; // флаг: сканер открыт
+let scannerActive = false;
+let decodeFromVideoDeviceActive = false;
+let scanFrameScheduled = false;
 let lastDetected = { code: null, ts: 0 };
 const DEBOUNCE_MS = 700;
 
@@ -491,18 +493,15 @@ function renderItems(items) {
     input.style.background = 'transparent';
     input.style.color = 'inherit';
 
-    // Открываем только кастомную клавиатуру, предотвращаем системную
     const openCustom = (ev) => {
       ev.preventDefault();
       showCustomKeyboard(input);
       input.classList.add('focused-by-custom');
-      // прокрутка так, чтобы поле оказалось над клавиатурой
       ensureVisibleAboveKeyboard(input);
     };
     input.addEventListener('touchstart', openCustom, { passive: false });
     input.addEventListener('click', openCustom);
 
-    // Обновляем только карточку, не перерисовываем весь список
     input.addEventListener('input', () => {
       const code = input.dataset.code;
       sessionValues[code] = input.value;
@@ -565,11 +564,11 @@ function initCustomKeyboard() {
 
 /* ========= СКАНЕР / ВОРКЕР / ROI ========= */
 async function initScanner() {
-  if (scannerActive) return; // уже открыт
+  if (scannerActive) return;
   scannerActive = true;
   try {
     if (typeof ZXing !== 'undefined' && ZXing.BrowserMultiFormatReader) {
-      codeReader = new ZXing.BrowserMultiFormatReader();
+      if (!codeReader) codeReader = new ZXing.BrowserMultiFormatReader();
       codeReaderInit = true;
     } else {
       codeReaderInit = false;
@@ -592,22 +591,28 @@ async function initScanner() {
 
     createScanWorker();
     useRequestFrame = !!previewVideo.requestVideoFrameCallback;
-    scheduleNextFrame();
+    if (!scanFrameScheduled) {
+      scanFrameScheduled = true;
+      scheduleNextFrame();
+    }
 
-    // optional fast path: ZXing decodeFromVideoDevice
-    if (codeReaderInit && typeof codeReader.decodeFromVideoDevice === 'function') {
+    if (codeReaderInit && !decodeFromVideoDeviceActive && typeof codeReader.decodeFromVideoDevice === 'function') {
       try {
+        decodeFromVideoDeviceActive = true;
         codeReader.decodeFromVideoDevice(defaultCamId, previewVideo, (result, err) => {
           if (err && !(err instanceof ZXing.NotFoundException)) return;
           if (result) handleFastScan(result.getText());
         });
-      } catch (e) { console.warn('decodeFromVideoDevice failed', e); }
+      } catch (e) {
+        decodeFromVideoDeviceActive = false;
+        console.warn('decodeFromVideoDevice failed', e);
+      }
     }
 
     scannerCard.style.display = 'block';
   } catch (e) {
-    console.error('initScanner error', e);
     scannerActive = false;
+    console.error('initScanner error', e);
     alert('Не удалось запустить сканер');
   }
 }
@@ -672,6 +677,7 @@ function createScanWorker() {
       console.error('worker uncaught error', err);
       try { scanWorker.terminate(); } catch {}
       scanWorker = null;
+      workerBusy = false;
       setTimeout(createScanWorker, 500);
     };
   } catch (e) { console.warn('createScanWorker failed', e); scanWorker = null; }
@@ -709,14 +715,14 @@ function scheduleNextFrame() {
   if (!scannerActive) return;
   if (useRequestFrame && previewVideo.requestVideoFrameCallback) {
     previewVideo.requestVideoFrameCallback(() => {
-      if (!scanWorker) return;
-      if (!workerBusy) captureAndSendFrame(0.6);
+      if (!scannerActive) return;
+      if (!workerBusy && scanWorker) captureAndSendFrame(0.6);
       scheduleNextFrame();
     });
   } else {
     setTimeout(() => {
-      if (!scanWorker) return;
-      if (!workerBusy) captureAndSendFrame(0.6);
+      if (!scannerActive) return;
+      if (!workerBusy && scanWorker) captureAndSendFrame(0.6);
       scheduleNextFrame();
     }, 100);
   }
@@ -807,19 +813,30 @@ async function handleBlobFallback(blob) {
 }
 
 function stopScanner() {
-  // останавливаем поток и воркер, сбрасываем флаги
-  try { if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; } } catch (e) { console.warn(e); }
-  try { if (codeReader) codeReader.reset(); } catch (e) {}
-  try { if (scanWorker) { scanWorker.terminate(); scanWorker = null; } } catch (e) {}
-  workerBusy = false;
   scannerActive = false;
-  previewVideo.pause();
-  previewVideo.srcObject = null;
-  previewVideo.removeAttribute('src');
-  previewVideo.load?.();
+
+  try {
+    if (codeReader && decodeFromVideoDeviceActive && typeof codeReader.reset === 'function') {
+      try { codeReader.reset(); } catch {}
+      decodeFromVideoDeviceActive = false;
+    }
+  } catch (e) { console.warn('error stopping codeReader', e); }
+
+  try { if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; } } catch (e) { console.warn(e); }
+
+  try { if (scanWorker) { scanWorker.terminate(); scanWorker = null; } } catch (e) { console.warn(e); }
+  workerBusy = false;
+  scanFrameScheduled = false;
+
+  try {
+    previewVideo.pause();
+    previewVideo.srcObject = null;
+    previewVideo.removeAttribute('src');
+    previewVideo.load?.();
+  } catch (e) {}
+
   scannerCard.style.display = 'none';
   scanResult.textContent = '';
-  // сброс найденного кода, чтобы следующий запуск был "чистым"
   lastDetected = { code: null, ts: 0 };
 }
 
@@ -838,14 +855,15 @@ function handleFastScan(code) {
     filterItems();
     highlightScannedItemByCode(code);
 
-    // после подстановки — закрываем сканер и сбрасываем состояние
     setTimeout(() => {
       try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
     }, 300);
   } else {
     showToast('Штрихкод не найден в базе');
-    // попробуем усиленный кадр
-    setTimeout(() => { if (!workerBusy && scanWorker) captureAndSendFrame(1.0); }, 120);
+    setTimeout(() => {
+      lastDetected = { code: null, ts: 0 };
+      if (!workerBusy && scanWorker && scannerActive) captureAndSendFrame(1.0);
+    }, 150);
   }
 }
 
@@ -862,7 +880,6 @@ function highlightScannedItemByCode(code) {
   const target = document.querySelector(`.item[data-code="${code}"]`);
   if (target) {
     target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.45)';
-    // прокрутка: сначала к контейнеру, затем обеспечим видимость над клавиатурой
     const container = document.getElementById('content') || document.documentElement;
     const rect = target.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
@@ -886,16 +903,15 @@ function ensureVisibleAboveKeyboard(input) {
   const viewportHeight = window.innerHeight;
   const safeMargin = 12;
   const bottomOverlap = (fieldRect.bottom + safeMargin) - (viewportHeight - kbHeight);
+  const container = document.getElementById('content') || document.documentElement;
   if (bottomOverlap > 0) {
-    const currentScroll = document.getElementById('content')?.scrollTop || window.scrollY || document.documentElement.scrollTop;
+    const currentScroll = container.scrollTop || window.scrollY || document.documentElement.scrollTop;
     const scrollBy = bottomOverlap + 40;
-    const container = document.getElementById('content') || document.documentElement;
     container.scrollTo({ top: currentScroll + scrollBy, behavior: 'smooth' });
   } else {
     const topGap = fieldRect.top - safeMargin;
     if (topGap < 60) {
-      const currentScroll = document.getElementById('content')?.scrollTop || window.scrollY || document.documentElement.scrollTop;
-      const container = document.getElementById('content') || document.documentElement;
+      const currentScroll = container.scrollTop || window.scrollY || document.documentElement.scrollTop;
       container.scrollTo({ top: Math.max(0, currentScroll - (60 - topGap)), behavior: 'smooth' });
     }
   }
@@ -921,22 +937,38 @@ document.addEventListener('DOMContentLoaded', () => {
   buildItems();
   initCustomKeyboard();
 
-  scanBtn.addEventListener('click', () => {
+  if (scanBtn) scanBtn.addEventListener('click', () => {
     scannerCard.style.display = 'block';
     initScanner();
   });
 
-  closeScannerBtn.addEventListener('click', () => {
+  if (closeScannerBtn) closeScannerBtn.addEventListener('click', () => {
     stopScanner();
   });
 
   const deviceSelectEl = document.getElementById('deviceSelect');
   if (deviceSelectEl) deviceSelectEl.addEventListener('change', e => { startCamera(e.target.value); });
 
+  const torchBtnEl = document.getElementById('torchBtn');
+  if (torchBtnEl) torchBtnEl.addEventListener('click', () => {
+    try {
+      const tracks = currentStream?.getVideoTracks();
+      if (tracks && tracks.length > 0) {
+        const track = tracks[0];
+        const capabilities = track.getCapabilities?.();
+        if (capabilities?.torch) {
+          const current = track.getSettings().torch;
+          track.applyConstraints({ advanced: [{ torch: !current }] });
+        } else showToast('Фонарик не поддерживается');
+      }
+    } catch (e) { console.error('Torch error', e); showToast('Ошибка управления фонариком'); }
+  });
+
   if (clearSearch) clearSearch.addEventListener('click', () => { searchInput.value = ''; filterItems(); });
   if (searchInput) searchInput.addEventListener('input', filterItems);
 });
 </script>
+
 
 
 
