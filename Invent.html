@@ -385,24 +385,14 @@ const torchBtn         = document.getElementById('torchBtn');
 const closeScannerBtn  = document.getElementById('closeScannerBtn');
 const scanResult       = document.getElementById('scanResult');
 
-const fabMenu          = document.getElementById('fabMenu');
-const sheetOverlay     = document.getElementById('sheetOverlay');
-const bottomSheet      = document.getElementById('bottomSheet');
-
 const customKeyboard   = document.getElementById('custom-keyboard');
-
-const saveBtn          = document.getElementById('saveBtn');
-const clearBtn         = document.getElementById('clearBtn');
-const totalBtn         = document.getElementById('totalBtn');
-const inventoryBtn     = document.getElementById('inventoryBtn');
-
-const summaryModal     = document.getElementById('summaryModal');
-const summaryTableBody = document.querySelector('#summaryTable tbody');
-const summarySaveBtn   = document.getElementById('summarySaveBtn');
-const summaryCloseBtn  = document.getElementById('summaryCloseBtn');
-
 const scanBtn          = document.getElementById('scan-btn');
 const clearSearch      = document.getElementById('clear-search');
+
+let scanWorker = null;
+let workerBusy = false;
+let useRequestFrame = false;
+let codeReaderInit = false;
 
 /* ========= УТИЛИТЫ ========= */
 function evalExpression(expr) {
@@ -443,65 +433,32 @@ function loadDB() {
         quantities = {};
         Object.entries(parsed).forEach(([code, data]) => {
           const name = typeof data === 'string' ? data : data.name;
-          if (!barcodeDB[name]) {
-            barcodeDB[name] = [];
-            quantities[name] = 0;
-          }
+          if (!barcodeDB[name]) { barcodeDB[name] = []; quantities[name] = 0; }
           barcodeDB[name].push(code);
           if (data.qty !== undefined) quantities[name] = data.qty;
         });
       }
-    } else {
-      barcodeDB = {};
-      quantities = {};
-    }
-  } catch (e) {
-    console.error('Ошибка загрузки базы:', e);
-    barcodeDB = {};
-    quantities = {};
-  }
+    } else { barcodeDB = {}; quantities = {}; }
+  } catch (e) { console.error('Ошибка загрузки базы:', e); barcodeDB = {}; quantities = {}; }
 
-  try {
-    const rawSession = localStorage.getItem('recountSession');
-    sessionValues = rawSession ? JSON.parse(rawSession) : {};
-  } catch {
-    sessionValues = {};
-  }
-
+  try { sessionValues = JSON.parse(localStorage.getItem('recountSession') || '{}'); } catch { sessionValues = {}; }
   buildItemsFromDB();
 }
 
 function saveDB() {
-  try {
-    localStorage.setItem('barcodeDB', JSON.stringify({ db: barcodeDB, quantities: quantities }));
-  } catch (e) {
-    console.error('Ошибка сохранения базы:', e);
-  }
+  try { localStorage.setItem('barcodeDB', JSON.stringify({ db: barcodeDB, quantities })); } catch (e) { console.error(e); }
 }
-
 function saveSession() {
-  try {
-    localStorage.setItem('recountSession', JSON.stringify(sessionValues));
-  } catch (e) {
-    console.error('Ошибка сохранения сессии:', e);
-  }
+  try { localStorage.setItem('recountSession', JSON.stringify(sessionValues)); } catch (e) { console.error(e); }
 }
 
 function showEmptyState() {
-  listContainer.innerHTML = `
-    <div style="text-align:center;padding:40px;color:var(--muted);">
-      <h3>База товаров пуста</h3>
-      <p>Добавьте товары на экране базы.</p>
-    </div>
-  `;
+  listContainer.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);"><h3>База товаров пуста</h3><p>Добавьте товары на экране базы.</p></div>`;
 }
 
 function renderItems(items) {
   listContainer.innerHTML = '';
-  if (!items || items.length === 0) {
-    showEmptyState();
-    return;
-  }
+  if (!items || items.length === 0) { showEmptyState(); return; }
 
   items.forEach(item => {
     const el = document.createElement('div');
@@ -520,38 +477,21 @@ function renderItems(items) {
     }
 
     el.innerHTML = `
-      <div class="field">
-        <span class="label">Название:</span>
-        <strong>${item.name}</strong>
-      </div>
-      <div class="field">
-        <span class="label">Штрихкод:</span>
-        <span>${item.code}</span>
-      </div>
-      <div class="field">
-        <span class="label">Учётное:</span>
-        ${expected}
-      </div>
-      <div class="field">
-        <span class="label">Кол-во:</span>
-        <input data-code="${item.code}" type="text" value="${expr || ''}" placeholder="0" 
-               class="qty-input" readonly />
+      <div class="field"><span class="label">Название:</span><strong>${item.name}</strong></div>
+      <div class="field"><span class="label">Штрихкод:</span><span>${item.code}</span></div>
+      <div class="field"><span class="label">Учётное:</span>${expected}</div>
+      <div class="field"><span class="label">Кол-во:</span>
+        <input data-code="${item.code}" type="text" value="${expr || ''}" placeholder="0" class="qty-input" readonly />
       </div>
     `;
 
     const input = el.querySelector('input');
-
     input.style.position = 'relative';
     input.style.zIndex = 2001;
     input.style.background = 'transparent';
     input.style.color = 'inherit';
 
-    const openCustom = (ev) => {
-      ev.preventDefault();
-      showCustomKeyboard(input);
-      input.classList.add('focused-by-custom');
-      ensureVisibleAboveKeyboard(input);
-    };
+    const openCustom = (ev) => { ev.preventDefault(); showCustomKeyboard(input); input.classList.add('focused-by-custom'); ensureVisibleAboveKeyboard(input); };
     input.addEventListener('touchstart', openCustom, { passive: false });
     input.addEventListener('click', openCustom);
 
@@ -569,16 +509,8 @@ function renderItems(items) {
 function buildItems() { renderItems(allItems); }
 
 /* ========= КЛАВИАТУРА ========= */
-function showCustomKeyboard(input) {
-  customKeyboard.classList.add('show');
-  customKeyboard.dataset.target = input.dataset.code;
-}
-function hideCustomKeyboard() {
-  customKeyboard.classList.remove('show');
-  const targetCode = customKeyboard.dataset.target;
-  const input = document.querySelector(`input[data-code="${targetCode}"]`);
-  if (input) input.classList.remove('focused-by-custom');
-}
+function showCustomKeyboard(input) { customKeyboard.classList.add('show'); customKeyboard.dataset.target = input.dataset.code; }
+function hideCustomKeyboard() { customKeyboard.classList.remove('show'); const t = customKeyboard.dataset.target; const inp = document.querySelector(`input[data-code="${t}"]`); if (inp) inp.classList.remove('focused-by-custom'); }
 function updateItemState(itemEl, code) {
   if (!itemEl) return;
   const expected = quantities[itemEl.dataset.name] || 0;
@@ -590,7 +522,7 @@ function updateItemState(itemEl, code) {
     else if (actual < expected) itemEl.classList.add('missing');
     else itemEl.classList.add('excess');
   }
-  const input = itemEl.querySelector('input[data-code="'+code+'"]');
+  const input = itemEl.querySelector(`input[data-code="${code}"]`);
   if (input) input.value = expr || '';
 }
 function initCustomKeyboard() {
@@ -611,41 +543,28 @@ function initCustomKeyboard() {
       try { input.focus(); } catch (e) {}
     });
   });
-  document.getElementById('done').addEventListener('click', hideCustomKeyboard);
+  const done = customKeyboard.querySelector('#done');
+  if (done) done.addEventListener('click', hideCustomKeyboard);
 }
 
 /* ========= СКАНЕР / ВОРКЕР / ROI ========= */
-let scanWorker = null;
-let workerBusy = false;
-let useRequestFrame = false;
-let codeReaderInit = false;
-
 async function initScanner() {
   try {
-    if (typeof ZXing === 'undefined') {
-      console.warn('ZXing не загружен — будем полагаться на BarcodeDetector и fallback.');
-    } else {
-      const BrowserMultiFormatReader = ZXing.BrowserMultiFormatReader;
-      codeReader = new BrowserMultiFormatReader();
+    if (typeof ZXing !== 'undefined' && ZXing.BrowserMultiFormatReader) {
+      codeReader = new ZXing.BrowserMultiFormatReader();
       codeReaderInit = true;
+    } else {
+      codeReaderInit = false;
     }
 
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoDevices = devices.filter(d => d.kind === 'videoinput');
-    if (videoDevices.length === 0) {
-      alert('Камеры не найдены');
-      return;
-    }
+    if (videoDevices.length === 0) { alert('Камеры не найдены'); return; }
 
-    let backCam = videoDevices.find(d => {
-      const label = (d.label || '').toLowerCase();
-      return label.includes('back') || label.includes('rear') || label.includes('зад') || label.includes('environment');
-    });
+    let backCam = videoDevices.find(d => (d.label || '').toLowerCase().match(/back|rear|зад|environment/));
     const defaultCamId = (backCam || videoDevices[0]).deviceId;
 
-    deviceSelect.innerHTML = videoDevices.map(d =>
-      `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`
-    ).join('');
+    deviceSelect.innerHTML = videoDevices.map(d => `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`).join('');
     deviceSelect.value = defaultCamId;
 
     await startCamera(defaultCamId);
@@ -654,44 +573,28 @@ async function initScanner() {
     useRequestFrame = !!previewVideo.requestVideoFrameCallback;
     scheduleNextFrame();
 
+    // optional fast path: ZXing decodeFromVideoDevice (keeps running but not required)
     if (codeReaderInit && typeof codeReader.decodeFromVideoDevice === 'function') {
       try {
         codeReader.decodeFromVideoDevice(defaultCamId, previewVideo, (result, err) => {
-          if (err && !(err instanceof ZXing.NotFoundException)) {
-            console.debug('ZXing error:', err);
-            return;
-          }
+          if (err && !(err instanceof ZXing.NotFoundException)) return;
           if (result) handleFastScan(result.getText());
         });
-      } catch (e) {
-        console.warn('Не удалось запустить decodeFromVideoDevice:', e);
-      }
+      } catch (e) { console.warn('decodeFromVideoDevice failed', e); }
     }
 
     scannerCard.style.display = 'block';
   } catch (e) {
-    console.error('Ошибка инициализации сканера:', e);
+    console.error('initScanner error', e);
     alert('Не удалось запустить сканер');
   }
 }
 
 async function startCamera(deviceId) {
   try {
-    if (currentStream) {
-      currentStream.getTracks().forEach(t => t.stop());
-      currentStream = null;
-    }
+    if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
 
-    const constraints = {
-      video: {
-        deviceId: deviceId ? { exact: deviceId } : undefined,
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        facingMode: { ideal: "environment" }
-      },
-      audio: false
-    };
-
+    const constraints = { video: { deviceId: deviceId ? { exact: deviceId } : undefined, width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: { ideal: 'environment' } }, audio: false };
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
 
     previewVideo.playsInline = true;
@@ -700,12 +603,7 @@ async function startCamera(deviceId) {
     previewVideo.srcObject = currentStream;
 
     const track = currentStream.getVideoTracks()[0];
-    if (track) {
-      track.onended = () => {
-        console.warn('video track ended');
-        setTimeout(() => { try { startCamera(deviceId); } catch (e) {} }, 500);
-      };
-    }
+    if (track) track.onended = () => setTimeout(() => startCamera(deviceId).catch(()=>{}), 500);
 
     await new Promise((resolve) => {
       const onLoaded = () => { previewVideo.removeEventListener('loadedmetadata', onLoaded); resolve(); };
@@ -715,19 +613,14 @@ async function startCamera(deviceId) {
 
     try { await previewVideo.play(); } catch (playErr) { setTimeout(() => previewVideo.play().catch(()=>{}), 300); }
 
-    setTimeout(() => {
-      if (!previewVideo.videoWidth || previewVideo.videoWidth === 0) {
-        console.warn('previewVideo has zero width — retrying startCamera');
-        try { startCamera(deviceId); } catch (e) {}
-      }
-    }, 1400);
+    setTimeout(() => { if (!previewVideo.videoWidth) { console.warn('videoWidth 0, retry startCamera'); startCamera(deviceId).catch(()=>{}); } }, 1400);
 
-    previewVideo.onplaying = () => { console.debug('previewVideo playing'); previewVideo.style.background = 'transparent'; };
-    previewVideo.onstalled = () => { console.warn('previewVideo stalled'); };
-    previewVideo.onerror = (ev) => { console.error('previewVideo error', ev); };
+    previewVideo.onplaying = () => { previewVideo.style.background = 'transparent'; };
+    previewVideo.onstalled = () => console.warn('preview stalled');
+    previewVideo.onerror = (ev) => console.error('preview error', ev);
 
   } catch (e) {
-    console.error('startCamera error:', e);
+    console.error('startCamera error', e);
     if (deviceId) return startCamera(null);
     throw e;
   }
@@ -750,19 +643,16 @@ function createScanWorker() {
       } else if (msg.type === 'blob') {
         handleBlobFallback(msg.blob);
       } else if (msg.type === 'error') {
-        console.warn('scanWorker error:', msg.message);
+        console.warn('worker error', msg.message);
       }
     };
     scanWorker.onerror = (err) => {
-      console.error('scanWorker uncaught error', err);
+      console.error('worker uncaught error', err);
       try { scanWorker.terminate(); } catch {}
       scanWorker = null;
       setTimeout(createScanWorker, 500);
     };
-  } catch (e) {
-    console.warn('Не удалось создать воркер:', e);
-    scanWorker = null;
-  }
+  } catch (e) { console.warn('createScanWorker failed', e); scanWorker = null; }
 }
 
 function captureFrameToCanvas(scale = 1.0) {
@@ -782,39 +672,22 @@ function captureAndSendFrame(scale = 0.6) {
   const c = captureFrameToCanvas(scale);
   if (!c) return;
   createImageBitmap(c).then(bitmap => {
-    try {
-      workerBusy = true;
-      scanWorker.postMessage({ type: 'frame', bitmap }, [bitmap]);
-    } catch (e) {
-      bitmap.close?.();
-      workerBusy = false;
-    }
+    try { workerBusy = true; scanWorker.postMessage({ type: 'frame', bitmap }, [bitmap]); }
+    catch (e) { bitmap.close?.(); workerBusy = false; }
   }).catch(err => {
     c.toBlob(blob => {
       if (!blob) return;
-      try {
-        workerBusy = true;
-        scanWorker.postMessage({ type: 'frameBlob', blob }, [blob]);
-      } catch (e) {
-        workerBusy = false;
-      }
+      try { workerBusy = true; scanWorker.postMessage({ type: 'frameBlob', blob }, [blob]); }
+      catch (e) { workerBusy = false; }
     }, 'image/png', 0.8);
   });
 }
 
 function scheduleNextFrame() {
   if (useRequestFrame && previewVideo.requestVideoFrameCallback) {
-    previewVideo.requestVideoFrameCallback(() => {
-      if (!scanWorker) return;
-      if (!workerBusy) captureAndSendFrame(0.6);
-      scheduleNextFrame();
-    });
+    previewVideo.requestVideoFrameCallback(() => { if (!scanWorker) return; if (!workerBusy) captureAndSendFrame(0.6); scheduleNextFrame(); });
   } else {
-    setTimeout(() => {
-      if (!scanWorker) return;
-      if (!workerBusy) captureAndSendFrame(0.6);
-      scheduleNextFrame();
-    }, 100);
+    setTimeout(() => { if (!scanWorker) return; if (!workerBusy) captureAndSendFrame(0.6); scheduleNextFrame(); }, 100);
   }
 }
 
@@ -862,12 +735,7 @@ function handleWorkerBBox(bbox) {
       try {
         const det = new BarcodeDetector();
         const results = await det.detect(roiCanvas);
-        if (results && results.length) {
-          for (const r of results) {
-            const code = r.rawValue || (r.rawData && String(r.rawData));
-            if (code) { handleFastScan(code); return; }
-          }
-        }
+        if (results && results.length) { for (const r of results) { const code = r.rawValue || (r.rawData && String(r.rawData)); if (code) { handleFastScan(code); return; } } }
       } catch (e) {}
     }
 
@@ -887,11 +755,7 @@ function handleWorkerBBox(bbox) {
       }
     }
 
-    try {
-      roiCanvas.toBlob(blob => {
-        if (blob) handleBlobFallback(blob);
-      }, 'image/png', 0.9);
-    } catch (e) {}
+    try { roiCanvas.toBlob(blob => { if (blob) handleBlobFallback(blob); }, 'image/png', 0.9); } catch (e) {}
   })();
 }
 
@@ -904,26 +768,15 @@ async function handleBlobFallback(blob) {
       try {
         const result = await codeReader.decodeFromImageElement(img);
         if (result) handleFastScan(result.getText());
-      } catch (err) {
-      } finally {
-        URL.revokeObjectURL(url);
-      }
+      } catch (err) {} finally { URL.revokeObjectURL(url); }
     };
     img.onerror = () => { URL.revokeObjectURL(url); };
     img.src = url;
-  } catch (e) {
-    console.warn('handleBlobFallback error', e);
-  }
+  } catch (e) { console.warn('handleBlobFallback error', e); }
 }
 
 function stopScanner() {
-  try {
-    if (currentStream) {
-      currentStream.getTracks().forEach(t => t.stop());
-      currentStream = null;
-    }
-  } catch (e) { console.warn('stop tracks error', e); }
-
+  try { if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; } } catch (e) { console.warn(e); }
   try { if (codeReader) codeReader.reset(); } catch (e) {}
   try { if (scanWorker) { scanWorker.terminate(); scanWorker = null; } } catch (e) {}
   workerBusy = false;
@@ -935,30 +788,22 @@ function stopScanner() {
   scanResult.textContent = '';
 }
 
-/* Быстрая обработка скана с дебаунсом и мгновенным поиском */
+/* Быстрая обработка скана с дебаунсом */
 function handleFastScan(code) {
   const now = Date.now();
   if (code === lastDetected.code && now - lastDetected.ts < DEBOUNCE_MS) return;
   lastDetected = { code, ts: now };
-
   try { navigator.vibrate?.(40); } catch (e) {}
-
   scanResult.textContent = `Найден: ${code}`;
-
   const name = codeToName.get(String(code));
   if (name) {
     searchInput.value = name;
     filterItems();
     highlightScannedItemByCode(code);
-    setTimeout(() => {
-      try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
-      scannerCard.style.display = 'none';
-    }, 300);
+    setTimeout(() => { try { stopScanner(); } catch (e) {} scannerCard.style.display = 'none'; }, 300);
   } else {
     showToast('Штрихкод не найден в базе');
-    setTimeout(() => {
-      if (!workerBusy && scanWorker) captureAndSendFrame(1.0);
-    }, 120);
+    setTimeout(() => { if (!workerBusy && scanWorker) captureAndSendFrame(1.0); }, 120);
   }
 }
 
@@ -966,10 +811,7 @@ function handleFastScan(code) {
 function filterItems() {
   const q = searchInput.value.toLowerCase().trim();
   if (!q) { buildItems(); return; }
-  const filtered = allItems.filter(item =>
-    item.name.toLowerCase().includes(q) ||
-    String(item.code).includes(q)
-  );
+  const filtered = allItems.filter(item => item.name.toLowerCase().includes(q) || String(item.code).includes(q));
   renderItems(filtered);
 }
 
@@ -984,10 +826,7 @@ function highlightScannedItemByCode(code) {
     const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
     container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
     const input = target.querySelector('input');
-    if (input) {
-      showCustomKeyboard(input);
-      setTimeout(() => ensureVisibleAboveKeyboard(input), 180);
-    }
+    if (input) { showCustomKeyboard(input); setTimeout(() => ensureVisibleAboveKeyboard(input), 180); }
   }
 }
 
@@ -1013,80 +852,13 @@ function ensureVisibleAboveKeyboard(input) {
   }
 }
 
-/* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
-function startInventory() {
-  sessionValues = {};
-  allItems.forEach(item => sessionValues[item.code] = '');
-  saveSession();
-  buildItems();
-  alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
-}
-function clearInventory() {
-  sessionValues = {};
-  saveSession();
-  buildItems();
-  alert('Пересчёт очищен.');
-}
-function applySessionToDB() {
-  const aggregated = {};
-  allItems.forEach(item => {
-    const expr = sessionValues[item.code] || '';
-    const val  = evalExpression(expr);
-    const name = item.name;
-    if (!aggregated[name]) aggregated[name] = 0;
-    aggregated[name] += val;
-  });
-  Object.keys(aggregated).forEach(name => { quantities[name] = aggregated[name]; });
-  saveDB();
-  buildItemsFromDB();
-  buildItems();
-}
-
-/* ========= ИТОГИ / ТОАСТ ========= */
-function openSummary() {
-  summaryTableBody.innerHTML = '';
-  const summary = {};
-  allItems.forEach(item => {
-    const name = item.name;
-    const expected = quantities[name] || 0;
-    const expr = sessionValues[item.code] || '';
-    const val  = evalExpression(expr);
-    if (!summary[name]) summary[name] = { expected, actual: 0 };
-    summary[name].actual += val;
-  });
-  Object.entries(summary).forEach(([name, data]) => {
-    const diff = data.actual - data.expected;
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td style="text-align:left;">${name}</td>
-      <td style="text-align:right;">${data.expected}</td>
-      <td style="text-align:right;">${data.actual}</td>
-      <td style="text-align:right;">${diff}</td>
-    `;
-    summaryTableBody.appendChild(tr);
-  });
-  summaryModal.classList.add('show');
-}
-function closeSummary() { summaryModal.classList.remove('show'); }
-
+/* ========= ТОАСТ / ИНИЦИАЛИЗАЦИЯ ========= */
 function showToast(message) {
   let toast = document.querySelector(".toast");
   if (!toast) {
     toast = document.createElement("div");
     toast.className = "toast";
-    Object.assign(toast.style, {
-      position: 'fixed',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      bottom: '18vh',
-      background: 'rgba(0,0,0,0.8)',
-      color: 'white',
-      padding: '8px 12px',
-      borderRadius: '8px',
-      zIndex: 9999,
-      opacity: '0',
-      transition: 'opacity 0.25s'
-    });
+    Object.assign(toast.style, { position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: '18vh', background: 'rgba(0,0,0,0.8)', color: 'white', padding: '8px 12px', borderRadius: '8px', zIndex: 9999, opacity: '0', transition: 'opacity 0.25s' });
     document.body.appendChild(toast);
   }
   toast.textContent = message;
@@ -1094,98 +866,20 @@ function showToast(message) {
   setTimeout(() => { toast.style.opacity = "0"; }, 1800);
 }
 
-/* ========= INIT ========= */
 document.addEventListener('DOMContentLoaded', () => {
   loadDB();
   buildItems();
   initCustomKeyboard();
 
-  scanBtn.addEventListener('click', () => {
-    scannerCard.style.display = 'block';
-    initScanner();
-  });
+  scanBtn.addEventListener('click', () => { scannerCard.style.display = 'block'; initScanner(); });
+  closeScannerBtn.addEventListener('click', () => { stopScanner(); });
 
-  closeScannerBtn.addEventListener('click', () => {
-    stopScanner();
-  });
-
-  deviceSelect.addEventListener('change', e => {
-    startCamera(e.target.value);
-  });
-
-  torchBtn.addEventListener('click', () => {
-    try {
-      const tracks = currentStream?.getVideoTracks();
-      if (tracks && tracks.length > 0) {
-        const track = tracks[0];
-        const capabilities = track.getCapabilities?.();
-        if (capabilities?.torch) {
-          const current = track.getSettings().torch;
-          track.applyConstraints({ advanced: [{ torch: !current }] });
-        } else {
-          showToast('Фонарик не поддерживается');
-        }
-      }
-    } catch (e) {
-      console.error('Torch error', e);
-      showToast('Ошибка управления фонариком');
-    }
-  });
-
-  clearSearch.addEventListener('click', () => {
-    searchInput.value = '';
-    filterItems();
-  });
-
+  deviceSelect.addEventListener('change', e => { startCamera(e.target.value); });
+  clearSearch.addEventListener('click', () => { searchInput.value = ''; filterItems(); });
   searchInput.addEventListener('input', filterItems);
-
-  fabMenu.addEventListener('click', () => {
-    bottomSheet.classList.toggle('show');
-    sheetOverlay.classList.toggle('show');
-  });
-
-  sheetOverlay.addEventListener('click', () => {
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
-
-  inventoryBtn.addEventListener('click', () => {
-    startInventory();
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
-
-  clearBtn.addEventListener('click', () => {
-    clearInventory();
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
-
-  totalBtn.addEventListener('click', () => {
-    openSummary();
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
-
-  saveBtn.addEventListener('click', () => {
-    applySessionToDB();
-    buildItems();
-    showToast('Остатки обновлены в базе товаров.');
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
-
-  summaryCloseBtn.addEventListener('click', closeSummary);
-
-  summarySaveBtn.addEventListener('click', () => {
-    applySessionToDB();
-    buildItems();
-    closeSummary();
-    showToast('Итоги сохранены в базу.');
-  });
 });
-
 </script>
+
 
 
 
