@@ -1,314 +1,410 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
-  <title>RecountPro — База товаров</title>
+  <title>RecountPro — Пересчёт</title>
 
-  <!-- Исправленный URL библиотеки ZXing -->
-  <script src="https://unpkg.com/@zxing/library@0.19.2/dist/umd/index.min.js"></script>
+  <!-- ZXing -->
+  <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 
+  <style>
+    :root {
+      --accent: #4361ee;
+      --bg: #ffffff;
+      --card: #ffffff;
+      --muted: #666;
+      --text: #333;
+      --maxw: 980px;
+      --border: #e0e0e0;
+    }
 
-<style>
-  :root {
-    --accent: #4361ee;
-    --accent-light: #82b1ff;
-    --text: #333;
-    --muted: #666;
-    --bg: #ffffff;
-    --card-bg: #ffffff;
-    --border: #e0e0e0;
-    --maxw: 980px;
-  }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-  * {
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-  }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: Inter, Segoe UI, system-ui, Arial, sans-serif;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
 
-  html, body {
-    height: 100%;
-    margin: 0;
-    background-color: var(--bg);
-    color: var(--text);
-    font-family: Inter, Segoe UI, system-ui, Arial, sans-serif;
-    overflow: hidden;
-  }
+    header {
+      position: fixed;
+      left: 0; right: 0; top: 0;
+      padding: 12px;
+      background-color: white;
+      border-bottom: 1px solid var(--border);
+      z-index: 1000;
+      border-radius: 0 0 14px 14px;
+    }
+    header h1 {
+      margin: 0;
+      text-align: center;
+      font-size: 1.15rem;
+      color: var(--accent);
+    }
 
-  header {
-    position: fixed;
-    left: 0;
-    right: 0;
-    top: 0;
-    padding: 12px;
-    background-color: white;
-    border-bottom: 1px solid var(--border);
-    z-index: 1000;
-    border-radius: 0 0 14px 14px;
-  }
-  header h1 {
-    margin: 0;
-    text-align: center;
-    font-size: 1.15rem;
-    color: var(--accent);
-  }
+    #search-wrap {
+      max-width: var(--maxw);
+      margin: 10px auto;
+      position: relative;
+    }
+    #search {
+      width: 100%;
+      padding: 10px 56px 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background-color: white;
+      color: var(--text);
+      font-size: 15px;
+    }
+    #scan-btn,
+    #clear-search {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    #clear-search { right: 44px; }
 
-  #search-wrap {
-    max-width: var(--maxw);
-    margin: 10px auto;
-    position: relative;
-  }
-  #search {
-    width: 100%;
-    padding: 10px 56px 10px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background-color: white;
-    color: var(--text);
-    font-size: 15px;
-  }
-  #scan-btn,
-  #clear-search {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 18px;
-  }
-  #clear-search {
-    right: 44px;
-  }
+    #content {
+      position: fixed;
+      left: 0; right: 0;
+      top: 96px; bottom: 0;
+      overflow: auto;
+      padding: 12px;
+    }
 
-  #content {
-    position: fixed;
-    left: 0;
-    right: 0;
-    top: 96px;
-    bottom: 0;
-    overflow: auto;
-    padding: 12px;
-  }
+    .card {
+      max-width: var(--maxw);
+      margin: 10px auto;
+      padding: 12px;
+      border-radius: 8px;
+      background-color: var(--card);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
 
-  .item {
-    width: 100%;
-    margin: 10px 0;
-    padding: 12px;
-    border-radius: 8px;
-    background-color: var(--card-bg);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    border-left: 4px solid transparent;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .item.found {
-    border-left-color: var(--accent);
-    box-shadow: 0 4px 16px rgba(67, 97, 238, 0.15);
-  }
-  .item.highlight-purple {
-    border-left-color: #7c3aed;
-    box-shadow: 0 0 0 2px #7c3aed, 0 4px 12px rgba(124, 58, 237, 0.2);
-  }
+    .preview-wrap {
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: #f8f8f8;
+      border: 1px solid var(--border);
+      height: 34vh;
+      min-height: 140px;
+    }
+    video#preview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
 
-  .label {
-    font-weight: 700;
-    color: var(--accent);
-    margin-right: 6px;
-  }
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .btn {
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background-color: white;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn.primary {
+      background-color: var(--accent);
+      color: white;
+      font-weight: 700;
+    }
 
-  #fabMenu {
-    position: fixed;
-    bottom: 1rem;
-    right: 1rem;
-    z-index: 1001;
-    background-color: var(--accent);
-    color: white;
-    border: none;
-    padding: 0.9rem 1.2rem;
-    border-radius: 8px;
-    font-size: 1.2rem;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
-    transition: all 0.3s ease;
-  }
-  #fabMenu:hover {
-    background-color: #3a56d6;
-  }
+    .list {
+      max-width: var(--maxw);
+      margin: 12px auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
 
-  #sheetOverlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s ease;
-    z-index: 999;
-  }
-  #sheetOverlay.show {
-    opacity: 1;
-    pointer-events: auto;
-  }
+    .item {
+      width: 100%;
+      margin: 10px 0;
+      padding: 12px;
+      border-radius: 8px;
+      background-color: var(--card);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-left: 4px solid transparent;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .item.match   { border-left-color: #22c55e; }
+    .item.missing { border-left-color: #ef4444; }
+    .item.excess  { border-left-color: #3b82f6; }
 
-  #bottomSheet {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: -60vh;
-    padding: 1.2rem;
-    background-color: white;
-    border-radius: 16px 16px 0 0;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-    transition: bottom 0.35s ease;
-    z-index: 1002;
-  }
-  #bottomSheet.show {
-    bottom: 0;
-  }
+    .field { margin-bottom: 8px; }
+    .label { font-weight: 700; color: var(--accent); margin-right: 6px; }
 
-  .sheet-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.7rem;
-  }
-  .sheet-btn {
-    background-color: #f5f5f5;
-    color: var(--text);
-    border: 1px solid var(--border);
-    padding: 0.9rem 1rem;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .sheet-btn:hover {
-    background-color: #e9e9e9;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-  .sheet-btn:active {
-    transform: translateY(0);
-  }
+    input[data-code] {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background-color: white;
+      color: var(--text);
+      font-size: 15px;
+    }
 
-  .preview-wrap.camera-1-3 {
-    position: relative;
-    width: 100%;
-    max-width: var(--maxw);
-    margin: 0 auto 10px;
-    padding-top: 33%;
-    overflow: hidden;
-    border-radius: 8px;
-    background-color: #f0f0f0;
-    border: 1px dashed var(--border);
-  }
- .preview-wrap.camera-1-3 video {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+    /* Кастомная клавиатура */
+    #custom-keyboard {
+      position: fixed;
+      left: 0; right: 0;
+      bottom: -40vh;
+      height: 34vh;
+      background-color: white;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      z-index: 3000;
+      transition: bottom 0.28s;
+      border-top: 1px solid var(--border);
+    }
+    #custom-keyboard.show { bottom: 0; }
+    #custom-keyboard button {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background-color: white;
+      color: var(--text);
+      font-size: 20px;
+      cursor: pointer;
+    }
 
-#scanResult {
-  font-weight: 600;
-  color: var(--accent);
-  margin-left: auto;
-}
+    .hidden { display: none !important; }
 
-.hidden {
-  display: none;
-}
+    /* FAB меню */
+    #fabMenu {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      z-index: 1001;
+      background-color: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.9rem 1.2rem;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(67,97,238,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-.toast {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  z-index: 9999;
-  font-size: 14px;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-</style>
+    #sheetOverlay {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0,0,0,0.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      z-index: 999;
+    }
+    #sheetOverlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #bottomSheet {
+      position: fixed;
+      left: 0; right: 0;
+      bottom: -60vh;
+      padding: 1.2rem;
+      background-color: white;
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+      transition: bottom 0.35s ease;
+      z-index: 1002;
+    }
+    #bottomSheet.show { bottom: 0; }
+
+    .sheet-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+    .sheet-btn {
+      background-color: #f5f5f5;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.9rem 1rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Модалка итогов */
+    #summaryModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 6000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    #summaryModal.show { display: flex; }
+
+    #summaryTable th, #summaryTable td {
+      border: none;
+      padding: 8px;
+    }
+    #summaryTable th {
+      background-color: #f0f0f0;
+      font-weight: 600;
+    }
+  </style>
 </head>
-
 <body>
-  <canvas id="bg"></canvas>
-
   <header>
-    <h1>RecountPro — База товаров</h1>
+    <h1>RecountPro — Пересчёт</h1>
     <div id="search-wrap">
       <input id="search" placeholder="Поиск по названию или коду..." autocomplete="off" />
-      <button id="scan-btn">📷</button>
-      <button id="clear-search">×</button>
+      <button id="scan-btn" title="Открыть сканер">📷</button>
+      <button id="clear-search" title="Очистить">×</button>
     </div>
   </header>
 
   <main id="content">
-    <div id="scannerCard" class="card" style="display:none">
-      <div class="preview-wrap camera-1-3">
+    <!-- Сканер -->
+    <div class="card" id="scannerCard" style="display:none">
+      <div class="preview-wrap">
         <video id="preview" playsinline muted></video>
       </div>
       <div class="controls">
         <select id="deviceSelect" class="btn" style="min-width:160px"></select>
         <button id="torchBtn" class="btn">🔦</button>
         <button id="closeScannerBtn" class="btn">Закрыть</button>
-        <div id="scanResult" style="margin-left:auto;color:var(--accent)"></div>
+        <div id="scanResult" style="margin-left:auto;color:var(--muted)"></div>
       </div>
     </div>
 
+    <!-- Список товаров -->
     <div id="list" class="list"></div>
   </main>
 
+  <!-- Кастомная клавиатура -->
+  <div id="custom-keyboard" aria-hidden="true">
+    <button>1</button><button>2</button><button>3</button>
+    <button>4</button><button>5</button><button>6</button>
+    <button>7</button><button>8</button><button>9</button>
+    <button>+</button><button>0</button><button id="back">←</button>
+    <button class="done" id="done" style="grid-column:1 / -1">Готово</button>
+  </div>
+
+  <!-- FAB меню -->
   <button id="fabMenu">☰</button>
-
   <div id="sheetOverlay"></div>
-
   <div id="bottomSheet">
     <div class="sheet-content">
-      <button class="sheet-btn" id="refreshBtn">🔄 Обновить</button>
-      <button class="sheet-btn" id="exportBtn">📤 Выгрузить CSV</button>
-      <button class="sheet-btn" id="importBtn">📥 Загрузить CSV</button>
-      <button class="sheet-btn" id="clearBaseBtn">🧹 Очистить базу</button>
+      <button class="sheet-btn" id="saveBtn">💾 Сохранить</button>
+      <button class="sheet-btn" id="clearBtn">🧹 Очистить пересчёт</button>
+      <button class="sheet-btn" id="totalBtn">📊 Итог</button>
+      <button class="sheet-btn" id="inventoryBtn">📋 Провести инвентаризацию</button>
+    </div>
+  </div>
+
+  <!-- Модалка итогов -->
+  <div id="summaryModal">
+    <div style="background:white;padding:20px;border-radius:12px;max-width:90%;max-height:80%;overflow:auto;">
+      <h3>Итоги инвентаризации</h3>
+      <table id="summaryTable" style="width:100%;border-collapse:collapse;margin-top:10px;">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Товар</th>
+            <th style="text-align:right;">Учётное</th>
+            <th style="text-align:right;">Фактическое</th>
+            <th style="text-align:right;">Разница</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button id="summarySaveBtn" class="btn primary" style="flex:1;">Сохранить в базу</button>
+        <button id="summaryCloseBtn" class="btn" style="flex:1;">Закрыть</button>
+      </div>
     </div>
   </div>
 
 <script>
-/* ============================================================
-   БАЗА ТОВАРОВ
-============================================================ */
-let barcodeDB = {}; // { [name]: [code1, code2, ...] }
-let quantities = {}; // { [name]: qty }
-let allItems = [];
+/* ========= СТЕЙТ ========= */
+let barcodeDB = {};      // { [name]: [code1, code2...] }
+let quantities = {};     // { [name]: qty }
+let allItems = [];       // [{code,name,qty}]
+let sessionValues = {};  // { [code]: фактическое кол-во }
 
+let codeReader = null;
+let currentStream = null;
+
+/* ========= ЭЛЕМЕНТЫ ========= */
+const searchInput = document.getElementById('search');
+const listContainer = document.getElementById('list');
+
+const scannerCard = document.getElementById('scannerCard');
+const previewVideo = document.getElementById('preview');
+const deviceSelect = document.getElementById('deviceSelect');
+const torchBtn = document.getElementById('torchBtn');
+const closeScannerBtn = document.getElementById('closeScannerBtn');
+const scanResult = document.getElementById('scanResult');
+
+const fabMenu = document.getElementById('fabMenu');
+const sheetOverlay = document.getElementById('sheetOverlay');
+const bottomSheet = document.getElementById('bottomSheet');
+
+const customKeyboard = document.getElementById('custom-keyboard');
+
+const saveBtn = document.getElementById('saveBtn');
+const clearBtn = document.getElementById('clearBtn');
+const totalBtn = document.getElementById('totalBtn');
+const inventoryBtn = document.getElementById('inventoryBtn');
+
+const summaryModal = document.getElementById('summaryModal');
+const summaryTableBody = document.querySelector('#summaryTable tbody');
+const summarySaveBtn = document.getElementById('summarySaveBtn');
+const summaryCloseBtn = document.getElementById('summaryCloseBtn');
+
+const scanBtn = document.getElementById('scan-btn');
+const clearSearch = document.getElementById('clear-search');
+
+/* ========= БАЗА / СЕССИЯ ========= */
 function loadDB() {
   try {
-    const raw = localStorage.getItem("barcodeDB");
+    const raw = localStorage.getItem('barcodeDB');
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed.db && parsed.quantities) {
         barcodeDB = parsed.db;
         quantities = parsed.quantities;
       } else {
-        // Конвертируем старый формат в новый
+        // старый формат — конвертируем
         barcodeDB = {};
         quantities = {};
         Object.entries(parsed).forEach(([code, data]) => {
-          const name = typeof data === "string" ? data : data.name;
+          const name = typeof data === 'string' ? data : data.name;
           if (!barcodeDB[name]) {
             barcodeDB[name] = [];
             quantities[name] = 0;
@@ -324,194 +420,195 @@ function loadDB() {
       quantities = {};
     }
   } catch (e) {
-    console.error("Ошибка загрузки базы:", e);
+    console.error('Ошибка загрузки базы:', e);
     barcodeDB = {};
     quantities = {};
   }
+
+  // сессия пересчёта
+  try {
+    const rawSession = localStorage.getItem('recountSession');
+    sessionValues = rawSession ? JSON.parse(rawSession) : {};
+  } catch {
+    sessionValues = {};
+  }
+
+  buildItemsFromDB();
 }
 
 function saveDB() {
   try {
-    localStorage.setItem("barcodeDB", JSON.stringify({
+    localStorage.setItem('barcodeDB', JSON.stringify({
       db: barcodeDB,
       quantities: quantities
     }));
   } catch (e) {
-    console.error("Ошибка сохранения:", e);
+    console.error('Ошибка сохранения базы:', e);
   }
 }
 
-function buildItems() {
+function saveSession() {
+  localStorage.setItem('recountSession', JSON.stringify(sessionValues));
+}
+
+function buildItemsFromDB() {
   allItems = [];
   Object.entries(barcodeDB).forEach(([name, codes]) => {
+    const qty = quantities[name] || 0;
     codes.forEach(code => {
-      allItems.push({
-        code: code,
-        name: name,
-        qty: quantities[name] || 0
-      });
+      allItems.push({ code, name, qty });
     });
   });
 }
 
-function escapeHtml(s) {
-  return String(s || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+/* ========= РЕНДЕР ========= */
+function showEmptyState() {
+  listContainer.innerHTML = `
+    <div style="text-align:center;padding:40px;color:var(--muted);">
+      <h3>База товаров пуста</h3>
+      <p>Добавьте товары на экране базы.</p>
+    </div>
+  `;
 }
 
-const listEl = document.getElementById("list");
-
-function render(items) {
-  listEl.innerHTML = "";
-
-  // Фильтруем: показываем только товары с остатком > 0
-  const visibleItems = items.filter(item => item.qty > 0);
-
-  if (visibleItems.length === 0) {
-    listEl.innerHTML = "<p style='text-align:center;color:var(--muted);padding:20px'>База товаров пуста. Добавьте товары через импорт или сканирование.</p>";
+function renderItems(items) {
+  listContainer.innerHTML = '';
+  if (!items || items.length === 0) {
+    showEmptyState();
     return;
   }
 
-  visibleItems.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "item";
-    div.dataset.code = item.code;
-    div.dataset.name = item.name;
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.dataset.code = item.code;
+    el.dataset.name = item.name;
 
-    div.innerHTML = `
-      <div class="field"><span class="label">Название:</span> ${escapeHtml(item.name)}</div>
-      <div class="field"><span class="label">Штрих‑код:</span> ${item.code}</div>
-      <div class="field"><span class="label">Остаток:</span> ${item.qty}</div>
+    const expected = quantities[item.name] || 0;
+    const current = sessionValues[item.code] || 0;
+
+    if (current > 0) {
+      if (current === expected) el.classList.add('match');
+      else if (current < expected) el.classList.add('missing');
+      else el.classList.add('excess');
+    }
+
+    el.innerHTML = `
+      <div class="field">
+        <span class="label">Название:</span>
+        <strong>${item.name}</strong>
+      </div>
+      <div class="field">
+        <span class="label">Штрихкод:</span>
+        <span>${item.code}</span>
+      </div>
+      <div class="field">
+        <span class="label">Учётное:</span>
+        ${expected}
+      </div>
+      <div class="field">
+        <span class="label">Кол-во:</span>
+        <input data-code="${item.code}" type="text" value="${current}" placeholder="0" readonly>
+      </div>
     `;
 
-    listEl.appendChild(div);
+    const input = el.querySelector('input');
+    input.addEventListener('focus', () => showCustomKeyboard(input));
+
+    listContainer.appendChild(el);
   });
 }
 
-
-/* ============================================================
-   ПОИСК
-============================================================ */
-const searchEl = document.getElementById("search");
-const clearSearchBtn = document.getElementById("clear-search");
-
-function normalize(s) {
-  return String(s || "")
-    .toLowerCase()
-    .replace(/ё/g, "е")
-    .replace(/\s+/g, " ")
-    .trim();
+function buildItems() {
+  renderItems(allItems);
 }
 
-function matchesQuery(text, query) {
-  const words = query.split(" ").filter(Boolean);
-  return words.every(w => text.includes(w));
+/* ========= КЛАВИАТУРА ========= */
+function showCustomKeyboard(input) {
+  customKeyboard.classList.add('show');
+  customKeyboard.dataset.target = input.dataset.code;
 }
 
-searchEl.addEventListener("input", () => {
-  const q = normalize(searchEl.value);
-  document.querySelectorAll("#list .item").forEach(div => {
-    const code = normalize(div.dataset.code);
-    const name = normalize(div.dataset.name);
+function hideCustomKeyboard() {
+  customKeyboard.classList.remove('show');
+}
 
-    const match = q === "" || matchesQuery(name, q) || matchesQuery(code, q);
-    div.classList.toggle("hidden", !match);
+function updateSessionValue(code, value) {
+  sessionValues[code] = isNaN(value) ? 0 : value;
+  saveSession();
+}
+
+function initCustomKeyboard() {
+  const keys = customKeyboard.querySelectorAll('button:not(.done)');
+  keys.forEach(key => {
+    key.addEventListener('click', () => {
+      const targetCode = customKeyboard.dataset.target;
+      const input = document.querySelector(`input[data-code="${targetCode}"]`);
+      if (!input) return;
+
+      let currentValue = input.value || '0';
+      const keyValue = key.textContent;
+
+      if (keyValue === '←') {
+        currentValue = currentValue.slice(0, -1) || '0';
+      } else if (keyValue === '+') {
+        const num = parseInt(currentValue || '0', 10) || 0;
+        currentValue = String(num + 1);
+      } else {
+        currentValue = currentValue === '0' ? keyValue : currentValue + keyValue;
+      }
+
+      input.value = currentValue;
+      updateSessionValue(targetCode, parseInt(currentValue, 10));
+      buildItems(); // обновить цветовую индикацию
+    });
   });
-});
 
-clearSearchBtn.addEventListener("click", () => {
-  searchEl.value = "";
-  document.querySelectorAll("#list .item").forEach(d => d.classList.remove("hidden"));
-});
-
-/* ============================================================
-   ПОДСТВЕТКА
-============================================================ */
-function highlightItem(code) {
-  document.querySelectorAll(`.item[data-code="${code}"]`).forEach(card => {
-    card.classList.remove("found");
-    card.classList.remove("highlight-purple");
-    card.classList.add("highlight-purple");
-
-    setTimeout(() => {
-      card.classList.remove("highlight-purple");
-    }, 2000);
-
-    setTimeout(() => {
-      card.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 150);
-  });
+  document.getElementById('done').addEventListener('click', hideCustomKeyboard);
 }
 
-/* ============================================================
-   СКАНЕР
-============================================================ */
-let codeReader = null;
-let currentStream = null;
-const previewEl = document.getElementById("preview");
-const deviceSelectEl = document.getElementById("deviceSelect");
-const torchBtnEl = document.getElementById("torchBtn");
-const closeScannerBtnEl = document.getElementById("closeScannerBtn");
-const scanResultEl = document.getElementById("scanResult");
-const scannerCardEl = document.getElementById("scannerCard");
-
-const DEBOUNCE_MS = 1000;
-let lastDetected = { code: null, ts: 0 };
-
+/* ========= СКАНЕР ========= */
 async function initScanner() {
   try {
     if (typeof ZXing === 'undefined') {
-      showToast("Библиотека сканера не загружена");
+      alert('Библиотека сканера не загружена');
       return;
     }
 
-    const codeReaderClass = ZXing.BrowserMultiFormatReader;
-    codeReader = new codeReaderClass();
+    const BrowserMultiFormatReader = ZXing.BrowserMultiFormatReader;
+    codeReader = new BrowserMultiFormatReader();
 
     const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(d => d.kind === "videoinput");
+    const videoDevices = devices.filter(d => d.kind === 'videoinput');
 
-    deviceSelectEl.innerHTML = "";
+    deviceSelect.innerHTML = '';
     if (videoDevices.length === 0) {
-      showToast("Камеры не найдены");
+      alert('Камеры не найдены');
       return;
     }
 
     videoDevices.forEach((device, i) => {
-      const option = document.createElement("option");
-      option.value = device.deviceId;
-      option.textContent = device.label || `Камера ${i + 1}`;
-      deviceSelectEl.appendChild(option);
+      const opt = document.createElement('option');
+      opt.value = device.deviceId;
+      opt.textContent = device.label || `Камера ${i + 1}`;
+      deviceSelect.appendChild(opt);
     });
 
     await startCamera(videoDevices[0].deviceId);
 
-    // Запускаем непрерывное сканирование
-    codeReader.decodeFromVideoElement(previewEl, (result, err) => {
-      if (err) {
-        if (err instanceof ZXing.NotFoundException) {
-          // Ничего не найдено — продолжаем сканирование
-          return;
-        }
-        console.error("Ошибка сканера:", err);
+    codeReader.decodeFromVideoElement(previewVideo, (result, err) => {
+      if (err && !(err instanceof ZXing.NotFoundException)) {
+        console.error('Ошибка сканера:', err);
         return;
       }
-
       if (result) {
         const code = result.getText();
-        handleDetected(code);
-        scanResultEl.textContent = `Найден: ${code}`;
+        handleScanResult(code);
       }
-    }, (err) => {
-      console.error("Ошибка видеопотока:", err);
-      showToast("Ошибка камеры");
     });
   } catch (e) {
-    console.error("Ошибка инициализации сканера:", e);
-    showToast("Не удалось запустить камеру");
+    console.error('Ошибка инициализации сканера:', e);
+    alert('Не удалось запустить камеру');
   }
 }
 
@@ -520,301 +617,219 @@ async function startCamera(deviceId) {
     if (currentStream) {
       currentStream.getTracks().forEach(t => t.stop());
     }
-
-    const constraints = {
-      video: {
-        deviceId: { exact: deviceId }
-      }
-    };
-
+    const constraints = { video: { deviceId: { exact: deviceId } } };
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-    previewEl.srcObject = currentStream;
+    previewVideo.srcObject = currentStream;
   } catch (e) {
-    console.error("Ошибка запуска камеры:", e);
-    showToast("Ошибка доступа к камере");
+    console.error('Ошибка запуска камеры:', e);
+    alert('Ошибка доступа к камере');
   }
 }
 
-function stopCamera() {
+function stopScanner() {
   if (currentStream) {
     currentStream.getTracks().forEach(t => t.stop());
     currentStream = null;
   }
-  previewEl.srcObject = null;
+  if (codeReader) {
+    try { codeReader.reset(); } catch {}
+  }
+  previewVideo.srcObject = null;
+  scannerCard.style.display = 'none';
+  scanResult.textContent = '';
 }
 
-function handleDetected(code) {
-  const now = Date.now();
-  if (code === lastDetected.code && now - lastDetected.ts < DEBOUNCE_MS) return;
-  lastDetected = { code, ts: now };
+function handleScanResult(barcode) {
+  scanResult.textContent = `Найден: ${barcode}`;
 
-  // Вибрация для обратной связи
-  try { navigator.vibrate?.(60); } catch (e) {}
-
-  // Ищем товар по штрих‑коду
-  let foundName = null;
-  let foundQty = 0;
-
-  for (const [name, codes] of Object.entries(barcodeDB)) {
-    if (codes.includes(code)) {
-      foundName = name;
-      foundQty = quantities[name] || 0;
-      break;
-    }
+  const foundItem = allItems.find(i => i.code === barcode);
+  if (!foundItem) {
+    alert('Товар не найден в базе');
+    return;
   }
 
-  if (foundName) {
-    if (foundQty > 0) {
-      // Товар с остатком > 0 — подсвечиваем и скроллим
-      highlightItem(code);
-      showToast(`Найден: ${foundName}`);
-    } else {
-      // Товар с остатком 0 — временно показываем
-      showTemporaryItem(code, foundName, foundQty);
-      showToast(`По позиции "${foundName}" остаток 0 (показан на 5 с)`);
-    }
-  } else {
-    // Товар не найден в базе
-    showToast("Штрих‑код не найден в базе");
-  }
+  // фильтр по найденному
+  searchInput.value = foundItem.name;
+  filterItems();
+  highlightScannedItem(barcode);
 }
 
-
-/* ============================================================
-   ИНТЕРФЕЙС
-============================================================ */
-function showToast(message) {
-  let toast = document.querySelector(".toast");
-  if (!toast) {
-    toast = document.createElement("div");
-    toast.className = "toast";
-    document.body.appendChild(toast);
-  }
-
-  toast.textContent = message;
-  toast.style.opacity = "1";
-
-  setTimeout(() => {
-    toast.style.opacity = "0";
-  }, 2000);
-}
-
-function closeMenu() {
-  document.getElementById("sheetOverlay").classList.remove("show");
-  document.getElementById("bottomSheet").classList.remove("show");
-}
-
-function createConfirm(text, onConfirm) {
-  if (confirm(text)) {
-    onConfirm();
-  }
-}
-
-/* ============================================================
-   ОБРАБОТЧИКИ СОБЫТИЙ
-============================================================ */
-document.getElementById("scan-btn").addEventListener("click", () => {
-  scannerCardEl.style.display = "block";
-  initScanner();
-});
-
-closeScannerBtnEl.addEventListener("click", () => {
-  stopCamera();
-  scannerCardEl.style.display = "none";
-  scanResultEl.textContent = "";
-});
-
-deviceSelectEl.addEventListener("change", (e) => {
-  startCamera(e.target.value);
-});
-
-torchBtnEl.addEventListener("click", async () => {
-  try {
-    const tracks = currentStream?.getVideoTracks();
-    if (tracks && tracks.length > 0) {
-      const track = tracks[0];
-      const capabilities = track.getCapabilities?.();
-      if (capabilities?.torch) {
-        await track.applyConstraints({
-          advanced: [{ torch: !track.getSettings().torch }]
-        });
-        torchBtnEl.style.color = track.getSettings().torch ? "var(--accent)" : "var(--muted)";
-      } else {
-        showToast("Фонарик не поддерживается");
-      }
-    }
-  } catch (e) {
-    console.error("Ошибка управления фонариком:", e);
-  }
-});
-
-document.getElementById("fabMenu").addEventListener("click", () => {
-  document.getElementById("sheetOverlay").classList.add("show");
-  document.getElementById("bottomSheet").classList.add("show");
-});
-
-document.getElementById("refreshBtn").onclick = () => {
-  closeMenu();
-  buildItems();
-  render(allItems);
-  showToast("Список обновлён");
-};
-
-document.getElementById("exportBtn").onclick = () => {
-  closeMenu();
-
-  let csv = "code;name;qty\n";
-  Object.entries(barcodeDB).forEach(([name, codes]) => {
-    const qty = quantities[name] || 0;
-    codes.forEach(code => {
-      csv += `"${code}";"${name}";${qty}\n`;
-    });
+function highlightScannedItem(code) {
+  document.querySelectorAll('.item').forEach(el => {
+    el.style.boxShadow = '';
   });
+  const target = document.querySelector(`.item[data-code="${code}"]`);
+  if (target) {
+    target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.4)';
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "barcodeDB.csv";
-  a.click();
-
-  URL.revokeObjectURL(url);
-};
-
-document.getElementById("importBtn").onclick = () => {
-  closeMenu();
-
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = ".csv,text/csv";
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const lines = text.split("\n").filter(line => line.trim());
-
-      // Пропускаем заголовок
-      const dataLines = lines.slice(1);
-
-      barcodeDB = {};
-      quantities = {};
-
-      dataLines.forEach(line => {
-        // Поддерживаем разные разделители: точка с запятой, запятая, табуляция
-        const parts = line.split(/[;\t,]/);
-        if (parts.length < 2) return;
-
-        const code = parts[0].trim();
-        const name = parts[1].trim();
-        const qty = parseInt(parts[2], 10) || 0;
-
-        if (!code || !name) return;
-
-        if (!barcodeDB[name]) {
-          barcodeDB[name] = [];
-          quantities[name] = qty;
-        } else {
-                   quantities[name] = Math.max(quantities[name], qty);
-        }
-
-        barcodeDB[name].push(code);
-      });
-
-      saveDB();
-      buildItems();
-      render(allItems);
-      showToast(`Импортировано ${dataLines.length} записей`);
-    } catch (error) {
-      console.error("Ошибка импорта CSV:", error);
-      showToast("Ошибка импорта файла");
-    }
-  };
-
-  input.click();
-};
-
-document.getElementById("clearBaseBtn").onclick = () => {
-  closeMenu();
-  createConfirm("Очистить всю базу товаров? Все остатки будут сброшены до 0.", () => {
-    // Обнуляем остатки, но сохраняем структуру штрих‑кодов
-    Object.keys(quantities).forEach(name => {
-      quantities[name] = 0;
-    });
-    saveDB();
+/* ========= ПОИСК ========= */
+function filterItems() {
+  const q = searchInput.value.toLowerCase().trim();
+  if (!q) {
     buildItems();
-    render(allItems);
-    showToast("База очищена, остатки сброшены до 0");
+    return;
+  }
+
+  const filtered = allItems.filter(item =>
+    item.name.toLowerCase().includes(q) ||
+    String(item.code).includes(q)
+  );
+
+  renderItems(filtered);
+}
+
+/* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
+function startInventory() {
+  sessionValues = {};
+  allItems.forEach(item => {
+    sessionValues[item.code] = 0;
   });
-};
+  saveSession();
+  buildItems();
+  alert('Режим инвентаризации активирован. Введите фактическое количество.');
+}
 
+function clearInventory() {
+  sessionValues = {};
+  saveSession();
+  buildItems();
+  alert('Пересчёт очищен.');
+}
 
-  // Временное отображение товара с остатком 0 (на 5 секунд)
-function showTemporaryItem(code, name, qty) {
-  // Проверяем, нет ли уже такого элемента
-  const existing = document.querySelector(`.item[data-code="${code}"]`);
-  if (existing) {
-    existing.remove();
-  }
+function applySessionToDB() {
+  // агрегируем по имени товара
+  const aggregated = {};
+  allItems.forEach(item => {
+    const actual = sessionValues[item.code];
+    if (typeof actual !== 'number') return;
+    const name = item.name;
+    if (!aggregated[name]) aggregated[name] = 0;
+    // логика: берём максимум по кодам (можно заменить на сумму, если нужно)
+    aggregated[name] = Math.max(aggregated[name], actual);
+  });
 
-  const div = document.createElement("div");
-  div.className = "item highlight-purple";
-  div.dataset.code = code;
-  div.dataset.name = name;
+  Object.keys(aggregated).forEach(name => {
+    quantities[name] = aggregated[name];
+  });
 
-  div.innerHTML = `
-    <div class="field"><span class="label">Название:</span> ${escapeHtml(name)}</div>
-    <div class="field"><span class="label">Штрих‑код:</span> ${code}</div>
-    <div class="field"><span class="label">Остаток:</span> ${qty}</div>
-  `;
+  saveDB();
+}
 
-  listEl.prepend(div); // Показываем сверху
+/* ========= ИТОГИ ========= */
+function openSummary() {
+  summaryTableBody.innerHTML = '';
 
-  // Автоматически удаляем через 5 секунд
-  setTimeout(() => {
-    if (div.parentNode) {
-      div.remove();
+  const summary = {};
+  allItems.forEach(item => {
+    const name = item.name;
+    const expected = quantities[name] || 0;
+    const actualCode = sessionValues[item.code] || 0;
+
+    if (!summary[name]) {
+      summary[name] = { expected, actual: 0 };
     }
-  }, 5000);
+    summary[name].actual = Math.max(summary[name].actual, actualCode);
+  });
+
+  Object.entries(summary).forEach(([name, data]) => {
+    const diff = data.actual - data.expected;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="text-align:left;">${name}</td>
+      <td style="text-align:right;">${data.expected}</td>
+      <td style="text-align:right;">${data.actual}</td>
+      <td style="text-align:right;">${diff}</td>
+    `;
+    summaryTableBody.appendChild(tr);
+  });
+
+  summaryModal.classList.add('show');
 }
 
-
-  function checkZXingLoaded() {
-  return typeof ZXing !== 'undefined' && typeof ZXing.BrowserMultiFormatReader === 'function';
+function closeSummary() {
+  summaryModal.classList.remove('show');
 }
 
-// Проверка при загрузке страницы
-document.addEventListener("DOMContentLoaded", () => {
-  if (!checkZXingLoaded()) {
-    console.warn("ZXing библиотека не загружена. Сканер будет недоступен.");
-    showToast("Сканер недоступен: библиотека ZXing не загружена");
-  }
-});
-
-/* ============================================================
-   ИНИЦИАЛИЗАЦИЯ
-============================================================ */
-
-function init() {
+/* ========= INIT ========= */
+document.addEventListener('DOMContentLoaded', () => {
   loadDB();
   buildItems();
-  render(allItems);
+  initCustomKeyboard();
 
-  // Закрытие меню по клику на оверлей
-  document.getElementById("sheetOverlay").addEventListener("click", closeMenu);
-}
+  scanBtn.addEventListener('click', () => {
+    scannerCard.style.display = 'block';
+    initScanner();
+  });
 
-// Запуск при загрузке страницы
-document.addEventListener("DOMContentLoaded", init);
+  closeScannerBtn.addEventListener('click', () => {
+    stopScanner();
+  });
 
-// Обработка ошибок сканера
-window.addEventListener("error", (e) => {
-  if (e.message.includes("zxing")) {
-    console.warn("ZXing библиотека не загружена, сканер недоступен");
-  }
+  deviceSelect.addEventListener('change', e => {
+    startCamera(e.target.value);
+  });
+
+  // фонарик можно оставить как заглушку
+  torchBtn.addEventListener('click', () => {
+    alert('Фонарик не реализован в этом варианте.');
+  });
+
+  clearSearch.addEventListener('click', () => {
+    searchInput.value = '';
+    filterItems();
+  });
+
+  searchInput.addEventListener('input', filterItems);
+
+  fabMenu.addEventListener('click', () => {
+    bottomSheet.classList.toggle('show');
+    sheetOverlay.classList.toggle('show');
+  });
+
+  sheetOverlay.addEventListener('click', () => {
+    bottomSheet.classList.remove('show');
+    sheetOverlay.classList.remove('show');
+  });
+
+  inventoryBtn.addEventListener('click', () => {
+    startInventory();
+    bottomSheet.classList.remove('show');
+    sheetOverlay.classList.remove('show');
+  });
+
+  clearBtn.addEventListener('click', () => {
+    clearInventory();
+    bottomSheet.classList.remove('show');
+    sheetOverlay.classList.remove('show');
+  });
+
+  totalBtn.addEventListener('click', () => {
+    openSummary();
+    bottomSheet.classList.remove('show');
+    sheetOverlay.classList.remove('show');
+  });
+
+  saveBtn.addEventListener('click', () => {
+    applySessionToDB();
+    buildItems();
+    alert('Остатки обновлены в базе товаров.');
+    bottomSheet.classList.remove('show');
+    sheetOverlay.classList.remove('show');
+  });
+
+  summaryCloseBtn.addEventListener('click', closeSummary);
+
+  summarySaveBtn.addEventListener('click', () => {
+    applySessionToDB();
+    buildItems();
+    closeSummary();
+    alert('Итоги сохранены в базу.');
+  });
 });
 </script>
 </body>
 </html>
+
