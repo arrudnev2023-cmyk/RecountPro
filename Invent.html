@@ -393,7 +393,7 @@
   </div>
 
 <script>
-/* Упрощённый рабочий скрипт с устойчивой логикой подтверждения скана */
+/* Надёжный скрипт сканера с устойчивым подтверждением (заменить текущий <script>) */
 
 /* ====== СТЕЙТ ====== */
 let barcodeDB = {};
@@ -405,9 +405,7 @@ let codeToName = new Map();
 let codeReader = null;
 let currentStream = null;
 
-const DEBOUNCE_MS = 700;
-
-/* Стабильное подтверждение: нужно N подряд распознаваний в окне WINDOW_MS */
+/* Параметры стабильного подтверждения */
 let pendingCode = null;
 let stableCount = 0;
 const STABLE_REQUIRED = 2;
@@ -656,15 +654,13 @@ async function initScanner() {
       return;
     }
 
-    // потоковое декодирование: результат идёт в обработчик stableDetect
+    // потоковое декодирование: результат идёт в stableDetect
     codeReader.decodeFromVideoDevice(defaultCamId, previewVideo, (result, err) => {
       if (err && !(err instanceof ZXing.NotFoundException)) {
         console.debug('Сканер ошибка:', err);
         return;
       }
-      if (result) {
-        stableDetect(result.getText());
-      }
+      if (result) stableDetect(result.getText());
     });
 
     if (frameProcessInterval) clearInterval(frameProcessInterval);
@@ -701,36 +697,30 @@ function stopScanner(hide=true) {
 /* ====== СТАБИЛЬНОЕ РАСПОЗНАВАНИЕ ====== */
 function stableDetect(code) {
   const now = Date.now();
-  // если тот же код и в пределах окна — увеличиваем счётчик
+  if (!code) return;
   if (pendingCode === code && (now - lastDetectTs) <= STABLE_WINDOW_MS) {
     stableCount++;
   } else {
-    // новый код — сбрасываем счётчик
     pendingCode = code;
     stableCount = 1;
   }
   lastDetectTs = now;
 
-  // если накопили достаточно подтверждений — считаем валидным
   if (stableCount >= STABLE_REQUIRED) {
-    // сбрасываем, чтобы не обрабатывать повторно
     pendingCode = null;
     stableCount = 0;
     handleConfirmedCode(code);
   }
 }
 
-/* Обработка подтверждённого кода */
 function handleConfirmedCode(code) {
   try { navigator.vibrate?.(40); } catch (e) {}
   scanResult.textContent = `Подтверждён: ${code}`;
-
   const name = codeToName.get(String(code));
   if (name) {
     searchInput.value = name;
     filterItems();
     highlightScannedItemByCode(code);
-    // закрываем сканер после небольшой паузы
     setTimeout(() => stopScanner(true), 300);
   } else {
     showToast('Штрихкод не найден в базе');
@@ -768,7 +758,7 @@ async function tryProcessFrameLight() {
       try {
         const result = await codeReader.decodeFromImageElement(imgEl);
         if (result && result.getText) stableDetect(result.getText());
-      } catch (e) { /* нормальное поведение */ }
+      } catch (e) { /* нормально: не найдено */ }
     };
   } catch (e) { console.debug('frame light error', e); }
 }
@@ -931,6 +921,7 @@ document.addEventListener('DOMContentLoaded', () => {
   summarySaveBtn.addEventListener('click', () => { applySessionToDB(); buildItems(); closeSummary(); showToast('Итоги сохранены в базу.'); });
 });
 </script>
+
 
 
 
