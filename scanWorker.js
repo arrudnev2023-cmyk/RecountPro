@@ -1,7 +1,16 @@
 // scanWorker.js
+// Принимает { type: 'frame', bitmap } или { type: 'frameBlob', blob' }
+// Возвращает { type: 'detected', results } | { type: 'bbox', bbox } | { type: 'blob', blob } | { type: 'error', message }
+
 self.onmessage = async (e) => {
   try {
-    if (e.data.type !== 'frame') return;
+    if (e.data.type === 'frameBlob') {
+      // fallback: получили blob вместо bitmap
+      const blob = e.data.blob;
+      const img = await createImageBitmap(blob);
+      e.data.bitmap = img;
+    }
+    if (e.data.type !== 'frame' || !e.data.bitmap) return;
     const bitmap = e.data.bitmap;
     const w = bitmap.width, h = bitmap.height;
 
@@ -10,6 +19,7 @@ self.onmessage = async (e) => {
     ctx.drawImage(bitmap, 0, 0);
     bitmap.close?.();
 
+    // Попытка нативного BarcodeDetector (быстро)
     if (self.BarcodeDetector) {
       try {
         const detector = new BarcodeDetector();
@@ -18,13 +28,17 @@ self.onmessage = async (e) => {
           self.postMessage({ type: 'detected', results });
           return;
         }
-      } catch (bdErr) {}
+      } catch (bdErr) {
+        // продолжаем
+      }
     }
 
-    let img;
+    // Попытка получить ImageData (может быть запрещено в некоторых воркерах)
+    let imgData;
     try {
-      img = ctx.getImageData(0, 0, w, h);
+      imgData = ctx.getImageData(0, 0, w, h);
     } catch (err) {
+      // отправляем уменьшённый blob на главный поток
       const small = new OffscreenCanvas(Math.max(1, Math.round(w/3)), Math.max(1, Math.round(h/3)));
       const sctx = small.getContext('2d');
       sctx.drawImage(off, 0, 0, small.width, small.height);
@@ -33,13 +47,15 @@ self.onmessage = async (e) => {
       return;
     }
 
-    const data = img.data;
+    const data = imgData.data;
+    // grayscale inplace
     for (let i = 0; i < data.length; i += 4) {
       const g = (data[i]*0.3 + data[i+1]*0.59 + data[i+2]*0.11) | 0;
       data[i] = data[i+1] = data[i+2] = g;
     }
 
-    const block = 32;
+    // локальная блоковая карта (для поиска областей с высокой плотностью тёмных блоков)
+    const block = 28; // чуть меньше для точности
     const cols = Math.ceil(w / block);
     const rows = Math.ceil(h / block);
     const bin = new Uint8Array(cols * rows);
@@ -56,7 +72,7 @@ self.onmessage = async (e) => {
           }
         }
         const avg = cnt ? (sum / cnt) : 0;
-        bin[by * cols + bx] = avg < 140 ? 1 : 0;
+        bin[by * cols + bx] = avg < 150 ? 1 : 0; // порог эмпирический
       }
     }
 
@@ -91,6 +107,7 @@ self.onmessage = async (e) => {
       }
     }
 
+    // fallback: уменьшённый blob
     const small = new OffscreenCanvas(Math.max(1, Math.round(w/3)), Math.max(1, Math.round(h/3)));
     const sctx = small.getContext('2d');
     sctx.drawImage(off, 0, 0, small.width, small.height);
@@ -101,4 +118,5 @@ self.onmessage = async (e) => {
     self.postMessage({ type: 'error', message: err?.message || String(err) });
   }
 };
+
 
