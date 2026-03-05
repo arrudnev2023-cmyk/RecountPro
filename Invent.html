@@ -351,6 +351,9 @@
     </div>
   </div>
 
+  <!-- ZXing fallback -->
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
+
 <script>
 /* ========= СТЕЙТ ========= */
 let barcodeDB = {};      // { [name]: [code1, code2...] }
@@ -359,8 +362,11 @@ let allItems = [];       // [{code,name,qty}]
 let sessionValues = {};  // { [code]: "выражение" }
 let codeToName = new Map(); // быстрый индекс: code -> name
 
-let codeReader = null;
+// Сканер / камера (интегрирован из рабочего сканера)
+let reader = null;               // ZXing reader (если нужен)
+let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
 let currentStream = null;
+let scanning = false;
 let lastDetected = { code: null, ts: 0 };
 const DEBOUNCE_MS = 700; // пауза между распознаваниями одного и того же кода
 
@@ -593,62 +599,158 @@ function initCustomKeyboard() {
   document.getElementById('done').addEventListener('click', hideCustomKeyboard);
 }
 
-/* ========= СКАНЕР (оптимизировано) ========= */
-async function initScanner() {
+/* ========= СКАНЕР (взято из первого экрана, интегрировано) ========= */
+
+/* Preprocessing helpers */
+function createCanvas(w, h) {
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  return c;
+}
+
+function toGrayscale(ctx, w, h) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
+    d[i] = d[i + 1] = d[i + 2] = v;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function increaseContrast(ctx, w, h, contrast = 30) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+  for (let i = 0; i < d.length; i += 4) {
+    for (let c = 0; c < 3; c++) {
+      let col = d[i + c];
+      col = factor * (col - 128) + 128;
+      d[i + c] = Math.max(0, Math.min(255, col));
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+/* Try decode with detector or ZXing, including rotated attempts */
+async function tryDecodeCanvas(canvas) {
+  if (detector) {
+    try {
+      const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      const res = await detector.detect(imageData);
+      if (res && res.length) return res[0].rawValue;
+    } catch (e) {}
+  }
+
   try {
-    if (typeof ZXing === 'undefined') {
-      alert('Библиотека сканера не загружена');
+    const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+    const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+    if (result && result.text) return result.text;
+  } catch (e) {}
+
+  const w = canvas.width;
+  const h = canvas.height;
+  const temp = createCanvas(w, h);
+  const tctx = temp.getContext('2d');
+
+  for (let angle of [90, 180, 270]) {
+    tctx.clearRect(0, 0, w, h);
+    tctx.save();
+    tctx.translate(w / 2, h / 2);
+    tctx.rotate(angle * Math.PI / 180);
+    tctx.drawImage(canvas, -w / 2, -h / 2);
+    tctx.restore();
+
+    try {
+      const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(temp);
+      const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+      const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+      if (result && result.text) return result.text;
+    } catch (e) {}
+  }
+  return null;
+}
+
+/* Main scanning loop (full frame) */
+let canvasPool = [];
+function getCanvas(w, h) {
+  for (let c of canvasPool) if (c.width === w && c.height === h) return c;
+  const c = createCanvas(w, h);
+  canvasPool.push(c);
+  return c;
+}
+
+async function scanLoop() {
+  if (!scanning) return;
+  try {
+    const w = previewVideo.videoWidth;
+    const h = previewVideo.videoHeight;
+    if (w === 0 || h === 0) {
+      requestAnimationFrame(scanLoop);
       return;
     }
 
-    const BrowserMultiFormatReader = ZXing.BrowserMultiFormatReader;
-    codeReader = new BrowserMultiFormatReader();
+    const canvas = getCanvas(w, h);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(previewVideo, 0, 0, w, h);
 
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+    // downscale for speed
+    const scale = Math.max(1, Math.floor(Math.max(w, h) / 900));
+    const sw = Math.floor(w / scale);
+    const sh = Math.floor(h / scale);
+    const small = getCanvas(sw, sh);
+    const sctx = small.getContext('2d');
+    sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
+    toGrayscale(sctx, sw, sh);
+    increaseContrast(sctx, sw, sh, 30);
 
-    if (videoDevices.length === 0) {
-      alert('Камеры не найдены');
-      return;
-    }
-
-    let backCam = videoDevices.find(d => {
-      const label = (d.label || '').toLowerCase();
-      return label.includes('back') || label.includes('rear') || label.includes('зад') || label.includes('environment');
-    });
-
-    const defaultCamId = (backCam || videoDevices[0]).deviceId;
-
-    deviceSelect.innerHTML = videoDevices.map(d =>
-      `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`
-    ).join('');
-    deviceSelect.value = defaultCamId;
-
-    await startCamera(defaultCamId);
-
-    codeReader.decodeFromVideoDevice(defaultCamId, previewVideo, (result, err) => {
-      if (err && !(err instanceof ZXing.NotFoundException)) {
-        console.debug('Сканер ошибка:', err);
-        return;
-      }
-      if (result) {
-        const code = result.getText();
-        handleFastScan(code);
-      }
-    });
+    const code = await tryDecodeCanvas(small);
+    if (code) handleDetected(code);
   } catch (e) {
-    console.error('Ошибка инициализации сканера:', e);
-    alert('Не удалось запустить камеру');
+    // ignore
+  } finally {
+    requestAnimationFrame(scanLoop);
   }
 }
 
+/* Handle detection: интегрируем с логикой второго экрана */
+function handleDetected(code) {
+  const now = Date.now();
+  if (code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+
+  lastDetected = { code, ts: now };
+  try { navigator.vibrate?.(40); } catch (e) {}
+
+  // Показ результата
+  scanResult.textContent = `Найден: ${code}`;
+
+  // Используем существующую логику второго экрана
+  const name = codeToName.get(String(code));
+  if (name) {
+    searchInput.value = name;
+    filterItems();
+    highlightScannedItemByCode(code);
+
+    // закрываем сканер через короткую паузу, чтобы пользователь увидел подсветку
+    setTimeout(() => {
+      try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
+      scannerCard.style.display = 'none';
+    }, 300);
+  } else {
+    showToast('Штрихкод не найден в базе');
+  }
+}
+
+/* Start camera and scanning using selected deviceId (адаптирован startCamera) */
 async function startCamera(deviceId) {
   try {
-    if (currentStream) {
-      currentStream.getTracks().forEach(t => t.stop());
-    }
+    stopScanner(); // остановим предыдущие потоки, если есть
 
-    const constraints = {
+    scanning = true;
+
+    const constraints = deviceId ? {
       video: {
         deviceId: { exact: deviceId },
         width: { ideal: 1280 },
@@ -656,11 +758,28 @@ async function startCamera(deviceId) {
         facingMode: { ideal: "environment" }
       },
       audio: false
+    } : {
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
     };
 
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
     previewVideo.srcObject = currentStream;
     await previewVideo.play().catch(()=>{});
+
+    // Инициализация ZXing reader (не используем decodeFromVideoDevice, используем canvas pipeline)
+    try {
+      reader = new ZXing.BrowserMultiFormatReader();
+    } catch (e) {
+      reader = null;
+    }
+
+    // Запускаем цикл сканирования
+    requestAnimationFrame(scanLoop);
   } catch (e) {
     console.warn('startCamera fallback, trying without deviceId:', e);
     try {
@@ -668,27 +787,32 @@ async function startCamera(deviceId) {
       currentStream = await navigator.mediaDevices.getUserMedia(fallback);
       previewVideo.srcObject = currentStream;
       await previewVideo.play().catch(()=>{});
+      try { reader = new ZXing.BrowserMultiFormatReader(); } catch (e) { reader = null; }
+      requestAnimationFrame(scanLoop);
     } catch (err) {
       console.error('Ошибка доступа к камере:', err);
       alert('Ошибка доступа к камере');
+      scanning = false;
     }
   }
 }
 
 function stopScanner() {
+  scanning = false;
   if (currentStream) {
     currentStream.getTracks().forEach(t => t.stop());
     currentStream = null;
   }
-  if (codeReader) {
-    try { codeReader.reset(); } catch {}
+  if (reader) {
+    try { reader.reset(); } catch (e) {}
+    reader = null;
   }
   previewVideo.srcObject = null;
-  scannerCard.style.display = 'none';
   scanResult.textContent = '';
 }
 
-/* Быстрая обработка скана с дебаунсом и мгновенным поиском */
+/* ========= Быстрая обработка скана (оставлена для совместимости) ========= */
+/* handleFastScan теперь не используется напрямую, но оставим для совместимости */
 function handleFastScan(code) {
   const now = Date.now();
   if (code === lastDetected.code && now - lastDetected.ts < DEBOUNCE_MS) return;
@@ -704,7 +828,6 @@ function handleFastScan(code) {
     filterItems();
     highlightScannedItemByCode(code);
 
-    // закрываем сканер через короткую паузу, чтобы пользователь увидел подсветку
     setTimeout(() => {
       try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
       scannerCard.style.display = 'none';
@@ -873,18 +996,45 @@ function showToast(message) {
 }
 
 /* ========= INIT ========= */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   loadDB();
   buildItems();
   initCustomKeyboard();
 
-  scanBtn.addEventListener('click', () => {
+  scanBtn.addEventListener('click', async () => {
     scannerCard.style.display = 'block';
-    initScanner();
+
+    // Заполним список устройств и выберем дефолт
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(d => d.kind === 'videoinput');
+      if (videoDevices.length === 0) {
+        alert('Камеры не найдены');
+        return;
+      }
+
+      let backCam = videoDevices.find(d => {
+        const label = (d.label || '').toLowerCase();
+        return label.includes('back') || label.includes('rear') || label.includes('зад') || label.includes('environment');
+      });
+
+      const defaultCamId = (backCam || videoDevices[0]).deviceId;
+
+      deviceSelect.innerHTML = videoDevices.map(d =>
+        `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`
+      ).join('');
+      deviceSelect.value = defaultCamId;
+
+      await startCamera(defaultCamId);
+    } catch (e) {
+      console.error('init scanner error', e);
+      alert('Не удалось инициализировать сканер');
+    }
   });
 
   closeScannerBtn.addEventListener('click', () => {
     stopScanner();
+    scannerCard.style.display = 'none';
   });
 
   deviceSelect.addEventListener('change', e => {
@@ -961,10 +1111,18 @@ document.addEventListener('DOMContentLoaded', () => {
     closeSummary();
     showToast('Итоги сохранены в базу.');
   });
+
+  // Попытка "разогреть" разрешения, чтобы метки камер появились
+  try { await navigator.mediaDevices.getUserMedia({ video: true }); } catch (e) {}
 });
+
+/* Остановим камеру при уходе со страницы */
+window.addEventListener('pagehide', () => stopScanner());
+window.addEventListener('beforeunload', () => stopScanner());
 </script>
 </body>
 </html>
+
 
 
 
