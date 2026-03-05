@@ -310,7 +310,7 @@
   </main>
 
   <!-- Кастомная клавиатура -->
-  <div id="custom-keyboard" aria-hidden="true" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:9999;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px;background:#fff;border-top:1px solid #ddd;box-shadow:0 -6px 18px rgba(0,0,0,0.08);">
+  <div id="custom-keyboard" aria-hidden="true">
     <button>1</button><button>2</button><button>3</button>
     <button>4</button><button>5</button><button>6</button>
     <button>7</button><button>8</button><button>9</button>
@@ -355,661 +355,803 @@
   <!-- ZXing fallback -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
-<script>
-/* ========= СТЕЙТ ========= */
-let barcodeDB = {};      // { [name]: [code1,code2...] }
-let quantities = {};     // { [name]: qty }
-let allItems = [];       // [{code,name,qty}]
-let sessionValues = {};  // { [code]: "выражение" }
-let codeToName = new Map();
+  <style>
+    :root {
+      --accent: #4361ee;
+      --bg: #ffffff;
+      --card: #ffffff;
+      --muted: #666;
+      --text: #333;
+      --maxw: 980px;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family:Inter,Segoe UI,system-ui,Arial,sans-serif; overflow:hidden; touch-action:manipulation; }
+    header { position:fixed; left:0; right:0; top:0; padding:12px; background:white; border-bottom:1px solid var(--border); z-index:1000; border-radius:0 0 14px 14px; }
+    header h1 { margin:0; text-align:center; font-size:1.15rem; color:var(--accent); }
+    #search-wrap { max-width:var(--maxw); margin:10px auto; position:relative; }
+    #search { width:100%; padding:10px 56px 10px 12px; border-radius:8px; border:1px solid var(--border); background:white; color:var(--text); font-size:15px; }
+    #scan-btn, #clear-search { position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; }
+    #clear-search { right:44px; }
+    #content { position:fixed; left:0; right:0; top:96px; bottom:0; overflow:auto; padding:12px; -webkit-overflow-scrolling:touch; }
+    .card { max-width:var(--maxw); margin:10px auto; padding:12px; border-radius:8px; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+    .preview-wrap { border-radius:8px; overflow:hidden; background:#f8f8f8; border:1px solid var(--border); height:34vh; min-height:140px; }
+    video#preview { width:100%; height:100%; object-fit:cover; display:block; }
+    .controls { display:flex; gap:8px; align-items:center; margin-top:10px; }
+    .btn { padding:8px 10px; border-radius:6px; border:1px solid var(--border); background:white; color:var(--text); cursor:pointer; transition:all 0.2s; }
+    .btn.primary { background:var(--accent); color:white; font-weight:700; }
+    .list { max-width:var(--maxw); margin:12px auto; display:flex; flex-direction:column; gap:8px; }
+    .item { width:100%; margin:10px 0; padding:12px; border-radius:8px; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,0.1); border-left:4px solid transparent; display:flex; flex-direction:column; gap:8px; position:relative; z-index:1; }
+    .item.match { border-left-color:#22c55e; }
+    .item.missing { border-left-color:#ef4444; }
+    .item.excess { border-left-color:#3b82f6; }
+    .field { margin-bottom:8px; }
+    .label { font-weight:700; color:var(--accent); margin-right:6px; }
+    input[data-code] { width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:white; color:var(--text); font-size:15px; }
+    /* keyboard */
+    #custom-keyboard { position:fixed; left:0; right:0; bottom:-40vh; height:34vh; background:white; padding:10px; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; z-index:99999; transition:bottom 0.28s; border-top:1px solid var(--border); box-shadow:0 -8px 30px rgba(0,0,0,0.12); }
+    #custom-keyboard.show { bottom:0; }
+    #custom-keyboard button { border:1px solid var(--border); border-radius:6px; background:white; color:var(--text); font-size:20px; cursor:pointer; padding:12px 6px; }
+    .hidden { display:none !important; }
+    #fabMenu { position:fixed; bottom:1rem; right:1rem; z-index:1001; background:var(--accent); color:white; border:none; padding:0.9rem 1.2rem; border-radius:8px; font-size:1.2rem; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(67,97,238,0.3); display:flex; align-items:center; justify-content:center; }
+    #sheetOverlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); opacity:0; pointer-events:none; transition:opacity 0.25s; z-index:999; }
+    #sheetOverlay.show { opacity:1; pointer-events:auto; }
+    #bottomSheet { position:fixed; left:0; right:0; bottom:-60vh; padding:1.2rem; background:white; border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,0.1); transition:bottom 0.35s; z-index:1002; }
+    #bottomSheet.show { bottom:0; }
+    .sheet-content { display:flex; flex-direction:column; gap:0.7rem; }
+    .sheet-btn { background:#f5f5f5; color:var(--text); border:1px solid var(--border); padding:0.9rem 1rem; border-radius:8px; font-size:1rem; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:10px; }
+    #summaryModal { position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:6000; display:none; align-items:center; justify-content:center; }
+    #summaryModal.show { display:flex; }
+    #summaryTable th, #summaryTable td { border:none; padding:8px; }
+    #summaryTable th { background:#f0f0f0; font-weight:600; }
+  </style>
 
-let reader = null;
-let currentStream = null;
-let lastDetected = { code: null, ts: 0 };
-const DEBOUNCE_MS = 700;
+  <script>
+    /* ========= СТЕЙТ ========= */
+    let barcodeDB = {};      // { [name]: [code1, code2...] }
+    let quantities = {};     // { [name]: qty }
+    let allItems = [];       // [{code,name,qty}]
+    let sessionValues = {};  // { [code]: "выражение" }
+    let codeToName = new Map();
 
-/* ========= ЭЛЕМЕНТЫ ========= */
-const searchInput      = document.getElementById('search');
-const listContainer    = document.getElementById('list');
+    let reader = null;
+    let currentStream = null;
+    let scanning = false;
+    let lastDetected = { code: null, ts: 0 };
+    const DEBOUNCE_MS = 700;
 
-const scannerCard      = document.getElementById('scannerCard');
-const previewVideo     = document.getElementById('preview');
-const deviceSelect     = document.getElementById('deviceSelect');
-const torchBtn         = document.getElementById('torchBtn');
-const closeScannerBtn  = document.getElementById('closeScannerBtn');
-const scanResult       = document.getElementById('scanResult');
+    /* ========= ЭЛЕМЕНТЫ ========= */
+    const searchInput      = document.getElementById('search');
+    const listContainer    = document.getElementById('list');
 
-const fabMenu          = document.getElementById('fabMenu');
-const sheetOverlay     = document.getElementById('sheetOverlay');
-const bottomSheet      = document.getElementById('bottomSheet');
+    const scannerCard      = document.getElementById('scannerCard');
+    const previewVideo     = document.getElementById('preview');
+    const deviceSelect     = document.getElementById('deviceSelect');
+    const torchBtn         = document.getElementById('torchBtn');
+    const closeScannerBtn  = document.getElementById('closeScannerBtn');
+    const scanResult       = document.getElementById('scanResult');
 
-const customKeyboard   = document.getElementById('custom-keyboard');
+    const fabMenu          = document.getElementById('fabMenu');
+    const sheetOverlay     = document.getElementById('sheetOverlay');
+    const bottomSheet      = document.getElementById('bottomSheet');
 
-const saveBtn          = document.getElementById('saveBtn');
-const clearBtn         = document.getElementById('clearBtn');
-const totalBtn         = document.getElementById('totalBtn');
-const inventoryBtn     = document.getElementById('inventoryBtn');
+    const customKeyboard   = document.getElementById('custom-keyboard');
 
-const summaryModal     = document.getElementById('summaryModal');
-const summaryTableBody = document.querySelector('#summaryTable tbody');
-const summarySaveBtn   = document.getElementById('summarySaveBtn');
-const summaryCloseBtn  = document.getElementById('summaryCloseBtn');
+    const saveBtn          = document.getElementById('saveBtn');
+    const clearBtn         = document.getElementById('clearBtn');
+    const totalBtn         = document.getElementById('totalBtn');
+    const inventoryBtn     = document.getElementById('inventoryBtn');
 
-const scanBtn          = document.getElementById('scan-btn');
-const clearSearch      = document.getElementById('clear-search');
+    const summaryModal     = document.getElementById('summaryModal');
+    const summaryTableBody = document.querySelector('#summaryTable tbody');
+    const summarySaveBtn   = document.getElementById('summarySaveBtn');
+    const summaryCloseBtn  = document.getElementById('summaryCloseBtn');
 
-/* ========= УТИЛИТЫ ========= */
-function evalExpression(expr) {
-  if (!expr) return 0;
-  const safe = String(expr).replace(/\s+/g, '');
-  if (!/^[0-9+\-]+$/.test(safe)) return 0;
-  try {
-    const val = Function('return ' + safe)();
-    return Number.isFinite(val) ? val : 0;
-  } catch {
-    return 0;
-  }
-}
+    const scanBtn          = document.getElementById('scan-btn');
+    const clearSearch      = document.getElementById('clear-search');
 
-/* ========= БАЗА / ИНДЕКС / СЕССИЯ ========= */
-function buildItemsFromDB() {
-  allItems = [];
-  codeToName = new Map();
-  Object.entries(barcodeDB).forEach(([name, codes]) => {
-    const qty = quantities[name] || 0;
-    codes.forEach(code => {
-      allItems.push({ code, name, qty });
-      codeToName.set(String(code), name);
-    });
-  });
-}
+    /* ========= УТИЛИТЫ ========= */
+    function evalExpression(expr) {
+      if (!expr) return 0;
+      const safe = String(expr).replace(/\s+/g, '');
+      if (!/^[0-9+\-]+$/.test(safe)) return 0;
+      try {
+        const val = Function('return ' + safe)();
+        return Number.isFinite(val) ? val : 0;
+      } catch {
+        return 0;
+      }
+    }
 
-function loadDB() {
-  try {
-    const raw = localStorage.getItem('barcodeDB');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed.db && parsed.quantities) {
-        barcodeDB = parsed.db;
-        quantities = parsed.quantities;
-      } else {
+    /* ========= БАЗА / ИНДЕКС / СЕССИЯ ========= */
+    function buildItemsFromDB() {
+      allItems = [];
+      codeToName = new Map();
+      Object.entries(barcodeDB).forEach(([name, codes]) => {
+        const qty = quantities[name] || 0;
+        codes.forEach(code => {
+          allItems.push({ code, name, qty });
+          codeToName.set(String(code), name);
+        });
+      });
+    }
+
+    function loadDB() {
+      try {
+        const raw = localStorage.getItem('barcodeDB');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.db && parsed.quantities) {
+            barcodeDB = parsed.db;
+            quantities = parsed.quantities;
+          } else {
+            barcodeDB = {};
+            quantities = {};
+            Object.entries(parsed).forEach(([code, data]) => {
+              const name = data.name || data;
+              if (!barcodeDB[name]) {
+                barcodeDB[name] = [];
+                quantities[name] = 0;
+              }
+              barcodeDB[name].push(code);
+            });
+          }
+        } else {
+          barcodeDB = {};
+          quantities = {};
+        }
+      } catch (e) {
+        console.error('Ошибка загрузки базы:', e);
         barcodeDB = {};
         quantities = {};
-        Object.entries(parsed).forEach(([code, data]) => {
-          const name = data.name || data;
-          if (!barcodeDB[name]) {
-            barcodeDB[name] = [];
-            quantities[name] = 0;
-          }
-          barcodeDB[name].push(code);
-        });
       }
-    } else {
-      barcodeDB = {};
-      quantities = {};
-    }
-  } catch (e) {
-    console.error('Ошибка загрузки базы:', e);
-    barcodeDB = {};
-    quantities = {};
-  }
 
-  try {
-    const rawSession = localStorage.getItem('recountSession');
-    sessionValues = rawSession ? JSON.parse(rawSession) : {};
-  } catch {
-    sessionValues = {};
-  }
+      try {
+        const rawSession = localStorage.getItem('recountSession');
+        sessionValues = rawSession ? JSON.parse(rawSession) : {};
+      } catch {
+        sessionValues = {};
+      }
 
-  buildItemsFromDB();
-}
-
-function saveDB() {
-  try {
-    localStorage.setItem('barcodeDB', JSON.stringify({ db: barcodeDB, quantities: quantities }));
-  } catch (e) {
-    console.error('Ошибка сохранения базы:', e);
-  }
-}
-
-function saveSession() {
-  try {
-    localStorage.setItem('recountSession', JSON.stringify(sessionValues));
-  } catch (e) {
-    console.error('Ошибка сохранения сессии:', e);
-  }
-}
-
-/* ========= РЕНДЕР ========= */
-function showEmptyState() {
-  listContainer.innerHTML = `
-    <div style="text-align:center;padding:40px;color:var(--muted);">
-      <h3>База товаров пуста</h3>
-      <p>Добавьте товары на экране базы.</p>
-    </div>
-  `;
-}
-
-function renderItems(items) {
-  listContainer.innerHTML = '';
-  if (!items || items.length === 0) {
-    showEmptyState();
-    return;
-  }
-
-  items.forEach(item => {
-    const el = document.createElement('div');
-    el.className = 'item';
-    el.dataset.code = item.code;
-    el.dataset.name = item.name;
-
-    const expected = quantities[item.name] || 0;
-    const expr     = sessionValues[item.code] || '';
-    const actual   = evalExpression(expr);
-
-    if (expr) {
-      if (actual === expected) el.classList.add('match');
-      else if (actual < expected) el.classList.add('missing');
-      else el.classList.add('excess');
+      buildItemsFromDB();
     }
 
-    el.innerHTML = `
-      <div class="field">
-        <span class="label">Название:</span>
-        <strong>${item.name}</strong>
-      </div>
-      <div class="field">
-        <span class="label">Штрихкод:</span>
-        <span>${item.code}</span>
-      </div>
-      <div class="field">
-        <span class="label">Учётное:</span>
-        ${expected}
-      </div>
-      <div class="field">
-        <span class="label">Кол-во:</span>
-        <input data-code="${item.code}" type="text" value="${expr || ''}" placeholder="0" readonly>
-      </div>
-    `;
+    function saveDB() {
+      try {
+        localStorage.setItem('barcodeDB', JSON.stringify({ db: barcodeDB, quantities: quantities }));
+      } catch (e) {
+        console.error('Ошибка сохранения базы:', e);
+      }
+    }
 
-    const input = el.querySelector('input');
-    input.addEventListener('focus', () => {
-      showCustomKeyboard(input);
-      setTimeout(() => {
+    function saveSession() {
+      try {
+        localStorage.setItem('recountSession', JSON.stringify(sessionValues));
+      } catch (e) {
+        console.error('Ошибка сохранения сессии:', e);
+      }
+    }
+
+    /* ========= РЕНДЕР ========= */
+    function showEmptyState() {
+      listContainer.innerHTML = `
+        <div style="text-align:center;padding:40px;color:var(--muted);">
+          <h3>База товаров пуста</h3>
+          <p>Добавьте товары на экране базы.</p>
+        </div>
+      `;
+    }
+
+    function renderItems(items) {
+      listContainer.innerHTML = '';
+      if (!items || items.length === 0) {
+        showEmptyState();
+        return;
+      }
+
+      items.forEach(item => {
+        const el = document.createElement('div');
+        el.className = 'item';
+        el.dataset.code = item.code;
+        el.dataset.name = item.name;
+
+        const expected = quantities[item.name] || 0;
+        const expr     = sessionValues[item.code] || '';
+        const actual   = evalExpression(expr);
+
+        if (expr) {
+          if (actual === expected) el.classList.add('match');
+          else if (actual < expected) el.classList.add('missing');
+          else el.classList.add('excess');
+        }
+
+        el.innerHTML = `
+          <div class="field">
+            <span class="label">Название:</span>
+            <strong>${item.name}</strong>
+          </div>
+          <div class="field">
+            <span class="label">Штрихкод:</span>
+            <span>${item.code}</span>
+          </div>
+          <div class="field">
+            <span class="label">Учётное:</span>
+            ${expected}
+          </div>
+          <div class="field">
+            <span class="label">Кол-во:</span>
+            <input data-code="${item.code}" type="text" value="${expr || ''}" placeholder="0" readonly>
+          </div>
+        `;
+
+        const input = el.querySelector('input');
+        // При фокусе открываем кастомную клавиатуру
+        input.addEventListener('focus', () => {
+          showCustomKeyboard(input);
+          setTimeout(() => {
+            const container = document.getElementById('content') || document.documentElement;
+            const rect = input.closest('.item').getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
+            const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
+            container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
+            setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
+          }, 80);
+        });
+
+        listContainer.appendChild(el);
+      });
+    }
+
+    function buildItems() {
+      renderItems(allItems);
+    }
+
+    /* ========= КЛАВИАТУРА (обновлённая: не перерисовываем весь список при вводе) ========= */
+    function showCustomKeyboard(input) {
+      if (!customKeyboard) return;
+      customKeyboard.style.display = '';
+      customKeyboard.classList.add('show');
+      customKeyboard.dataset.target = input.dataset.code;
+      // ensure keyboard is above everything
+      customKeyboard.setAttribute('aria-hidden', 'false');
+    }
+
+    function hideCustomKeyboard() {
+      if (!customKeyboard) return;
+      customKeyboard.classList.remove('show');
+      customKeyboard.style.display = 'none';
+      customKeyboard.setAttribute('aria-hidden', 'true');
+      // clear target
+      delete customKeyboard.dataset.target;
+    }
+
+    function updateItemVisual(code) {
+      // обновляем только DOM-элемент конкретной карточки, не перерисовываем весь список
+      const el = document.querySelector(`.item[data-code="${code}"]`);
+      if (!el) return;
+      const expr = sessionValues[code] || '';
+      const actual = evalExpression(expr);
+      const name = el.dataset.name;
+      const expected = quantities[name] || 0;
+
+      // обновляем input value
+      const input = el.querySelector('input[data-code]');
+      if (input) input.value = expr;
+
+      // сброс классов
+      el.classList.remove('match', 'missing', 'excess');
+      if (expr) {
+        if (actual === expected) el.classList.add('match');
+        else if (actual < expected) el.classList.add('missing');
+        else el.classList.add('excess');
+      }
+    }
+
+    function initCustomKeyboard() {
+      if (!customKeyboard) return;
+      const keys = customKeyboard.querySelectorAll('button:not(.done)');
+      keys.forEach(key => {
+        key.addEventListener('click', () => {
+          const targetCode = customKeyboard.dataset.target;
+          if (!targetCode) return;
+          const input = document.querySelector(`input[data-code="${targetCode}"]`);
+          if (!input) return;
+
+          let currentValue = input.value || '';
+          const keyValue = key.textContent;
+
+          if (keyValue === '←') {
+            currentValue = currentValue.slice(0, -1);
+          } else {
+            currentValue = currentValue + keyValue;
+          }
+
+          // обновляем только значение и визуалку карточки
+          sessionValues[targetCode] = currentValue;
+          saveSession();
+          input.value = currentValue;
+          updateItemVisual(targetCode);
+
+          // убедимся, что поле видно над клавиатурой
+          setTimeout(() => ensureVisibleAboveKeyboard(input), 0);
+        });
+      });
+
+      const doneBtn = document.getElementById('done');
+      if (doneBtn) doneBtn.addEventListener('click', () => {
+        const targetCode = customKeyboard.dataset.target;
+        hideCustomKeyboard();
+        // снимем фокус с поля
+        const input = document.querySelector(`input[data-code="${targetCode}"]`);
+        try { input?.blur(); } catch (e) {}
+      });
+    }
+
+    /* ========= СКАНЕР (эталонный, интегрирован) ========= */
+    function createCanvas(w, h) {
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      return c;
+    }
+
+    function toGrayscale(ctx, w, h) {
+      const img = ctx.getImageData(0, 0, w, h);
+      const d = img.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
+        d[i] = d[i + 1] = d[i + 2] = v;
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+
+    function increaseContrast(ctx, w, h, contrast = 30) {
+      const img = ctx.getImageData(0, 0, w, h);
+      const d = img.data;
+      const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+      for (let i = 0; i < d.length; i += 4) {
+        for (let c = 0; c < 3; c++) {
+          let col = d[i + c];
+          col = factor * (col - 128) + 128;
+          d[i + c] = Math.max(0, Math.min(255, col));
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+
+    async function tryDecodeCanvas(canvas) {
+      if ('BarcodeDetector' in window) {
+        try {
+          const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+          const det = new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]});
+          const res = await det.detect(imageData);
+          if (res && res.length) return res[0].rawValue;
+        } catch (e) {}
+      }
+
+      try {
+        const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+        const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+        const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+        if (result && result.text) return result.text;
+      } catch (e) {}
+
+      const w = canvas.width;
+      const h = canvas.height;
+      const temp = createCanvas(w, h);
+      const tctx = temp.getContext('2d');
+
+      for (let angle of [90, 180, 270]) {
+        tctx.clearRect(0, 0, w, h);
+        tctx.save();
+        tctx.translate(w / 2, h / 2);
+        tctx.rotate(angle * Math.PI / 180);
+        tctx.drawImage(canvas, -w / 2, -h / 2);
+        tctx.restore();
+
+        try {
+          const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(temp);
+          const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+          const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+          if (result && result.text) return result.text;
+        } catch (e) {}
+      }
+      return null;
+    }
+
+    let canvasPool = [];
+    function getCanvas(w, h) {
+      for (let c of canvasPool) if (c.width === w && c.height === h) return c;
+      const c = createCanvas(w, h);
+      canvasPool.push(c);
+      return c;
+    }
+
+    async function scanLoop() {
+      if (!scanning) return;
+      try {
+        const w = previewVideo.videoWidth;
+        const h = previewVideo.videoHeight;
+        if (w === 0 || h === 0) {
+          requestAnimationFrame(scanLoop);
+          return;
+        }
+
+        const canvas = getCanvas(w, h);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(previewVideo, 0, 0, w, h);
+
+        const scale = Math.max(1, Math.floor(Math.max(w, h) / 900));
+        const sw = Math.floor(w / scale);
+        const sh = Math.floor(h / scale);
+        const small = getCanvas(sw, sh);
+        const sctx = small.getContext('2d');
+        sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
+        toGrayscale(sctx, sw, sh);
+        increaseContrast(sctx, sw, sh, 30);
+
+        const code = await tryDecodeCanvas(small);
+        if (code) handleDetected(code);
+      } catch (e) {
+        // ignore
+      } finally {
+        requestAnimationFrame(scanLoop);
+      }
+    }
+
+    function handleDetected(code) {
+      const now = Date.now();
+      if (code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+      lastDetected = { code, ts: now };
+      try { navigator.vibrate?.(40); } catch (e) {}
+
+      scanResult.textContent = `Найден: ${code}`;
+
+      const name = codeToName.get(String(code));
+      if (name) {
+        searchInput.value = name;
+        filterItems();
+        highlightScannedItemByCode(code);
+
+        // Найдём поле ввода для этой карточки и установим фокус, откроем кастомную клавиатуру
+        setTimeout(() => {
+          const target = document.querySelector(`.item[data-code="${code}"]`);
+          if (target) {
+            const input = target.querySelector('input[data-code]');
+            if (input) {
+              // Сделаем поле видимым и откроем клавиатуру
+              input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              showCustomKeyboard(input);
+              try { input.focus({ preventScroll: true }); } catch (e) { try { input.focus(); } catch (e) {} }
+              setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
+            }
+          }
+
+          // Закрываем сканер через короткую паузу, чтобы пользователь увидел подсветку и клавиатуру
+          setTimeout(() => {
+            try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
+            scannerCard.style.display = 'none';
+          }, 400);
+        }, 120);
+      } else {
+        showToast('Штрихкод не найден в базе');
+      }
+    }
+
+    /* Start/stop camera */
+    async function startCamera(deviceId) {
+      try {
+        stopScanner();
+        scanning = true;
+        const constraints = deviceId ? {
+          video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: { ideal: "environment" } },
+          audio: false
+        } : { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false };
+
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        previewVideo.srcObject = currentStream;
+        await previewVideo.play().catch(()=>{});
+        try { reader = new ZXing.BrowserMultiFormatReader(); } catch (e) { reader = null; }
+        requestAnimationFrame(scanLoop);
+      } catch (e) {
+        console.warn('startCamera fallback, trying without deviceId:', e);
+        try {
+          const fallback = { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+          currentStream = await navigator.mediaDevices.getUserMedia(fallback);
+          previewVideo.srcObject = currentStream;
+          await previewVideo.play().catch(()=>{});
+          try { reader = new ZXing.BrowserMultiFormatReader(); } catch (e) { reader = null; }
+          requestAnimationFrame(scanLoop);
+        } catch (err) {
+          console.error('Ошибка доступа к камере:', err);
+          alert('Ошибка доступа к камере');
+          scanning = false;
+        }
+      }
+    }
+
+    function stopScanner() {
+      scanning = false;
+      if (currentStream) {
+        currentStream.getTracks().forEach(t => t.stop());
+        currentStream = null;
+      }
+      if (reader) {
+        try { reader.reset(); } catch (e) {}
+        reader = null;
+      }
+      previewVideo.srcObject = null;
+      scanResult.textContent = '';
+    }
+
+    /* ========= ПОИСК / ХАЙЛАЙТ ========= */
+    function filterItems() {
+      const q = (searchInput.value || '').toLowerCase().trim();
+      if (!q) {
+        buildItems();
+        return;
+      }
+
+      const filtered = allItems.filter(item =>
+        item.name.toLowerCase().includes(q) ||
+        String(item.code).includes(q)
+      );
+
+      renderItems(filtered);
+    }
+
+    function highlightScannedItemByCode(code) {
+      document.querySelectorAll('.item').forEach(el => el.style.boxShadow = '');
+      const target = document.querySelector(`.item[data-code="${code}"]`);
+      if (target) {
+        target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.45)';
         const container = document.getElementById('content') || document.documentElement;
-        const rect = input.closest('.item').getBoundingClientRect();
+        const rect = target.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
         const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
         container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
-        setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
-      }, 80);
-    });
-
-    listContainer.appendChild(el);
-  });
-}
-
-function buildItems() {
-  renderItems(allItems);
-}
-
-/* ========= КЛАВИАТУРА ========= */
-function showCustomKeyboard(input) {
-  if (!customKeyboard) return;
-  customKeyboard.style.display = '';
-  customKeyboard.classList.add('show');
-  customKeyboard.dataset.target = input.dataset.code;
-}
-
-function hideCustomKeyboard() {
-  if (!customKeyboard) return;
-  customKeyboard.classList.remove('show');
-  customKeyboard.style.display = 'none';
-}
-
-function initCustomKeyboard() {
-  if (!customKeyboard) return;
-  const keys = customKeyboard.querySelectorAll('button:not(.done)');
-  keys.forEach(key => {
-    key.addEventListener('click', () => {
-      const targetCode = customKeyboard.dataset.target;
-      const input = document.querySelector(`input[data-code="${targetCode}"]`);
-      if (!input) return;
-
-      let currentValue = input.value || '';
-      const keyValue = key.textContent;
-
-      if (keyValue === '←') {
-        currentValue = currentValue.slice(0, -1);
-      } else {
-        currentValue = currentValue + keyValue;
       }
+    }
 
-      input.value = currentValue;
-      sessionValues[targetCode] = currentValue;
+    /* ========= ВСПОМОГАТЕЛЬНЫЕ ========= */
+    function ensureVisibleAboveKeyboard(input) {
+      if (!input) return;
+      const kb = document.getElementById('custom-keyboard');
+      const kbHeight = (kb && kb.classList.contains('show')) ? kb.getBoundingClientRect().height : 0;
+      const fieldRect = input.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const safeMargin = 12;
+      const bottomOverlap = (fieldRect.bottom + safeMargin) - (viewportHeight - kbHeight);
+      if (bottomOverlap > 0) {
+        const currentScroll = window.scrollY || document.documentElement.scrollTop;
+        const scrollBy = bottomOverlap + 40;
+        window.scrollTo({ top: currentScroll + scrollBy, behavior: 'smooth' });
+      } else {
+        const topGap = fieldRect.top - safeMargin;
+        if (topGap < 60) {
+          const currentScroll = window.scrollY || document.documentElement.scrollTop;
+          window.scrollTo({ top: Math.max(0, currentScroll - (60 - topGap)), behavior: 'smooth' });
+        }
+      }
+    }
+
+    /* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
+    function startInventory() {
+      sessionValues = {};
+      allItems.forEach(item => sessionValues[item.code] = '');
       saveSession();
       buildItems();
-    });
-  });
-
-  const doneBtn = document.getElementById('done');
-  if (doneBtn) doneBtn.addEventListener('click', hideCustomKeyboard);
-}
-
-/* ========= СКАНЕР (эталонный) ========= */
-
-/* Preprocessing helpers */
-function createCanvas(w, h) {
-  const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
-  return c;
-}
-
-function toGrayscale(ctx, w, h) {
-  const img = ctx.getImageData(0, 0, w, h);
-  const d = img.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
-    d[i] = d[i + 1] = d[i + 2] = v;
-  }
-  ctx.putImageData(img, 0, 0);
-}
-
-function increaseContrast(ctx, w, h, contrast = 30) {
-  const img = ctx.getImageData(0, 0, w, h);
-  const d = img.data;
-  const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
-  for (let i = 0; i < d.length; i += 4) {
-    for (let c = 0; c < 3; c++) {
-      let col = d[i + c];
-      col = factor * (col - 128) + 128;
-      d[i + c] = Math.max(0, Math.min(255, col));
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-}
-
-/* Try decode with detector or ZXing, including rotated attempts */
-async function tryDecodeCanvas(canvas) {
-  if (detector) {
-    try {
-      const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
-      const res = await detector.detect(imageData);
-      if (res && res.length) return res[0].rawValue;
-    } catch (e) {}
-  }
-
-  try {
-    const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
-    const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-    const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
-    if (result && result.text) return result.text;
-  } catch (e) {}
-
-  const w = canvas.width;
-  const h = canvas.height;
-  const temp = createCanvas(w, h);
-  const tctx = temp.getContext('2d');
-
-  for (let angle of [90, 180, 270]) {
-    tctx.clearRect(0, 0, w, h);
-    tctx.save();
-    tctx.translate(w / 2, h / 2);
-    tctx.rotate(angle * Math.PI / 180);
-    tctx.drawImage(canvas, -w / 2, -h / 2);
-    tctx.restore();
-
-    try {
-      const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(temp);
-      const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-      const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
-      if (result && result.text) return result.text;
-    } catch (e) {}
-  }
-  return null;
-}
-
-/* Main scanning loop (full frame) */
-let canvasPool = [];
-function getCanvas(w, h) {
-  for (let c of canvasPool) if (c.width === w && c.height === h) return c;
-  const c = createCanvas(w, h);
-  canvasPool.push(c);
-  return c;
-}
-
-async function scanLoop() {
-  if (!scanning) return;
-  try {
-    const w = previewVideo.videoWidth;
-    const h = previewVideo.videoHeight;
-    if (w === 0 || h === 0) {
-      requestAnimationFrame(scanLoop);
-      return;
+      alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
     }
 
-    const canvas = getCanvas(w, h);
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(previewVideo, 0, 0, w, h);
+    function clearInventory() {
+      sessionValues = {};
+      saveSession();
+      buildItems();
+      alert('Пересчёт очищен.');
+    }
 
-    // downscale for speed
-    const scale = Math.max(1, Math.floor(Math.max(w, h) / 900));
-    const sw = Math.floor(w / scale);
-    const sh = Math.floor(h / scale);
-    const small = getCanvas(sw, sh);
-    const sctx = small.getContext('2d');
-    sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
-    toGrayscale(sctx, sw, sh);
-    increaseContrast(sctx, sw, sh, 30);
+    function applySessionToDB() {
+      const aggregated = {};
+      allItems.forEach(item => {
+        const expr = sessionValues[item.code] || '';
+        const val  = evalExpression(expr);
+        const name = item.name;
+        if (!aggregated[name]) aggregated[name] = 0;
+        aggregated[name] += val;
+      });
 
-    const code = await tryDecodeCanvas(small);
-    if (code) handleDetected(code);
-  } catch (e) {
-    // ignore
-  } finally {
-    requestAnimationFrame(scanLoop);
-  }
-}
+      Object.keys(aggregated).forEach(name => {
+        quantities[name] = aggregated[name];
+      });
 
-/* Handle detection: populate search, highlight and focus input + open keyboard */
-function handleDetected(code) {
-  const now = Date.now();
-  if (code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+      saveDB();
+      buildItemsFromDB();
+      buildItems();
+    }
 
-  lastDetected = { code, ts: now };
-  try { navigator.vibrate?.(40); } catch (e) {}
+    /* ========= ИТОГИ ========= */
+    function openSummary() {
+      summaryTableBody.innerHTML = '';
+      const summary = {};
+      allItems.forEach(item => {
+        const name = item.name;
+        const expected = quantities[name] || 0;
+        const expr = sessionValues[item.code] || '';
+        const val  = evalExpression(expr);
+        if (!summary[name]) summary[name] = { expected, actual: 0 };
+        summary[name].actual += val;
+      });
 
-  scanResult.textContent = `Найден: ${code}`;
+      Object.entries(summary).forEach(([name, data]) => {
+        const diff = data.actual - data.expected;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="text-align:left;">${name}</td>
+          <td style="text-align:right;">${data.expected}</td>
+          <td style="text-align:right;">${data.actual}</td>
+          <td style="text-align:right;">${diff}</td>
+        `;
+        summaryTableBody.appendChild(tr);
+      });
 
-  const name = codeToName.get(String(code));
-  if (name) {
-    searchInput.value = name;
-    filterItems();
-    highlightScannedItemByCode(code);
+      summaryModal.classList.add('show');
+    }
 
-    // Найдём поле ввода для этой карточки и установим фокус, откроем кастомную клавиатуру
-    setTimeout(() => {
-      const target = document.querySelector(`.item[data-code="${code}"]`);
-      if (target) {
-        const input = target.querySelector('input[data-code]');
-        if (input) {
-          // Убедимся, что элемент видим
-          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          // Откроем кастомную клавиатуру и поставим фокус
-          showCustomKeyboard(input);
-          // В некоторых браузерах focus() на readonly input может не сработать визуально, но мы вызываем для совместимости
-          try { input.focus({ preventScroll: true }); } catch (e) { try { input.focus(); } catch (e) {} }
-          // Подвинем страницу, чтобы поле было видно над клавиатурой
-          setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
-        }
+    function closeSummary() {
+      summaryModal.classList.remove('show');
+    }
+
+    /* ========= ТОАСТ ========= */
+    function showToast(message) {
+      let toast = document.querySelector(".toast");
+      if (!toast) {
+        toast = document.createElement("div");
+        toast.className = "toast";
+        Object.assign(toast.style, {
+          position: 'fixed',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          bottom: '18vh',
+          background: 'rgba(0,0,0,0.8)',
+          color: 'white',
+          padding: '8px 12px',
+          borderRadius: '8px',
+          zIndex: 9999,
+          opacity: '0',
+          transition: 'opacity 0.25s'
+        });
+        document.body.appendChild(toast);
       }
 
-      // Закрываем сканер через короткую паузу, чтобы пользователь увидел подсветку и клавиатуру
-      setTimeout(() => {
-        try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
-        scannerCard.style.display = 'none';
-      }, 400);
-    }, 120);
-  } else {
-    showToast('Штрихкод не найден в базе');
-  }
-}
+      toast.textContent = message;
+      toast.style.opacity = "1";
 
-/* ========= ПОИСК / ХАЙЛАЙТ ========= */
-function filterItems() {
-  const q = searchInput.value.toLowerCase().trim();
-  if (!q) {
-    buildItems();
-    return;
-  }
-
-  const filtered = allItems.filter(item =>
-    item.name.toLowerCase().includes(q) ||
-    String(item.code).includes(q)
-  );
-
-  renderItems(filtered);
-}
-
-function highlightScannedItemByCode(code) {
-  document.querySelectorAll('.item').forEach(el => el.style.boxShadow = '');
-  const target = document.querySelector(`.item[data-code="${code}"]`);
-  if (target) {
-    target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.45)';
-
-    const container = document.getElementById('content') || document.documentElement;
-    const rect = target.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
-
-    const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
-    container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
-  }
-}
-
-/* ========= ВСПОМОГАТЕЛЬНЫЕ ========= */
-function ensureVisibleAboveKeyboard(input) {
-  if (!input) return;
-  const kb = document.getElementById('custom-keyboard');
-  const kbHeight = (kb && kb.classList.contains('show')) ? kb.getBoundingClientRect().height : 0;
-
-  const fieldRect = input.getBoundingClientRect();
-  const viewportHeight = window.innerHeight;
-
-  const safeMargin = 12;
-  const bottomOverlap = (fieldRect.bottom + safeMargin) - (viewportHeight - kbHeight);
-  if (bottomOverlap > 0) {
-    const currentScroll = window.scrollY || document.documentElement.scrollTop;
-    const scrollBy = bottomOverlap + 40;
-    window.scrollTo({ top: currentScroll + scrollBy, behavior: 'smooth' });
-  } else {
-    const topGap = fieldRect.top - safeMargin;
-    if (topGap < 60) {
-      const currentScroll = window.scrollY || document.documentElement.scrollTop;
-      window.scrollTo({ top: Math.max(0, currentScroll - (60 - topGap)), behavior: 'smooth' });
+      setTimeout(() => { toast.style.opacity = "0"; }, 1800);
     }
-  }
-}
 
-/* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
-function startInventory() {
-  sessionValues = {};
-  allItems.forEach(item => sessionValues[item.code] = '');
-  saveSession();
-  buildItems();
-  alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
-}
+    /* ========= INIT ========= */
+    document.addEventListener('DOMContentLoaded', async () => {
+      loadDB();
+      buildItems();
+      initCustomKeyboard();
 
-function clearInventory() {
-  sessionValues = {};
-  saveSession();
-  buildItems();
-  alert('Пересчёт очищен.');
-}
+      scanBtn.addEventListener('click', () => {
+        scannerCard.style.display = 'block';
+        // initScanner uses camera pipeline (startCamera + scanLoop)
+        (async () => {
+          try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(d => d.kind === 'videoinput');
+            if (videoDevices.length === 0) {
+              alert('Камеры не найдены');
+              return;
+            }
+            let backCam = videoDevices.find(d => {
+              const label = (d.label || '').toLowerCase();
+              return label.includes('back') || label.includes('rear') || label.includes('зад') || label.includes('environment');
+            });
+            const defaultCamId = (backCam || videoDevices[0]).deviceId;
+            deviceSelect.innerHTML = videoDevices.map(d => `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`).join('');
+            deviceSelect.value = defaultCamId;
+            await startCamera(defaultCamId);
+          } catch (e) {
+            console.error('init scanner error', e);
+            alert('Не удалось инициализировать сканер');
+          }
+        })();
+      });
 
-function applySessionToDB() {
-  const aggregated = {};
-  allItems.forEach(item => {
-    const expr = sessionValues[item.code] || '';
-    const val  = evalExpression(expr);
-    const name = item.name;
-    if (!aggregated[name]) aggregated[name] = 0;
-    aggregated[name] += val;
-  });
+      closeScannerBtn.addEventListener('click', () => {
+        stopScanner();
+      });
 
-  Object.keys(aggregated).forEach(name => {
-    quantities[name] = aggregated[name];
-  });
+      deviceSelect.addEventListener('change', e => {
+        startCamera(e.target.value);
+      });
 
-  saveDB();
-  buildItemsFromDB();
-  buildItems();
-}
-
-/* ========= ИТОГИ ========= */
-function openSummary() {
-  summaryTableBody.innerHTML = '';
-
-  const summary = {};
-  allItems.forEach(item => {
-    const name = item.name;
-    const expected = quantities[name] || 0;
-    const expr = sessionValues[item.code] || '';
-    const val  = evalExpression(expr);
-
-    if (!summary[name]) summary[name] = { expected, actual: 0 };
-    summary[name].actual += val;
-  });
-
-  Object.entries(summary).forEach(([name, data]) => {
-    const diff = data.actual - data.expected;
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td style="text-align:left;">${name}</td>
-      <td style="text-align:right;">${data.expected}</td>
-      <td style="text-align:right;">${data.actual}</td>
-      <td style="text-align:right;">${diff}</td>
-    `;
-    summaryTableBody.appendChild(tr);
-  });
-
-  summaryModal.classList.add('show');
-}
-
-function closeSummary() {
-  summaryModal.classList.remove('show');
-}
-
-/* ========= ТОАСТ ========= */
-function showToast(message) {
-  let toast = document.querySelector(".toast");
-  if (!toast) {
-    toast = document.createElement("div");
-    toast.className = "toast";
-    Object.assign(toast.style, {
-      position: 'fixed',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      bottom: '18vh',
-      background: 'rgba(0,0,0,0.8)',
-      color: 'white',
-      padding: '8px 12px',
-      borderRadius: '8px',
-      zIndex: 9999,
-      opacity: '0',
-      transition: 'opacity 0.25s'
-    });
-    document.body.appendChild(toast);
-  }
-
-  toast.textContent = message;
-  toast.style.opacity = "1";
-
-  setTimeout(() => { toast.style.opacity = "0"; }, 1800);
-}
-
-/* ========= INIT ========= */
-document.addEventListener('DOMContentLoaded', async () => {
-  loadDB();
-  buildItems();
-  initCustomKeyboard();
-
-  scanBtn.addEventListener('click', () => {
-    scannerCard.style.display = 'block';
-    initScanner();
-  });
-
-  closeScannerBtn.addEventListener('click', () => {
-    stopScanner();
-  });
-
-  deviceSelect.addEventListener('change', e => {
-    startCamera(e.target.value);
-  });
-
-  torchBtn.addEventListener('click', () => {
-    try {
-      const tracks = currentStream?.getVideoTracks();
-      if (tracks && tracks.length > 0) {
-        const track = tracks[0];
-        const capabilities = track.getCapabilities?.();
-        if (capabilities?.torch) {
-          const current = track.getSettings().torch;
-          track.applyConstraints({ advanced: [{ torch: !current }] });
-        } else {
-          showToast('Фонарик не поддерживается');
+      torchBtn.addEventListener('click', () => {
+        try {
+          const tracks = currentStream?.getVideoTracks();
+          if (tracks && tracks.length > 0) {
+            const track = tracks[0];
+            const capabilities = track.getCapabilities?.();
+            if (capabilities?.torch) {
+              const current = track.getSettings().torch;
+              track.applyConstraints({ advanced: [{ torch: !current }] });
+            } else {
+              showToast('Фонарик не поддерживается');
+            }
+          }
+        } catch (e) {
+          console.error('Torch error', e);
+          showToast('Ошибка управления фонариком');
         }
-      }
-    } catch (e) {
-      console.error('Torch error', e);
-      showToast('Ошибка управления фонариком');
-    }
-  });
+      });
 
-  clearSearch.addEventListener('click', () => {
-    searchInput.value = '';
-    filterItems();
-  });
+      clearSearch.addEventListener('click', () => {
+        searchInput.value = '';
+        filterItems();
+      });
 
-  searchInput.addEventListener('input', filterItems);
+      searchInput.addEventListener('input', filterItems);
 
-  fabMenu.addEventListener('click', () => {
-    bottomSheet.classList.toggle('show');
-    sheetOverlay.classList.toggle('show');
-  });
+      fabMenu.addEventListener('click', () => {
+        bottomSheet.classList.toggle('show');
+        sheetOverlay.classList.toggle('show');
+      });
 
-  sheetOverlay.addEventListener('click', () => {
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
+      sheetOverlay.addEventListener('click', () => {
+        bottomSheet.classList.remove('show');
+        sheetOverlay.classList.remove('show');
+      });
 
-  inventoryBtn.addEventListener('click', () => {
-    startInventory();
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
+      inventoryBtn.addEventListener('click', () => {
+        startInventory();
+        bottomSheet.classList.remove('show');
+        sheetOverlay.classList.remove('show');
+      });
 
-  clearBtn.addEventListener('click', () => {
-    clearInventory();
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
+      clearBtn.addEventListener('click', () => {
+        clearInventory();
+        bottomSheet.classList.remove('show');
+        sheetOverlay.classList.remove('show');
+      });
 
-  totalBtn.addEventListener('click', () => {
-    openSummary();
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
+      totalBtn.addEventListener('click', () => {
+        openSummary();
+        bottomSheet.classList.remove('show');
+        sheetOverlay.classList.remove('show');
+      });
 
-  saveBtn.addEventListener('click', () => {
-    applySessionToDB();
-    buildItems();
-    showToast('Остатки обновлены в базе товаров.');
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
+      saveBtn.addEventListener('click', () => {
+        applySessionToDB();
+        buildItems();
+        showToast('Остатки обновлены в базе товаров.');
+        bottomSheet.classList.remove('show');
+        sheetOverlay.classList.remove('show');
+      });
 
-  summaryCloseBtn.addEventListener('click', closeSummary);
+      summaryCloseBtn.addEventListener('click', closeSummary);
 
-  summarySaveBtn.addEventListener('click', () => {
-    applySessionToDB();
-    buildItems();
-    closeSummary();
-    showToast('Итоги сохранены в базу.');
-  });
+      summarySaveBtn.addEventListener('click', () => {
+        applySessionToDB();
+        buildItems();
+        closeSummary();
+        showToast('Итоги сохранены в базу.');
+      });
 
-  // Попытка "разогреть" разрешения, чтобы метки камер появились
-  try {
-    await navigator.mediaDevices.getUserMedia({ video: true });
-  } catch (e) {}
-});
+      // Попытка "разогреть" разрешения, чтобы метки камер появились
+      try { await navigator.mediaDevices.getUserMedia({ video: true }); } catch (e) {}
+    });
 
-/* Stop camera on unload */
-window.addEventListener('pagehide', () => stopScanner());
-window.addEventListener('beforeunload', () => stopScanner());
-</script>
+    /* Остановим камеру при уходе со страницы */
+    window.addEventListener('pagehide', () => stopScanner());
+    window.addEventListener('beforeunload', () => stopScanner());
+  </script>
 </body>
 </html>
+
 
 
 
