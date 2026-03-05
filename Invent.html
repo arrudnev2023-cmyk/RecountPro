@@ -310,7 +310,7 @@
   </main>
 
   <!-- Кастомная клавиатура -->
-  <div id="custom-keyboard" aria-hidden="true">
+  <div id="custom-keyboard" aria-hidden="true" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:9999;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px;background:#fff;border-top:1px solid #ddd;box-shadow:0 -6px 18px rgba(0,0,0,0.08);">
     <button>1</button><button>2</button><button>3</button>
     <button>4</button><button>5</button><button>6</button>
     <button>7</button><button>8</button><button>9</button>
@@ -357,19 +357,16 @@
 
 <script>
 /* ========= СТЕЙТ ========= */
-let barcodeDB = {};      // { [name]: [code1, code2...] }
+let barcodeDB = {};      // { [name]: [code1,code2...] }
 let quantities = {};     // { [name]: qty }
 let allItems = [];       // [{code,name,qty}]
 let sessionValues = {};  // { [code]: "выражение" }
-let codeToName = new Map(); // быстрый индекс: code -> name
+let codeToName = new Map();
 
-// Сканер / камера (интегрирован из рабочего сканера)
-let reader = null;               // ZXing reader (если нужен)
-let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
+let reader = null;
 let currentStream = null;
-let scanning = false;
 let lastDetected = { code: null, ts: 0 };
-const DEBOUNCE_MS = 700; // пауза между распознаваниями одного и того же кода
+const DEBOUNCE_MS = 700;
 
 /* ========= ЭЛЕМЕНТЫ ========= */
 const searchInput      = document.getElementById('search');
@@ -402,7 +399,6 @@ const scanBtn          = document.getElementById('scan-btn');
 const clearSearch      = document.getElementById('clear-search');
 
 /* ========= УТИЛИТЫ ========= */
-/** Безопасное вычисление выражения, разрешены цифры, + и - */
 function evalExpression(expr) {
   if (!expr) return 0;
   const safe = String(expr).replace(/\s+/g, '');
@@ -437,17 +433,15 @@ function loadDB() {
         barcodeDB = parsed.db;
         quantities = parsed.quantities;
       } else {
-        // старый формат — конвертируем
         barcodeDB = {};
         quantities = {};
         Object.entries(parsed).forEach(([code, data]) => {
-          const name = typeof data === 'string' ? data : data.name;
+          const name = data.name || data;
           if (!barcodeDB[name]) {
             barcodeDB[name] = [];
             quantities[name] = 0;
           }
           barcodeDB[name].push(code);
-          if (data.qty !== undefined) quantities[name] = data.qty;
         });
       }
     } else {
@@ -542,14 +536,11 @@ function renderItems(items) {
     input.addEventListener('focus', () => {
       showCustomKeyboard(input);
       setTimeout(() => {
-        // прокрутка карточки к верхней части контента
         const container = document.getElementById('content') || document.documentElement;
         const rect = input.closest('.item').getBoundingClientRect();
         const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
         const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
         container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
-
-        // затем убедимся, что поле видно над клавиатурой
         setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
       }, 80);
     });
@@ -564,15 +555,20 @@ function buildItems() {
 
 /* ========= КЛАВИАТУРА ========= */
 function showCustomKeyboard(input) {
+  if (!customKeyboard) return;
+  customKeyboard.style.display = '';
   customKeyboard.classList.add('show');
   customKeyboard.dataset.target = input.dataset.code;
 }
 
 function hideCustomKeyboard() {
+  if (!customKeyboard) return;
   customKeyboard.classList.remove('show');
+  customKeyboard.style.display = 'none';
 }
 
 function initCustomKeyboard() {
+  if (!customKeyboard) return;
   const keys = customKeyboard.querySelectorAll('button:not(.done)');
   keys.forEach(key => {
     key.addEventListener('click', () => {
@@ -586,7 +582,6 @@ function initCustomKeyboard() {
       if (keyValue === '←') {
         currentValue = currentValue.slice(0, -1);
       } else {
-        // плюс — символ, не +1
         currentValue = currentValue + keyValue;
       }
 
@@ -597,10 +592,11 @@ function initCustomKeyboard() {
     });
   });
 
-  document.getElementById('done').addEventListener('click', hideCustomKeyboard);
+  const doneBtn = document.getElementById('done');
+  if (doneBtn) doneBtn.addEventListener('click', hideCustomKeyboard);
 }
 
-/* ========= СКАНЕР (взято из первого экрана, интегрировано) ========= */
+/* ========= СКАНЕР (эталонный) ========= */
 
 /* Preprocessing helpers */
 function createCanvas(w, h) {
@@ -716,7 +712,7 @@ async function scanLoop() {
   }
 }
 
-/* Handle detection: интегрируем с логикой второго экрана */
+/* Handle detection: populate search, highlight and focus input + open keyboard */
 function handleDetected(code) {
   const now = Date.now();
   if (code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
@@ -724,103 +720,6 @@ function handleDetected(code) {
   lastDetected = { code, ts: now };
   try { navigator.vibrate?.(40); } catch (e) {}
 
-  // Показ результата
-  scanResult.textContent = `Найден: ${code}`;
-
-  // Используем существующую логику второго экрана
-  const name = codeToName.get(String(code));
-  if (name) {
-    searchInput.value = name;
-    filterItems();
-    highlightScannedItemByCode(code);
-
-    // закрываем сканер через короткую паузу, чтобы пользователь увидел подсветку
-    setTimeout(() => {
-      try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
-      scannerCard.style.display = 'none';
-    }, 300);
-  } else {
-    showToast('Штрихкод не найден в базе');
-  }
-}
-
-/* Start camera and scanning using selected deviceId (адаптирован startCamera) */
-async function startCamera(deviceId) {
-  try {
-    stopScanner(); // остановим предыдущие потоки, если есть
-
-    scanning = true;
-
-    const constraints = deviceId ? {
-      video: {
-        deviceId: { exact: deviceId },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        facingMode: { ideal: "environment" }
-      },
-      audio: false
-    } : {
-      video: {
-        facingMode: { ideal: "environment" },
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      },
-      audio: false
-    };
-
-    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-    previewVideo.srcObject = currentStream;
-    await previewVideo.play().catch(()=>{});
-
-    // Инициализация ZXing reader (не используем decodeFromVideoDevice, используем canvas pipeline)
-    try {
-      reader = new ZXing.BrowserMultiFormatReader();
-    } catch (e) {
-      reader = null;
-    }
-
-    // Запускаем цикл сканирования
-    requestAnimationFrame(scanLoop);
-  } catch (e) {
-    console.warn('startCamera fallback, trying without deviceId:', e);
-    try {
-      const fallback = { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } };
-      currentStream = await navigator.mediaDevices.getUserMedia(fallback);
-      previewVideo.srcObject = currentStream;
-      await previewVideo.play().catch(()=>{});
-      try { reader = new ZXing.BrowserMultiFormatReader(); } catch (e) { reader = null; }
-      requestAnimationFrame(scanLoop);
-    } catch (err) {
-      console.error('Ошибка доступа к камере:', err);
-      alert('Ошибка доступа к камере');
-      scanning = false;
-    }
-  }
-}
-
-function stopScanner() {
-  scanning = false;
-  if (currentStream) {
-    currentStream.getTracks().forEach(t => t.stop());
-    currentStream = null;
-  }
-  if (reader) {
-    try { reader.reset(); } catch (e) {}
-    reader = null;
-  }
-  previewVideo.srcObject = null;
-  scanResult.textContent = '';
-}
-
-/* ========= Быстрая обработка скана (оставлена для совместимости) ========= */
-/* handleFastScan теперь не используется напрямую, но оставим для совместимости */
-function handleFastScan(code) {
-  const now = Date.now();
-  if (code === lastDetected.code && now - lastDetected.ts < DEBOUNCE_MS) return;
-  lastDetected = { code, ts: now };
-
-  try { navigator.vibrate?.(40); } catch (e) {}
-
   scanResult.textContent = `Найден: ${code}`;
 
   const name = codeToName.get(String(code));
@@ -829,10 +728,29 @@ function handleFastScan(code) {
     filterItems();
     highlightScannedItemByCode(code);
 
+    // Найдём поле ввода для этой карточки и установим фокус, откроем кастомную клавиатуру
     setTimeout(() => {
-      try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
-      scannerCard.style.display = 'none';
-    }, 300);
+      const target = document.querySelector(`.item[data-code="${code}"]`);
+      if (target) {
+        const input = target.querySelector('input[data-code]');
+        if (input) {
+          // Убедимся, что элемент видим
+          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Откроем кастомную клавиатуру и поставим фокус
+          showCustomKeyboard(input);
+          // В некоторых браузерах focus() на readonly input может не сработать визуально, но мы вызываем для совместимости
+          try { input.focus({ preventScroll: true }); } catch (e) { try { input.focus(); } catch (e) {} }
+          // Подвинем страницу, чтобы поле было видно над клавиатурой
+          setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
+        }
+      }
+
+      // Закрываем сканер через короткую паузу, чтобы пользователь увидел подсветку и клавиатуру
+      setTimeout(() => {
+        try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
+        scannerCard.style.display = 'none';
+      }, 400);
+    }, 120);
   } else {
     showToast('Штрихкод не найден в базе');
   }
@@ -866,12 +784,6 @@ function highlightScannedItemByCode(code) {
 
     const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
     container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
-
-    const input = target.querySelector('input');
-    if (input) {
-      showCustomKeyboard(input);
-      setTimeout(() => ensureVisibleAboveKeyboard(input), 180);
-    }
   }
 }
 
@@ -1002,40 +914,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   buildItems();
   initCustomKeyboard();
 
-  scanBtn.addEventListener('click', async () => {
+  scanBtn.addEventListener('click', () => {
     scannerCard.style.display = 'block';
-
-    // Заполним список устройств и выберем дефолт
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(d => d.kind === 'videoinput');
-      if (videoDevices.length === 0) {
-        alert('Камеры не найдены');
-        return;
-      }
-
-      let backCam = videoDevices.find(d => {
-        const label = (d.label || '').toLowerCase();
-        return label.includes('back') || label.includes('rear') || label.includes('зад') || label.includes('environment');
-      });
-
-      const defaultCamId = (backCam || videoDevices[0]).deviceId;
-
-      deviceSelect.innerHTML = videoDevices.map(d =>
-        `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`
-      ).join('');
-      deviceSelect.value = defaultCamId;
-
-      await startCamera(defaultCamId);
-    } catch (e) {
-      console.error('init scanner error', e);
-      alert('Не удалось инициализировать сканер');
-    }
+    initScanner();
   });
 
   closeScannerBtn.addEventListener('click', () => {
     stopScanner();
-    scannerCard.style.display = 'none';
   });
 
   deviceSelect.addEventListener('change', e => {
@@ -1114,10 +999,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Попытка "разогреть" разрешения, чтобы метки камер появились
-  try { await navigator.mediaDevices.getUserMedia({ video: true }); } catch (e) {}
+  try {
+    await navigator.mediaDevices.getUserMedia({ video: true });
+  } catch (e) {}
 });
 
-/* Остановим камеру при уходе со страницы */
+/* Stop camera on unload */
 window.addEventListener('pagehide', () => stopScanner());
 window.addEventListener('beforeunload', () => stopScanner());
 </script>
