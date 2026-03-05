@@ -686,6 +686,24 @@
         try { input?.blur(); } catch (e) {}
       });
     }
+    // внизу вашего скрипта, после initCustomKeyboard()
+function setupKeyboardDismissSimple() {
+  document.addEventListener('click', (e) => {
+    // если клавиатура скрыта — ничего не делаем
+    if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
+
+    // если клик внутри клавиатуры — не закрываем
+    if (customKeyboard.contains(e.target)) return;
+
+    // если клик по полю ввода карточки — не закрываем
+    if (e.target.closest && e.target.closest('input[data-code]')) return;
+
+    // иначе — закрываем
+    hideCustomKeyboard();
+  }, { capture: true });
+}
+setupKeyboardDismissSimple();
+
 
     /* ========= СКАНЕР (эталонный, интегрирован) ========= */
     function createCanvas(w, h) {
