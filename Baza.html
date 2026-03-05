@@ -287,15 +287,6 @@
     </div>
   </div>
 
-  <!-- Поддерживающие элементы, которые требуются логике (скрыты, если не используются) -->
-  <div id="custom-keyboard" aria-hidden="true" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:9999;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px;background:#fff;border-top:1px solid #ddd;box-shadow:0 -6px 18px rgba(0,0,0,0.08);">
-    <button>1</button><button>2</button><button>3</button>
-    <button>4</button><button>5</button><button>6</button>
-    <button>7</button><button>8</button><button>9</button>
-    <button>+</button><button>0</button><button id="back">←</button>
-    <button class="done" id="done" style="grid-column:1 / -1">Готово</button>
-  </div>
-
   <div id="summaryModal" style="display:none;position:fixed;left:0;right:0;top:0;bottom:0;align-items:center;justify-content:center;z-index:9998;">
     <div style="background:white;padding:20px;border-radius:12px;max-width:90%;max-height:80%;overflow:auto;margin:6vh auto;">
       <h3>Итоги инвентаризации</h3>
@@ -350,8 +341,6 @@ const scanResult       = document.getElementById('scanResult');
 const fabMenu          = document.getElementById('fabMenu');
 const sheetOverlay     = document.getElementById('sheetOverlay');
 const bottomSheet      = document.getElementById('bottomSheet');
-
-const customKeyboard   = document.getElementById('custom-keyboard');
 
 const saveBtn          = document.getElementById('saveBtn'); // может отсутствовать — проверим перед использованием
 const clearBtn         = document.getElementById('clearBtn');
@@ -476,6 +465,7 @@ function renderItems(items) {
     el.dataset.name = item.name;
 
     const expected = quantities[item.name] || 0;
+    // скрываем поле "Кол-во" — показываем только учётное значение
     const expr     = sessionValues[item.code] || '';
     const actual   = evalExpression(expr);
 
@@ -498,22 +488,7 @@ function renderItems(items) {
         <span class="label">Учётное:</span>
         ${expected}
       </div>
-      <div class="field">
-        <span class="label">Кол-во:</span>
-        <input data-code="${item.code}" type="text" value="${expr || ''}" placeholder="0" readonly>
-      </div>
     `;
-
-    const input = el.querySelector('input');
-    input.addEventListener('focus', () => {
-      showCustomKeyboard(input);
-      setTimeout(() => {
-        input.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }, 150);
-    });
 
     listContainer.appendChild(el);
   });
@@ -521,49 +496,6 @@ function renderItems(items) {
 
 function buildItems() {
   renderItems(allItems);
-}
-
-/* ========= КЛАВИАТУРА ========= */
-function showCustomKeyboard(input) {
-  if (!customKeyboard) return;
-  customKeyboard.style.display = '';
-  customKeyboard.classList.add('show');
-  customKeyboard.dataset.target = input.dataset.code;
-}
-
-function hideCustomKeyboard() {
-  if (!customKeyboard) return;
-  customKeyboard.classList.remove('show');
-  customKeyboard.style.display = 'none';
-}
-
-function initCustomKeyboard() {
-  if (!customKeyboard) return;
-  const keys = customKeyboard.querySelectorAll('button:not(.done)');
-  keys.forEach(key => {
-    key.addEventListener('click', () => {
-      const targetCode = customKeyboard.dataset.target;
-      const input = document.querySelector(`input[data-code="${targetCode}"]`);
-      if (!input) return;
-
-      let currentValue = input.value || '';
-      const keyValue = key.textContent;
-
-      if (keyValue === '←') {
-        currentValue = currentValue.slice(0, -1);
-      } else {
-        currentValue = currentValue + keyValue;
-      }
-
-      input.value = currentValue;
-      sessionValues[targetCode] = currentValue;
-      saveSession();
-      buildItems();
-    });
-  });
-
-  const doneBtn = document.getElementById('done');
-  if (doneBtn) doneBtn.addEventListener('click', hideCustomKeyboard);
 }
 
 /* ========= СКАНЕР (эталонный) ========= */
@@ -797,37 +729,35 @@ function highlightScannedItem(code) {
   if (target) {
     target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.4)';
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-    const input = target.querySelector('input');
-    if (input) {
-      showCustomKeyboard(input);
-      setTimeout(() => ensureVisibleAboveKeyboard(input), 180);
-    }
   }
 }
 
 /* ========= ВСПОМОГАТЕЛЬНЫЕ ========= */
-function ensureVisibleAboveKeyboard(input) {
-  if (!input) return;
-  const kb = customKeyboard;
-  const kbHeight = (kb && kb.classList.contains('show')) ? kb.getBoundingClientRect().height : 0;
-
-  const fieldRect = input.getBoundingClientRect();
-  const viewportHeight = window.innerHeight;
-
-  const safeMargin = 12;
-  const bottomOverlap = (fieldRect.bottom + safeMargin) - (viewportHeight - kbHeight);
-  if (bottomOverlap > 0) {
-    const currentScroll = window.scrollY || document.documentElement.scrollTop;
-    const scrollBy = bottomOverlap + 40;
-    window.scrollTo({ top: currentScroll + scrollBy, behavior: 'smooth' });
-  } else {
-    const topGap = fieldRect.top - safeMargin;
-    if (topGap < 60) {
-      const currentScroll = window.scrollY || document.documentElement.scrollTop;
-      window.scrollTo({ top: Math.max(0, currentScroll - (60 - topGap)), behavior: 'smooth' });
-    }
+function showToast(message) {
+  let toast = document.querySelector(".toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.className = "toast";
+    Object.assign(toast.style, {
+      position: 'fixed',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      bottom: '18vh',
+      background: 'rgba(0,0,0,0.8)',
+      color: 'white',
+      padding: '8px 12px',
+      borderRadius: '8px',
+      zIndex: 9999,
+      opacity: '0',
+      transition: 'opacity 0.25s'
+    });
+    document.body.appendChild(toast);
   }
+
+  toast.textContent = message;
+  toast.style.opacity = "1";
+
+  setTimeout(() => { toast.style.opacity = "0"; }, 1800);
 }
 
 /* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
@@ -836,7 +766,7 @@ function startInventory() {
   allItems.forEach(item => sessionValues[item.code] = '');
   saveSession();
   buildItems();
-  alert('Режим инвентаризации активирован. Введите фактическое количество (можно выражениями).');
+  alert('Режим инвентаризации активирован. Введите фактическое количество на другом экране.');
 }
 
 function clearInventory() {
@@ -900,39 +830,10 @@ function closeSummary() {
   if (summaryModal) summaryModal.style.display = 'none';
 }
 
-/* ========= ТОАСТ ========= */
-function showToast(message) {
-  let toast = document.querySelector(".toast");
-  if (!toast) {
-    toast = document.createElement("div");
-    toast.className = "toast";
-    Object.assign(toast.style, {
-      position: 'fixed',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      bottom: '18vh',
-      background: 'rgba(0,0,0,0.8)',
-      color: 'white',
-      padding: '8px 12px',
-      borderRadius: '8px',
-      zIndex: 9999,
-      opacity: '0',
-      transition: 'opacity 0.25s'
-    });
-    document.body.appendChild(toast);
-  }
-
-  toast.textContent = message;
-  toast.style.opacity = "1";
-
-  setTimeout(() => { toast.style.opacity = "0"; }, 1800);
-}
-
 /* ========= INIT ========= */
 document.addEventListener('DOMContentLoaded', async () => {
   loadDB();
   buildItems();
-  initCustomKeyboard();
 
   scanBtn.addEventListener('click', async () => {
     scannerCard.style.display = 'block';
