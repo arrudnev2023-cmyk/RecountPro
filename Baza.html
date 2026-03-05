@@ -287,15 +287,54 @@
     </div>
   </div>
 
+  <!-- Поддерживающие элементы, которые требуются логике (скрыты, если не используются) -->
+  <div id="custom-keyboard" aria-hidden="true" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:9999;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px;background:#fff;border-top:1px solid #ddd;box-shadow:0 -6px 18px rgba(0,0,0,0.08);">
+    <button>1</button><button>2</button><button>3</button>
+    <button>4</button><button>5</button><button>6</button>
+    <button>7</button><button>8</button><button>9</button>
+    <button>+</button><button>0</button><button id="back">←</button>
+    <button class="done" id="done" style="grid-column:1 / -1">Готово</button>
+  </div>
+
+  <div id="summaryModal" style="display:none;position:fixed;left:0;right:0;top:0;bottom:0;align-items:center;justify-content:center;z-index:9998;">
+    <div style="background:white;padding:20px;border-radius:12px;max-width:90%;max-height:80%;overflow:auto;margin:6vh auto;">
+      <h3>Итоги инвентаризации</h3>
+      <table id="summaryTable" style="width:100%;border-collapse:collapse;margin-top:10px;">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Товар</th>
+            <th style="text-align:right;">Учётное</th>
+            <th style="text-align:right;">Фактическое</th>
+            <th style="text-align:right;">Разница</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button id="summarySaveBtn" class="btn primary" style="flex:1;">Сохранить в базу</button>
+        <button id="summaryCloseBtn" class="btn" style="flex:1;">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZXing fallback -->
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
+
 <script>
 /* ========= СТЕЙТ ========= */
 let barcodeDB = {};      // { [name]: [code1, code2...] }
 let quantities = {};     // { [name]: qty }
 let allItems = [];       // [{code,name,qty}]
 let sessionValues = {};  // { [code]: "выражение" }
+let codeToName = new Map(); // code -> name
 
-let codeReader = null;
+// Сканер / камера (эталонный сканер интегрирован)
+let reader = null;
+let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
 let currentStream = null;
+let scanning = false;
+let lastDetected = { code: null, ts: 0 };
+const DEBOUNCE_MS = 700;
 
 /* ========= ЭЛЕМЕНТЫ ========= */
 const searchInput      = document.getElementById('search');
@@ -314,7 +353,7 @@ const bottomSheet      = document.getElementById('bottomSheet');
 
 const customKeyboard   = document.getElementById('custom-keyboard');
 
-const saveBtn          = document.getElementById('saveBtn');
+const saveBtn          = document.getElementById('saveBtn'); // может отсутствовать — проверим перед использованием
 const clearBtn         = document.getElementById('clearBtn');
 const totalBtn         = document.getElementById('totalBtn');
 const inventoryBtn     = document.getElementById('inventoryBtn');
@@ -331,7 +370,6 @@ const clearSearch      = document.getElementById('clear-search');
 function evalExpression(expr) {
   if (!expr) return 0;
   const safe = String(expr).replace(/\s+/g, '');
-  // Разрешаем только цифры, + и -
   if (!/^[0-9+\-]+$/.test(safe)) return 0;
   try {
     const val = Function('return ' + safe)();
@@ -341,7 +379,7 @@ function evalExpression(expr) {
   }
 }
 
-/* ========= БАЗА / СЕССИЯ ========= */
+/* ========= БАЗА / СЕССИЯ / ИНДЕКС ========= */
 function loadDB() {
   try {
     const raw = localStorage.getItem('barcodeDB');
@@ -360,9 +398,7 @@ function loadDB() {
             quantities[name] = 0;
           }
           barcodeDB[name].push(code);
-          if (data.qty !== undefined) {
-            quantities[name] = data.qty;
-          }
+          if (data && data.qty !== undefined) quantities[name] = data.qty;
         });
       }
     } else {
@@ -397,15 +433,21 @@ function saveDB() {
 }
 
 function saveSession() {
-  localStorage.setItem('recountSession', JSON.stringify(sessionValues));
+  try {
+    localStorage.setItem('recountSession', JSON.stringify(sessionValues));
+  } catch (e) {
+    console.error('Ошибка сохранения сессии:', e);
+  }
 }
 
 function buildItemsFromDB() {
   allItems = [];
+  codeToName = new Map();
   Object.entries(barcodeDB).forEach(([name, codes]) => {
     const qty = quantities[name] || 0;
     codes.forEach(code => {
       allItems.push({ code, name, qty });
+      codeToName.set(String(code), name);
     });
   });
 }
@@ -483,15 +525,20 @@ function buildItems() {
 
 /* ========= КЛАВИАТУРА ========= */
 function showCustomKeyboard(input) {
+  if (!customKeyboard) return;
+  customKeyboard.style.display = '';
   customKeyboard.classList.add('show');
   customKeyboard.dataset.target = input.dataset.code;
 }
 
 function hideCustomKeyboard() {
+  if (!customKeyboard) return;
   customKeyboard.classList.remove('show');
+  customKeyboard.style.display = 'none';
 }
 
 function initCustomKeyboard() {
+  if (!customKeyboard) return;
   const keys = customKeyboard.querySelectorAll('button:not(.done)');
   keys.forEach(key => {
     key.addEventListener('click', () => {
@@ -515,112 +562,222 @@ function initCustomKeyboard() {
     });
   });
 
-  document.getElementById('done').addEventListener('click', hideCustomKeyboard);
+  const doneBtn = document.getElementById('done');
+  if (doneBtn) doneBtn.addEventListener('click', hideCustomKeyboard);
 }
 
-/* ========= СКАНЕР ========= */
-async function initScanner() {
+/* ========= СКАНЕР (эталонный) ========= */
+
+/* Preprocessing helpers */
+function createCanvas(w, h) {
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  return c;
+}
+
+function toGrayscale(ctx, w, h) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
+    d[i] = d[i + 1] = d[i + 2] = v;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function increaseContrast(ctx, w, h, contrast = 30) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+  for (let i = 0; i < d.length; i += 4) {
+    for (let c = 0; c < 3; c++) {
+      let col = d[i + c];
+      col = factor * (col - 128) + 128;
+      d[i + c] = Math.max(0, Math.min(255, col));
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+/* Try decode with detector or ZXing, including rotated attempts */
+async function tryDecodeCanvas(canvas) {
+  if (detector) {
+    try {
+      const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      const res = await detector.detect(imageData);
+      if (res && res.length) return res[0].rawValue;
+    } catch (e) {}
+  }
+
   try {
-    if (typeof ZXing === 'undefined') {
-      alert('Библиотека сканера не загружена');
+    const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+    const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+    if (result && result.text) return result.text;
+  } catch (e) {}
+
+  const w = canvas.width;
+  const h = canvas.height;
+  const temp = createCanvas(w, h);
+  const tctx = temp.getContext('2d');
+
+  for (let angle of [90, 180, 270]) {
+    tctx.clearRect(0, 0, w, h);
+    tctx.save();
+    tctx.translate(w / 2, h / 2);
+    tctx.rotate(angle * Math.PI / 180);
+    tctx.drawImage(canvas, -w / 2, -h / 2);
+    tctx.restore();
+
+    try {
+      const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(temp);
+      const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+      const result = new ZXing.MultiFormatReader().decode(binaryBitmap);
+      if (result && result.text) return result.text;
+    } catch (e) {}
+  }
+  return null;
+}
+
+/* Main scanning loop (full frame) */
+let canvasPool = [];
+function getCanvas(w, h) {
+  for (let c of canvasPool) if (c.width === w && c.height === h) return c;
+  const c = createCanvas(w, h);
+  canvasPool.push(c);
+  return c;
+}
+
+async function scanLoop() {
+  if (!scanning) return;
+  try {
+    const w = previewVideo.videoWidth;
+    const h = previewVideo.videoHeight;
+    if (w === 0 || h === 0) {
+      requestAnimationFrame(scanLoop);
       return;
     }
 
-    const BrowserMultiFormatReader = ZXing.BrowserMultiFormatReader;
-    codeReader = new BrowserMultiFormatReader();
+    const canvas = getCanvas(w, h);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(previewVideo, 0, 0, w, h);
 
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+    // downscale for speed
+    const scale = Math.max(1, Math.floor(Math.max(w, h) / 900));
+    const sw = Math.floor(w / scale);
+    const sh = Math.floor(h / scale);
+    const small = getCanvas(sw, sh);
+    const sctx = small.getContext('2d');
+    sctx.drawImage(canvas, 0, 0, w, h, 0, 0, sw, sh);
+    toGrayscale(sctx, sw, sh);
+    increaseContrast(sctx, sw, sh, 30);
 
-    if (videoDevices.length === 0) {
-      alert('Камеры не найдены');
-      return;
-    }
-
-    let backCam = videoDevices.find(d => {
-      const label = (d.label || '').toLowerCase();
-      return label.includes('back') || label.includes('rear') || label.includes('зад');
-    });
-
-    const defaultCamId = (backCam || videoDevices[0]).deviceId;
-
-    deviceSelect.innerHTML = videoDevices.map(d =>
-      `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`
-    ).join('');
-    deviceSelect.value = defaultCamId;
-
-    await startCamera(defaultCamId);
-
-    codeReader.decodeFromVideoElement(previewVideo, (result, err) => {
-      if (err && !(err instanceof ZXing.NotFoundException)) {
-        console.error('Ошибка сканера:', err);
-        return;
-      }
-      if (result) {
-        handleScanResult(result.getText());
-      }
-    });
+    const code = await tryDecodeCanvas(small);
+    if (code) handleDetected(code);
   } catch (e) {
-    console.error('Ошибка инициализации сканера:', e);
-    alert('Не удалось запустить камеру');
+    // ignore non-fatal errors
+  } finally {
+    requestAnimationFrame(scanLoop);
   }
 }
 
+/* Handle detection: интеграция с логикой базы */
+function handleDetected(code) {
+  const now = Date.now();
+  if (code === lastDetected.code && (now - lastDetected.ts) < DEBOUNCE_MS) return;
+
+  lastDetected = { code, ts: now };
+  try { navigator.vibrate?.(40); } catch (e) {}
+
+  scanResult.textContent = `Найден: ${code}`;
+
+  const name = codeToName.get(String(code));
+  if (name) {
+    searchInput.value = name;
+    filterItems();
+    highlightScannedItem(code);
+
+    // закрываем сканер через короткую паузу, чтобы пользователь увидел подсветку
+    setTimeout(() => {
+      try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
+      scannerCard.style.display = 'none';
+    }, 300);
+  } else {
+    showToast('Штрихкод не найден в базе');
+  }
+}
+
+/* Start camera and scanning using selected deviceId */
 async function startCamera(deviceId) {
   try {
-    if (currentStream) {
-      currentStream.getTracks().forEach(t => t.stop());
-    }
-    const constraints = { video: { deviceId: { exact: deviceId } } };
+    stopScanner(); // остановим предыдущие потоки, если есть
+
+    scanning = true;
+
+    const constraints = deviceId ? {
+      video: {
+        deviceId: { exact: deviceId },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: { ideal: "environment" }
+      },
+      audio: false
+    } : {
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    };
+
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
     previewVideo.srcObject = currentStream;
+    await previewVideo.play().catch(()=>{});
+
+    // Инициализация ZXing reader (на случай, если понадобится)
+    try {
+      reader = new ZXing.BrowserMultiFormatReader();
+    } catch (e) {
+      reader = null;
+    }
+
+    requestAnimationFrame(scanLoop);
   } catch (e) {
-    console.error('Ошибка запуска камеры:', e);
-    alert('Ошибка доступа к камере');
+    console.warn('startCamera fallback, trying without deviceId:', e);
+    try {
+      const fallback = { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+      currentStream = await navigator.mediaDevices.getUserMedia(fallback);
+      previewVideo.srcObject = currentStream;
+      await previewVideo.play().catch(()=>{});
+      try { reader = new ZXing.BrowserMultiFormatReader(); } catch (e) { reader = null; }
+      requestAnimationFrame(scanLoop);
+    } catch (err) {
+      console.error('Ошибка доступа к камере:', err);
+      alert('Ошибка доступа к камере');
+      scanning = false;
+    }
   }
 }
 
 function stopScanner() {
+  scanning = false;
   if (currentStream) {
     currentStream.getTracks().forEach(t => t.stop());
     currentStream = null;
   }
-  if (codeReader) {
-    try { codeReader.reset(); } catch {}
+  if (reader) {
+    try { reader.reset(); } catch (e) {}
+    reader = null;
   }
   previewVideo.srcObject = null;
-  scannerCard.style.display = 'none';
   scanResult.textContent = '';
 }
 
-function handleScanResult(barcode) {
-  scanResult.textContent = `Найден: ${barcode}`;
-
-  const foundItem = allItems.find(i => i.code === barcode);
-  if (!foundItem) {
-    alert('Товар не найден в базе');
-    return;
-  }
-
-  searchInput.value = foundItem.name;
-  filterItems();
-  highlightScannedItem(barcode);
-}
-
-function highlightScannedItem(code) {
-  document.querySelectorAll('.item').forEach(el => {
-    el.style.boxShadow = '';
-  });
-  const target = document.querySelector(`.item[data-code="${code}"]`);
-  if (target) {
-    target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.4)';
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-}
-
-/* ========= ПОИСК ========= */
+/* ========= ПОИСК / ХАЙЛАЙТ ========= */
 function filterItems() {
-  const q = searchInput.value.toLowerCase().trim();
+  const q = (searchInput.value || '').toLowerCase().trim();
   if (!q) {
     buildItems();
     return;
@@ -634,12 +791,49 @@ function filterItems() {
   renderItems(filtered);
 }
 
+function highlightScannedItem(code) {
+  document.querySelectorAll('.item').forEach(el => el.style.boxShadow = '');
+  const target = document.querySelector(`.item[data-code="${code}"]`);
+  if (target) {
+    target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.4)';
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const input = target.querySelector('input');
+    if (input) {
+      showCustomKeyboard(input);
+      setTimeout(() => ensureVisibleAboveKeyboard(input), 180);
+    }
+  }
+}
+
+/* ========= ВСПОМОГАТЕЛЬНЫЕ ========= */
+function ensureVisibleAboveKeyboard(input) {
+  if (!input) return;
+  const kb = customKeyboard;
+  const kbHeight = (kb && kb.classList.contains('show')) ? kb.getBoundingClientRect().height : 0;
+
+  const fieldRect = input.getBoundingClientRect();
+  const viewportHeight = window.innerHeight;
+
+  const safeMargin = 12;
+  const bottomOverlap = (fieldRect.bottom + safeMargin) - (viewportHeight - kbHeight);
+  if (bottomOverlap > 0) {
+    const currentScroll = window.scrollY || document.documentElement.scrollTop;
+    const scrollBy = bottomOverlap + 40;
+    window.scrollTo({ top: currentScroll + scrollBy, behavior: 'smooth' });
+  } else {
+    const topGap = fieldRect.top - safeMargin;
+    if (topGap < 60) {
+      const currentScroll = window.scrollY || document.documentElement.scrollTop;
+      window.scrollTo({ top: Math.max(0, currentScroll - (60 - topGap)), behavior: 'smooth' });
+    }
+  }
+}
+
 /* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
 function startInventory() {
   sessionValues = {};
-  allItems.forEach(item => {
-    sessionValues[item.code] = '';
-  });
+  allItems.forEach(item => sessionValues[item.code] = '');
   saveSession();
   buildItems();
   alert('Режим инвентаризации активирован. Введите фактическое количество (можно выражениями).');
@@ -667,10 +861,13 @@ function applySessionToDB() {
   });
 
   saveDB();
+  buildItemsFromDB();
+  buildItems();
 }
 
 /* ========= ИТОГИ ========= */
 function openSummary() {
+  if (!summaryTableBody) return;
   summaryTableBody.innerHTML = '';
 
   const summary = {};
@@ -680,9 +877,7 @@ function openSummary() {
     const expr = sessionValues[item.code] || '';
     const val  = evalExpression(expr);
 
-    if (!summary[name]) {
-      summary[name] = { expected, actual: 0 };
-    }
+    if (!summary[name]) summary[name] = { expected, actual: 0 };
     summary[name].actual += val;
   });
 
@@ -698,34 +893,108 @@ function openSummary() {
     summaryTableBody.appendChild(tr);
   });
 
-  summaryModal.classList.add('show');
+  if (summaryModal) summaryModal.style.display = '';
 }
 
 function closeSummary() {
-  summaryModal.classList.remove('show');
+  if (summaryModal) summaryModal.style.display = 'none';
+}
+
+/* ========= ТОАСТ ========= */
+function showToast(message) {
+  let toast = document.querySelector(".toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.className = "toast";
+    Object.assign(toast.style, {
+      position: 'fixed',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      bottom: '18vh',
+      background: 'rgba(0,0,0,0.8)',
+      color: 'white',
+      padding: '8px 12px',
+      borderRadius: '8px',
+      zIndex: 9999,
+      opacity: '0',
+      transition: 'opacity 0.25s'
+    });
+    document.body.appendChild(toast);
+  }
+
+  toast.textContent = message;
+  toast.style.opacity = "1";
+
+  setTimeout(() => { toast.style.opacity = "0"; }, 1800);
 }
 
 /* ========= INIT ========= */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   loadDB();
   buildItems();
   initCustomKeyboard();
 
-  scanBtn.addEventListener('click', () => {
+  scanBtn.addEventListener('click', async () => {
     scannerCard.style.display = 'block';
-    initScanner();
+
+    // Заполним список устройств и выберем дефолт
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(d => d.kind === 'videoinput');
+      if (videoDevices.length === 0) {
+        alert('Камеры не найдены');
+        return;
+      }
+
+      let backCam = videoDevices.find(d => {
+        const label = (d.label || '').toLowerCase();
+        return label.includes('back') || label.includes('rear') || label.includes('зад') || label.includes('environment');
+      });
+
+      const defaultCamId = (backCam || videoDevices[0]).deviceId;
+
+      deviceSelect.innerHTML = videoDevices.map(d =>
+        `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`
+      ).join('');
+      deviceSelect.value = defaultCamId;
+
+      await startCamera(defaultCamId);
+    } catch (e) {
+      console.error('init scanner error', e);
+      alert('Не удалось инициализировать сканер');
+    }
   });
 
   closeScannerBtn.addEventListener('click', () => {
     stopScanner();
+    scannerCard.style.display = 'none';
   });
 
   deviceSelect.addEventListener('change', e => {
     startCamera(e.target.value);
   });
 
-  torchBtn.addEventListener('click', () => {
-    alert('Фонарик пока не реализован в этом варианте.');
+  torchBtn.addEventListener('click', async () => {
+    try {
+      const tracks = currentStream?.getVideoTracks();
+      if (tracks && tracks.length > 0) {
+        const track = tracks[0];
+        const capabilities = track.getCapabilities?.();
+        if (capabilities?.torch) {
+          // toggle torch if supported
+          const settings = track.getSettings();
+          const current = settings.torch === true;
+          await track.applyConstraints({ advanced: [{ torch: !current }] });
+        } else {
+          showToast('Фонарик не поддерживается');
+        }
+      } else {
+        showToast('Камера не запущена');
+      }
+    } catch (e) {
+      console.error('Torch error', e);
+      showToast('Ошибка управления фонариком');
+    }
   });
 
   clearSearch.addEventListener('click', () => {
@@ -745,43 +1014,45 @@ document.addEventListener('DOMContentLoaded', () => {
     sheetOverlay.classList.remove('show');
   });
 
-  inventoryBtn.addEventListener('click', () => {
-    startInventory();
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
+  // Поддержка кнопок в нижнем листе — если их нет, ничего не ломаем
+  const refreshBtn = document.getElementById('refreshBtn');
+  if (refreshBtn) refreshBtn.addEventListener('click', () => { buildItemsFromDB(); buildItems(); showToast('Обновлено'); });
+
+  const exportBtn = document.getElementById('exportBtn');
+  if (exportBtn) exportBtn.addEventListener('click', () => { showToast('Экспорт не реализован в этой сборке'); });
+
+  const importBtn = document.getElementById('importBtn');
+  if (importBtn) importBtn.addEventListener('click', () => { showToast('Импорт не реализован в этой сборке'); });
+
+  const clearBaseBtn = document.getElementById('clearBaseBtn');
+  if (clearBaseBtn) clearBaseBtn.addEventListener('click', () => {
+    if (confirm('Очистить базу товаров? Это действие необратимо.')) {
+      barcodeDB = {};
+      quantities = {};
+      saveDB();
+      buildItemsFromDB();
+      buildItems();
+      showToast('База очищена');
+    }
   });
 
-  clearBtn.addEventListener('click', () => {
-    clearInventory();
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
+  // Кнопки инвентаризации/сохранения/итогов — если есть, подключаем
+  if (inventoryBtn) inventoryBtn.addEventListener('click', () => { startInventory(); bottomSheet.classList.remove('show'); sheetOverlay.classList.remove('show'); });
+  if (clearBtn) clearBtn.addEventListener('click', () => { clearInventory(); bottomSheet.classList.remove('show'); sheetOverlay.classList.remove('show'); });
+  if (totalBtn) totalBtn.addEventListener('click', () => { openSummary(); bottomSheet.classList.remove('show'); sheetOverlay.classList.remove('show'); });
+  if (saveBtn) saveBtn.addEventListener('click', () => { applySessionToDB(); buildItems(); showToast('Остатки обновлены в базе товаров.'); bottomSheet.classList.remove('show'); sheetOverlay.classList.remove('show'); });
 
-  totalBtn.addEventListener('click', () => {
-    openSummary();
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
+  if (summaryCloseBtn) summaryCloseBtn.addEventListener('click', closeSummary);
+  if (summarySaveBtn) summarySaveBtn.addEventListener('click', () => { applySessionToDB(); buildItems(); closeSummary(); showToast('Итоги сохранены в базу.'); });
 
-  saveBtn.addEventListener('click', () => {
-    applySessionToDB();
-    buildItems();
-    alert('Остатки обновлены в базе товаров.');
-    bottomSheet.classList.remove('show');
-    sheetOverlay.classList.remove('show');
-  });
-
-  summaryCloseBtn.addEventListener('click', closeSummary);
-
-  summarySaveBtn.addEventListener('click', () => {
-    applySessionToDB();
-    buildItems();
-    closeSummary();
-    alert('Итоги сохранены в базу.');
-  });
+  // Попытка "разогреть" разрешения, чтобы метки камер появились
+  try { await navigator.mediaDevices.getUserMedia({ video: true }); } catch (e) {}
 });
+
+/* Остановим камеру при уходе со страницы */
+window.addEventListener('pagehide', () => stopScanner());
+window.addEventListener('beforeunload', () => stopScanner());
 </script>
-
-
 </body>
 </html>
+
