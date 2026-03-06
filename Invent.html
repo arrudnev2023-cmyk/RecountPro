@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <title>RecountPro — Пересчёт</title>
 
-  <!-- ZXing -->
   <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 
   <style>
@@ -17,16 +16,16 @@
       --text: #333;
       --maxw: 980px;
       --border: #e0e0e0;
+      --smooth: cubic-bezier(.2,.9,.2,1);
     }
 
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
     html, body {
       height: 100%;
       margin: 0;
       background-color: var(--bg);
       color: var(--text);
-      font-family: Inter, Segoe UI, system-ui, Arial, sans-serif;
+      font-family: Inter, "Segoe UI", system-ui, Arial, sans-serif;
       overflow: hidden;
       touch-action: manipulation;
     }
@@ -39,12 +38,14 @@
       border-bottom: 1px solid var(--border);
       z-index: 1000;
       border-radius: 0 0 14px 14px;
+      transition: transform 280ms var(--smooth);
     }
     header h1 {
       margin: 0;
       text-align: center;
       font-size: 1.15rem;
       color: var(--accent);
+      font-weight: 700;
     }
 
     #search-wrap {
@@ -60,7 +61,10 @@
       background-color: white;
       color: var(--text);
       font-size: 15px;
+      transition: box-shadow 160ms var(--smooth), border-color 160ms var(--smooth);
     }
+    #search:focus { box-shadow: 0 6px 18px rgba(67,97,238,0.06); border-color: rgba(67,97,238,0.12); outline: none; }
+
     #scan-btn,
     #clear-search {
       position: absolute;
@@ -71,6 +75,8 @@
       border: none;
       color: var(--muted);
       cursor: pointer;
+      font-size: 18px;
+      padding: 6px;
     }
     #clear-search { right: 44px; }
 
@@ -81,6 +87,7 @@
       overflow: auto;
       padding: 12px;
       -webkit-overflow-scrolling: touch;
+      transition: padding-bottom 220ms var(--smooth);
     }
 
     .card {
@@ -89,7 +96,8 @@
       padding: 12px;
       border-radius: 8px;
       background-color: var(--card);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      transition: transform 220ms var(--smooth), box-shadow 220ms var(--smooth);
     }
 
     .preview-wrap {
@@ -99,252 +107,141 @@
       border: 1px solid var(--border);
       height: 34vh;
       min-height: 140px;
+      display:flex;align-items:center;justify-content:center;
     }
     video#preview {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
+      transform-origin: center center;
+      will-change: transform;
     }
 
-    .controls {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin-top: 10px;
-    }
-    .btn {
-      padding: 8px 10px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background-color: white;
-      color: var(--text);
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .btn.primary {
-      background-color: var(--accent);
-      color: white;
-      font-weight: 700;
-    }
+    .controls { display:flex; gap:8px; align-items:center; margin-top:10px; }
+    .btn { padding:8px 10px; border-radius:6px; border:1px solid var(--border); background:white; color:var(--text); cursor:pointer; transition:transform 120ms var(--smooth); }
+    .btn.primary { background:var(--accent); color:white; font-weight:700; }
 
-    .list {
-      max-width: var(--maxw);
-      margin: 12px auto;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+    .list { max-width: var(--maxw); margin: 12px auto; display:flex; flex-direction:column; gap:8px; padding-bottom:120px; }
 
     .item {
-      width: 100%;
-      margin: 10px 0;
-      padding: 12px;
-      border-radius: 8px;
-      background-color: var(--card);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      border-left: 4px solid transparent;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      width:100%;
+      margin:10px 0;
+      padding:12px;
+      border-radius:8px;
+      background:var(--card);
+      box-shadow:0 2px 8px rgba(0,0,0,0.06);
+      border-left:4px solid transparent;
+      display:flex;flex-direction:column;gap:8px;
+      transition: box-shadow 220ms var(--smooth), transform 220ms var(--smooth), border-color 220ms var(--smooth);
+      will-change: transform, box-shadow;
+      -webkit-tap-highlight-color: transparent;
     }
-    .item.match   { border-left-color: #22c55e; }
-    .item.missing { border-left-color: #ef4444; }
-    .item.excess  { border-left-color: #3b82f6; }
+    @media (hover: hover) and (pointer: fine) { .item:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.06); } }
+    .item.match { border-left-color:#22c55e; } .item.missing { border-left-color:#ef4444; } .item.excess { border-left-color:#3b82f6; }
 
-    .field { margin-bottom: 8px; }
-    .label { font-weight: 700; color: var(--accent); margin-right: 6px; }
+    .field { margin-bottom:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .label { font-weight:700; color:var(--accent); white-space:nowrap; }
 
     input[data-code] {
-      width: 100%;
-      padding: 10px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background-color: white;
-      color: var(--text);
-      font-size: 15px;
-      -webkit-user-select: none;
-      user-select: none;
+      width:100%;
+      padding:10px;
+      border-radius:6px;
+      border:1px solid var(--border);
+      background:white;
+      color:var(--text);
+      font-size:15px;
+      outline:none;
+      transition: box-shadow 160ms var(--smooth), border-color 160ms var(--smooth);
+      -webkit-user-select:none; user-select:none;
+      caret-color:var(--accent);
     }
+    input[data-code]:focus { box-shadow: 0 8px 20px rgba(67,97,238,0.06); border-color: rgba(67,97,238,0.12); }
 
-    /* Кастомная клавиатура */
     #custom-keyboard {
       position: fixed;
       left: 0; right: 0;
       bottom: -40vh;
       height: 34vh;
-      background-color: white;
+      background: white;
       padding: 10px;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
       z-index: 3000;
-      transition: bottom 0.28s ease;
+      transition: transform 280ms var(--smooth), opacity 180ms var(--smooth);
+      transform: translateY(100%);
       border-top: 1px solid var(--border);
-      box-shadow: 0 -8px 30px rgba(0,0,0,0.12);
+      box-shadow: 0 -12px 40px rgba(0,0,0,0.12);
+      will-change: transform;
       touch-action: manipulation;
-      display: none;
+      display:none;
     }
-    #custom-keyboard.show { display: grid; bottom: 0; }
-    #custom-keyboard button {
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background-color: white;
-      color: var(--text);
-      font-size: 20px;
-      cursor: pointer;
-      padding: 12px 6px;
-    }
+    #custom-keyboard.show { display:grid; transform: translateY(0); }
+    #custom-keyboard button { border:1px solid var(--border); border-radius:6px; background:white; color:var(--text); font-size:20px; cursor:pointer; padding:12px 6px; transition: transform 120ms var(--smooth); }
+    #custom-keyboard button:active { transform: translateY(1px); background:#f3f6ff; }
+    #custom-keyboard .done { grid-column: 1 / -1; background:var(--accent); color:white; font-weight:700; }
 
-    .hidden { display: none !important; }
+    .hidden { display:none !important; }
 
-    /* FAB меню */
-    #fabMenu {
-      position: fixed;
-      bottom: 1rem;
-      right: 1rem;
-      z-index: 1001;
-      background-color: var(--accent);
-      color: white;
-      border: none;
-      padding: 0.9rem 1.2rem;
-      border-radius: 8px;
-      font-size: 1.2rem;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(67,97,238,0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+    #fabMenu { position:fixed; bottom:1rem; right:1rem; z-index:1001; background:var(--accent); color:white; border:none; padding:0.9rem 1.2rem; border-radius:8px; font-size:1.2rem; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(67,97,238,0.3); }
 
-    #sheetOverlay {
-      position: fixed;
-      inset: 0;
-      background-color: rgba(0,0,0,0.5);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.25s ease;
-      z-index: 999;
-    }
-    #sheetOverlay.show {
-      opacity: 1;
-      pointer-events: auto;
-    }
+    #sheetOverlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); opacity:0; pointer-events:none; transition:opacity 0.25s var(--smooth); z-index:999; }
+    #sheetOverlay.show { opacity:1; pointer-events:auto; }
 
-    #bottomSheet {
-      position: fixed;
-      left: 0; right: 0;
-      bottom: -60vh;
-      padding: 1.2rem;
-      background-color: white;
-      border-radius: 16px 16px 0 0;
-      box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-      transition: bottom 0.35s ease;
-      z-index: 1002;
-    }
-    #bottomSheet.show { bottom: 0; }
+    #bottomSheet { position:fixed; left:0; right:0; bottom:-60vh; padding:1.2rem; background:white; border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,0.1); transition: transform 350ms var(--smooth); transform: translateY(100%); z-index:1002; }
+    #bottomSheet.show { transform: translateY(0); }
 
-    .sheet-content {
-      display: flex;
-      flex-direction: column;
-      gap: 0.7rem;
-    }
-    .sheet-btn {
-      background-color: #f5f5f5;
-      color: var(--text);
-      border: 1px solid var(--border);
-      padding: 0.9rem 1rem;
-      border-radius: 8px;
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    .sheet-content { display:flex; flex-direction:column; gap:0.7rem; }
+    .sheet-btn { background:#f5f5f5; color:var(--text); border:1px solid var(--border); padding:0.9rem 1rem; border-radius:8px; font-size:1rem; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:10px; }
 
-    /* Модалка итогов */
-    #summaryModal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.8);
-      z-index: 6000;
-      display: none;
-      align-items: center;
-      justify-content: center;
-    }
-    #summaryModal.show { display: flex; }
+    #summaryModal { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:6000; display:none; align-items:center; justify-content:center; }
+    #summaryModal.show { display:flex; }
+    #summaryModal .panel { background:white; padding:20px; border-radius:12px; max-width:90%; max-height:80%; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,0.18); transform: translateY(8px); transition: transform 220ms var(--smooth), opacity 220ms var(--smooth); }
 
-    #summaryTable th, #summaryTable td {
-      border: none;
-      padding: 8px;
-    }
-    #summaryTable th {
-      background-color: #f0f0f0;
-      font-weight: 600;
-    }
+    .toast { position:fixed; left:50%; transform:translateX(-50%); bottom:18vh; background:rgba(0,0,0,0.8); color:white; padding:8px 12px; border-radius:8px; z-index:9999; opacity:0; transition:opacity 0.25s var(--smooth); pointer-events:none; }
+    .toast.show { opacity:1; }
 
-    /* Toast */
-    .toast {
-      position: fixed;
-      left: 50%;
-      transform: translateX(-50%);
-      bottom: 18vh;
-      background: rgba(0,0,0,0.8);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 8px;
-      z-index: 9999;
-      opacity: 0;
-      transition: opacity 0.25s;
-      pointer-events: none;
-    }
-    .toast.show { opacity: 1; }
+    .sr-only { position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden; }
   </style>
 </head>
-
 <body>
   <header>
     <h1>RecountPro — Пересчёт</h1>
     <div id="search-wrap">
       <input id="search" placeholder="Поиск по названию или коду..." autocomplete="off" />
-      <button id="scan-btn" title="Открыть сканер">📷</button>
-      <button id="clear-search" title="Очистить">×</button>
+      <button id="scan-btn" title="Открыть сканер" aria-label="Открыть сканер">📷</button>
+      <button id="clear-search" title="Очистить" aria-label="Очистить поиск">×</button>
     </div>
   </header>
 
-  <main id="content">
-    <!-- Сканер -->
-    <div class="card" id="scannerCard" style="display:none">
+  <main id="content" tabindex="-1">
+    <div class="card" id="scannerCard" style="display:none; transition:opacity 220ms var(--smooth);">
       <div class="preview-wrap">
         <video id="preview" playsinline muted></video>
       </div>
       <div class="controls">
         <select id="deviceSelect" class="btn" style="min-width:160px"></select>
-        <button id="torchBtn" class="btn">🔦</button>
+        <button id="torchBtn" class="btn" aria-pressed="false">🔦</button>
         <button id="closeScannerBtn" class="btn">Закрыть</button>
         <div id="scanResult" style="margin-left:auto;color:var(--muted)"></div>
       </div>
     </div>
 
-    <!-- Список товаров -->
-    <div id="list" class="list"></div>
+    <div id="list" class="list" aria-live="polite"></div>
   </main>
 
-  <!-- Кастомная клавиатура -->
-  <div id="custom-keyboard" aria-hidden="true">
+  <div id="custom-keyboard" aria-hidden="true" role="application" aria-label="Клавиатура для ввода количества">
     <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button>
     <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button>
     <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button>
     <button data-key="+">+</button><button data-key="0">0</button><button data-key="back">←</button>
-    <button class="done" id="done" style="grid-column:1 / -1">Готово</button>
+    <button class="done" id="done" aria-label="Готово">Готово</button>
   </div>
 
-  <!-- FAB меню -->
-  <button id="fabMenu">☰</button>
-  <div id="sheetOverlay"></div>
-  <div id="bottomSheet">
+  <button id="fabMenu" aria-haspopup="true" aria-expanded="false">☰</button>
+  <div id="sheetOverlay" aria-hidden="true"></div>
+  <div id="bottomSheet" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="sheet-content">
       <button class="sheet-btn" id="saveBtn">💾 Сохранить</button>
       <button class="sheet-btn" id="clearBtn">🧹 Очистить пересчёт</button>
@@ -353,9 +250,8 @@
     </div>
   </div>
 
-  <!-- Модалка итогов -->
-  <div id="summaryModal">
-    <div style="background:white;padding:20px;border-radius:12px;max-width:90%;max-height:80%;overflow:auto;">
+  <div id="summaryModal" aria-hidden="true">
+    <div class="panel">
       <h3>Итоги инвентаризации</h3>
       <table id="summaryTable" style="width:100%;border-collapse:collapse;margin-top:10px;">
         <thead>
@@ -375,32 +271,14 @@
     </div>
   </div>
 
-  <!-- ZXing fallback -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
   <script>
+    /* ========= ПЕРСИСТЕНТНЫЕ КЛЮЧИ ========= */
     const KEY_DISPLAYED = 'recount_displayed_codes';
-const KEY_INVENTORY = 'recount_inventory_mode';
-
-function persistDisplayed() {
-  try { localStorage.setItem(KEY_DISPLAYED, JSON.stringify(Array.from(displayedCodes))); }
-  catch(e){ console.error('persistDisplayed', e); }
-}
-function loadDisplayed() {
-  try {
-    const raw = localStorage.getItem(KEY_DISPLAYED);
-    if (raw) displayedCodes = new Set(JSON.parse(raw).map(String));
-  } catch(e){ displayedCodes = new Set(); }
-}
-
-function persistInventoryMode() {
-  try { localStorage.setItem(KEY_INVENTORY, inventoryMode ? '1' : '0'); }
-  catch(e){ console.error('persistInventoryMode', e); }
-}
-function loadInventoryMode() {
-  try { inventoryMode = localStorage.getItem(KEY_INVENTORY) === '1'; }
-  catch(e){ inventoryMode = false; }
-}
+    const KEY_INVENTORY = 'recount_inventory_mode';
+    const KEY_SESSION = 'recountSession';
+    const KEY_DB = 'barcodeDB';
 
     /* ========= СТЕЙТ ========= */
     let barcodeDB = {};      // { [name]: [code1, code2...] }
@@ -448,6 +326,26 @@ function loadInventoryMode() {
     const scanBtn          = document.getElementById('scan-btn');
     const clearSearch      = document.getElementById('clear-search');
 
+    /* ========= ПЕРСИСТЕНТНОСТЬ ОТОБРАЖЕНИЯ ========= */
+    function persistDisplayed() {
+      try { localStorage.setItem(KEY_DISPLAYED, JSON.stringify(Array.from(displayedCodes))); }
+      catch(e){ console.error('persistDisplayed', e); }
+    }
+    function loadDisplayed() {
+      try {
+        const raw = localStorage.getItem(KEY_DISPLAYED);
+        if (raw) displayedCodes = new Set(JSON.parse(raw).map(String));
+      } catch(e){ displayedCodes = new Set(); }
+    }
+    function persistInventoryMode() {
+      try { localStorage.setItem(KEY_INVENTORY, inventoryMode ? '1' : '0'); }
+      catch(e){ console.error('persistInventoryMode', e); }
+    }
+    function loadInventoryMode() {
+      try { inventoryMode = localStorage.getItem(KEY_INVENTORY) === '1'; }
+      catch(e){ inventoryMode = false; }
+    }
+
     /* ========= УТИЛИТЫ ========= */
     function evalExpression(expr) {
       if (!expr) return 0;
@@ -476,7 +374,7 @@ function loadInventoryMode() {
 
     function loadDB() {
       try {
-        const raw = localStorage.getItem('barcodeDB');
+        const raw = localStorage.getItem(KEY_DB);
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed.db && parsed.quantities) {
@@ -505,7 +403,7 @@ function loadInventoryMode() {
       }
 
       try {
-        const rawSession = localStorage.getItem('recountSession');
+        const rawSession = localStorage.getItem(KEY_SESSION);
         sessionValues = rawSession ? JSON.parse(rawSession) : {};
       } catch {
         sessionValues = {};
@@ -516,18 +414,22 @@ function loadInventoryMode() {
 
     function saveDB() {
       try {
-        localStorage.setItem('barcodeDB', JSON.stringify({ db: barcodeDB, quantities: quantities }));
+        localStorage.setItem(KEY_DB, JSON.stringify({ db: barcodeDB, quantities: quantities }));
       } catch (e) {
         console.error('Ошибка сохранения базы:', e);
       }
     }
 
-    function saveSession() {
-      try {
-        localStorage.setItem('recountSession', JSON.stringify(sessionValues));
-      } catch (e) {
-        console.error('Ошибка сохранения сессии:', e);
-      }
+    // Debounced session save
+    let _sessionSaveTimer = null;
+    function saveSessionDebounced() {
+      clearTimeout(_sessionSaveTimer);
+      _sessionSaveTimer = setTimeout(() => {
+        try { localStorage.setItem(KEY_SESSION, JSON.stringify(sessionValues)); } catch (e) { console.error('Ошибка сохранения сессии:', e); }
+      }, 120);
+    }
+    function saveSessionImmediate() {
+      try { localStorage.setItem(KEY_SESSION, JSON.stringify(sessionValues)); } catch (e) { console.error('Ошибка сохранения сессии:', e); }
     }
 
     /* ========= РЕНДЕР ========= */
@@ -631,6 +533,8 @@ function loadInventoryMode() {
     function buildItems() {
       if (inventoryMode) {
         displayedCodes = new Set(allItems.map(i => String(i.code)));
+        persistDisplayed();
+        persistInventoryMode();
         renderItems(allItems);
         return;
       }
@@ -650,12 +554,18 @@ function loadInventoryMode() {
       customKeyboard.classList.add('show');
       customKeyboard.dataset.target = input.dataset.code;
       customKeyboard.setAttribute('aria-hidden', 'false');
+      // ensure keyboard visible and not overlapping header
+      setTimeout(() => {
+        ensureVisibleAboveKeyboard(input);
+      }, 40);
     }
 
     function hideCustomKeyboard() {
       if (!customKeyboard) return;
       customKeyboard.classList.remove('show');
-      customKeyboard.style.display = 'none';
+      setTimeout(() => {
+        if (!customKeyboard.classList.contains('show')) customKeyboard.style.display = 'none';
+      }, 220);
       customKeyboard.setAttribute('aria-hidden', 'true');
       delete customKeyboard.dataset.target;
     }
@@ -700,7 +610,7 @@ function loadInventoryMode() {
           }
 
           sessionValues[targetCode] = currentValue;
-          saveSession();
+          saveSessionDebounced();
           input.value = currentValue;
           updateItemVisual(targetCode);
 
@@ -718,25 +628,30 @@ function loadInventoryMode() {
       }, { passive: false });
     }
 
-    // Dismiss keyboard when tapping outside (pointerdown) — reliable on touch and mouse
+    // Dismiss keyboard when tapping outside — schedule check to avoid conflict with input pointerdown
     function setupKeyboardDismiss() {
       document.addEventListener('pointerdown', (e) => {
         if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
-        // if click inside keyboard — keep open
-        if (customKeyboard.contains(e.target)) return;
-        // if click on an input — keep open (handled by input pointerdown)
-        if (e.target.closest && e.target.closest('input[data-code]')) return;
-        // otherwise hide
-        hideCustomKeyboard();
+        // schedule after other handlers (so input pointerdown can open keyboard)
+        setTimeout(() => {
+          if (!customKeyboard) return;
+          if (customKeyboard.contains(e.target)) return;
+          if (e.target.closest && e.target.closest('input[data-code]')) return;
+          hideCustomKeyboard();
+        }, 0);
       }, { capture: true });
-      // also hide on scroll start (user likely wants to scroll)
+
+      // hide on scroll start (user likely wants to scroll)
       let scrollTimeout = null;
-      document.getElementById('content').addEventListener('scroll', () => {
-        if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
-        hideCustomKeyboard();
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {}, 200);
-      }, { passive: true });
+      const content = document.getElementById('content');
+      if (content) {
+        content.addEventListener('scroll', () => {
+          if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
+          hideCustomKeyboard();
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(() => {}, 200);
+        }, { passive: true });
+      }
     }
     setupKeyboardDismiss();
 
@@ -877,17 +792,14 @@ function loadInventoryMode() {
 
       const name = codeToName.get(String(code));
       if (name) {
-        // Добавляем карточку этого товара в отображаемые (если ещё нет)
         if (!displayedCodes.has(String(code))) {
           displayedCodes.add(String(code));
           persistDisplayed();
-
         }
         searchInput.value = name;
         filterItems();
         highlightScannedItemByCode(code);
 
-        // Открываем клавиатуру для этой карточки
         setTimeout(() => {
           const target = document.querySelector(`.item[data-code="${cssEscape(code)}"]`);
           if (target) {
@@ -900,7 +812,6 @@ function loadInventoryMode() {
             }
           }
 
-          // Закрываем сканер через короткую паузу
           setTimeout(() => {
             try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
             scannerCard.style.display = 'none';
@@ -1026,38 +937,27 @@ function loadInventoryMode() {
     }
 
     /* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
-   function startInventory() {
-  inventoryMode = true;
-
-  // показываем все товары
-  displayedCodes = new Set(allItems.map(i => String(i.code)));
-
-  // создаём пустые значения для всех товаров, если их нет
-  allItems.forEach(item => {
-    if (sessionValues[item.code] === undefined) sessionValues[item.code] = '';
-  });
-
-  saveSession();
-
-  // 🔥 ДОБАВЛЕНО — сохраняем состояние экрана
-  try {
-    localStorage.setItem('recount_displayed_codes', JSON.stringify(Array.from(displayedCodes)));
-    localStorage.setItem('recount_inventory_mode', '1');
-  } catch (e) {
-    console.error('persist inventory', e);
-  }
-
-  buildItems();
-  alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
-}
-
+    function startInventory() {
+      inventoryMode = true;
+      displayedCodes = new Set(allItems.map(i => String(i.code)));
+      allItems.forEach(item => {
+        if (sessionValues[item.code] === undefined) sessionValues[item.code] = '';
+      });
+      saveSessionImmediate();
+      try {
+        localStorage.setItem(KEY_DISPLAYED, JSON.stringify(Array.from(displayedCodes)));
+        localStorage.setItem(KEY_INVENTORY, '1');
+      } catch (e) { console.error('persist inventory', e); }
+      buildItems();
+      alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
+    }
 
     function clearInventory() {
-      // При нажатии "Очистить пересчёт" экран возвращается в состояние первого захода
       sessionValues = {};
-      saveSession();
+      saveSessionImmediate();
       displayedCodes.clear();
       inventoryMode = false;
+      try { localStorage.removeItem(KEY_DISPLAYED); localStorage.removeItem(KEY_INVENTORY); } catch (e) {}
       buildItems();
       alert('Пересчёт очищен.');
     }
@@ -1129,10 +1029,12 @@ function loadInventoryMode() {
       });
 
       summaryModal.classList.add('show');
+      summaryModal.setAttribute('aria-hidden', 'false');
     }
 
     function closeSummary() {
       summaryModal.classList.remove('show');
+      summaryModal.setAttribute('aria-hidden', 'true');
     }
 
     /* ========= ТОАСТ ========= */
@@ -1162,9 +1064,13 @@ function loadInventoryMode() {
     /* ========= INIT ========= */
     document.addEventListener('DOMContentLoaded', async () => {
       loadDB();
-      // стартовое состояние: экран пустой
-      displayedCodes.clear();
-      inventoryMode = false;
+      // восстановим отображение и режим из localStorage
+      loadDisplayed();
+      loadInventoryMode();
+      // если inventoryMode=true — ensure sessionValues exist for all
+      if (inventoryMode) {
+        allItems.forEach(item => { if (sessionValues[item.code] === undefined) sessionValues[item.code] = ''; });
+      }
       buildItems();
       initCustomKeyboard();
 
@@ -1183,7 +1089,7 @@ function loadInventoryMode() {
               return label.includes('back') || label.includes('rear') || label.includes('зад') || label.includes('environment');
             });
             const defaultCamId = (backCam || videoDevices[0]).deviceId;
-            deviceSelect.innerHTML = videoDevices.map(d => `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`).join('');
+            deviceSelect.innerHTML = videoDevices.map(d => `<option value="${escapeHtml(d.deviceId)}">${escapeHtml(d.label || 'Камера')}</option>`).join('');
             deviceSelect.value = defaultCamId;
             await startCamera(defaultCamId);
           } catch (e) {
@@ -1226,16 +1132,27 @@ function loadInventoryMode() {
         filterItems();
       });
 
-      searchInput.addEventListener('input', filterItems);
+      // Debounce input filtering for smoother typing
+      let _filterTimer = null;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(_filterTimer);
+        _filterTimer = setTimeout(filterItems, 120);
+      });
 
       fabMenu.addEventListener('click', () => {
-        bottomSheet.classList.toggle('show');
-        sheetOverlay.classList.toggle('show');
+        const open = bottomSheet.classList.toggle('show');
+        sheetOverlay.classList.toggle('show', open);
+        bottomSheet.setAttribute('aria-hidden', String(!open));
+        sheetOverlay.setAttribute('aria-hidden', String(!open));
+        fabMenu.setAttribute('aria-expanded', String(open));
       });
 
       sheetOverlay.addEventListener('click', () => {
         bottomSheet.classList.remove('show');
         sheetOverlay.classList.remove('show');
+        bottomSheet.setAttribute('aria-hidden', 'true');
+        sheetOverlay.setAttribute('aria-hidden', 'true');
+        fabMenu.setAttribute('aria-expanded', 'false');
       });
 
       inventoryBtn.addEventListener('click', () => {
