@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <title>RecountPro — Пересчёт</title>
 
-  
   <!-- ZXing -->
   <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 
@@ -18,18 +17,21 @@
       --text: #333;
       --maxw: 980px;
       --border: #e0e0e0;
+      --shadow: 0 6px 18px rgba(0,0,0,0.08);
+      --smooth: cubic-bezier(.2,.9,.2,1);
     }
 
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
     html, body {
       height: 100%;
       margin: 0;
       background-color: var(--bg);
       color: var(--text);
-      font-family: Inter, Segoe UI, system-ui, Arial, sans-serif;
+      font-family: Inter, "Segoe UI", system-ui, Arial, sans-serif;
       overflow: hidden;
       touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
     }
 
     header {
@@ -40,12 +42,15 @@
       border-bottom: 1px solid var(--border);
       z-index: 1000;
       border-radius: 0 0 14px 14px;
+      will-change: transform;
+      transition: transform 280ms var(--smooth);
     }
     header h1 {
       margin: 0;
       text-align: center;
       font-size: 1.15rem;
       color: var(--accent);
+      font-weight: 700;
     }
 
     #search-wrap {
@@ -61,7 +66,10 @@
       background-color: white;
       color: var(--text);
       font-size: 15px;
+      transition: box-shadow 180ms var(--smooth), border-color 180ms var(--smooth);
     }
+    #search:focus { box-shadow: 0 6px 18px rgba(67,97,238,0.08); border-color: rgba(67,97,238,0.18); outline: none; }
+
     #scan-btn,
     #clear-search {
       position: absolute;
@@ -72,6 +80,9 @@
       border: none;
       color: var(--muted);
       cursor: pointer;
+      font-size: 18px;
+      padding: 6px;
+      line-height: 1;
     }
     #clear-search { right: 44px; }
 
@@ -81,6 +92,8 @@
       top: 96px; bottom: 0;
       overflow: auto;
       padding: 12px;
+      -webkit-overflow-scrolling: touch;
+      transition: padding-bottom 220ms var(--smooth);
     }
 
     .card {
@@ -89,7 +102,8 @@
       padding: 12px;
       border-radius: 8px;
       background-color: var(--card);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: var(--shadow);
+      transition: transform 220ms var(--smooth), box-shadow 220ms var(--smooth);
     }
 
     .preview-wrap {
@@ -99,12 +113,17 @@
       border: 1px solid var(--border);
       height: 34vh;
       min-height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     video#preview {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
+      transform-origin: center center;
+      will-change: transform;
     }
 
     .controls {
@@ -120,8 +139,10 @@
       background-color: white;
       color: var(--text);
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: transform 120ms var(--smooth), box-shadow 120ms var(--smooth);
+      will-change: transform;
     }
+    .btn:active { transform: translateY(1px); }
     .btn.primary {
       background-color: var(--accent);
       color: white;
@@ -134,6 +155,7 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
+      padding-bottom: 120px;
     }
 
     .item {
@@ -142,18 +164,23 @@
       padding: 12px;
       border-radius: 8px;
       background-color: var(--card);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
       border-left: 4px solid transparent;
       display: flex;
       flex-direction: column;
       gap: 8px;
+      position: relative;
+      z-index: 1;
+      transition: box-shadow 220ms var(--smooth), transform 220ms var(--smooth), border-color 220ms var(--smooth);
+      will-change: transform, box-shadow;
     }
+    .item:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.06); }
     .item.match   { border-left-color: #22c55e; }
     .item.missing { border-left-color: #ef4444; }
     .item.excess  { border-left-color: #3b82f6; }
 
-    .field { margin-bottom: 8px; }
-    .label { font-weight: 700; color: var(--accent); margin-right: 6px; }
+    .field { margin-bottom: 8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .label { font-weight:700; color:var(--accent); margin-right:6px; white-space:nowrap; }
 
     input[data-code] {
       width: 100%;
@@ -163,7 +190,10 @@
       background-color: white;
       color: var(--text);
       font-size: 15px;
+      outline: none;
+      transition: box-shadow 160ms var(--smooth), border-color 160ms var(--smooth);
     }
+    input[data-code]:focus { box-shadow: 0 8px 20px rgba(67,97,238,0.06); border-color: rgba(67,97,238,0.12); }
 
     /* Кастомная клавиатура */
     #custom-keyboard {
@@ -177,10 +207,14 @@
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
       z-index: 3000;
-      transition: bottom 0.28s;
+      transition: transform 280ms var(--smooth), box-shadow 280ms var(--smooth);
+      transform: translateY(100%);
       border-top: 1px solid var(--border);
+      box-shadow: 0 -12px 40px rgba(0,0,0,0.12);
+      will-change: transform;
+      touch-action: manipulation;
     }
-    #custom-keyboard.show { bottom: 0; }
+    #custom-keyboard.show { transform: translateY(0); }
     #custom-keyboard button {
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -188,7 +222,14 @@
       color: var(--text);
       font-size: 20px;
       cursor: pointer;
+      padding: 12px 6px;
+      transition: transform 120ms var(--smooth), background 120ms var(--smooth);
+      will-change: transform, background;
+      user-select: none;
+      -webkit-user-select: none;
     }
+    #custom-keyboard button:active { transform: translateY(1px); background:#f3f6ff; }
+    #custom-keyboard .done { grid-column: 1 / -1; background: var(--accent); color: white; font-weight:700; }
 
     .hidden { display: none !important; }
 
@@ -210,6 +251,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: transform 180ms var(--smooth), box-shadow 180ms var(--smooth);
+      will-change: transform;
     }
 
     #sheetOverlay {
@@ -218,7 +261,7 @@
       background-color: rgba(0,0,0,0.5);
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.25s ease;
+      transition: opacity 0.25s var(--smooth);
       z-index: 999;
     }
     #sheetOverlay.show {
@@ -234,10 +277,12 @@
       background-color: white;
       border-radius: 16px 16px 0 0;
       box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-      transition: bottom 0.35s ease;
+      transition: transform 350ms var(--smooth);
+      transform: translateY(100%);
       z-index: 1002;
+      will-change: transform;
     }
-    #bottomSheet.show { bottom: 0; }
+    #bottomSheet.show { transform: translateY(0); }
 
     .sheet-content {
       display: flex;
@@ -256,20 +301,33 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      transition: transform 120ms var(--smooth);
     }
+    .sheet-btn:active { transform: translateY(1px); }
 
     /* Модалка итогов */
     #summaryModal {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.6);
       z-index: 6000;
       display: none;
       align-items: center;
       justify-content: center;
+      transition: opacity 220ms var(--smooth);
     }
-    #summaryModal.show { display: flex; }
-
+    #summaryModal.show { display: flex; opacity: 1; }
+    #summaryModal .panel {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 80%;
+      overflow: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+      transform: translateY(8px);
+      transition: transform 220ms var(--smooth), opacity 220ms var(--smooth);
+    }
     #summaryTable th, #summaryTable td {
       border: none;
       padding: 8px;
@@ -278,6 +336,27 @@
       background-color: #f0f0f0;
       font-weight: 600;
     }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 18vh;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.25s var(--smooth);
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+
+    /* Accessibility helpers */
+    input[data-code] { caret-color: var(--accent); }
+    .sr-only { position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden; }
   </style>
 </head>
 
@@ -286,42 +365,42 @@
     <h1>RecountPro — Пересчёт</h1>
     <div id="search-wrap">
       <input id="search" placeholder="Поиск по названию или коду..." autocomplete="off" />
-      <button id="scan-btn" title="Открыть сканер">📷</button>
-      <button id="clear-search" title="Очистить">×</button>
+      <button id="scan-btn" title="Открыть сканер" aria-label="Открыть сканер">📷</button>
+      <button id="clear-search" title="Очистить" aria-label="Очистить поиск">×</button>
     </div>
   </header>
 
-  <main id="content">
+  <main id="content" tabindex="-1">
     <!-- Сканер -->
-    <div class="card" id="scannerCard" style="display:none">
+    <div class="card" id="scannerCard" style="display:none; transition:opacity 220ms var(--smooth);">
       <div class="preview-wrap">
         <video id="preview" playsinline muted></video>
       </div>
       <div class="controls">
         <select id="deviceSelect" class="btn" style="min-width:160px"></select>
-        <button id="torchBtn" class="btn">🔦</button>
+        <button id="torchBtn" class="btn" aria-pressed="false">🔦</button>
         <button id="closeScannerBtn" class="btn">Закрыть</button>
         <div id="scanResult" style="margin-left:auto;color:var(--muted)"></div>
       </div>
     </div>
 
     <!-- Список товаров -->
-    <div id="list" class="list"></div>
+    <div id="list" class="list" aria-live="polite"></div>
   </main>
 
   <!-- Кастомная клавиатура -->
-  <div id="custom-keyboard" aria-hidden="true">
-    <button>1</button><button>2</button><button>3</button>
-    <button>4</button><button>5</button><button>6</button>
-    <button>7</button><button>8</button><button>9</button>
-    <button>+</button><button>0</button><button id="back">←</button>
-    <button class="done" id="done" style="grid-column:1 / -1">Готово</button>
+  <div id="custom-keyboard" aria-hidden="true" role="application" aria-label="Клавиатура для ввода количества">
+    <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button>
+    <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button>
+    <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button>
+    <button data-key="+">+</button><button data-key="0">0</button><button data-key="back">←</button>
+    <button class="done" id="done" aria-label="Готово">Готово</button>
   </div>
 
   <!-- FAB меню -->
-  <button id="fabMenu">☰</button>
-  <div id="sheetOverlay"></div>
-  <div id="bottomSheet">
+  <button id="fabMenu" aria-haspopup="true" aria-expanded="false">☰</button>
+  <div id="sheetOverlay" aria-hidden="true"></div>
+  <div id="bottomSheet" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="sheet-content">
       <button class="sheet-btn" id="saveBtn">💾 Сохранить</button>
       <button class="sheet-btn" id="clearBtn">🧹 Очистить пересчёт</button>
@@ -331,8 +410,8 @@
   </div>
 
   <!-- Модалка итогов -->
-  <div id="summaryModal">
-    <div style="background:white;padding:20px;border-radius:12px;max-width:90%;max-height:80%;overflow:auto;">
+  <div id="summaryModal" aria-hidden="true">
+    <div class="panel">
       <h3>Итоги инвентаризации</h3>
       <table id="summaryTable" style="width:100%;border-collapse:collapse;margin-top:10px;">
         <thead>
@@ -355,57 +434,6 @@
   <!-- ZXing fallback -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
-  <style>
-    :root {
-      --accent: #4361ee;
-      --bg: #ffffff;
-      --card: #ffffff;
-      --muted: #666;
-      --text: #333;
-      --maxw: 980px;
-      --border: #e0e0e0;
-    }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html, body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family:Inter,Segoe UI,system-ui,Arial,sans-serif; overflow:hidden; touch-action:manipulation; }
-    header { position:fixed; left:0; right:0; top:0; padding:12px; background:white; border-bottom:1px solid var(--border); z-index:1000; border-radius:0 0 14px 14px; }
-    header h1 { margin:0; text-align:center; font-size:1.15rem; color:var(--accent); }
-    #search-wrap { max-width:var(--maxw); margin:10px auto; position:relative; }
-    #search { width:100%; padding:10px 56px 10px 12px; border-radius:8px; border:1px solid var(--border); background:white; color:var(--text); font-size:15px; }
-    #scan-btn, #clear-search { position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; }
-    #clear-search { right:44px; }
-    #content { position:fixed; left:0; right:0; top:96px; bottom:0; overflow:auto; padding:12px; -webkit-overflow-scrolling:touch; }
-    .card { max-width:var(--maxw); margin:10px auto; padding:12px; border-radius:8px; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,0.1); }
-    .preview-wrap { border-radius:8px; overflow:hidden; background:#f8f8f8; border:1px solid var(--border); height:34vh; min-height:140px; }
-    video#preview { width:100%; height:100%; object-fit:cover; display:block; }
-    .controls { display:flex; gap:8px; align-items:center; margin-top:10px; }
-    .btn { padding:8px 10px; border-radius:6px; border:1px solid var(--border); background:white; color:var(--text); cursor:pointer; transition:all 0.2s; }
-    .btn.primary { background:var(--accent); color:white; font-weight:700; }
-    .list { max-width:var(--maxw); margin:12px auto; display:flex; flex-direction:column; gap:8px; }
-    .item { width:100%; margin:10px 0; padding:12px; border-radius:8px; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,0.1); border-left:4px solid transparent; display:flex; flex-direction:column; gap:8px; position:relative; z-index:1; }
-    .item.match { border-left-color:#22c55e; }
-    .item.missing { border-left-color:#ef4444; }
-    .item.excess { border-left-color:#3b82f6; }
-    .field { margin-bottom:8px; }
-    .label { font-weight:700; color:var(--accent); margin-right:6px; }
-    input[data-code] { width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:white; color:var(--text); font-size:15px; }
-    /* keyboard */
-    #custom-keyboard { position:fixed; left:0; right:0; bottom:-40vh; height:34vh; background:white; padding:10px; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; z-index:99999; transition:bottom 0.28s; border-top:1px solid var(--border); box-shadow:0 -8px 30px rgba(0,0,0,0.12); }
-    #custom-keyboard.show { bottom:0; }
-    #custom-keyboard button { border:1px solid var(--border); border-radius:6px; background:white; color:var(--text); font-size:20px; cursor:pointer; padding:12px 6px; }
-    .hidden { display:none !important; }
-    #fabMenu { position:fixed; bottom:1rem; right:1rem; z-index:1001; background:var(--accent); color:white; border:none; padding:0.9rem 1.2rem; border-radius:8px; font-size:1.2rem; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(67,97,238,0.3); display:flex; align-items:center; justify-content:center; }
-    #sheetOverlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); opacity:0; pointer-events:none; transition:opacity 0.25s; z-index:999; }
-    #sheetOverlay.show { opacity:1; pointer-events:auto; }
-    #bottomSheet { position:fixed; left:0; right:0; bottom:-60vh; padding:1.2rem; background:white; border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,0.1); transition:bottom 0.35s; z-index:1002; }
-    #bottomSheet.show { bottom:0; }
-    .sheet-content { display:flex; flex-direction:column; gap:0.7rem; }
-    .sheet-btn { background:#f5f5f5; color:var(--text); border:1px solid var(--border); padding:0.9rem 1rem; border-radius:8px; font-size:1rem; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:10px; }
-    #summaryModal { position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:6000; display:none; align-items:center; justify-content:center; }
-    #summaryModal.show { display:flex; }
-    #summaryTable th, #summaryTable td { border:none; padding:8px; }
-    #summaryTable th { background:#f0f0f0; font-weight:600; }
-  </style>
-
   <script>
     /* ========= СТЕЙТ ========= */
     let barcodeDB = {};      // { [name]: [code1, code2...] }
@@ -419,6 +447,9 @@
     let scanning = false;
     let lastDetected = { code: null, ts: 0 };
     const DEBOUNCE_MS = 700;
+
+    // Torch state
+    let torchState = false;
 
     /* ========= ЭЛЕМЕНТЫ ========= */
     const searchInput      = document.getElementById('search');
@@ -481,14 +512,14 @@
         const raw = localStorage.getItem('barcodeDB');
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (parsed.db && parsed.quantities) {
+          if (parsed && parsed.db && parsed.quantities) {
             barcodeDB = parsed.db;
             quantities = parsed.quantities;
           } else {
             barcodeDB = {};
             quantities = {};
-            Object.entries(parsed).forEach(([code, data]) => {
-              const name = data.name || data;
+            Object.entries(parsed || {}).forEach(([code, data]) => {
+              const name = (data && data.name) ? data.name : data;
               if (!barcodeDB[name]) {
                 barcodeDB[name] = [];
                 quantities[name] = 0;
@@ -524,9 +555,18 @@
       }
     }
 
-    function saveSession() {
+    // Debounced session save to reduce localStorage thrash
+    let _sessionSaveTimer = null;
+    function saveSession(debounce = true) {
       try {
-        localStorage.setItem('recountSession', JSON.stringify(sessionValues));
+        if (debounce) {
+          clearTimeout(_sessionSaveTimer);
+          _sessionSaveTimer = setTimeout(() => {
+            try { localStorage.setItem('recountSession', JSON.stringify(sessionValues)); } catch (e) { console.error('Ошибка сохранения сессии:', e); }
+          }, 120);
+        } else {
+          localStorage.setItem('recountSession', JSON.stringify(sessionValues));
+        }
       } catch (e) {
         console.error('Ошибка сохранения сессии:', e);
       }
@@ -543,12 +583,14 @@
     }
 
     function renderItems(items) {
+      // Полностью перерисовываем список только при фильтрации/инициализации.
       listContainer.innerHTML = '';
       if (!items || items.length === 0) {
         showEmptyState();
         return;
       }
 
+      const fragment = document.createDocumentFragment();
       items.forEach(item => {
         const el = document.createElement('div');
         el.className = 'item';
@@ -568,38 +610,43 @@
         el.innerHTML = `
           <div class="field">
             <span class="label">Название:</span>
-            <strong>${item.name}</strong>
+            <strong>${escapeHtml(item.name)}</strong>
           </div>
           <div class="field">
             <span class="label">Штрихкод:</span>
-            <span>${item.code}</span>
+            <span>${escapeHtml(String(item.code))}</span>
           </div>
           <div class="field">
             <span class="label">Учётное:</span>
-            ${expected}
+            <span>${expected}</span>
           </div>
           <div class="field">
             <span class="label">Кол-во:</span>
-            <input data-code="${item.code}" type="text" value="${expr || ''}" placeholder="0" readonly>
+            <input data-code="${escapeHtml(String(item.code))}" type="text" value="${escapeHtml(expr || '')}" placeholder="0" readonly tabindex="0" />
           </div>
         `;
 
-        const input = el.querySelector('input');
-        // При фокусе открываем кастомную клавиатуру
-        input.addEventListener('focus', () => {
-          showCustomKeyboard(input);
-          setTimeout(() => {
-            const container = document.getElementById('content') || document.documentElement;
-            const rect = input.closest('.item').getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
-            const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
-            container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
-            setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
-          }, 80);
-        });
+        // Быстрый клик по карточке — фокус на поле
+        el.addEventListener('pointerdown', (ev) => {
+          // prevent accidental text selection
+          ev.preventDefault();
+          const input = el.querySelector('input[data-code]');
+          if (input) {
+            // focus reliably on pointerdown to avoid keyboard lag on mobile
+            try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
+            showCustomKeyboard(input);
+            setTimeout(() => ensureVisibleAboveKeyboard(input), 120);
+          }
+        }, { passive: false });
 
-        listContainer.appendChild(el);
+        fragment.appendChild(el);
       });
+
+      listContainer.appendChild(fragment);
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     }
 
     function buildItems() {
@@ -608,26 +655,41 @@
 
     /* ========= КЛАВИАТУРА (обновлённая: не перерисовываем весь список при вводе) ========= */
     function showCustomKeyboard(input) {
-      if (!customKeyboard) return;
-      customKeyboard.style.display = '';
-      customKeyboard.classList.add('show');
+      if (!customKeyboard || !input) return;
+      // store target code
       customKeyboard.dataset.target = input.dataset.code;
-      // ensure keyboard is above everything
       customKeyboard.setAttribute('aria-hidden', 'false');
+      customKeyboard.classList.add('show');
+      // ensure keyboard is visible above other elements
+      customKeyboard.style.display = '';
+      // mark input as active for styling
+      input.classList.add('active-input');
+      // ensure keyboard is announced for screen readers
+      customKeyboard.setAttribute('role', 'application');
+      // small delay to allow transition then ensure visible
+      requestAnimationFrame(() => {
+        ensureVisibleAboveKeyboard(input);
+      });
     }
 
     function hideCustomKeyboard() {
       if (!customKeyboard) return;
-      customKeyboard.classList.remove('show');
-      customKeyboard.style.display = 'none';
-      customKeyboard.setAttribute('aria-hidden', 'true');
-      // clear target
+      const targetCode = customKeyboard.dataset.target;
       delete customKeyboard.dataset.target;
+      customKeyboard.setAttribute('aria-hidden', 'true');
+      customKeyboard.classList.remove('show');
+      // remove active class from any input
+      const active = document.querySelector('input.active-input');
+      if (active) active.classList.remove('active-input');
+      // hide after transition to avoid layout jumps
+      setTimeout(() => {
+        if (!customKeyboard.classList.contains('show')) customKeyboard.style.display = 'none';
+      }, 320);
     }
 
     function updateItemVisual(code) {
       // обновляем только DOM-элемент конкретной карточки, не перерисовываем весь список
-      const el = document.querySelector(`.item[data-code="${code}"]`);
+      const el = document.querySelector(`.item[data-code="${cssEscape(code)}"]`);
       if (!el) return;
       const expr = sessionValues[code] || '';
       const actual = evalExpression(expr);
@@ -647,20 +709,27 @@
       }
     }
 
+    // безопасный селектор для кода (в т.ч. если код содержит спецсимволы)
+    function cssEscape(str) {
+      return CSS.escape ? CSS.escape(String(str)) : String(str).replace(/([^\w-])/g, '\\$1');
+    }
+
     function initCustomKeyboard() {
       if (!customKeyboard) return;
-      const keys = customKeyboard.querySelectorAll('button:not(.done)');
+      const keys = Array.from(customKeyboard.querySelectorAll('button:not(.done)'));
+      // Use pointerdown for snappy response on touch devices
       keys.forEach(key => {
-        key.addEventListener('click', () => {
+        key.addEventListener('pointerdown', (ev) => {
+          ev.preventDefault();
           const targetCode = customKeyboard.dataset.target;
           if (!targetCode) return;
-          const input = document.querySelector(`input[data-code="${targetCode}"]`);
+          const input = document.querySelector(`input[data-code="${cssEscape(targetCode)}"]`);
           if (!input) return;
 
           let currentValue = input.value || '';
-          const keyValue = key.textContent;
+          const keyValue = key.dataset.key || key.textContent;
 
-          if (keyValue === '←') {
+          if (keyValue === 'back' || keyValue === '←') {
             currentValue = currentValue.slice(0, -1);
           } else {
             currentValue = currentValue + keyValue;
@@ -668,42 +737,36 @@
 
           // обновляем только значение и визуалку карточки
           sessionValues[targetCode] = currentValue;
-          saveSession();
+          saveSession(); // debounced
           input.value = currentValue;
           updateItemVisual(targetCode);
 
           // убедимся, что поле видно над клавиатурой
           setTimeout(() => ensureVisibleAboveKeyboard(input), 0);
-        });
+        }, { passive: false });
       });
 
       const doneBtn = document.getElementById('done');
-      if (doneBtn) doneBtn.addEventListener('click', () => {
+      if (doneBtn) doneBtn.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault();
         const targetCode = customKeyboard.dataset.target;
         hideCustomKeyboard();
         // снимем фокус с поля
-        const input = document.querySelector(`input[data-code="${targetCode}"]`);
+        const input = document.querySelector(`input[data-code="${cssEscape(targetCode)}"]`);
         try { input?.blur(); } catch (e) {}
-      });
+      }, { passive: false });
     }
-    // внизу вашего скрипта, после initCustomKeyboard()
-function setupKeyboardDismissSimple() {
-  document.addEventListener('click', (e) => {
-    // если клавиатура скрыта — ничего не делаем
-    if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
 
-    // если клик внутри клавиатуры — не закрываем
-    if (customKeyboard.contains(e.target)) return;
-
-    // если клик по полю ввода карточки — не закрываем
-    if (e.target.closest && e.target.closest('input[data-code]')) return;
-
-    // иначе — закрываем
-    hideCustomKeyboard();
-  }, { capture: true });
-}
-setupKeyboardDismissSimple();
-
+    // Простое скрытие клавиатуры при клике вне (улучшено: capture + pointerdown)
+    function setupKeyboardDismissSimple() {
+      document.addEventListener('pointerdown', (e) => {
+        if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
+        if (customKeyboard.contains(e.target)) return;
+        if (e.target.closest && e.target.closest('input[data-code]')) return;
+        hideCustomKeyboard();
+      }, { capture: true });
+    }
+    setupKeyboardDismissSimple();
 
     /* ========= СКАНЕР (эталонный, интегрирован) ========= */
     function createCanvas(w, h) {
@@ -714,27 +777,35 @@ setupKeyboardDismissSimple();
     }
 
     function toGrayscale(ctx, w, h) {
-      const img = ctx.getImageData(0, 0, w, h);
-      const d = img.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
-        d[i] = d[i + 1] = d[i + 2] = v;
+      try {
+        const img = ctx.getImageData(0, 0, w, h);
+        const d = img.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
+          d[i] = d[i + 1] = d[i + 2] = v;
+        }
+        ctx.putImageData(img, 0, 0);
+      } catch (e) {
+        // ignore cross-origin or other issues
       }
-      ctx.putImageData(img, 0, 0);
     }
 
     function increaseContrast(ctx, w, h, contrast = 30) {
-      const img = ctx.getImageData(0, 0, w, h);
-      const d = img.data;
-      const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
-      for (let i = 0; i < d.length; i += 4) {
-        for (let c = 0; c < 3; c++) {
-          let col = d[i + c];
-          col = factor * (col - 128) + 128;
-          d[i + c] = Math.max(0, Math.min(255, col));
+      try {
+        const img = ctx.getImageData(0, 0, w, h);
+        const d = img.data;
+        const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+        for (let i = 0; i < d.length; i += 4) {
+          for (let c = 0; c < 3; c++) {
+            let col = d[i + c];
+            col = factor * (col - 128) + 128;
+            d[i + c] = Math.max(0, Math.min(255, col));
+          }
         }
+        ctx.putImageData(img, 0, 0);
+      } catch (e) {
+        // ignore
       }
-      ctx.putImageData(img, 0, 0);
     }
 
     async function tryDecodeCanvas(canvas) {
@@ -785,13 +856,25 @@ setupKeyboardDismissSimple();
       return c;
     }
 
+    // Throttle scan loop to avoid heavy CPU on low-end devices
+    let _scanRaf = null;
+    let _lastScanTs = 0;
+    const SCAN_MIN_INTERVAL = 80; // ms
+
     async function scanLoop() {
       if (!scanning) return;
+      const now = performance.now();
+      if (now - _lastScanTs < SCAN_MIN_INTERVAL) {
+        _scanRaf = requestAnimationFrame(scanLoop);
+        return;
+      }
+      _lastScanTs = now;
+
       try {
         const w = previewVideo.videoWidth;
         const h = previewVideo.videoHeight;
         if (w === 0 || h === 0) {
-          requestAnimationFrame(scanLoop);
+          _scanRaf = requestAnimationFrame(scanLoop);
           return;
         }
 
@@ -813,7 +896,7 @@ setupKeyboardDismissSimple();
       } catch (e) {
         // ignore
       } finally {
-        requestAnimationFrame(scanLoop);
+        _scanRaf = requestAnimationFrame(scanLoop);
       }
     }
 
@@ -833,7 +916,7 @@ setupKeyboardDismissSimple();
 
         // Найдём поле ввода для этой карточки и установим фокус, откроем кастомную клавиатуру
         setTimeout(() => {
-          const target = document.querySelector(`.item[data-code="${code}"]`);
+          const target = document.querySelector(`.item[data-code="${cssEscape(code)}"]`);
           if (target) {
             const input = target.querySelector('input[data-code]');
             if (input) {
@@ -870,7 +953,9 @@ setupKeyboardDismissSimple();
         previewVideo.srcObject = currentStream;
         await previewVideo.play().catch(()=>{});
         try { reader = new ZXing.BrowserMultiFormatReader(); } catch (e) { reader = null; }
-        requestAnimationFrame(scanLoop);
+        // reset last detected to avoid immediate duplicates
+        lastDetected = { code: null, ts: 0 };
+        _scanRaf = requestAnimationFrame(scanLoop);
       } catch (e) {
         console.warn('startCamera fallback, trying without deviceId:', e);
         try {
@@ -879,7 +964,8 @@ setupKeyboardDismissSimple();
           previewVideo.srcObject = currentStream;
           await previewVideo.play().catch(()=>{});
           try { reader = new ZXing.BrowserMultiFormatReader(); } catch (e) { reader = null; }
-          requestAnimationFrame(scanLoop);
+          lastDetected = { code: null, ts: 0 };
+          _scanRaf = requestAnimationFrame(scanLoop);
         } catch (err) {
           console.error('Ошибка доступа к камере:', err);
           alert('Ошибка доступа к камере');
@@ -890,6 +976,10 @@ setupKeyboardDismissSimple();
 
     function stopScanner() {
       scanning = false;
+      if (_scanRaf) {
+        cancelAnimationFrame(_scanRaf);
+        _scanRaf = null;
+      }
       if (currentStream) {
         currentStream.getTracks().forEach(t => t.stop());
         currentStream = null;
@@ -900,6 +990,8 @@ setupKeyboardDismissSimple();
       }
       previewVideo.srcObject = null;
       scanResult.textContent = '';
+      torchState = false;
+      torchBtn.setAttribute('aria-pressed', 'false');
     }
 
     /* ========= ПОИСК / ХАЙЛАЙТ ========= */
@@ -920,7 +1012,7 @@ setupKeyboardDismissSimple();
 
     function highlightScannedItemByCode(code) {
       document.querySelectorAll('.item').forEach(el => el.style.boxShadow = '');
-      const target = document.querySelector(`.item[data-code="${code}"]`);
+      const target = document.querySelector(`.item[data-code="${cssEscape(code)}"]`);
       if (target) {
         target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.45)';
         const container = document.getElementById('content') || document.documentElement;
@@ -928,6 +1020,8 @@ setupKeyboardDismissSimple();
         const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
         const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
         container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
+        // remove highlight after a short delay
+        setTimeout(() => { target.style.boxShadow = ''; }, 1200);
       }
     }
 
@@ -941,14 +1035,16 @@ setupKeyboardDismissSimple();
       const safeMargin = 12;
       const bottomOverlap = (fieldRect.bottom + safeMargin) - (viewportHeight - kbHeight);
       if (bottomOverlap > 0) {
-        const currentScroll = window.scrollY || document.documentElement.scrollTop;
+        const container = document.getElementById('content') || document.documentElement;
+        const currentScroll = container.scrollTop || window.scrollY || document.documentElement.scrollTop;
         const scrollBy = bottomOverlap + 40;
-        window.scrollTo({ top: currentScroll + scrollBy, behavior: 'smooth' });
+        container.scrollTo({ top: currentScroll + scrollBy, behavior: 'smooth' });
       } else {
         const topGap = fieldRect.top - safeMargin;
         if (topGap < 60) {
-          const currentScroll = window.scrollY || document.documentElement.scrollTop;
-          window.scrollTo({ top: Math.max(0, currentScroll - (60 - topGap)), behavior: 'smooth' });
+          const container = document.getElementById('content') || document.documentElement;
+          const currentScroll = container.scrollTop || window.scrollY || document.documentElement.scrollTop;
+          container.scrollTo({ top: Math.max(0, currentScroll - (60 - topGap)), behavior: 'smooth' });
         }
       }
     }
@@ -957,14 +1053,14 @@ setupKeyboardDismissSimple();
     function startInventory() {
       sessionValues = {};
       allItems.forEach(item => sessionValues[item.code] = '');
-      saveSession();
+      saveSession(false);
       buildItems();
       alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
     }
 
     function clearInventory() {
       sessionValues = {};
-      saveSession();
+      saveSession(false);
       buildItems();
       alert('Пересчёт очищен.');
     }
@@ -1005,7 +1101,7 @@ setupKeyboardDismissSimple();
         const diff = data.actual - data.expected;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td style="text-align:left;">${name}</td>
+          <td style="text-align:left;">${escapeHtml(name)}</td>
           <td style="text-align:right;">${data.expected}</td>
           <td style="text-align:right;">${data.actual}</td>
           <td style="text-align:right;">${diff}</td>
@@ -1014,48 +1110,54 @@ setupKeyboardDismissSimple();
       });
 
       summaryModal.classList.add('show');
+      summaryModal.setAttribute('aria-hidden', 'false');
     }
 
     function closeSummary() {
       summaryModal.classList.remove('show');
+      summaryModal.setAttribute('aria-hidden', 'true');
     }
 
     /* ========= ТОАСТ ========= */
+    let _toastTimer = null;
     function showToast(message) {
       let toast = document.querySelector(".toast");
       if (!toast) {
         toast = document.createElement("div");
         toast.className = "toast";
-        Object.assign(toast.style, {
-          position: 'fixed',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          bottom: '18vh',
-          background: 'rgba(0,0,0,0.8)',
-          color: 'white',
-          padding: '8px 12px',
-          borderRadius: '8px',
-          zIndex: 9999,
-          opacity: '0',
-          transition: 'opacity 0.25s'
-        });
         document.body.appendChild(toast);
       }
 
       toast.textContent = message;
-      toast.style.opacity = "1";
+      toast.classList.add('show');
 
-      setTimeout(() => { toast.style.opacity = "0"; }, 1800);
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 1800);
     }
 
-    /* ========= INIT ========= */
+    /* ========= ИНИЦИАЛИЗАЦИЯ ========= */
     document.addEventListener('DOMContentLoaded', async () => {
       loadDB();
       buildItems();
       initCustomKeyboard();
 
+      // Improve keyboard focusability: allow pointerdown on inputs to open keyboard
+      document.addEventListener('pointerdown', (e) => {
+        const input = e.target.closest && e.target.closest('input[data-code]');
+        if (input) {
+          // prevent default to avoid native keyboard on some devices
+          e.preventDefault();
+          try { input.focus({ preventScroll: true }); } catch (err) { input.focus(); }
+          showCustomKeyboard(input);
+          setTimeout(() => ensureVisibleAboveKeyboard(input), 120);
+        }
+      }, { passive: false });
+
       scanBtn.addEventListener('click', () => {
         scannerCard.style.display = 'block';
+        scannerCard.style.opacity = '1';
         // initScanner uses camera pipeline (startCamera + scanLoop)
         (async () => {
           try {
@@ -1070,7 +1172,7 @@ setupKeyboardDismissSimple();
               return label.includes('back') || label.includes('rear') || label.includes('зад') || label.includes('environment');
             });
             const defaultCamId = (backCam || videoDevices[0]).deviceId;
-            deviceSelect.innerHTML = videoDevices.map(d => `<option value="${d.deviceId}">${d.label || 'Камера'}</option>`).join('');
+            deviceSelect.innerHTML = videoDevices.map(d => `<option value="${escapeHtml(d.deviceId)}">${escapeHtml(d.label || 'Камера')}</option>`).join('');
             deviceSelect.value = defaultCamId;
             await startCamera(defaultCamId);
           } catch (e) {
@@ -1082,24 +1184,28 @@ setupKeyboardDismissSimple();
 
       closeScannerBtn.addEventListener('click', () => {
         stopScanner();
+        scannerCard.style.display = 'none';
       });
 
       deviceSelect.addEventListener('change', e => {
         startCamera(e.target.value);
       });
 
-      torchBtn.addEventListener('click', () => {
+      torchBtn.addEventListener('click', async () => {
         try {
           const tracks = currentStream?.getVideoTracks();
           if (tracks && tracks.length > 0) {
             const track = tracks[0];
             const capabilities = track.getCapabilities?.();
             if (capabilities?.torch) {
-              const current = track.getSettings().torch;
-              track.applyConstraints({ advanced: [{ torch: !current }] });
+              torchState = !torchState;
+              await track.applyConstraints({ advanced: [{ torch: torchState }] });
+              torchBtn.setAttribute('aria-pressed', String(!!torchState));
             } else {
               showToast('Фонарик не поддерживается');
             }
+          } else {
+            showToast('Камера не активна');
           }
         } catch (e) {
           console.error('Torch error', e);
@@ -1112,16 +1218,27 @@ setupKeyboardDismissSimple();
         filterItems();
       });
 
-      searchInput.addEventListener('input', filterItems);
+      // Debounce input filtering for smoother typing
+      let _filterTimer = null;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(_filterTimer);
+        _filterTimer = setTimeout(filterItems, 120);
+      });
 
       fabMenu.addEventListener('click', () => {
-        bottomSheet.classList.toggle('show');
-        sheetOverlay.classList.toggle('show');
+        const open = bottomSheet.classList.toggle('show');
+        sheetOverlay.classList.toggle('show', open);
+        bottomSheet.setAttribute('aria-hidden', String(!open));
+        sheetOverlay.setAttribute('aria-hidden', String(!open));
+        fabMenu.setAttribute('aria-expanded', String(open));
       });
 
       sheetOverlay.addEventListener('click', () => {
         bottomSheet.classList.remove('show');
         sheetOverlay.classList.remove('show');
+        bottomSheet.setAttribute('aria-hidden', 'true');
+        sheetOverlay.setAttribute('aria-hidden', 'true');
+        fabMenu.setAttribute('aria-expanded', 'false');
       });
 
       inventoryBtn.addEventListener('click', () => {
@@ -1161,6 +1278,26 @@ setupKeyboardDismissSimple();
 
       // Попытка "разогреть" разрешения, чтобы метки камер появились
       try { await navigator.mediaDevices.getUserMedia({ video: true }); } catch (e) {}
+
+      // Stop scanner when page hidden to save resources
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) stopScanner();
+      });
+
+      // Accessibility: close modal on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          if (customKeyboard && customKeyboard.classList.contains('show')) hideCustomKeyboard();
+          if (summaryModal && summaryModal.classList.contains('show')) closeSummary();
+          if (bottomSheet && bottomSheet.classList.contains('show')) {
+            bottomSheet.classList.remove('show');
+            sheetOverlay.classList.remove('show');
+          }
+        }
+      });
+
+      // Ensure keyboard init after DOM ready
+      initCustomKeyboard();
     });
 
     /* Остановим камеру при уходе со страницы */
@@ -1169,6 +1306,7 @@ setupKeyboardDismissSimple();
   </script>
 </body>
 </html>
+
 
 
 
