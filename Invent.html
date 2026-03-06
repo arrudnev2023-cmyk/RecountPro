@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
   <title>RecountPro — Пересчёт</title>
 
-  
   <!-- ZXing -->
   <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 
@@ -355,57 +354,6 @@
   <!-- ZXing fallback -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
-  <style>
-    :root {
-      --accent: #4361ee;
-      --bg: #ffffff;
-      --card: #ffffff;
-      --muted: #666;
-      --text: #333;
-      --maxw: 980px;
-      --border: #e0e0e0;
-    }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html, body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family:Inter,Segoe UI,system-ui,Arial,sans-serif; overflow:hidden; touch-action:manipulation; }
-    header { position:fixed; left:0; right:0; top:0; padding:12px; background:white; border-bottom:1px solid var(--border); z-index:1000; border-radius:0 0 14px 14px; }
-    header h1 { margin:0; text-align:center; font-size:1.15rem; color:var(--accent); }
-    #search-wrap { max-width:var(--maxw); margin:10px auto; position:relative; }
-    #search { width:100%; padding:10px 56px 10px 12px; border-radius:8px; border:1px solid var(--border); background:white; color:var(--text); font-size:15px; }
-    #scan-btn, #clear-search { position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; }
-    #clear-search { right:44px; }
-    #content { position:fixed; left:0; right:0; top:96px; bottom:0; overflow:auto; padding:12px; -webkit-overflow-scrolling:touch; }
-    .card { max-width:var(--maxw); margin:10px auto; padding:12px; border-radius:8px; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,0.1); }
-    .preview-wrap { border-radius:8px; overflow:hidden; background:#f8f8f8; border:1px solid var(--border); height:34vh; min-height:140px; }
-    video#preview { width:100%; height:100%; object-fit:cover; display:block; }
-    .controls { display:flex; gap:8px; align-items:center; margin-top:10px; }
-    .btn { padding:8px 10px; border-radius:6px; border:1px solid var(--border); background:white; color:var(--text); cursor:pointer; transition:all 0.2s; }
-    .btn.primary { background:var(--accent); color:white; font-weight:700; }
-    .list { max-width:var(--maxw); margin:12px auto; display:flex; flex-direction:column; gap:8px; }
-    .item { width:100%; margin:10px 0; padding:12px; border-radius:8px; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,0.1); border-left:4px solid transparent; display:flex; flex-direction:column; gap:8px; position:relative; z-index:1; }
-    .item.match { border-left-color:#22c55e; }
-    .item.missing { border-left-color:#ef4444; }
-    .item.excess { border-left-color:#3b82f6; }
-    .field { margin-bottom:8px; }
-    .label { font-weight:700; color:var(--accent); margin-right:6px; }
-    input[data-code] { width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:white; color:var(--text); font-size:15px; }
-    /* keyboard */
-    #custom-keyboard { position:fixed; left:0; right:0; bottom:-40vh; height:34vh; background:white; padding:10px; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; z-index:99999; transition:bottom 0.28s; border-top:1px solid var(--border); box-shadow:0 -8px 30px rgba(0,0,0,0.12); }
-    #custom-keyboard.show { bottom:0; }
-    #custom-keyboard button { border:1px solid var(--border); border-radius:6px; background:white; color:var(--text); font-size:20px; cursor:pointer; padding:12px 6px; }
-    .hidden { display:none !important; }
-    #fabMenu { position:fixed; bottom:1rem; right:1rem; z-index:1001; background:var(--accent); color:white; border:none; padding:0.9rem 1.2rem; border-radius:8px; font-size:1.2rem; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(67,97,238,0.3); display:flex; align-items:center; justify-content:center; }
-    #sheetOverlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); opacity:0; pointer-events:none; transition:opacity 0.25s; z-index:999; }
-    #sheetOverlay.show { opacity:1; pointer-events:auto; }
-    #bottomSheet { position:fixed; left:0; right:0; bottom:-60vh; padding:1.2rem; background:white; border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,0.1); transition:bottom 0.35s; z-index:1002; }
-    #bottomSheet.show { bottom:0; }
-    .sheet-content { display:flex; flex-direction:column; gap:0.7rem; }
-    .sheet-btn { background:#f5f5f5; color:var(--text); border:1px solid var(--border); padding:0.9rem 1rem; border-radius:8px; font-size:1rem; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:10px; }
-    #summaryModal { position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:6000; display:none; align-items:center; justify-content:center; }
-    #summaryModal.show { display:flex; }
-    #summaryTable th, #summaryTable td { border:none; padding:8px; }
-    #summaryTable th { background:#f0f0f0; font-weight:600; }
-  </style>
-
   <script>
     /* ========= СТЕЙТ ========= */
     let barcodeDB = {};      // { [name]: [code1, code2...] }
@@ -413,6 +361,10 @@
     let allItems = [];       // [{code,name,qty}]
     let sessionValues = {};  // { [code]: "выражение" }
     let codeToName = new Map();
+
+    // displayedCodes хранит коды карточек, которые видимы на экране
+    let displayedCodes = new Set();
+    let inventoryMode = false; // если true — "провести инвентаризацию" (показываем все карточки)
 
     let reader = null;
     let currentStream = null;
@@ -536,10 +488,23 @@
     function showEmptyState() {
       listContainer.innerHTML = `
         <div style="text-align:center;padding:40px;color:var(--muted);">
-          <h3>База товаров пуста</h3>
-          <p>Добавьте товары на экране базы.</p>
+          <h3>Список пуст</h3>
+          <p>Нажмите "Провести инвентаризацию" чтобы загрузить все товары или отсканируйте штрихкод, чтобы добавить карточку.</p>
         </div>
       `;
+    }
+
+    function renderItemsByCodes(codes) {
+      // codes — iterable набор кодов (строки)
+      const items = [];
+      for (let code of codes) {
+        const name = codeToName.get(String(code));
+        if (name) {
+          const qty = quantities[name] || 0;
+          items.push({ code, name, qty });
+        }
+      }
+      renderItems(items);
     }
 
     function renderItems(items) {
@@ -568,11 +533,11 @@
         el.innerHTML = `
           <div class="field">
             <span class="label">Название:</span>
-            <strong>${item.name}</strong>
+            <strong>${escapeHtml(item.name)}</strong>
           </div>
           <div class="field">
             <span class="label">Штрихкод:</span>
-            <span>${item.code}</span>
+            <span>${escapeHtml(String(item.code))}</span>
           </div>
           <div class="field">
             <span class="label">Учётное:</span>
@@ -580,7 +545,7 @@
           </div>
           <div class="field">
             <span class="label">Кол-во:</span>
-            <input data-code="${item.code}" type="text" value="${expr || ''}" placeholder="0" readonly>
+            <input data-code="${escapeHtml(item.code)}" type="text" value="${escapeHtml(expr || '')}" placeholder="0" readonly>
           </div>
         `;
 
@@ -598,21 +563,47 @@
           }, 80);
         });
 
+        // Быстрый клик по карточке — фокус на поле (для удобства)
+        el.addEventListener('click', (ev) => {
+          const targetInput = el.querySelector('input[data-code]');
+          if (targetInput) {
+            try { targetInput.focus({ preventScroll: true }); } catch (e) { targetInput.focus(); }
+          }
+        });
+
         listContainer.appendChild(el);
       });
     }
 
-    function buildItems() {
-      renderItems(allItems);
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     }
 
-    /* ========= КЛАВИАТУРА (обновлённая: не перерисовываем весь список при вводе) ========= */
+    /* ========= ЛОГИКА ОТОБРАЖЕНИЯ (новая) ========= */
+    function buildItems() {
+      // Если включен режим инвентаризации — показываем все товары
+      if (inventoryMode) {
+        // отображаем все коды из базы
+        displayedCodes = new Set(allItems.map(i => String(i.code)));
+        renderItems(allItems);
+        return;
+      }
+
+      // иначе показываем только те коды, которые добавлены (displayedCodes)
+      if (displayedCodes.size === 0) {
+        showEmptyState();
+        return;
+      }
+
+      renderItemsByCodes(displayedCodes);
+    }
+
+    /* ========= КЛАВИАТУРА ========= */
     function showCustomKeyboard(input) {
       if (!customKeyboard) return;
       customKeyboard.style.display = '';
       customKeyboard.classList.add('show');
       customKeyboard.dataset.target = input.dataset.code;
-      // ensure keyboard is above everything
       customKeyboard.setAttribute('aria-hidden', 'false');
     }
 
@@ -621,24 +612,20 @@
       customKeyboard.classList.remove('show');
       customKeyboard.style.display = 'none';
       customKeyboard.setAttribute('aria-hidden', 'true');
-      // clear target
       delete customKeyboard.dataset.target;
     }
 
     function updateItemVisual(code) {
-      // обновляем только DOM-элемент конкретной карточки, не перерисовываем весь список
-      const el = document.querySelector(`.item[data-code="${code}"]`);
+      const el = document.querySelector(`.item[data-code="${cssEscape(code)}"]`);
       if (!el) return;
       const expr = sessionValues[code] || '';
       const actual = evalExpression(expr);
       const name = el.dataset.name;
       const expected = quantities[name] || 0;
 
-      // обновляем input value
       const input = el.querySelector('input[data-code]');
       if (input) input.value = expr;
 
-      // сброс классов
       el.classList.remove('match', 'missing', 'excess');
       if (expr) {
         if (actual === expected) el.classList.add('match');
@@ -654,7 +641,7 @@
         key.addEventListener('click', () => {
           const targetCode = customKeyboard.dataset.target;
           if (!targetCode) return;
-          const input = document.querySelector(`input[data-code="${targetCode}"]`);
+          const input = document.querySelector(`input[data-code="${cssEscape(targetCode)}"]`);
           if (!input) return;
 
           let currentValue = input.value || '';
@@ -666,13 +653,11 @@
             currentValue = currentValue + keyValue;
           }
 
-          // обновляем только значение и визуалку карточки
           sessionValues[targetCode] = currentValue;
           saveSession();
           input.value = currentValue;
           updateItemVisual(targetCode);
 
-          // убедимся, что поле видно над клавиатурой
           setTimeout(() => ensureVisibleAboveKeyboard(input), 0);
         });
       });
@@ -681,31 +666,22 @@
       if (doneBtn) doneBtn.addEventListener('click', () => {
         const targetCode = customKeyboard.dataset.target;
         hideCustomKeyboard();
-        // снимем фокус с поля
-        const input = document.querySelector(`input[data-code="${targetCode}"]`);
+        const input = document.querySelector(`input[data-code="${cssEscape(targetCode)}"]`);
         try { input?.blur(); } catch (e) {}
       });
     }
-    // внизу вашего скрипта, после initCustomKeyboard()
-function setupKeyboardDismissSimple() {
-  document.addEventListener('click', (e) => {
-    // если клавиатура скрыта — ничего не делаем
-    if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
 
-    // если клик внутри клавиатуры — не закрываем
-    if (customKeyboard.contains(e.target)) return;
+    function setupKeyboardDismissSimple() {
+      document.addEventListener('click', (e) => {
+        if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
+        if (customKeyboard.contains(e.target)) return;
+        if (e.target.closest && e.target.closest('input[data-code]')) return;
+        hideCustomKeyboard();
+      }, { capture: true });
+    }
+    setupKeyboardDismissSimple();
 
-    // если клик по полю ввода карточки — не закрываем
-    if (e.target.closest && e.target.closest('input[data-code]')) return;
-
-    // иначе — закрываем
-    hideCustomKeyboard();
-  }, { capture: true });
-}
-setupKeyboardDismissSimple();
-
-
-    /* ========= СКАНЕР (эталонный, интегрирован) ========= */
+    /* ========= СКАНЕР ========= */
     function createCanvas(w, h) {
       const c = document.createElement('canvas');
       c.width = w;
@@ -827,17 +803,21 @@ setupKeyboardDismissSimple();
 
       const name = codeToName.get(String(code));
       if (name) {
+        // Добавляем карточку этого товара в отображаемые (если ещё нет)
+        if (!displayedCodes.has(String(code))) {
+          displayedCodes.add(String(code));
+        }
+        // Если мы не в режиме инвентаризации, оставляем inventoryMode=false
         searchInput.value = name;
         filterItems();
         highlightScannedItemByCode(code);
 
-        // Найдём поле ввода для этой карточки и установим фокус, откроем кастомную клавиатуру
+        // Открываем клавиатуру для этой карточки
         setTimeout(() => {
-          const target = document.querySelector(`.item[data-code="${code}"]`);
+          const target = document.querySelector(`.item[data-code="${cssEscape(code)}"]`);
           if (target) {
             const input = target.querySelector('input[data-code]');
             if (input) {
-              // Сделаем поле видимым и откроем клавиатуру
               input.scrollIntoView({ behavior: 'smooth', block: 'center' });
               showCustomKeyboard(input);
               try { input.focus({ preventScroll: true }); } catch (e) { try { input.focus(); } catch (e) {} }
@@ -845,7 +825,7 @@ setupKeyboardDismissSimple();
             }
           }
 
-          // Закрываем сканер через короткую паузу, чтобы пользователь увидел подсветку и клавиатуру
+          // Закрываем сканер через короткую паузу
           setTimeout(() => {
             try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
             scannerCard.style.display = 'none';
@@ -905,22 +885,34 @@ setupKeyboardDismissSimple();
     /* ========= ПОИСК / ХАЙЛАЙТ ========= */
     function filterItems() {
       const q = (searchInput.value || '').toLowerCase().trim();
-      if (!q) {
-        buildItems();
+
+      // Если в режиме инвентаризации — фильтруем по всем товарам
+      if (inventoryMode) {
+        const filtered = allItems.filter(item =>
+          item.name.toLowerCase().includes(q) ||
+          String(item.code).includes(q)
+        );
+        renderItems(filtered);
         return;
       }
 
-      const filtered = allItems.filter(item =>
-        item.name.toLowerCase().includes(q) ||
-        String(item.code).includes(q)
-      );
+      // Иначе фильтруем только по отображаемым карточкам
+      const filtered = [];
+      for (let code of displayedCodes) {
+        const name = codeToName.get(String(code));
+        if (!name) continue;
+        if (!q || name.toLowerCase().includes(q) || String(code).includes(q)) {
+          const qty = quantities[name] || 0;
+          filtered.push({ code, name, qty });
+        }
+      }
 
       renderItems(filtered);
     }
 
     function highlightScannedItemByCode(code) {
       document.querySelectorAll('.item').forEach(el => el.style.boxShadow = '');
-      const target = document.querySelector(`.item[data-code="${code}"]`);
+      const target = document.querySelector(`.item[data-code="${cssEscape(code)}"]`);
       if (target) {
         target.style.boxShadow = '0 0 0 2px rgba(67,97,238,0.45)';
         const container = document.getElementById('content') || document.documentElement;
@@ -955,21 +947,30 @@ setupKeyboardDismissSimple();
 
     /* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
     function startInventory() {
-      sessionValues = {};
-      allItems.forEach(item => sessionValues[item.code] = '');
+      // включаем режим инвентаризации: показываем все карточки
+      inventoryMode = true;
+      displayedCodes = new Set(allItems.map(i => String(i.code)));
+      // инициализируем сессию для всех кодов, если ещё нет
+      allItems.forEach(item => {
+        if (sessionValues[item.code] === undefined) sessionValues[item.code] = '';
+      });
       saveSession();
       buildItems();
       alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
     }
 
     function clearInventory() {
+      // очищаем только сессию и отображаемые карточки
       sessionValues = {};
       saveSession();
+      displayedCodes.clear();
+      inventoryMode = false;
       buildItems();
       alert('Пересчёт очищен.');
     }
 
     function applySessionToDB() {
+      // Полная замена: используется только в режиме инвентаризации
       const aggregated = {};
       allItems.forEach(item => {
         const expr = sessionValues[item.code] || '';
@@ -988,14 +989,39 @@ setupKeyboardDismissSimple();
       buildItems();
     }
 
+    function applySessionToDBForDisplayed() {
+      // Обновляем только те карточки, которые сейчас отображаются (displayedCodes)
+      const aggregated = {};
+      for (let code of displayedCodes) {
+        const expr = sessionValues[code] || '';
+        const val = evalExpression(expr);
+        const name = codeToName.get(String(code));
+        if (!name) continue;
+        if (!aggregated[name]) aggregated[name] = 0;
+        aggregated[name] += val;
+      }
+
+      Object.keys(aggregated).forEach(name => {
+        quantities[name] = aggregated[name];
+      });
+
+      saveDB();
+      buildItemsFromDB();
+      // После сохранения оставляем отображаемые карточки как есть (пользователь может продолжить)
+      buildItems();
+    }
+
     /* ========= ИТОГИ ========= */
     function openSummary() {
       summaryTableBody.innerHTML = '';
       const summary = {};
-      allItems.forEach(item => {
-        const name = item.name;
+      // Если в режиме инвентаризации — считаем по всем, иначе — по отображаемым
+      const sourceCodes = inventoryMode ? allItems.map(i => i.code) : Array.from(displayedCodes);
+      sourceCodes.forEach(code => {
+        const name = codeToName.get(String(code));
+        if (!name) return;
         const expected = quantities[name] || 0;
-        const expr = sessionValues[item.code] || '';
+        const expr = sessionValues[code] || '';
         const val  = evalExpression(expr);
         if (!summary[name]) summary[name] = { expected, actual: 0 };
         summary[name].actual += val;
@@ -1005,7 +1031,7 @@ setupKeyboardDismissSimple();
         const diff = data.actual - data.expected;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td style="text-align:left;">${name}</td>
+          <td style="text-align:left;">${escapeHtml(name)}</td>
           <td style="text-align:right;">${data.expected}</td>
           <td style="text-align:right;">${data.actual}</td>
           <td style="text-align:right;">${diff}</td>
@@ -1048,15 +1074,22 @@ setupKeyboardDismissSimple();
       setTimeout(() => { toast.style.opacity = "0"; }, 1800);
     }
 
+    /* ========= HELPERS ========= */
+    function cssEscape(str) {
+      return CSS.escape ? CSS.escape(String(str)) : String(str).replace(/([^\w-])/g, '\\$1');
+    }
+
     /* ========= INIT ========= */
     document.addEventListener('DOMContentLoaded', async () => {
       loadDB();
+      // при старте экран пустой — не показываем карточки
+      displayedCodes.clear();
+      inventoryMode = false;
       buildItems();
       initCustomKeyboard();
 
       scanBtn.addEventListener('click', () => {
         scannerCard.style.display = 'block';
-        // initScanner uses camera pipeline (startCamera + scanLoop)
         (async () => {
           try {
             const devices = await navigator.mediaDevices.enumerateDevices();
@@ -1143,7 +1176,11 @@ setupKeyboardDismissSimple();
       });
 
       saveBtn.addEventListener('click', () => {
-        applySessionToDB();
+        if (inventoryMode) {
+          applySessionToDB();
+        } else {
+          applySessionToDBForDisplayed();
+        }
         buildItems();
         showToast('Остатки обновлены в базе товаров.');
         bottomSheet.classList.remove('show');
@@ -1153,7 +1190,8 @@ setupKeyboardDismissSimple();
       summaryCloseBtn.addEventListener('click', closeSummary);
 
       summarySaveBtn.addEventListener('click', () => {
-        applySessionToDB();
+        if (inventoryMode) applySessionToDB();
+        else applySessionToDBForDisplayed();
         buildItems();
         closeSummary();
         showToast('Итоги сохранены в базу.');
@@ -1161,11 +1199,11 @@ setupKeyboardDismissSimple();
 
       // Попытка "разогреть" разрешения, чтобы метки камер появились
       try { await navigator.mediaDevices.getUserMedia({ video: true }); } catch (e) {}
-    });
 
-    /* Остановим камеру при уходе со страницы */
-    window.addEventListener('pagehide', () => stopScanner());
-    window.addEventListener('beforeunload', () => stopScanner());
+      // Остановим камеру при уходе со страницы
+      window.addEventListener('pagehide', () => stopScanner());
+      window.addEventListener('beforeunload', () => stopScanner());
+    });
   </script>
 </body>
 </html>
