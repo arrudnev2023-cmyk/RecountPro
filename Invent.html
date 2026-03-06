@@ -173,8 +173,12 @@
       z-index: 1;
       transition: box-shadow 220ms var(--smooth), transform 220ms var(--smooth), border-color 220ms var(--smooth);
       will-change: transform, box-shadow;
+      -webkit-tap-highlight-color: transparent;
     }
-    .item:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.06); }
+    /* hover effects only for pointer devices (desktop) to avoid accidental lift during touch scroll */
+    @media (hover: hover) and (pointer: fine) {
+      .item:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.06); }
+    }
     .item.match   { border-left-color: #22c55e; }
     .item.missing { border-left-color: #ef4444; }
     .item.excess  { border-left-color: #3b82f6; }
@@ -192,6 +196,8 @@
       font-size: 15px;
       outline: none;
       transition: box-shadow 160ms var(--smooth), border-color 160ms var(--smooth);
+      -webkit-user-select: none;
+      user-select: none;
     }
     input[data-code]:focus { box-shadow: 0 8px 20px rgba(67,97,238,0.06); border-color: rgba(67,97,238,0.12); }
 
@@ -626,19 +632,6 @@
           </div>
         `;
 
-        // Быстрый клик по карточке — фокус на поле
-        el.addEventListener('pointerdown', (ev) => {
-          // prevent accidental text selection
-          ev.preventDefault();
-          const input = el.querySelector('input[data-code]');
-          if (input) {
-            // focus reliably on pointerdown to avoid keyboard lag on mobile
-            try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
-            showCustomKeyboard(input);
-            setTimeout(() => ensureVisibleAboveKeyboard(input), 120);
-          }
-        }, { passive: false });
-
         fragment.appendChild(el);
       });
 
@@ -653,20 +646,15 @@
       renderItems(allItems);
     }
 
-    /* ========= КЛАВИАТУРА (обновлённая: не перерисовываем весь список при вводе) ========= */
+    /* ========= КЛАВИАТУРА ========= */
     function showCustomKeyboard(input) {
       if (!customKeyboard || !input) return;
-      // store target code
       customKeyboard.dataset.target = input.dataset.code;
       customKeyboard.setAttribute('aria-hidden', 'false');
       customKeyboard.classList.add('show');
-      // ensure keyboard is visible above other elements
       customKeyboard.style.display = '';
-      // mark input as active for styling
       input.classList.add('active-input');
-      // ensure keyboard is announced for screen readers
       customKeyboard.setAttribute('role', 'application');
-      // small delay to allow transition then ensure visible
       requestAnimationFrame(() => {
         ensureVisibleAboveKeyboard(input);
       });
@@ -678,17 +666,14 @@
       delete customKeyboard.dataset.target;
       customKeyboard.setAttribute('aria-hidden', 'true');
       customKeyboard.classList.remove('show');
-      // remove active class from any input
       const active = document.querySelector('input.active-input');
       if (active) active.classList.remove('active-input');
-      // hide after transition to avoid layout jumps
       setTimeout(() => {
         if (!customKeyboard.classList.contains('show')) customKeyboard.style.display = 'none';
       }, 320);
     }
 
     function updateItemVisual(code) {
-      // обновляем только DOM-элемент конкретной карточки, не перерисовываем весь список
       const el = document.querySelector(`.item[data-code="${cssEscape(code)}"]`);
       if (!el) return;
       const expr = sessionValues[code] || '';
@@ -696,11 +681,9 @@
       const name = el.dataset.name;
       const expected = quantities[name] || 0;
 
-      // обновляем input value
       const input = el.querySelector('input[data-code]');
       if (input) input.value = expr;
 
-      // сброс классов
       el.classList.remove('match', 'missing', 'excess');
       if (expr) {
         if (actual === expected) el.classList.add('match');
@@ -709,7 +692,6 @@
       }
     }
 
-    // безопасный селектор для кода (в т.ч. если код содержит спецсимволы)
     function cssEscape(str) {
       return CSS.escape ? CSS.escape(String(str)) : String(str).replace(/([^\w-])/g, '\\$1');
     }
@@ -717,7 +699,6 @@
     function initCustomKeyboard() {
       if (!customKeyboard) return;
       const keys = Array.from(customKeyboard.querySelectorAll('button:not(.done)'));
-      // Use pointerdown for snappy response on touch devices
       keys.forEach(key => {
         key.addEventListener('pointerdown', (ev) => {
           ev.preventDefault();
@@ -735,13 +716,11 @@
             currentValue = currentValue + keyValue;
           }
 
-          // обновляем только значение и визуалку карточки
           sessionValues[targetCode] = currentValue;
-          saveSession(); // debounced
+          saveSession();
           input.value = currentValue;
           updateItemVisual(targetCode);
 
-          // убедимся, что поле видно над клавиатурой
           setTimeout(() => ensureVisibleAboveKeyboard(input), 0);
         }, { passive: false });
       });
@@ -751,13 +730,12 @@
         ev.preventDefault();
         const targetCode = customKeyboard.dataset.target;
         hideCustomKeyboard();
-        // снимем фокус с поля
         const input = document.querySelector(`input[data-code="${cssEscape(targetCode)}"]`);
         try { input?.blur(); } catch (e) {}
       }, { passive: false });
     }
 
-    // Простое скрытие клавиатуры при клике вне (улучшено: capture + pointerdown)
+    // Dismiss keyboard when tapping outside, but avoid interfering with scroll
     function setupKeyboardDismissSimple() {
       document.addEventListener('pointerdown', (e) => {
         if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
@@ -768,7 +746,7 @@
     }
     setupKeyboardDismissSimple();
 
-    /* ========= СКАНЕР (эталонный, интегрирован) ========= */
+    /* ========= СКАНЕР ========= */
     function createCanvas(w, h) {
       const c = document.createElement('canvas');
       c.width = w;
@@ -785,9 +763,7 @@
           d[i] = d[i + 1] = d[i + 2] = v;
         }
         ctx.putImageData(img, 0, 0);
-      } catch (e) {
-        // ignore cross-origin or other issues
-      }
+      } catch (e) {}
     }
 
     function increaseContrast(ctx, w, h, contrast = 30) {
@@ -803,9 +779,7 @@
           }
         }
         ctx.putImageData(img, 0, 0);
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     }
 
     async function tryDecodeCanvas(canvas) {
@@ -856,7 +830,6 @@
       return c;
     }
 
-    // Throttle scan loop to avoid heavy CPU on low-end devices
     let _scanRaf = null;
     let _lastScanTs = 0;
     const SCAN_MIN_INTERVAL = 80; // ms
@@ -914,13 +887,11 @@
         filterItems();
         highlightScannedItemByCode(code);
 
-        // Найдём поле ввода для этой карточки и установим фокус, откроем кастомную клавиатуру
         setTimeout(() => {
           const target = document.querySelector(`.item[data-code="${cssEscape(code)}"]`);
           if (target) {
             const input = target.querySelector('input[data-code]');
             if (input) {
-              // Сделаем поле видимым и откроем клавиатуру
               input.scrollIntoView({ behavior: 'smooth', block: 'center' });
               showCustomKeyboard(input);
               try { input.focus({ preventScroll: true }); } catch (e) { try { input.focus(); } catch (e) {} }
@@ -928,7 +899,6 @@
             }
           }
 
-          // Закрываем сканер через короткую паузу, чтобы пользователь увидел подсветку и клавиатуру
           setTimeout(() => {
             try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
             scannerCard.style.display = 'none';
@@ -953,7 +923,6 @@
         previewVideo.srcObject = currentStream;
         await previewVideo.play().catch(()=>{});
         try { reader = new ZXing.BrowserMultiFormatReader(); } catch (e) { reader = null; }
-        // reset last detected to avoid immediate duplicates
         lastDetected = { code: null, ts: 0 };
         _scanRaf = requestAnimationFrame(scanLoop);
       } catch (e) {
@@ -1020,7 +989,6 @@
         const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
         const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
         container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
-        // remove highlight after a short delay
         setTimeout(() => { target.style.boxShadow = ''; }, 1200);
       }
     }
@@ -1137,28 +1105,67 @@
       }, 1800);
     }
 
+    /* ========= TAP / FOCUS HANDLING (reliable on touch & mouse) ========= */
+    (function setupTapFocus() {
+      let tracking = null; // { id, startX, startY, moved, targetInput }
+      const MOVE_THRESHOLD = 10;
+
+      document.addEventListener('pointerdown', (e) => {
+        const input = e.target.closest && e.target.closest('input[data-code]');
+        if (!input) return;
+        tracking = {
+          id: e.pointerId,
+          startX: e.clientX,
+          startY: e.clientY,
+          moved: false,
+          targetInput: input
+        };
+        // capture pointer to track moves
+        try { e.target.setPointerCapture?.(e.pointerId); } catch (err) {}
+      }, { passive: true });
+
+      document.addEventListener('pointermove', (e) => {
+        if (!tracking || e.pointerId !== tracking.id) return;
+        const dx = Math.abs(e.clientX - tracking.startX);
+        const dy = Math.abs(e.clientY - tracking.startY);
+        if (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD) tracking.moved = true;
+      }, { passive: true });
+
+      document.addEventListener('pointerup', (e) => {
+        if (!tracking || e.pointerId !== tracking.id) return;
+        const input = tracking.targetInput;
+        // release capture
+        try { e.target.releasePointerCapture?.(e.pointerId); } catch (err) {}
+        if (!tracking.moved) {
+          // treat as tap: prevent default to avoid native keyboard on some devices
+          e.preventDefault();
+          try { input.focus({ preventScroll: true }); } catch (err) { input.focus(); }
+          showCustomKeyboard(input);
+          setTimeout(() => ensureVisibleAboveKeyboard(input), 120);
+        }
+        tracking = null;
+      }, { passive: false });
+
+      // Also open keyboard on programmatic focus (keyboard navigation)
+      document.addEventListener('focusin', (e) => {
+        const input = e.target.closest && e.target.closest('input[data-code]');
+        if (input) {
+          // small delay to ensure layout stable
+          setTimeout(() => showCustomKeyboard(input), 40);
+        }
+      });
+    })();
+
     /* ========= ИНИЦИАЛИЗАЦИЯ ========= */
     document.addEventListener('DOMContentLoaded', async () => {
       loadDB();
       buildItems();
       initCustomKeyboard();
 
-      // Improve keyboard focusability: allow pointerdown on inputs to open keyboard
-      document.addEventListener('pointerdown', (e) => {
-        const input = e.target.closest && e.target.closest('input[data-code]');
-        if (input) {
-          // prevent default to avoid native keyboard on some devices
-          e.preventDefault();
-          try { input.focus({ preventScroll: true }); } catch (err) { input.focus(); }
-          showCustomKeyboard(input);
-          setTimeout(() => ensureVisibleAboveKeyboard(input), 120);
-        }
-      }, { passive: false });
-
+      // scan button
       scanBtn.addEventListener('click', () => {
         scannerCard.style.display = 'block';
         scannerCard.style.opacity = '1';
-        // initScanner uses camera pipeline (startCamera + scanLoop)
         (async () => {
           try {
             const devices = await navigator.mediaDevices.enumerateDevices();
@@ -1284,7 +1291,7 @@
         if (document.hidden) stopScanner();
       });
 
-      // Accessibility: close modal on Escape
+      // Accessibility: close modal/keyboard on Escape
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
           if (customKeyboard && customKeyboard.classList.contains('show')) hideCustomKeyboard();
@@ -1306,6 +1313,7 @@
   </script>
 </body>
 </html>
+
 
 
 
