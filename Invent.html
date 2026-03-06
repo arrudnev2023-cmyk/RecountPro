@@ -379,6 +379,29 @@
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
   <script>
+    const KEY_DISPLAYED = 'recount_displayed_codes';
+const KEY_INVENTORY = 'recount_inventory_mode';
+
+function persistDisplayed() {
+  try { localStorage.setItem(KEY_DISPLAYED, JSON.stringify(Array.from(displayedCodes))); }
+  catch(e){ console.error('persistDisplayed', e); }
+}
+function loadDisplayed() {
+  try {
+    const raw = localStorage.getItem(KEY_DISPLAYED);
+    if (raw) displayedCodes = new Set(JSON.parse(raw).map(String));
+  } catch(e){ displayedCodes = new Set(); }
+}
+
+function persistInventoryMode() {
+  try { localStorage.setItem(KEY_INVENTORY, inventoryMode ? '1' : '0'); }
+  catch(e){ console.error('persistInventoryMode', e); }
+}
+function loadInventoryMode() {
+  try { inventoryMode = localStorage.getItem(KEY_INVENTORY) === '1'; }
+  catch(e){ inventoryMode = false; }
+}
+
     /* ========= СТЕЙТ ========= */
     let barcodeDB = {};      // { [name]: [code1, code2...] }
     let quantities = {};     // { [name]: qty }
@@ -857,6 +880,8 @@
         // Добавляем карточку этого товара в отображаемые (если ещё нет)
         if (!displayedCodes.has(String(code))) {
           displayedCodes.add(String(code));
+          persistDisplayed();
+
         }
         searchInput.value = name;
         filterItems();
@@ -1001,16 +1026,31 @@
     }
 
     /* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
-    function startInventory() {
-      inventoryMode = true;
-      displayedCodes = new Set(allItems.map(i => String(i.code)));
-      allItems.forEach(item => {
-        if (sessionValues[item.code] === undefined) sessionValues[item.code] = '';
-      });
-      saveSession();
-      buildItems();
-      alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
-    }
+   function startInventory() {
+  inventoryMode = true;
+
+  // показываем все товары
+  displayedCodes = new Set(allItems.map(i => String(i.code)));
+
+  // создаём пустые значения для всех товаров, если их нет
+  allItems.forEach(item => {
+    if (sessionValues[item.code] === undefined) sessionValues[item.code] = '';
+  });
+
+  saveSession();
+
+  // 🔥 ДОБАВЛЕНО — сохраняем состояние экрана
+  try {
+    localStorage.setItem('recount_displayed_codes', JSON.stringify(Array.from(displayedCodes)));
+    localStorage.setItem('recount_inventory_mode', '1');
+  } catch (e) {
+    console.error('persist inventory', e);
+  }
+
+  buildItems();
+  alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
+}
+
 
     function clearInventory() {
       // При нажатии "Очистить пересчёт" экран возвращается в состояние первого захода
