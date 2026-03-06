@@ -80,6 +80,7 @@
       top: 96px; bottom: 0;
       overflow: auto;
       padding: 12px;
+      -webkit-overflow-scrolling: touch;
     }
 
     .card {
@@ -162,6 +163,8 @@
       background-color: white;
       color: var(--text);
       font-size: 15px;
+      -webkit-user-select: none;
+      user-select: none;
     }
 
     /* Кастомная клавиатура */
@@ -176,10 +179,13 @@
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
       z-index: 3000;
-      transition: bottom 0.28s;
+      transition: bottom 0.28s ease;
       border-top: 1px solid var(--border);
+      box-shadow: 0 -8px 30px rgba(0,0,0,0.12);
+      touch-action: manipulation;
+      display: none;
     }
-    #custom-keyboard.show { bottom: 0; }
+    #custom-keyboard.show { display: grid; bottom: 0; }
     #custom-keyboard button {
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -187,6 +193,7 @@
       color: var(--text);
       font-size: 20px;
       cursor: pointer;
+      padding: 12px 6px;
     }
 
     .hidden { display: none !important; }
@@ -277,6 +284,23 @@
       background-color: #f0f0f0;
       font-weight: 600;
     }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 18vh;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.25s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
   </style>
 </head>
 
@@ -310,10 +334,10 @@
 
   <!-- Кастомная клавиатура -->
   <div id="custom-keyboard" aria-hidden="true">
-    <button>1</button><button>2</button><button>3</button>
-    <button>4</button><button>5</button><button>6</button>
-    <button>7</button><button>8</button><button>9</button>
-    <button>+</button><button>0</button><button id="back">←</button>
+    <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button>
+    <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button>
+    <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button>
+    <button data-key="+">+</button><button data-key="0">0</button><button data-key="back">←</button>
     <button class="done" id="done" style="grid-column:1 / -1">Готово</button>
   </div>
 
@@ -362,9 +386,8 @@
     let sessionValues = {};  // { [code]: "выражение" }
     let codeToName = new Map();
 
-    // displayedCodes хранит коды карточек, которые видимы на экране
-    let displayedCodes = new Set();
-    let inventoryMode = false; // если true — "провести инвентаризацию" (показываем все карточки)
+    let displayedCodes = new Set(); // коды карточек, видимых на экране
+    let inventoryMode = false; // true — показываем все товары
 
     let reader = null;
     let currentStream = null;
@@ -495,7 +518,6 @@
     }
 
     function renderItemsByCodes(codes) {
-      // codes — iterable набор кодов (строки)
       const items = [];
       for (let code of codes) {
         const name = codeToName.get(String(code));
@@ -550,8 +572,10 @@
         `;
 
         const input = el.querySelector('input');
-        // При фокусе открываем кастомную клавиатуру
-        input.addEventListener('focus', () => {
+        // pointerdown to reliably open keyboard and avoid native keyboard
+        input.addEventListener('pointerdown', (ev) => {
+          ev.preventDefault();
+          try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
           showCustomKeyboard(input);
           setTimeout(() => {
             const container = document.getElementById('content') || document.documentElement;
@@ -561,13 +585,14 @@
             container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
             setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
           }, 80);
-        });
+        }, { passive: false });
 
-        // Быстрый клик по карточке — фокус на поле (для удобства)
+        // click on card focuses input (convenience)
         el.addEventListener('click', (ev) => {
           const targetInput = el.querySelector('input[data-code]');
           if (targetInput) {
             try { targetInput.focus({ preventScroll: true }); } catch (e) { targetInput.focus(); }
+            showCustomKeyboard(targetInput);
           }
         });
 
@@ -579,17 +604,14 @@
       return String(s).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     }
 
-    /* ========= ЛОГИКА ОТОБРАЖЕНИЯ (новая) ========= */
+    /* ========= ЛОГИКА ОТОБРАЖЕНИЯ ========= */
     function buildItems() {
-      // Если включен режим инвентаризации — показываем все товары
       if (inventoryMode) {
-        // отображаем все коды из базы
         displayedCodes = new Set(allItems.map(i => String(i.code)));
         renderItems(allItems);
         return;
       }
 
-      // иначе показываем только те коды, которые добавлены (displayedCodes)
       if (displayedCodes.size === 0) {
         showEmptyState();
         return;
@@ -600,7 +622,7 @@
 
     /* ========= КЛАВИАТУРА ========= */
     function showCustomKeyboard(input) {
-      if (!customKeyboard) return;
+      if (!customKeyboard || !input) return;
       customKeyboard.style.display = '';
       customKeyboard.classList.add('show');
       customKeyboard.dataset.target = input.dataset.code;
@@ -638,16 +660,17 @@
       if (!customKeyboard) return;
       const keys = customKeyboard.querySelectorAll('button:not(.done)');
       keys.forEach(key => {
-        key.addEventListener('click', () => {
+        key.addEventListener('pointerdown', (ev) => {
+          ev.preventDefault();
           const targetCode = customKeyboard.dataset.target;
           if (!targetCode) return;
           const input = document.querySelector(`input[data-code="${cssEscape(targetCode)}"]`);
           if (!input) return;
 
           let currentValue = input.value || '';
-          const keyValue = key.textContent;
+          const keyValue = key.dataset.key || key.textContent;
 
-          if (keyValue === '←') {
+          if (keyValue === 'back' || keyValue === '←') {
             currentValue = currentValue.slice(0, -1);
           } else {
             currentValue = currentValue + keyValue;
@@ -659,27 +682,40 @@
           updateItemVisual(targetCode);
 
           setTimeout(() => ensureVisibleAboveKeyboard(input), 0);
-        });
+        }, { passive: false });
       });
 
       const doneBtn = document.getElementById('done');
-      if (doneBtn) doneBtn.addEventListener('click', () => {
+      if (doneBtn) doneBtn.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault();
         const targetCode = customKeyboard.dataset.target;
         hideCustomKeyboard();
         const input = document.querySelector(`input[data-code="${cssEscape(targetCode)}"]`);
         try { input?.blur(); } catch (e) {}
-      });
+      }, { passive: false });
     }
 
-    function setupKeyboardDismissSimple() {
-      document.addEventListener('click', (e) => {
+    // Dismiss keyboard when tapping outside (pointerdown) — reliable on touch and mouse
+    function setupKeyboardDismiss() {
+      document.addEventListener('pointerdown', (e) => {
         if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
+        // if click inside keyboard — keep open
         if (customKeyboard.contains(e.target)) return;
+        // if click on an input — keep open (handled by input pointerdown)
         if (e.target.closest && e.target.closest('input[data-code]')) return;
+        // otherwise hide
         hideCustomKeyboard();
       }, { capture: true });
+      // also hide on scroll start (user likely wants to scroll)
+      let scrollTimeout = null;
+      document.getElementById('content').addEventListener('scroll', () => {
+        if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
+        hideCustomKeyboard();
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {}, 200);
+      }, { passive: true });
     }
-    setupKeyboardDismissSimple();
+    setupKeyboardDismiss();
 
     /* ========= СКАНЕР ========= */
     function createCanvas(w, h) {
@@ -690,27 +726,31 @@
     }
 
     function toGrayscale(ctx, w, h) {
-      const img = ctx.getImageData(0, 0, w, h);
-      const d = img.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
-        d[i] = d[i + 1] = d[i + 2] = v;
-      }
-      ctx.putImageData(img, 0, 0);
+      try {
+        const img = ctx.getImageData(0, 0, w, h);
+        const d = img.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
+          d[i] = d[i + 1] = d[i + 2] = v;
+        }
+        ctx.putImageData(img, 0, 0);
+      } catch (e) {}
     }
 
     function increaseContrast(ctx, w, h, contrast = 30) {
-      const img = ctx.getImageData(0, 0, w, h);
-      const d = img.data;
-      const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
-      for (let i = 0; i < d.length; i += 4) {
-        for (let c = 0; c < 3; c++) {
-          let col = d[i + c];
-          col = factor * (col - 128) + 128;
-          d[i + c] = Math.max(0, Math.min(255, col));
+      try {
+        const img = ctx.getImageData(0, 0, w, h);
+        const d = img.data;
+        const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+        for (let i = 0; i < d.length; i += 4) {
+          for (let c = 0; c < 3; c++) {
+            let col = d[i + c];
+            col = factor * (col - 128) + 128;
+            d[i + c] = Math.max(0, Math.min(255, col));
+          }
         }
-      }
-      ctx.putImageData(img, 0, 0);
+        ctx.putImageData(img, 0, 0);
+      } catch (e) {}
     }
 
     async function tryDecodeCanvas(canvas) {
@@ -761,13 +801,24 @@
       return c;
     }
 
+    let _scanRaf = null;
+    let _lastScanTs = 0;
+    const SCAN_MIN_INTERVAL = 80; // ms
+
     async function scanLoop() {
       if (!scanning) return;
+      const now = performance.now();
+      if (now - _lastScanTs < SCAN_MIN_INTERVAL) {
+        _scanRaf = requestAnimationFrame(scanLoop);
+        return;
+      }
+      _lastScanTs = now;
+
       try {
         const w = previewVideo.videoWidth;
         const h = previewVideo.videoHeight;
         if (w === 0 || h === 0) {
-          requestAnimationFrame(scanLoop);
+          _scanRaf = requestAnimationFrame(scanLoop);
           return;
         }
 
@@ -789,7 +840,7 @@
       } catch (e) {
         // ignore
       } finally {
-        requestAnimationFrame(scanLoop);
+        _scanRaf = requestAnimationFrame(scanLoop);
       }
     }
 
@@ -807,7 +858,6 @@
         if (!displayedCodes.has(String(code))) {
           displayedCodes.add(String(code));
         }
-        // Если мы не в режиме инвентаризации, оставляем inventoryMode=false
         searchInput.value = name;
         filterItems();
         highlightScannedItemByCode(code);
@@ -850,7 +900,8 @@
         previewVideo.srcObject = currentStream;
         await previewVideo.play().catch(()=>{});
         try { reader = new ZXing.BrowserMultiFormatReader(); } catch (e) { reader = null; }
-        requestAnimationFrame(scanLoop);
+        lastDetected = { code: null, ts: 0 };
+        _scanRaf = requestAnimationFrame(scanLoop);
       } catch (e) {
         console.warn('startCamera fallback, trying without deviceId:', e);
         try {
@@ -859,7 +910,8 @@
           previewVideo.srcObject = currentStream;
           await previewVideo.play().catch(()=>{});
           try { reader = new ZXing.BrowserMultiFormatReader(); } catch (e) { reader = null; }
-          requestAnimationFrame(scanLoop);
+          lastDetected = { code: null, ts: 0 };
+          _scanRaf = requestAnimationFrame(scanLoop);
         } catch (err) {
           console.error('Ошибка доступа к камере:', err);
           alert('Ошибка доступа к камере');
@@ -870,6 +922,10 @@
 
     function stopScanner() {
       scanning = false;
+      if (_scanRaf) {
+        cancelAnimationFrame(_scanRaf);
+        _scanRaf = null;
+      }
       if (currentStream) {
         currentStream.getTracks().forEach(t => t.stop());
         currentStream = null;
@@ -886,7 +942,6 @@
     function filterItems() {
       const q = (searchInput.value || '').toLowerCase().trim();
 
-      // Если в режиме инвентаризации — фильтруем по всем товарам
       if (inventoryMode) {
         const filtered = allItems.filter(item =>
           item.name.toLowerCase().includes(q) ||
@@ -896,7 +951,6 @@
         return;
       }
 
-      // Иначе фильтруем только по отображаемым карточкам
       const filtered = [];
       for (let code of displayedCodes) {
         const name = codeToName.get(String(code));
@@ -920,6 +974,7 @@
         const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
         const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
         container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
+        setTimeout(() => { target.style.boxShadow = ''; }, 1200);
       }
     }
 
@@ -947,10 +1002,8 @@
 
     /* ========= ИНВЕНТАРИЗАЦИЯ / СОХРАНЕНИЕ ========= */
     function startInventory() {
-      // включаем режим инвентаризации: показываем все карточки
       inventoryMode = true;
       displayedCodes = new Set(allItems.map(i => String(i.code)));
-      // инициализируем сессию для всех кодов, если ещё нет
       allItems.forEach(item => {
         if (sessionValues[item.code] === undefined) sessionValues[item.code] = '';
       });
@@ -960,7 +1013,7 @@
     }
 
     function clearInventory() {
-      // очищаем только сессию и отображаемые карточки
+      // При нажатии "Очистить пересчёт" экран возвращается в состояние первого захода
       sessionValues = {};
       saveSession();
       displayedCodes.clear();
@@ -970,7 +1023,6 @@
     }
 
     function applySessionToDB() {
-      // Полная замена: используется только в режиме инвентаризации
       const aggregated = {};
       allItems.forEach(item => {
         const expr = sessionValues[item.code] || '';
@@ -990,7 +1042,6 @@
     }
 
     function applySessionToDBForDisplayed() {
-      // Обновляем только те карточки, которые сейчас отображаются (displayedCodes)
       const aggregated = {};
       for (let code of displayedCodes) {
         const expr = sessionValues[code] || '';
@@ -1007,7 +1058,6 @@
 
       saveDB();
       buildItemsFromDB();
-      // После сохранения оставляем отображаемые карточки как есть (пользователь может продолжить)
       buildItems();
     }
 
@@ -1015,7 +1065,6 @@
     function openSummary() {
       summaryTableBody.innerHTML = '';
       const summary = {};
-      // Если в режиме инвентаризации — считаем по всем, иначе — по отображаемым
       const sourceCodes = inventoryMode ? allItems.map(i => i.code) : Array.from(displayedCodes);
       sourceCodes.forEach(code => {
         const name = codeToName.get(String(code));
@@ -1047,31 +1096,22 @@
     }
 
     /* ========= ТОАСТ ========= */
+    let _toastTimer = null;
     function showToast(message) {
       let toast = document.querySelector(".toast");
       if (!toast) {
         toast = document.createElement("div");
         toast.className = "toast";
-        Object.assign(toast.style, {
-          position: 'fixed',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          bottom: '18vh',
-          background: 'rgba(0,0,0,0.8)',
-          color: 'white',
-          padding: '8px 12px',
-          borderRadius: '8px',
-          zIndex: 9999,
-          opacity: '0',
-          transition: 'opacity 0.25s'
-        });
         document.body.appendChild(toast);
       }
 
       toast.textContent = message;
-      toast.style.opacity = "1";
+      toast.classList.add('show');
 
-      setTimeout(() => { toast.style.opacity = "0"; }, 1800);
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 1800);
     }
 
     /* ========= HELPERS ========= */
@@ -1082,7 +1122,7 @@
     /* ========= INIT ========= */
     document.addEventListener('DOMContentLoaded', async () => {
       loadDB();
-      // при старте экран пустой — не показываем карточки
+      // стартовое состояние: экран пустой
       displayedCodes.clear();
       inventoryMode = false;
       buildItems();
@@ -1115,6 +1155,7 @@
 
       closeScannerBtn.addEventListener('click', () => {
         stopScanner();
+        scannerCard.style.display = 'none';
       });
 
       deviceSelect.addEventListener('change', e => {
@@ -1200,13 +1241,26 @@
       // Попытка "разогреть" разрешения, чтобы метки камер появились
       try { await navigator.mediaDevices.getUserMedia({ video: true }); } catch (e) {}
 
-      // Остановим камеру при уходе со страницы
+      // Остановим камеру при уходе со страницы, но не очищаем экран
       window.addEventListener('pagehide', () => stopScanner());
       window.addEventListener('beforeunload', () => stopScanner());
+
+      // Accessibility: close keyboard/modal on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          if (customKeyboard && customKeyboard.classList.contains('show')) hideCustomKeyboard();
+          if (summaryModal && summaryModal.classList.contains('show')) closeSummary();
+          if (bottomSheet && bottomSheet.classList.contains('show')) {
+            bottomSheet.classList.remove('show');
+            sheetOverlay.classList.remove('show');
+          }
+        }
+      });
     });
   </script>
 </body>
 </html>
+
 
 
 
