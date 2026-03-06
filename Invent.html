@@ -281,14 +281,14 @@
     const KEY_DB = 'barcodeDB';
 
     /* ========= СТЕЙТ ========= */
-    let barcodeDB = {};      // { [name]: [code1, code2...] }
-    let quantities = {};     // { [name]: qty }
-    let allItems = [];       // [{code,name,qty}]
-    let sessionValues = {};  // { [code]: "выражение" }
+    let barcodeDB = {};
+    let quantities = {};
+    let allItems = [];
+    let sessionValues = {};
     let codeToName = new Map();
 
-    let displayedCodes = new Set(); // коды карточек, видимых на экране
-    let inventoryMode = false; // true — показываем все товары
+    let displayedCodes = new Set();
+    let inventoryMode = false;
 
     let reader = null;
     let currentStream = null;
@@ -497,29 +497,33 @@
         `;
 
         const input = el.querySelector('input');
-        // pointerdown to reliably open keyboard and avoid native keyboard
-        input.addEventListener('pointerdown', (ev) => {
-          ev.preventDefault();
-          try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
-          showCustomKeyboard(input);
-          setTimeout(() => {
-            const container = document.getElementById('content') || document.documentElement;
-            const rect = input.closest('.item').getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
-            const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
-            container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
-            setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
-          }, 80);
-        }, { passive: false });
+        if (input) {
+          // pointerdown to reliably open keyboard and avoid native keyboard
+          input.addEventListener('pointerdown', (ev) => {
+            // prevent default to avoid native keyboard on some devices
+            ev.preventDefault();
+            ev.stopPropagation();
+            try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
+            showCustomKeyboard(input);
+            setTimeout(() => {
+              const container = document.getElementById('content') || document.documentElement;
+              const rect = input.closest('.item').getBoundingClientRect();
+              const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
+              const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
+              container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
+              setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
+            }, 80);
+          }, { passive: false });
 
-        // click on card focuses input (convenience)
-        el.addEventListener('click', (ev) => {
-          const targetInput = el.querySelector('input[data-code]');
-          if (targetInput) {
-            try { targetInput.focus({ preventScroll: true }); } catch (e) { targetInput.focus(); }
-            showCustomKeyboard(targetInput);
-          }
-        });
+          // click on card focuses input (convenience)
+          el.addEventListener('click', (ev) => {
+            const targetInput = el.querySelector('input[data-code]');
+            if (targetInput) {
+              try { targetInput.focus({ preventScroll: true }); } catch (e) { targetInput.focus(); }
+              showCustomKeyboard(targetInput);
+            }
+          });
+        }
 
         listContainer.appendChild(el);
       });
@@ -550,24 +554,27 @@
     /* ========= КЛАВИАТУРА ========= */
     function showCustomKeyboard(input) {
       if (!customKeyboard || !input) return;
-      customKeyboard.style.display = '';
-      customKeyboard.classList.add('show');
+      // set target first
       customKeyboard.dataset.target = input.dataset.code;
-      customKeyboard.setAttribute('aria-hidden', 'false');
+      customKeyboard.style.display = 'grid';
+      // small delay to allow display change before adding class (for transition)
+      requestAnimationFrame(() => {
+        customKeyboard.classList.add('show');
+        customKeyboard.setAttribute('aria-hidden', 'false');
+      });
       // ensure keyboard visible and not overlapping header
-      setTimeout(() => {
-        ensureVisibleAboveKeyboard(input);
-      }, 40);
+      setTimeout(() => ensureVisibleAboveKeyboard(input), 40);
     }
 
     function hideCustomKeyboard() {
       if (!customKeyboard) return;
       customKeyboard.classList.remove('show');
+      customKeyboard.setAttribute('aria-hidden', 'true');
+      // hide after transition
       setTimeout(() => {
         if (!customKeyboard.classList.contains('show')) customKeyboard.style.display = 'none';
-      }, 220);
-      customKeyboard.setAttribute('aria-hidden', 'true');
-      delete customKeyboard.dataset.target;
+        delete customKeyboard.dataset.target;
+      }, 260);
     }
 
     function updateItemVisual(code) {
@@ -595,6 +602,7 @@
       keys.forEach(key => {
         key.addEventListener('pointerdown', (ev) => {
           ev.preventDefault();
+          ev.stopPropagation();
           const targetCode = customKeyboard.dataset.target;
           if (!targetCode) return;
           const input = document.querySelector(`input[data-code="${cssEscape(targetCode)}"]`);
@@ -621,6 +629,7 @@
       const doneBtn = document.getElementById('done');
       if (doneBtn) doneBtn.addEventListener('pointerdown', (ev) => {
         ev.preventDefault();
+        ev.stopPropagation();
         const targetCode = customKeyboard.dataset.target;
         hideCustomKeyboard();
         const input = document.querySelector(`input[data-code="${cssEscape(targetCode)}"]`);
@@ -814,7 +823,7 @@
 
           setTimeout(() => {
             try { stopScanner(); } catch (e) { console.warn('stopScanner error', e); }
-            scannerCard.style.display = 'none';
+            if (scannerCard) scannerCard.style.display = 'none';
           }, 400);
         }, 120);
       } else {
@@ -870,8 +879,8 @@
         try { reader.reset(); } catch (e) {}
         reader = null;
       }
-      previewVideo.srcObject = null;
-      scanResult.textContent = '';
+      if (previewVideo) previewVideo.srcObject = null;
+      if (scanResult) scanResult.textContent = '';
     }
 
     /* ========= ПОИСК / ХАЙЛАЙТ ========= */
@@ -1074,126 +1083,151 @@
       buildItems();
       initCustomKeyboard();
 
-      scanBtn.addEventListener('click', () => {
-        scannerCard.style.display = 'block';
-        (async () => {
+      if (scanBtn) {
+        scanBtn.addEventListener('click', () => {
+          if (scannerCard) scannerCard.style.display = 'block';
+          (async () => {
+            try {
+              const devices = await navigator.mediaDevices.enumerateDevices();
+              const videoDevices = devices.filter(d => d.kind === 'videoinput');
+              if (videoDevices.length === 0) {
+                alert('Камеры не найдены');
+                return;
+              }
+              let backCam = videoDevices.find(d => {
+                const label = (d.label || '').toLowerCase();
+                return label.includes('back') || label.includes('rear') || label.includes('зад') || label.includes('environment');
+              });
+              const defaultCamId = (backCam || videoDevices[0]).deviceId;
+              if (deviceSelect) deviceSelect.innerHTML = videoDevices.map(d => `<option value="${escapeHtml(d.deviceId)}">${escapeHtml(d.label || 'Камера')}</option>`).join('');
+              if (deviceSelect) deviceSelect.value = defaultCamId;
+              await startCamera(defaultCamId);
+            } catch (e) {
+              console.error('init scanner error', e);
+              alert('Не удалось инициализировать сканер');
+            }
+          })();
+        });
+      }
+
+      if (closeScannerBtn) {
+        closeScannerBtn.addEventListener('click', () => {
+          stopScanner();
+          if (scannerCard) scannerCard.style.display = 'none';
+        });
+      }
+
+      if (deviceSelect) {
+        deviceSelect.addEventListener('change', e => {
+          startCamera(e.target.value);
+        });
+      }
+
+      if (torchBtn) {
+        torchBtn.addEventListener('click', () => {
           try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices.filter(d => d.kind === 'videoinput');
-            if (videoDevices.length === 0) {
-              alert('Камеры не найдены');
-              return;
+            const tracks = currentStream?.getVideoTracks();
+            if (tracks && tracks.length > 0) {
+              const track = tracks[0];
+              const capabilities = track.getCapabilities?.();
+              if (capabilities?.torch) {
+                const current = track.getSettings().torch;
+                track.applyConstraints({ advanced: [{ torch: !current }] });
+              } else {
+                showToast('Фонарик не поддерживается');
+              }
             }
-            let backCam = videoDevices.find(d => {
-              const label = (d.label || '').toLowerCase();
-              return label.includes('back') || label.includes('rear') || label.includes('зад') || label.includes('environment');
-            });
-            const defaultCamId = (backCam || videoDevices[0]).deviceId;
-            deviceSelect.innerHTML = videoDevices.map(d => `<option value="${escapeHtml(d.deviceId)}">${escapeHtml(d.label || 'Камера')}</option>`).join('');
-            deviceSelect.value = defaultCamId;
-            await startCamera(defaultCamId);
           } catch (e) {
-            console.error('init scanner error', e);
-            alert('Не удалось инициализировать сканер');
+            console.error('Torch error', e);
+            showToast('Ошибка управления фонариком');
           }
-        })();
-      });
+        });
+      }
 
-      closeScannerBtn.addEventListener('click', () => {
-        stopScanner();
-        scannerCard.style.display = 'none';
-      });
-
-      deviceSelect.addEventListener('change', e => {
-        startCamera(e.target.value);
-      });
-
-      torchBtn.addEventListener('click', () => {
-        try {
-          const tracks = currentStream?.getVideoTracks();
-          if (tracks && tracks.length > 0) {
-            const track = tracks[0];
-            const capabilities = track.getCapabilities?.();
-            if (capabilities?.torch) {
-              const current = track.getSettings().torch;
-              track.applyConstraints({ advanced: [{ torch: !current }] });
-            } else {
-              showToast('Фонарик не поддерживается');
-            }
-          }
-        } catch (e) {
-          console.error('Torch error', e);
-          showToast('Ошибка управления фонариком');
-        }
-      });
-
-      clearSearch.addEventListener('click', () => {
-        searchInput.value = '';
-        filterItems();
-      });
+      if (clearSearch) {
+        clearSearch.addEventListener('click', () => {
+          searchInput.value = '';
+          filterItems();
+        });
+      }
 
       // Debounce input filtering for smoother typing
       let _filterTimer = null;
-      searchInput.addEventListener('input', () => {
-        clearTimeout(_filterTimer);
-        _filterTimer = setTimeout(filterItems, 120);
-      });
+      if (searchInput) {
+        searchInput.addEventListener('input', () => {
+          clearTimeout(_filterTimer);
+          _filterTimer = setTimeout(filterItems, 120);
+        });
+      }
 
-      fabMenu.addEventListener('click', () => {
-        const open = bottomSheet.classList.toggle('show');
-        sheetOverlay.classList.toggle('show', open);
-        bottomSheet.setAttribute('aria-hidden', String(!open));
-        sheetOverlay.setAttribute('aria-hidden', String(!open));
-        fabMenu.setAttribute('aria-expanded', String(open));
-      });
+      if (fabMenu) {
+        fabMenu.addEventListener('click', () => {
+          const open = bottomSheet.classList.toggle('show');
+          sheetOverlay.classList.toggle('show', open);
+          bottomSheet.setAttribute('aria-hidden', String(!open));
+          sheetOverlay.setAttribute('aria-hidden', String(!open));
+          fabMenu.setAttribute('aria-expanded', String(open));
+        });
+      }
 
-      sheetOverlay.addEventListener('click', () => {
-        bottomSheet.classList.remove('show');
-        sheetOverlay.classList.remove('show');
-        bottomSheet.setAttribute('aria-hidden', 'true');
-        sheetOverlay.setAttribute('aria-hidden', 'true');
-        fabMenu.setAttribute('aria-expanded', 'false');
-      });
+      if (sheetOverlay) {
+        sheetOverlay.addEventListener('click', () => {
+          bottomSheet.classList.remove('show');
+          sheetOverlay.classList.remove('show');
+          bottomSheet.setAttribute('aria-hidden', 'true');
+          sheetOverlay.setAttribute('aria-hidden', 'true');
+          if (fabMenu) fabMenu.setAttribute('aria-expanded', 'false');
+        });
+      }
 
-      inventoryBtn.addEventListener('click', () => {
-        startInventory();
-        bottomSheet.classList.remove('show');
-        sheetOverlay.classList.remove('show');
-      });
+      if (inventoryBtn) {
+        inventoryBtn.addEventListener('click', () => {
+          startInventory();
+          bottomSheet.classList.remove('show');
+          sheetOverlay.classList.remove('show');
+        });
+      }
 
-      clearBtn.addEventListener('click', () => {
-        clearInventory();
-        bottomSheet.classList.remove('show');
-        sheetOverlay.classList.remove('show');
-      });
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          clearInventory();
+          bottomSheet.classList.remove('show');
+          sheetOverlay.classList.remove('show');
+        });
+      }
 
-      totalBtn.addEventListener('click', () => {
-        openSummary();
-        bottomSheet.classList.remove('show');
-        sheetOverlay.classList.remove('show');
-      });
+      if (totalBtn) {
+        totalBtn.addEventListener('click', () => {
+          openSummary();
+          bottomSheet.classList.remove('show');
+          sheetOverlay.classList.remove('show');
+        });
+      }
 
-      saveBtn.addEventListener('click', () => {
-        if (inventoryMode) {
-          applySessionToDB();
-        } else {
-          applySessionToDBForDisplayed();
-        }
-        buildItems();
-        showToast('Остатки обновлены в базе товаров.');
-        bottomSheet.classList.remove('show');
-        sheetOverlay.classList.remove('show');
-      });
+      if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+          if (inventoryMode) {
+            applySessionToDB();
+          } else {
+            applySessionToDBForDisplayed();
+          }
+          buildItems();
+          showToast('Остатки обновлены в базе товаров.');
+          bottomSheet.classList.remove('show');
+          sheetOverlay.classList.remove('show');
+        });
+      }
 
-      summaryCloseBtn.addEventListener('click', closeSummary);
-
-      summarySaveBtn.addEventListener('click', () => {
-        if (inventoryMode) applySessionToDB();
-        else applySessionToDBForDisplayed();
-        buildItems();
-        closeSummary();
-        showToast('Итоги сохранены в базу.');
-      });
+      if (summaryCloseBtn) summaryCloseBtn.addEventListener('click', closeSummary);
+      if (summarySaveBtn) {
+        summarySaveBtn.addEventListener('click', () => {
+          if (inventoryMode) applySessionToDB();
+          else applySessionToDBForDisplayed();
+          buildItems();
+          closeSummary();
+          showToast('Итоги сохранены в базу.');
+        });
+      }
 
       // Попытка "разогреть" разрешения, чтобы метки камер появились
       try { await navigator.mediaDevices.getUserMedia({ video: true }); } catch (e) {}
@@ -1217,6 +1251,7 @@
   </script>
 </body>
 </html>
+
 
 
 
