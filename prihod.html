@@ -944,12 +944,13 @@
       if(target){
         const plusInput = target.querySelector(`.qtyPlusInput[data-code="${code}"]`);
         const name = target.dataset.name || (target.querySelector('.arrivalPlus')?.dataset.name);
-        if(plusInput){
-          plusInput.value = Number(plusInput.value || 0) + 1;
-          applyChange(code, name);
-        } else {
-          showToast('Товар найден, но поле прихода не обнаружено');
-        }
+        if (plusInput) {
+  highlightItem(code); // только подсветка
+  showToast('Товар найден');
+} else {
+  showToast('Товар найден, но поле прихода не обнаружено');
+}
+
       } else {
         showToast('Штрихкод не найден в базе');
       }
