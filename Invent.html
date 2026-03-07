@@ -439,17 +439,25 @@
     }
 
     /* ========= БАЗА / ИНДЕКС / СЕССИЯ ========= */
-    function buildItemsFromDB() {
-      allItems = [];
-      codeToName = new Map();
-      Object.entries(barcodeDB).forEach(([name, codes]) => {
-        const qty = quantities[name] || 0;
-        codes.forEach(code => {
-          allItems.push({ code, name, qty });
-          codeToName.set(String(code), name);
-        });
-      });
-    }
+   function buildItemsFromDB() {
+  allItems = [];
+  codeToName = new Map();
+
+  Object.entries(barcodeDB).forEach(([name, codes]) => {
+    const qty = quantities[name] || 0;
+
+    allItems.push({
+      name,
+      qty,
+      codes: [...codes] // массив всех штрих‑кодов
+    });
+
+    codes.forEach(code => {
+      codeToName.set(String(code), name);
+    });
+  });
+}
+
 
     function loadDB() {
       try {
@@ -590,87 +598,91 @@
     }
 
     function renderItemsByCodes(codes) {
-      const items = [];
-      for (let code of codes) {
-        const name = codeToName.get(String(code));
-        if (name) {
-          const qty = quantities[name] || 0;
-          items.push({ code, name, qty });
-        }
-      }
-      renderItems(items);
-    }
+  const names = new Set();
+
+  codes.forEach(code => {
+    const name = codeToName.get(String(code));
+    if (name) names.add(name);
+  });
+
+  const items = allItems.filter(item => names.has(item.name));
+  renderItems(items);
+}
+
 
     function renderItems(items) {
-      listContainer.innerHTML = '';
-      if (!items || items.length === 0) {
-        showEmptyState();
-        return;
-      }
+  listContainer.innerHTML = '';
+  if (!items || items.length === 0) {
+    showEmptyState();
+    return;
+  }
 
-      items.forEach(item => {
-        const el = document.createElement('div');
-        el.className = 'item';
-        el.dataset.code = item.code;
-        el.dataset.name = item.name;
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.dataset.name = item.name;
 
-        const expected = quantities[item.name] || 0;
-        const expr     = sessionValues[item.code] || '';
-        const actual   = evalExpression(expr);
+    const expected = item.qty;
 
-        if (expr) {
-          if (actual === expected) el.classList.add('match');
-          else if (actual < expected) el.classList.add('missing');
-          else el.classList.add('excess');
-        }
+    // считаем фактическое по всем штрих‑кодам
+    let actual = 0;
+    item.codes.forEach(code => {
+      const expr = sessionValues[code] || '';
+      actual += evalExpression(expr);
+    });
 
-        el.innerHTML = `
-          <div class="field">
-            <span class="label">Название:</span>
-            <strong>${escapeHtml(item.name)}</strong>
-          </div>
-          <div class="field">
-            <span class="label">Штрихкод:</span>
-            <span>${escapeHtml(String(item.code))}</span>
-          </div>
-          <div class="field">
-            <span class="label">Учётное:</span>
-            ${expected}
-          </div>
-          <div class="field">
-            <span class="label">Кол-во:</span>
-            <input data-code="${escapeHtml(item.code)}" type="text" value="${escapeHtml(expr || '')}" placeholder="0" readonly>
-          </div>
-        `;
+    if (actual === expected) el.classList.add('match');
+    else if (actual < expected) el.classList.add('missing');
+    else el.classList.add('excess');
 
-        const input = el.querySelector('input');
-        // pointerdown to reliably open keyboard and avoid native keyboard
-        input.addEventListener('pointerdown', (ev) => {
-          ev.preventDefault();
-          try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
-          showCustomKeyboard(input);
-          setTimeout(() => {
-            const container = document.getElementById('content') || document.documentElement;
-            const rect = input.closest('.item').getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
-            const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
-            container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
-            setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
-          }, 80);
-        }, { passive: false });
+    el.innerHTML = `
+      <div class="field">
+        <span class="label">Название:</span>
+        <strong>${escapeHtml(item.name)}</strong>
+      </div>
 
-        // click on card focuses input (convenience)
-        el.addEventListener('click', (ev) => {
-          const targetInput = el.querySelector('input[data-code]');
-          if (targetInput) {
-            try { targetInput.focus({ preventScroll: true }); } catch (e) { targetInput.focus(); }
-            showCustomKeyboard(targetInput);
-          }
-        });
+      <div class="field">
+        <span class="label">Штрихкоды:</span>
+        <span>${item.codes.map(c => escapeHtml(String(c))).join(', ')}</span>
+      </div>
 
-        listContainer.appendChild(el);
-      });
-    }
+      <div class="field">
+        <span class="label">Учётное:</span>
+        ${expected}
+      </div>
+
+      <div class="field">
+        <span class="label">Кол-во:</span>
+        <input data-name="${escapeHtml(item.name)}" type="text" value="${actual}" readonly>
+      </div>
+    `;
+
+    const input = el.querySelector('input');
+
+    input.addEventListener('pointerdown', ev => {
+      ev.preventDefault();
+      try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
+      showCustomKeyboard(input);
+
+      setTimeout(() => {
+        const container = document.getElementById('content') || document.documentElement;
+        const rect = el.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect ? container.getBoundingClientRect() : { top: 0 };
+        const offsetTop = (rect.top - containerRect.top) + container.scrollTop;
+        container.scrollTo({ top: Math.max(0, offsetTop - 8), behavior: 'smooth' });
+        setTimeout(() => ensureVisibleAboveKeyboard(input), 160);
+      }, 80);
+    });
+
+    el.addEventListener('click', () => {
+      try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
+      showCustomKeyboard(input);
+    });
+
+    listContainer.appendChild(el);
+  });
+}
+
 
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
