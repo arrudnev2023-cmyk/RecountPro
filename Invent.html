@@ -708,7 +708,7 @@
     }
 
     /* ========= КЛАВИАТУРА ========= */
-    function showCustomKeyboard(input) {
+   function showCustomKeyboard(input) {
   if (!customKeyboard || !input) return;
   customKeyboard.style.display = '';
   customKeyboard.classList.add('show');
@@ -737,20 +737,19 @@ function updateItemVisualByName(name) {
 
   const expected = item.qty;
 
-  // считаем фактическое по всем штрихкодам
-  let actual = 0;
-  item.codes.forEach(code => {
-    const expr = sessionValues[code] || '';
-    actual += evalExpression(expr);
-  });
+  // фактическое = одно значение по имени товара
+  const expr = sessionValues[name] || '';
+  const actual = evalExpression(expr);
 
   const input = el.querySelector('input[data-name]');
-  if (input) input.value = actual || '';
+  if (input) input.value = expr;
 
   el.classList.remove('match', 'missing', 'excess');
-  if (actual === expected) el.classList.add('match');
-  else if (actual < expected) el.classList.add('missing');
-  else el.classList.add('excess');
+  if (expr) {
+    if (actual === expected) el.classList.add('match');
+    else if (actual < expected) el.classList.add('missing');
+    else el.classList.add('excess');
+  }
 }
 
 function initCustomKeyboard() {
@@ -777,13 +776,8 @@ function initCustomKeyboard() {
         currentValue = currentValue + keyValue;
       }
 
-      // записываем во все штрихкоды товара
-      const item = allItems.find(i => i.name === targetName);
-      if (item) {
-        item.codes.forEach(code => {
-          sessionValues[code] = currentValue;
-        });
-      }
+      // сохраняем по имени товара (НЕ по штрихкодам)
+      sessionValues[targetName] = currentValue;
 
       saveSession();
       saveAppState?.();
@@ -830,6 +824,7 @@ function setupKeyboardDismiss() {
 }
 
 setupKeyboardDismiss();
+
 
 
     /* ========= СКАНЕР ========= */
