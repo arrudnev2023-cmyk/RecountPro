@@ -507,6 +507,78 @@
       }
     }
 
+    /* ========= PERSISTENT APP STATE ========= */
+    const APP_STATE_KEY = 'recountAppState';
+
+    function saveAppState() {
+      try {
+        const visible = Array.from(displayedCodes);
+        const contentEl = document.getElementById('content');
+        const scrollTop = contentEl ? contentEl.scrollTop : 0;
+        const focusedCode = customKeyboard?.dataset?.target || null;
+
+        saveSession();
+
+        const state = {
+          visible,
+          inventoryMode: !!inventoryMode,
+          sessionValues,
+          search: (searchInput?.value) || '',
+          scrollTop,
+          focusedCode
+        };
+        localStorage.setItem(APP_STATE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error('Ошибка сохранения состояния приложения:', e);
+      }
+    }
+
+    function loadAppState() {
+      try {
+        const raw = localStorage.getItem(APP_STATE_KEY);
+        if (!raw) return;
+        const state = JSON.parse(raw);
+
+        sessionValues = state.sessionValues || sessionValues || {};
+        saveSession();
+
+        inventoryMode = !!state.inventoryMode;
+        displayedCodes = new Set((state.visible && Array.isArray(state.visible)) ? state.visible.map(String) : []);
+
+        if (searchInput && typeof state.search === 'string') {
+          searchInput.value = state.search;
+        }
+
+        buildItems();
+
+        const contentEl = document.getElementById('content');
+        if (contentEl && typeof state.scrollTop === 'number') {
+          setTimeout(() => { contentEl.scrollTop = state.scrollTop; }, 80);
+        }
+
+        if (state.focusedCode) {
+          setTimeout(() => {
+            const input = document.querySelector(`input[data-code="${cssEscape(state.focusedCode)}"]`);
+            if (input) {
+              showCustomKeyboard(input);
+              try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
+              ensureVisibleAboveKeyboard(input);
+            }
+          }, 160);
+        }
+      } catch (e) {
+        console.error('Ошибка загрузки состояния приложения:', e);
+      }
+    }
+
+    function clearAppState() {
+      try {
+        localStorage.removeItem(APP_STATE_KEY);
+      } catch (e) {
+        console.error('Ошибка удаления состояния приложения:', e);
+      }
+    }
+
     /* ========= РЕНДЕР ========= */
     function showEmptyState() {
       listContainer.innerHTML = `
@@ -678,6 +750,7 @@
 
           sessionValues[targetCode] = currentValue;
           saveSession();
+          saveAppState();
           input.value = currentValue;
           updateItemVisual(targetCode);
 
@@ -857,6 +930,7 @@
         // Добавляем карточку этого товара в отображаемые (если ещё нет)
         if (!displayedCodes.has(String(code))) {
           displayedCodes.add(String(code));
+          saveAppState(); // сохраняем состояние при добавлении новой карточки
         }
         searchInput.value = name;
         filterItems();
@@ -1008,6 +1082,7 @@
         if (sessionValues[item.code] === undefined) sessionValues[item.code] = '';
       });
       saveSession();
+      saveAppState();
       buildItems();
       alert('Режим инвентаризации активирован. Ввод сохраняется в сессии и не меняет базу до сохранения.');
     }
@@ -1016,6 +1091,7 @@
       // При нажатии "Очистить пересчёт" экран возвращается в состояние первого захода
       sessionValues = {};
       saveSession();
+      clearAppState();
       displayedCodes.clear();
       inventoryMode = false;
       buildItems();
@@ -1039,6 +1115,7 @@
       saveDB();
       buildItemsFromDB();
       buildItems();
+      saveAppState();
     }
 
     function applySessionToDBForDisplayed() {
@@ -1059,6 +1136,7 @@
       saveDB();
       buildItemsFromDB();
       buildItems();
+      saveAppState();
     }
 
     /* ========= ИТОГИ ========= */
@@ -1122,9 +1200,12 @@
     /* ========= INIT ========= */
     document.addEventListener('DOMContentLoaded', async () => {
       loadDB();
-      // стартовое состояние: экран пустой
-      displayedCodes.clear();
-      inventoryMode = false;
+      // попытка восстановить состояние приложения
+      loadAppState();
+
+      // стартовое состояние: если loadAppState не установил видимые — экран пустой
+      if (!displayedCodes) displayedCodes = new Set();
+      if (typeof inventoryMode !== 'boolean') inventoryMode = false;
       buildItems();
       initCustomKeyboard();
 
@@ -1184,9 +1265,13 @@
       clearSearch.addEventListener('click', () => {
         searchInput.value = '';
         filterItems();
+        saveAppState();
       });
 
-      searchInput.addEventListener('input', filterItems);
+      searchInput.addEventListener('input', () => {
+        filterItems();
+        saveAppState();
+      });
 
       fabMenu.addEventListener('click', () => {
         bottomSheet.classList.toggle('show');
@@ -1241,9 +1326,9 @@
       // Попытка "разогреть" разрешения, чтобы метки камер появились
       try { await navigator.mediaDevices.getUserMedia({ video: true }); } catch (e) {}
 
-      // Остановим камеру при уходе со страницы, но не очищаем экран
-      window.addEventListener('pagehide', () => stopScanner());
-      window.addEventListener('beforeunload', () => stopScanner());
+      // Остановим камеру при уходе со страницы, но сохраним состояние экрана
+      window.addEventListener('pagehide', () => { saveAppState(); stopScanner(); });
+      window.addEventListener('beforeunload', () => { saveAppState(); stopScanner(); });
 
       // Accessibility: close keyboard/modal on Escape
       document.addEventListener('keydown', (e) => {
@@ -1260,6 +1345,7 @@
   </script>
 </body>
 </html>
+
 
 
 
