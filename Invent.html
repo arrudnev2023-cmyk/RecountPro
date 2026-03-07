@@ -449,7 +449,7 @@
     allItems.push({
       name,
       qty,
-      codes: [...codes] // массив всех штрих‑кодов
+      codes: [...codes] // массив всех штрихкодов
     });
 
     codes.forEach(code => {
@@ -624,7 +624,7 @@
 
     const expected = item.qty;
 
-    // считаем фактическое по всем штрих‑кодам
+    // фактическое = сумма по всем штрихкодам
     let actual = 0;
     item.codes.forEach(code => {
       const expr = sessionValues[code] || '';
@@ -653,12 +653,13 @@
 
       <div class="field">
         <span class="label">Кол-во:</span>
-        <input data-name="${escapeHtml(item.name)}" type="text" value="${actual}" readonly>
+        <input data-name="${escapeHtml(item.name)}" type="text" value="${actual || ''}" placeholder="0" readonly>
       </div>
     `;
 
     const input = el.querySelector('input');
 
+    // обработка ввода через кастомную клавиатуру
     input.addEventListener('pointerdown', ev => {
       ev.preventDefault();
       try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
@@ -674,6 +675,7 @@
       }, 80);
     });
 
+    // клик по карточке тоже открывает клавиатуру
     el.addEventListener('click', () => {
       try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
       showCustomKeyboard(input);
@@ -682,6 +684,7 @@
     listContainer.appendChild(el);
   });
 }
+
 
 
     function escapeHtml(s) {
@@ -706,101 +709,128 @@
 
     /* ========= КЛАВИАТУРА ========= */
     function showCustomKeyboard(input) {
-      if (!customKeyboard || !input) return;
-      customKeyboard.style.display = '';
-      customKeyboard.classList.add('show');
-      customKeyboard.dataset.target = input.dataset.code;
-      customKeyboard.setAttribute('aria-hidden', 'false');
-    }
+  if (!customKeyboard || !input) return;
+  customKeyboard.style.display = '';
+  customKeyboard.classList.add('show');
 
-    function hideCustomKeyboard() {
-      if (!customKeyboard) return;
-      customKeyboard.classList.remove('show');
-      customKeyboard.style.display = 'none';
-      customKeyboard.setAttribute('aria-hidden', 'true');
-      delete customKeyboard.dataset.target;
-    }
+  // теперь target = имя товара
+  customKeyboard.dataset.target = input.dataset.name;
 
-    function updateItemVisual(code) {
-      const el = document.querySelector(`.item[data-code="${cssEscape(code)}"]`);
-      if (!el) return;
-      const expr = sessionValues[code] || '';
-      const actual = evalExpression(expr);
-      const name = el.dataset.name;
-      const expected = quantities[name] || 0;
+  customKeyboard.setAttribute('aria-hidden', 'false');
+}
 
-      const input = el.querySelector('input[data-code]');
-      if (input) input.value = expr;
+function hideCustomKeyboard() {
+  if (!customKeyboard) return;
+  customKeyboard.classList.remove('show');
+  customKeyboard.style.display = 'none';
+  customKeyboard.setAttribute('aria-hidden', 'true');
+  delete customKeyboard.dataset.target;
+}
 
-      el.classList.remove('match', 'missing', 'excess');
-      if (expr) {
-        if (actual === expected) el.classList.add('match');
-        else if (actual < expected) el.classList.add('missing');
-        else el.classList.add('excess');
+// обновление карточки по имени товара
+function updateItemVisualByName(name) {
+  const el = document.querySelector(`.item[data-name="${cssEscape(name)}"]`);
+  if (!el) return;
+
+  const item = allItems.find(i => i.name === name);
+  if (!item) return;
+
+  const expected = item.qty;
+
+  // считаем фактическое по всем штрихкодам
+  let actual = 0;
+  item.codes.forEach(code => {
+    const expr = sessionValues[code] || '';
+    actual += evalExpression(expr);
+  });
+
+  const input = el.querySelector('input[data-name]');
+  if (input) input.value = actual || '';
+
+  el.classList.remove('match', 'missing', 'excess');
+  if (actual === expected) el.classList.add('match');
+  else if (actual < expected) el.classList.add('missing');
+  else el.classList.add('excess');
+}
+
+function initCustomKeyboard() {
+  if (!customKeyboard) return;
+
+  const keys = customKeyboard.querySelectorAll('button:not(.done)');
+
+  keys.forEach(key => {
+    key.addEventListener('pointerdown', ev => {
+      ev.preventDefault();
+
+      const targetName = customKeyboard.dataset.target;
+      if (!targetName) return;
+
+      const input = document.querySelector(`input[data-name="${cssEscape(targetName)}"]`);
+      if (!input) return;
+
+      let currentValue = input.value || '';
+      const keyValue = key.dataset.key || key.textContent;
+
+      if (keyValue === 'back' || keyValue === '←') {
+        currentValue = currentValue.slice(0, -1);
+      } else {
+        currentValue = currentValue + keyValue;
       }
-    }
 
-    function initCustomKeyboard() {
-      if (!customKeyboard) return;
-      const keys = customKeyboard.querySelectorAll('button:not(.done)');
-      keys.forEach(key => {
-        key.addEventListener('pointerdown', (ev) => {
-          ev.preventDefault();
-          const targetCode = customKeyboard.dataset.target;
-          if (!targetCode) return;
-          const input = document.querySelector(`input[data-code="${cssEscape(targetCode)}"]`);
-          if (!input) return;
+      // записываем во все штрихкоды товара
+      const item = allItems.find(i => i.name === targetName);
+      if (item) {
+        item.codes.forEach(code => {
+          sessionValues[code] = currentValue;
+        });
+      }
 
-          let currentValue = input.value || '';
-          const keyValue = key.dataset.key || key.textContent;
+      saveSession();
+      saveAppState?.();
 
-          if (keyValue === 'back' || keyValue === '←') {
-            currentValue = currentValue.slice(0, -1);
-          } else {
-            currentValue = currentValue + keyValue;
-          }
+      input.value = currentValue;
 
-          sessionValues[targetCode] = currentValue;
-          saveSession();
-          saveAppState();
-          input.value = currentValue;
-          updateItemVisual(targetCode);
+      updateItemVisualByName(targetName);
 
-          setTimeout(() => ensureVisibleAboveKeyboard(input), 0);
-        }, { passive: false });
-      });
+      setTimeout(() => ensureVisibleAboveKeyboard(input), 0);
+    }, { passive: false });
+  });
 
-      const doneBtn = document.getElementById('done');
-      if (doneBtn) doneBtn.addEventListener('pointerdown', (ev) => {
-        ev.preventDefault();
-        const targetCode = customKeyboard.dataset.target;
-        hideCustomKeyboard();
-        const input = document.querySelector(`input[data-code="${cssEscape(targetCode)}"]`);
-        try { input?.blur(); } catch (e) {}
-      }, { passive: false });
-    }
+  const doneBtn = document.getElementById('done');
+  if (doneBtn) {
+    doneBtn.addEventListener('pointerdown', ev => {
+      ev.preventDefault();
+      const targetName = customKeyboard.dataset.target;
+      hideCustomKeyboard();
+      const input = document.querySelector(`input[data-name="${cssEscape(targetName)}"]`);
+      try { input?.blur(); } catch (e) {}
+    }, { passive: false });
+  }
+}
 
-    // Dismiss keyboard when tapping outside (pointerdown) — reliable on touch and mouse
-    function setupKeyboardDismiss() {
-      document.addEventListener('pointerdown', (e) => {
-        if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
-        // if click inside keyboard — keep open
-        if (customKeyboard.contains(e.target)) return;
-        // if click on an input — keep open (handled by input pointerdown)
-        if (e.target.closest && e.target.closest('input[data-code]')) return;
-        // otherwise hide
-        hideCustomKeyboard();
-      }, { capture: true });
-      // also hide on scroll start (user likely wants to scroll)
-      let scrollTimeout = null;
-      document.getElementById('content').addEventListener('scroll', () => {
-        if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
-        hideCustomKeyboard();
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {}, 200);
-      }, { passive: true });
-    }
-    setupKeyboardDismiss();
+// скрытие клавиатуры при клике вне
+function setupKeyboardDismiss() {
+  document.addEventListener('pointerdown', e => {
+    if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
+
+    if (customKeyboard.contains(e.target)) return;
+
+    if (e.target.closest && e.target.closest('input[data-name]')) return;
+
+    hideCustomKeyboard();
+  }, { capture: true });
+
+  let scrollTimeout = null;
+  document.getElementById('content').addEventListener('scroll', () => {
+    if (!customKeyboard || !customKeyboard.classList.contains('show')) return;
+    hideCustomKeyboard();
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {}, 200);
+  }, { passive: true });
+}
+
+setupKeyboardDismiss();
+
 
     /* ========= СКАНЕР ========= */
     function createCanvas(w, h) {
