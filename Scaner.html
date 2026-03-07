@@ -651,20 +651,48 @@ document.addEventListener('DOMContentLoaded', () => {
       // Ограничиваем до 3 штрих‑кодов
       const limitedCodes = codes.slice(0, 3);
 
-      if (window.currentEdit) {
-        // Редактирование существующей записи
-        delete db[window.currentEdit];
-        db[name] = limitedCodes;
-        if (quantities[window.currentEdit] !== undefined) {
-          quantities[name] = quantities[window.currentEdit];
-          delete quantities[window.currentEdit];
-        }
-        delete window.currentEdit;
-      } else {
-        // Добавление новой записи
-        db[name] = limitedCodes;
-        quantities[name] = quantities[name] || 0;
-      }
+     // 1. Ищем существующую карточку, где есть хотя бы один из введённых штрих‑кодов
+let existingName = null;
+
+for (const [n, codes] of Object.entries(db)) {
+  if (codes.some(c => limitedCodes.includes(c))) {
+    existingName = n;
+    break;
+  }
+}
+
+// 2. Если нашли — объединяем штрих‑коды
+if (existingName) {
+  const merged = Array.from(new Set([...db[existingName], ...limitedCodes])).slice(0, 3);
+
+  // Если название изменилось — переносим количество
+  if (existingName !== name) {
+    quantities[name] = quantities[existingName] || 0;
+    delete quantities[existingName];
+    delete db[existingName];
+  }
+
+  db[name] = merged;
+}
+
+// 3. Если не нашли — обычное добавление/редактирование
+else {
+  if (window.currentEdit) {
+    delete db[window.currentEdit];
+    db[name] = limitedCodes;
+
+    if (quantities[window.currentEdit] !== undefined) {
+      quantities[name] = quantities[window.currentEdit];
+      delete quantities[window.currentEdit];
+    }
+
+    delete window.currentEdit;
+  } else {
+    db[name] = limitedCodes;
+    quantities[name] = quantities[name] || 0;
+  }
+}
+
 
       saveToStorage();
       renderTable(db);
