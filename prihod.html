@@ -9,20 +9,17 @@
 
   <style>
   :root {
-    --accent: #4361ee; /* спокойный синий */
+    --accent: #4361ee;
     --accent-light: #82b1ff;
-    --text: #333; /* тёмный текст */
-    --muted: #666; /* приглушённый текст */
-    --bg: #f8f9fa; /* очень светлый серый фон */
-    --card-bg: #ffffff; /* белый фон карточек */
-    --border: #e0e0e0; /* светлый серый для границ */
+    --text: #333;
+    --muted: #666;
+    --bg: #f8f9fa;
+    --card-bg: #ffffff;
+    --border: #e0e0e0;
     --maxw: 980px;
   }
 
-  * {
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   html, body {
     height: 100%;
@@ -42,57 +39,26 @@
     background-color: white;
     border-bottom: 1px solid var(--border);
     z-index: 1000;
+    border-radius: 0 0 14px 14px;
   }
-  header h1 {
-    margin: 0;
-    text-align: center;
-    font-size: 1.15rem;
-    color: var(--accent);
-  }
+  header h1 { margin: 0; text-align: center; font-size: 1.15rem; color: var(--accent); }
 
-  #search-wrap {
-    max-width: var(--maxw);
-    margin: 10px auto;
-    position: relative;
-  }
-  #search {
-    width: 100%;
-    padding: 10px 56px 10px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background-color: white;
-    color: var(--text);
-    font-size: 15px;
-  }
-  #scan-btn,
-  #clear-search {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: var(--muted);
-    cursor: pointer;
-  }
-  #clear-search {
-    right: 44px;
-  }
+  #search-wrap { max-width: var(--maxw); margin: 10px auto; position: relative; }
+  #search { width: 100%; padding: 10px 56px 10px 12px; border-radius: 8px; border: 1px solid var(--border); background-color: white; color: var(--text); font-size: 15px; }
+  #scan-btn, #clear-search { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; }
+  #clear-search { right: 44px; }
 
-  #content {
-    position: fixed;
-    left: 0;
-    right: 0;
-    top: 96px;
-    bottom: 0;
-    overflow: auto;
-    padding: 12px;
-  }
+  #content { position: fixed; left: 0; right: 0; top: 96px; bottom: 0; overflow: auto; padding: 12px; -webkit-overflow-scrolling: touch; }
 
-  .list {
-    max-width: var(--maxw);
-    margin: 0 auto;
-  }
+  .card { max-width: var(--maxw); margin: 10px auto; padding: 12px; border-radius: 8px; background-color: var(--card-bg); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .preview-wrap.camera-1-3 { position: relative; width: 100%; max-width: var(--maxw); margin: 0 auto 10px; padding-top: 33%; overflow: hidden; border-radius: 8px; background-color: #f0f0f0; border: 1px dashed var(--border); }
+  .preview-wrap.camera-1-3 video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+
+  .controls { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  .btn { padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: white; color: var(--text); cursor: pointer; transition: all 0.2s; }
+  .btn.primary { background: var(--accent); color: white; font-weight: 700; }
+
+  .list { max-width: var(--maxw); margin: 12px auto; display: flex; flex-direction: column; gap: 8px; }
 
   .item {
     width: 100%;
@@ -105,241 +71,68 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    position: relative;
+    z-index: 1;
   }
-  .item.found {
-    border-left-color: var(--accent);
-    box-shadow: 0 4px 16px rgba(67, 97, 238, 0.15);
-  }
-  .item.highlight-purple {
-    border-left-color: #7c3aed;
-    box-shadow: 0 0 0 2px #7c3aed, 0 4px 12px rgba(124, 58, 237, 0.2);
-  }
+  .item.found { border-left-color: var(--accent); box-shadow: 0 4px 16px rgba(67,97,238,0.15); }
+  .item.highlight-purple { border-left-color: #7c3aed; box-shadow: 0 0 0 2px #7c3aed, 0 4px 12px rgba(124,58,237,0.2); }
 
-  .field {
-    font-size: 14px;
-  }
-  .label {
-    font-weight: 700;
-    color: var(--accent);
-    margin-right: 6px;
-  }
-  .hidden {
-    display: none !important;
-  }
+  .field { margin-bottom: 8px; }
+  .label { font-weight: 700; color: var(--accent); margin-right: 6px; }
 
-  .row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    justify-content: space-between;
-  }
+  .controls-qty { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .controls-qty > div { display: flex; gap: 8px; align-items: center; background: #fafafa; padding: 8px; border-radius: 8px; border: 1px solid var(--border); }
+  .controls-qty input.qtyPlusInput, .controls-qty input.qtyMinusInput { width: 110px; padding: 10px 12px; font-size: 18px; border-radius: 8px; border: 1px solid var(--border); text-align: center; background: white; }
+  .controls-qty button { padding: 10px 12px; font-size: 16px; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; }
+  .controls-qty span { font-weight: 600; color: var(--muted); }
 
-  .qty-block {
-    margin-top: 6px;
-    padding-top: 6px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
+  #fabMenu { position: fixed; bottom: 1rem; right: 1rem; z-index: 1001; background-color: var(--accent); color: white; border: none; padding: 0.9rem 1.2rem; border-radius: 8px; font-size: 1.2rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(67,97,238,0.3); transition: all 0.3s ease; }
+  #sheetOverlay { position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.25s ease; z-index: 999; }
+  #sheetOverlay.show { opacity: 1; pointer-events: auto; }
+  #bottomSheet { position: fixed; left: 0; right: 0; bottom: -60vh; padding: 1.2rem; background-color: white; border-radius: 16px 16px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); transition: bottom 0.35s ease; z-index: 1002; }
+  #bottomSheet.show { bottom: 0; }
 
-  .qty-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
+  .sheet-content { display:flex; flex-direction:column; gap:0.7rem; }
+  .sheet-btn { background-color: #f5f5f5; color: var(--text); border: 1px solid var(--border); padding: 0.9rem 1rem; border-radius: 8px; font-size: 1rem; font-weight: 500; cursor: pointer; display:flex; align-items:center; gap:10px; }
+  .sheet-btn:hover { background-color:#e9e9e9; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 
-  .qty-row-label {
-    min-width: 60px;
-    font-size: 13px;
-    color: var(--muted);
-  }
+  .preview-wrap.camera-1-3 { position: relative; width: 100%; max-width: var(--maxw); margin: 0 auto 10px; padding-top: 33%; overflow: hidden; border-radius: 8px; background-color: #f0f0f0; border: 1px dashed var(--border); }
+  .preview-wrap.camera-1-3 video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
 
-  .qty-controls {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .qty-controls input {
-    width: 70px;
-    padding: 6px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background-color: white;
-    color: var(--text);
-    text-align: center;
-    font-size: 14px;
-  }
-  .qty-controls button {
-    width: 34px;
-    height: 32px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background-color: #f0f0f0;
-    color: var(--text);
-    cursor: pointer;
-    font-size: 16px;
-  }
+  #scannerCard.card { max-width: var(--maxw); margin: 0 auto 10px; padding: 10px; border-radius: 8px; background-color: white; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); display:none; }
 
-  .qty-current {
-    font-size: 13px;
-    color: var(--muted);
-  }
+  #custom-keyboard { position: fixed; left: 0; right: 0; bottom: -40vh; height: 34vh; background: white; padding: 10px; display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; z-index: 99999; transition: bottom 0.28s; border-top: 1px solid var(--border); box-shadow: 0 -8px 30px rgba(0,0,0,0.12); }
+  #custom-keyboard.show { bottom: 0; }
+  #custom-keyboard button { border: 1px solid var(--border); border-radius: 6px; background: white; color: var(--text); font-size: 20px; cursor: pointer; padding: 12px 6px; }
 
-  #fabMenu {
+  .hidden { display: none !important; }
+
+  .toast {
     position: fixed;
-    bottom: 1rem;
-    right: 1rem;
-    z-index: 1001;
-    background-color: var(--accent);
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
     color: white;
-    border: none;
-    padding: 0.9rem 1.2rem;
+    padding: 12px 24px;
     border-radius: 8px;
-    font-size: 1.2rem;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
-    transition: all 0.3s ease;
-  }
-  #fabMenu:hover {
-    background-color: #3a56d6;
-  }
-
-  #sheetOverlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    opacity: 0;
+    z-index: 9999;
+    font-size: 14px;
     pointer-events: none;
-    transition: opacity 0.25s ease;
-    z-index: 999;
-  }
-  #sheetOverlay.show {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  #bottomSheet {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: -60vh;
-    padding: 1.2rem;
-    background-color: white;
-    border-radius: 16px 16px 0 0;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-    transition: bottom 0.35s ease;
-    z-index: 1002;
-  }
-  #bottomSheet.show {
-    bottom: 0;
-  }
-
-  .sheet-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.7rem;
-  }
-.sheet-btn {
-  background-color: #f5f5f5;
-  color: var(--text);
-  border: 1px solid var(--border);
-  padding: 0.9rem 1rem;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.sheet-btn:hover {
-  background-color: #e9e9e9;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-.sheet-btn:active {
-  transform: translateY(0);
-}
-
-@keyframes fadeIn {
-  from {
     opacity: 0;
-    transform: translateY(12px) scale(0.95);
+    transition: opacity 0.3s ease;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
 
-.preview-wrap.camera-1-3 {
-  position: relative;
-  width: 100%;
-  max-width: var(--maxw);
-  margin: 0 auto 10px;
-  padding-top: 33%;
-  overflow: hidden;
-  border-radius: 8px;
-  background-color: #f0f0f0;
-  border: 1px dashed var(--border);
-}
-
-.preview-wrap.camera-1-3 video {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-#scannerCard.card {
-  max-width: var(--maxw);
-  margin: 0 auto 10px;
-  padding: 10px;
-  border-radius: 8px;
-  background-color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin-top: 8px;
-  font-size: 13px;
-}
-
-.controls .btn {
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background-color: white;
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.controls .btn:hover {
-  background-color: #f8f8f8;
-  border-color: var(--accent);
-}
-.controls .btn:active {
-  transform: scale(0.98);
-}
-
-#bg {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-}
-</style>
-
+  /* Create modal */
+  #createModalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; z-index: 10010; }
+  #createModal { width: 92%; max-width: 520px; background: white; border-radius: 12px; padding: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
+  #createModal h3 { margin: 0 0 8px 0; color: var(--accent); }
+  #createModal .row { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+  #createModal input[type="text"] { padding:10px; border-radius:8px; border:1px solid var(--border); font-size:15px; }
+  #createModal .actions { display:flex; gap:8px; justify-content:flex-end; }
+  #createModal .actions button { padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:#f5f5f5; cursor:pointer; }
+  #createModal .actions button.primary { background:var(--accent); color:white; border-color:var(--accent); font-weight:700; }
+  </style>
 </head>
 
 <body>
@@ -355,7 +148,7 @@
   </header>
 
   <main id="content">
-    <div id="scannerCard" class="card" style="display:none">
+    <div id="scannerCard" class="card">
       <div class="preview-wrap camera-1-3"><video id="preview" playsinline muted></video></div>
       <div class="controls">
         <select id="deviceSelect" class="btn" style="min-width:160px"></select>
@@ -379,158 +172,38 @@
     </div>
   </div>
 
-  <!-- ZXing fallback -->
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
+  <!-- Create modal -->
+  <div id="createModalOverlay" aria-hidden="true">
+    <div id="createModal" role="dialog" aria-modal="true" aria-labelledby="createModalTitle">
+      <h3 id="createModalTitle">Создать новый товар</h3>
+      <div class="row">
+        <label>Название</label>
+        <input id="newNameInput" type="text" placeholder="Введите название товара" />
+      </div>
+      <div class="row">
+        <label>Штрихкод</label>
+        <input id="newBarcodeInput" type="text" readonly />
+      </div>
+      <div class="actions">
+        <button id="cancelCreateBtn">Отмена</button>
+        <button id="confirmCreateBtn" class="primary">Создать</button>
+      </div>
+    </div>
+  </div>
 
-  <style>
-    :root {
-      --accent: #4361ee;
-      --accent-light: #82b1ff;
-      --text: #333;
-      --muted: #666;
-      --bg: #ffffff;
-      --card-bg: #ffffff;
-      --border: #e0e0e0;
-      --maxw: 980px;
-    }
-
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-    html, body {
-      height: 100%;
-      margin: 0;
-      background-color: var(--bg);
-      color: var(--text);
-      font-family: Inter, Segoe UI, system-ui, Arial, sans-serif;
-      overflow: hidden;
-    }
-
-    header {
-      position: fixed;
-      left: 0;
-      right: 0;
-      top: 0;
-      padding: 12px;
-      background-color: white;
-      border-bottom: 1px solid var(--border);
-      z-index: 1000;
-      border-radius: 0 0 14px 14px;
-    }
-    header h1 { margin: 0; text-align: center; font-size: 1.15rem; color: var(--accent); }
-
-    #search-wrap { max-width: var(--maxw); margin: 10px auto; position: relative; }
-    #search { width: 100%; padding: 10px 56px 10px 12px; border-radius: 8px; border: 1px solid var(--border); background-color: white; color: var(--text); font-size: 15px; }
-    #scan-btn, #clear-search { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; }
-    #clear-search { right: 44px; }
-
-    #content { position: fixed; left: 0; right: 0; top: 96px; bottom: 0; overflow: auto; padding: 12px; -webkit-overflow-scrolling: touch; }
-
-    .card { max-width: var(--maxw); margin: 10px auto; padding: 12px; border-radius: 8px; background-color: var(--card-bg); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .preview-wrap.camera-1-3 { position: relative; width: 100%; max-width: var(--maxw); margin: 0 auto 10px; padding-top: 33%; overflow: hidden; border-radius: 8px; background-color: #f0f0f0; border: 1px dashed var(--border); }
-    .preview-wrap.camera-1-3 video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-
-    .controls { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
-    .btn { padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: white; color: var(--text); cursor: pointer; transition: all 0.2s; }
-    .btn.primary { background: var(--accent); color: white; font-weight: 700; }
-
-    .list { max-width: var(--maxw); margin: 12px auto; display: flex; flex-direction: column; gap: 8px; }
-
-    .item {
-      width: 100%;
-      margin: 10px 0;
-      padding: 12px;
-      border-radius: 8px;
-      background-color: var(--card-bg);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      border-left: 4px solid transparent;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      position: relative;
-      z-index: 1;
-    }
-    .item.found { border-left-color: var(--accent); box-shadow: 0 4px 16px rgba(67,97,238,0.15); }
-    .item.highlight-purple { border-left-color: #7c3aed; box-shadow: 0 0 0 2px #7c3aed, 0 4px 12px rgba(124,58,237,0.2); }
-
-    .field { margin-bottom: 8px; }
-    .label { font-weight: 700; color: var(--accent); margin-right: 6px; }
-
-    /* Новые большие поля для прихода/расхода */
-    .controls-qty {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    .controls-qty > div {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      background: #fafafa;
-      padding: 8px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-    }
-    .controls-qty input.qtyPlusInput,
-    .controls-qty input.qtyMinusInput {
-      width: 110px;
-      padding: 10px 12px;
-      font-size: 18px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      text-align: center;
-      background: white;
-    }
-    .controls-qty button {
-      padding: 10px 12px;
-      font-size: 16px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: white;
-      cursor: pointer;
-    }
-    .controls-qty span { font-weight: 600; color: var(--muted); }
-
-    #custom-keyboard { position: fixed; left: 0; right: 0; bottom: -40vh; height: 34vh; background: white; padding: 10px; display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; z-index: 99999; transition: bottom 0.28s; border-top: 1px solid var(--border); box-shadow: 0 -8px 30px rgba(0,0,0,0.12); }
-    #custom-keyboard.show { bottom: 0; }
-    #custom-keyboard button { border: 1px solid var(--border); border-radius: 6px; background: white; color: var(--text); font-size: 20px; cursor: pointer; padding: 12px 6px; }
-
-    .hidden { display: none !important; }
-
-    #fabMenu { position: fixed; bottom: 1rem; right: 1rem; z-index: 1001; background-color: var(--accent); color: white; border: none; padding: 0.9rem 1.2rem; border-radius: 8px; font-size: 1.2rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(67,97,238,0.3); transition: all 0.3s ease; }
-    #sheetOverlay { position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.25s ease; z-index: 999; }
-    #sheetOverlay.show { opacity: 1; pointer-events: auto; }
-    #bottomSheet { position: fixed; left: 0; right: 0; bottom: -60vh; padding: 1.2rem; background-color: white; border-radius: 16px 16px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); transition: bottom 0.35s ease; z-index: 1002; }
-    #bottomSheet.show { bottom: 0; }
-
-    .toast {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.8);
-      color: white;
-      padding: 12px 24px;
-      border-radius: 8px;
-      z-index: 9999;
-      font-size: 14px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-  </style>
+  <div id="toast" class="toast" aria-live="polite"></div>
 
   <script>
     /* =========================
        БАЗЫ: ТОВАРЫ + ШК
     ========================= */
 
-    let barcodeDB = {};
-    let barcodeCodes = {};
-    let allItems = [];
+    let barcodeDB = {};      // { name: [code, ...], ... }
+    let barcodeCodes = {};   // { code: nameOrCode, ... }  (optional helper)
+    let allItems = [];       // [{code, name, qty}, ...]
     let showZero = false;
-    let quantities = {};
-    let codeToName = {};
+    let quantities = {};     // { name: qty }
+    let codeToName = {};     // { code: name }
 
     function loadDB() {
       try {
@@ -541,16 +214,25 @@
             barcodeDB = parsed.db;
             quantities = parsed.quantities;
           } else {
+            // legacy format: keys are codes or names
             barcodeDB = {};
             quantities = {};
-            Object.entries(parsed).forEach(([code, data]) => {
-              const name = typeof data === "string" ? data : data.name;
-              if (!barcodeDB[name]) {
-                barcodeDB[name] = [];
-                quantities[name] = 0;
+            Object.entries(parsed).forEach(([k, v]) => {
+              if (Array.isArray(v)) {
+                // assume k is name
+                barcodeDB[k] = v;
+                quantities[k] = 0;
+              } else if (typeof v === "object" && v.name) {
+                const name = v.name;
+                barcodeDB[name] = barcodeDB[name] || [];
+                barcodeDB[name].push(k);
+                quantities[name] = v.qty || 0;
+              } else if (typeof v === "string") {
+                // fallback
+                barcodeDB[v] = barcodeDB[v] || [];
+                barcodeDB[v].push(k);
+                quantities[v] = quantities[v] || 0;
               }
-              barcodeDB[name].push(code);
-              if (data && data.qty !== undefined) quantities[name] = data.qty;
             });
           }
         } else {
@@ -577,6 +259,9 @@
       } catch (e) {
         console.error("Ошибка сохранения:", e);
       }
+      try {
+        localStorage.setItem("barcodeCodes", JSON.stringify(barcodeCodes));
+      } catch (e) {}
     }
 
     function escapeHtml(s){
@@ -593,7 +278,7 @@
       Object.entries(barcodeDB).forEach(([name, codes]) => {
         const qty = quantities[name] || 0;
         codes.forEach(code => {
-          allItems.push({ code: code, name: name, qty: qty });
+          allItems.push({ code: String(code), name: name, qty: qty });
           codeToName[String(code)] = name;
         });
       });
@@ -607,8 +292,7 @@
 
     function render(items) {
       listEl.innerHTML = "";
-      const visible = items.filter(it => showZero ? true : (it.qty !== 0 || true)); // keep all but UI toggle handled by CSS hidden
-      if (items.length === 0) {
+      if (!items || items.length === 0) {
         listEl.innerHTML = "<p style='text-align:center;color:var(--muted);padding:20px'>База товаров пуста. Добавьте товары через импорт или сканирование.</p>";
         return;
       }
@@ -620,17 +304,17 @@
 
         div.innerHTML = `
           <div class="field"><span class="label">Название:</span> ${escapeHtml(item.name)}</div>
-          <div class="field"><span class="label">Штрих‑код:</span> ${item.code}</div>
+          <div class="field"><span class="label">Штрих‑код:</span> ${escapeHtml(item.code)}</div>
           <div class="field"><span class="label">Остаток:</span> <span class="curQty">${item.qty}</span></div>
           <div class="controls-qty">
             <div>
-              <button class="arrivalPlus" data-code="${item.code}" data-name="${escapeHtml(item.name)}">+1</button>
-              <input type="number" class="qtyPlusInput" data-code="${item.code}" value="0" min="0" />
+              <button class="arrivalPlus" data-code="${escapeHtml(item.code)}" data-name="${escapeHtml(item.name)}">+1</button>
+              <input type="number" class="qtyPlusInput" data-code="${escapeHtml(item.code)}" value="0" min="0" />
               <span>Приход</span>
             </div>
             <div>
-              <button class="consumptionMinus" data-code="${item.code}" data-name="${escapeHtml(item.name)}">-1</button>
-              <input type="number" class="qtyMinusInput" data-code="${item.code}" value="0" min="0" />
+              <button class="consumptionMinus" data-code="${escapeHtml(item.code)}" data-name="${escapeHtml(item.name)}">-1</button>
+              <input type="number" class="qtyMinusInput" data-code="${escapeHtml(item.code)}" value="0" min="0" />
               <span>Расход</span>
             </div>
           </div>
@@ -651,8 +335,8 @@
         return;
       }
 
-      const plusInput = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
-      const minusInput = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
+      const plusInput = document.querySelector(`.qtyPlusInput[data-code="${CSS.escape(code)}"]`);
+      const minusInput = document.querySelector(`.qtyMinusInput[data-code="${CSS.escape(code)}"]`);
       if (!plusInput || !minusInput) {
         console.warn("Не найдены поля ввода для кода:", code);
         return;
@@ -670,7 +354,7 @@
       quantities[name] = newQty;
       saveDB();
 
-      document.querySelectorAll(`.item[data-code="${code}"]`).forEach(card => {
+      document.querySelectorAll(`.item[data-code="${CSS.escape(code)}"]`).forEach(card => {
         const cur = card.querySelector(".curQty");
         if (cur) cur.textContent = newQty;
         card.classList.add("highlight-purple");
@@ -687,7 +371,7 @@
         btn.onclick = () => {
           const code = btn.dataset.code;
           const name = btn.dataset.name;
-          const input = document.querySelector(`.qtyPlusInput[data-code="${code}"]`);
+          const input = document.querySelector(`.qtyPlusInput[data-code="${CSS.escape(code)}"]`);
           input.value = Number(input.value || 0) + 1;
           applyChange(code, name);
         };
@@ -698,7 +382,7 @@
         btn.onclick = () => {
           const code = btn.dataset.code;
           const name = btn.dataset.name;
-          const input = document.querySelector(`.qtyMinusInput[data-code="${code}"]`);
+          const input = document.querySelector(`.qtyMinusInput[data-code="${CSS.escape(code)}"]`);
           input.value = Number(input.value || 0) + 1;
           applyChange(code, name);
         };
@@ -760,7 +444,7 @@
     ========================= */
 
     function highlightItem(code){
-      const card = document.querySelector(`.item[data-code="${code}"]`);
+      const card = document.querySelector(`.item[data-code="${CSS.escape(code)}"]`);
       if(!card) return;
       card.classList.remove("found");
       card.classList.remove("highlight-purple");
@@ -770,7 +454,7 @@
     }
 
     /* =========================
-       СКАНЕР (эталонный, интегрирован)
+       СКАНЕР
     ========================= */
 
     let stream = null;
@@ -790,10 +474,12 @@
     const closeScannerBtn = document.getElementById("closeScannerBtn");
     const scanResult = document.getElementById("scanResult");
     const scanBtn = document.getElementById("scan-btn");
+    const toastEl = document.getElementById("toast");
 
     function showToast(text, ms=1200){
-      scanResult.innerText = text;
-      setTimeout(()=>{ if(scanResult.innerText===text) scanResult.innerText=''; }, ms);
+      toastEl.textContent = text;
+      toastEl.style.opacity = "1";
+      setTimeout(()=>{ toastEl.style.opacity = "0"; }, ms);
     }
 
     async function enumerateCameras(){
@@ -916,44 +602,88 @@
       if(scanning) requestAnimationFrame(scanLoop);
     }
 
-    function onBarcodeDetected(code){
-      showToast(code);
+    /* =========================
+       МОДАЛКА СОЗДАНИЯ ТОВАРА
+    ========================= */
 
-      // если нет ни в базе товаров, ни в базе штрих‑кодов — создаём в базе штрих‑кодов
-      if(!barcodeDB[code] && !barcodeCodes[code]){
-        barcodeCodes[code] = code;
-        localStorage.setItem("barcodeCodes", JSON.stringify(barcodeCodes));
+    const createModalOverlay = document.getElementById("createModalOverlay");
+    const newNameInput = document.getElementById("newNameInput");
+    const newBarcodeInput = document.getElementById("newBarcodeInput");
+    const confirmCreateBtn = document.getElementById("confirmCreateBtn");
+    const cancelCreateBtn = document.getElementById("cancelCreateBtn");
+
+    function openCreateModal(barcode) {
+      newNameInput.value = "";
+      newBarcodeInput.value = barcode || "";
+      createModalOverlay.style.display = "flex";
+      createModalOverlay.setAttribute("aria-hidden", "false");
+      newNameInput.focus();
+    }
+
+    function closeCreateModal() {
+      createModalOverlay.style.display = "none";
+      createModalOverlay.setAttribute("aria-hidden", "true");
+    }
+
+    function createNewItemFromModal() {
+      const name = String(newNameInput.value || "").trim();
+      const code = String(newBarcodeInput.value || "").trim();
+      if (!name) {
+        showToast("Введите название товара");
+        newNameInput.focus();
+        return;
+      }
+      if (!code) {
+        showToast("Штрихкод отсутствует");
+        return;
       }
 
-      // если нет в базе товаров — создадим с qty=0
-      if(!barcodeDB[code]){
-        // создаём запись: имя из barcodeCodes или сам код
-        const name = barcodeCodes[code] || code;
-        barcodeDB[name] = barcodeDB[name] || [];
-        if(!barcodeDB[name].includes(code)) barcodeDB[name].push(code);
-        quantities[name] = quantities[name] || 0;
-        saveDB();
-      }
-
+      // если такое имя уже есть — добавляем код в список, иначе создаём новую запись
+      barcodeDB[name] = barcodeDB[name] || [];
+      if (!barcodeDB[name].includes(code)) barcodeDB[name].push(code);
+      quantities[name] = quantities[name] || 0;
+      barcodeCodes[code] = name;
+      saveDB();
       buildItems();
       render(allItems);
       highlightItem(code);
+      closeCreateModal();
+      showToast("Товар создан");
+    }
 
-      // поведение: подсветка + фокус на поле прихода и авто +1
-      const target = document.querySelector(`.item[data-code="${code}"]`);
-      if(target){
-        const plusInput = target.querySelector(`.qtyPlusInput[data-code="${code}"]`);
-        const name = target.dataset.name || (target.querySelector('.arrivalPlus')?.dataset.name);
-        if (plusInput) {
-  highlightItem(code); // только подсветка
-  showToast('Товар найден');
-} else {
-  showToast('Товар найден, но поле прихода не обнаружено');
-}
+    confirmCreateBtn.addEventListener("click", createNewItemFromModal);
+    cancelCreateBtn.addEventListener("click", () => { closeCreateModal(); });
 
-      } else {
-        showToast('Штрихкод не найден в базе');
+    // close modal on overlay click (but not when clicking inside modal)
+    createModalOverlay.addEventListener("click", (e) => {
+      if (e.target === createModalOverlay) closeCreateModal();
+    });
+
+    /* =========================
+       ОБРАБОТКА ОБНАРУЖЕНИЯ ШТРИХКОДА
+    ========================= */
+
+    function onBarcodeDetected(code){
+      showToast(code);
+
+      // сначала ищем по существующим кодам
+      const foundName = codeToName[String(code)];
+      if (foundName) {
+        // товар найден — подсветка и фокус, но НЕ создаём новую карточку и НЕ меняем имя
+        highlightItem(code);
+        showToast('Товар найден');
+        return;
       }
+
+      // если код есть в вспомогательной таблице barcodeCodes, используем её для подсказки, но не создаём товар автоматически
+      if (!barcodeCodes[code]) {
+        // сохраняем код в отдельной таблице, но не создаём товар
+        barcodeCodes[code] = code;
+        try { localStorage.setItem("barcodeCodes", JSON.stringify(barcodeCodes)); } catch(e){}
+      }
+
+      // показываем модалку для создания товара — имя пустое, штрихкод заполнен
+      openCreateModal(code);
     }
 
     /* Подключаем кнопки управления сканером */
@@ -986,7 +716,6 @@
     toggleZeroBtn.addEventListener("click", ()=>{
       showZero = !showZero;
       toggleZeroBtn.textContent = showZero ? "🙈 Скрыть товары с 0" : "🔍 Показать товары с 0";
-      // скрываем товары с 0 через класс hidden
       document.querySelectorAll("#list .item").forEach(div => {
         const qty = Number(div.querySelector('.curQty')?.textContent || 0);
         div.classList.toggle('hidden', !showZero && qty === 0);
@@ -1141,11 +870,11 @@
       document.getElementById("sheetOverlay").addEventListener("click", closeSheet);
     }
 
-    // Инициализация после загрузки DOM
     document.addEventListener('DOMContentLoaded', () => {
       init();
     });
   </script>
 </body>
 </html>
+
 
