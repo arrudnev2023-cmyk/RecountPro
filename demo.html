@@ -731,6 +731,7 @@ function stopScannerStream() {
 // Основной цикл сканирования
 async function scanLoop() {
   if (!scanning) return;
+
   const now = performance.now();
   if (now - _lastScanTs < SCAN_MIN_INTERVAL) {
     _scanRaf = requestAnimationFrame(scanLoop);
@@ -740,28 +741,31 @@ async function scanLoop() {
 
   try {
     if (barcodeDetector) {
-      // BarcodeDetector поддерживает HTMLVideoElement напрямую
-      const results = await barcodeDetector.detect(previewVideo);
+      // Берём кадр через canvas — работает на всех устройствах
+      const canvas = document.createElement("canvas");
+      canvas.width = previewVideo.videoWidth;
+      canvas.height = previewVideo.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(previewVideo, 0, 0, canvas.width, canvas.height);
+
+      const results = await barcodeDetector.detect(canvas);
+
       if (results && results.length > 0) {
-        for (const r of results) {
-          const code = (r.rawValue || '').trim();
-          if (code) {
-            handleDetected(code);
-            break;
-          }
+        const code = (results[0].rawValue || "").trim();
+        if (code) {
+          handleDetected(code);
         }
       }
     } else {
-      // Фоллбек: пробуем взять кадр и распознать QR/EAN через canvas + Tesseract не подходит для штрихкодов.
-      // Если BarcodeDetector отсутствует — показываем подсказку.
-      scanResult.textContent = 'BarcodeDetector не поддерживается в этом браузере';
+      scanResult.textContent = "BarcodeDetector не поддерживается";
     }
   } catch (e) {
-    console.error('scanLoop error', e);
+    console.error("scanLoop error", e);
   }
 
   _scanRaf = requestAnimationFrame(scanLoop);
 }
+
 
 function startScanLoop() {
   if (_scanRaf) cancelAnimationFrame(_scanRaf);
