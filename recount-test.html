@@ -38,7 +38,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     :root {
       --accent: #6d28d9;
@@ -387,7 +387,51 @@ input[data-code] {
 #export-area td {
   padding: 2px 3px; /* меньше отступы */
 }
+/* Кнопка сканера */
+#barcode-scan-btn {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 1.45rem;
+  cursor: pointer;
+  z-index: 2;
+}
 
+/* Модальное окно сканера */
+#scanner-modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.95);
+  z-index: 99999;
+  justify-content: center;
+  align-items: center;
+}
+
+#scanner-container {
+  width: 92%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.scanner-header {
+  color: white;
+  margin-bottom: 12px;
+  font-size: 1.1rem;
+}
+
+.close-scanner {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  color: white;
+  font-size: 2.2rem;
+  cursor: pointer;
+  z-index: 100000;
+}
   </style>
 </head>
 <body>
@@ -399,19 +443,23 @@ input[data-code] {
     <h1>RecountPro — Пересчёт</h1>
     <div id="search-container">
       <div id="search-wrapper" style="position:relative;">
-  <input type="text" id="search" placeholder="Поиск..."
-         autocomplete="off" autocorrect="off"
-         autocapitalize="off" spellcheck="false" aria-label="Поиск" />
+  <input type="text" id="search" placeholder="Поиск..." 
+         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+
   <button id="clear-search" type="button" aria-label="Очистить поиск">×</button>
 
-  <!-- Кнопка голосового поиска -->
-  <button id="voice-search-btn" type="button" aria-label="Голосовой поиск" aria-pressed="false"
-          style="position:absolute; right:2.6rem; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:4px;">
-    <svg id="voice-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z" stroke="#aaa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M19 11v1a7 7 0 0 1-14 0v-1" stroke="#aaa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M12 19v3" stroke="#aaa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Голосовой поиск -->
+  <button id="voice-search-btn" type="button" aria-label="Голосовой поиск">
+    <svg id="voice-icon" width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z" stroke="#aaa" stroke-width="1.6"/>
+      <path d="M19 11v1a7 7 0 0 1-14 0v-1" stroke="#aaa" stroke-width="1.6"/>
+      <path d="M12 19v3" stroke="#aaa" stroke-width="1.6"/>
     </svg>
+  </button>
+
+  <!-- НОВАЯ КНОПКА СКАНЕРА -->
+  <button id="barcode-scan-btn" type="button" aria-label="Сканировать штрих-код" title="Сканер штрих-кода">
+    📷
   </button>
 </div>
 
@@ -1901,8 +1949,70 @@ recognition.addEventListener('result', (ev) => {
 
 
 
+// ==================== СКАНЕР ШТРИХ-КОДОВ ====================
+let html5QrCode = null;
+
+function startScanner() {
+  document.getElementById('scanner-modal').style.display = 'flex';
+
+  if (html5QrCode) {
+    html5QrCode.clear();
+  }
+
+  html5QrCode = new Html5Qrcode("reader");
+
+  const config = { 
+    fps: 12, 
+    qrbox: { width: 260, height: 260 },
+    aspectRatio: 1.0
+  };
+
+  html5QrCode.start(
+    { facingMode: "environment" },
+    config,
+    (decodedText) => {
+      const searchInput = document.getElementById('search');
+      searchInput.value = decodedText.trim();
+      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+      
+      closeScanner();
+      alert("✅ Штрих-код распознан:\n" + decodedText);
+    },
+    () => {} // ошибки сканирования игнорируем
+  ).catch(err => {
+    console.error(err);
+    alert("❌ Не удалось получить доступ к камере. Разрешите доступ.");
+    closeScanner();
+  });
+}
+
+function closeScanner() {
+  if (html5QrCode) {
+    html5QrCode.stop().then(() => {
+      document.getElementById('scanner-modal').style.display = 'none';
+      html5QrCode = null;
+    }).catch(() => {
+      document.getElementById('scanner-modal').style.display = 'none';
+    });
+  } else {
+    document.getElementById('scanner-modal').style.display = 'none';
+  }
+}
+
+// Запуск сканера
+document.getElementById('barcode-scan-btn').addEventListener('click', startScanner);
+
+  <div id="scanner-modal">
+  <div class="close-scanner" onclick="closeScanner()">✕</div>
+  <div id="scanner-container">
+    <div class="scanner-header">Наведите камеру на штрих-код</div>
+    <div id="reader" style="width:100%; max-height:420px;"></div>
+  </div>
+</div>
 </script>
 
+<!-- Модальное окно сканера штрих-кодов -->
 
+  
 </body>
 </html>
