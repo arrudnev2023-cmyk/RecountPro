@@ -47,6 +47,7 @@
       --border: #d1d5db;
     }
     body {
+
       font-family: "Segoe UI", system-ui, sans-serif;
       margin: 0;
       color: var(--text);
@@ -63,140 +64,373 @@
       background: #000;
     }
 
-    /* Шапка */
-    #header {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 1000;
-      background: rgba(20, 20, 20, 0.85);
-      color: #f5f5f5;
-      padding: 0.8rem 1rem;
-      border-radius: 0 0 20px 20px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      backdrop-filter: blur(12px) saturate(180%);
-    }
+    /* Макет: 3 зоны */
+   /* Шапка */
+#header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  background: rgba(20, 20, 20, 0.7); /* полупрозрачный тёмный фон */
+  color: #f5f5f5;
+  padding: 0.8rem 1rem;
+  border-radius: 0 0 20px 20px; /* скруглённые нижние углы */
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  backdrop-filter: blur(12px) saturate(180%); /* эффект стекла */
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  animation: fadeInDown 0.4s ease;
+}
 
-    #header h1 {
-      margin: 0;
-      font-size: 1.3rem;
-      text-align: center;
-      font-weight: 600;
-    }
+/* Заголовок */
+#header h1 {
+  margin: 0;
+  font-size: 1.3rem;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
 
-    /* Контейнер поиска */
-    #search-container {
-      margin-top: 0.6rem;
-      background: rgba(40, 40, 40, 0.6);
-      border-radius: 12px;
-      padding: 0.4rem;
-    }
+/* Контейнер поиска */
+#search-container {
+  margin-top: 0.6rem;
+  background: rgba(40, 40, 40, 0.6);
+  border-radius: 12px;
+  padding: 0.4rem;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
 
-    /* Поле поиска */
-    #search {
-      width: 100%;
-      padding: 0.6rem 6rem 0.6rem 0.8rem;   /* увеличен правый отступ */
-      font-size: 1rem;
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px;
-      box-sizing: border-box;
-      background: rgba(30,30,30,0.8);
-      color: #f5f5f5;
-    }
+/* Поле поиска */
+#search {
+  width: 100%;
+  padding: 0.6rem 2.5rem 0.6rem 0.8rem;
+  font-size: 1rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  box-sizing: border-box;
+  background: rgba(30,30,30,0.8);
+  color: #f5f5f5;
+  transition: border 0.2s ease, background 0.2s ease;
+}
 
-    #search:focus {
-      border: 1px solid #6a11cb;
-      background: rgba(40,40,40,0.9);
-      outline: none;
-    }
+#search:focus {
+  border: 1px solid #6a11cb; /* акцент при фокусе */
+  background: rgba(40,40,40,0.9);
+  outline: none;
+}
 
-    /* Кнопки справа от поиска */
-    #clear-search {
-      position: absolute;
-      right: 0.6rem;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      color: #aaa;
-      cursor: pointer;
-      z-index: 4;
-    }
+/* Кнопка очистки */
+/* Кнопка очистки (обновлённая позиция, чтобы не мешать микрофону) */
+/* Кнопки в поле поиска */
+#clear-search {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #aaa;
+  cursor: pointer;
+  z-index: 3;
+}
 
-    #barcode-scan-btn {
-      position: absolute;
-      right: 2.6rem;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-      z-index: 3;
-      padding: 4px;
-    }
+#barcode-scan-btn {
+  position: absolute;
+  right: 2.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 1.45rem;
+  cursor: pointer;
+  z-index: 2;
+  padding: 4px;
+}
 
-    #voice-search-btn {
-      position: absolute;
-      right: 4.6rem;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 4px;
-      z-index: 2;
-    }
+#voice-search-btn {
+  position: absolute;
+  right: 4.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  z-index: 2;
+}
 
-    #clear-search:hover { color: #fff; }
 
-    /* Остальные стили (оставил как у тебя) */
-    #content {
-      position: fixed;
-      top: 6.5rem;
-      bottom: 0;
-      left: 0; right: 0;
-      overflow-y: auto;
-      padding: 0.5rem;
-      box-sizing: border-box;
-      z-index: 1;
-    }
+#clear-search:hover {
+  color: #fff;
+}
 
-    #custom-keyboard { ... } /* все остальные стили без изменений */
+/* Анимация появления */
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-    /* Модальное окно сканера */
-    #scanner-modal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.95);
-      z-index: 99999;
-      justify-content: center;
-      align-items: center;
-    }
 
-    #scanner-container {
-      width: 92%;
-      max-width: 420px;
-      text-align: center;
-    }
+    /* Контент (карточки) */
+ 
+#content {
+  position: fixed;
+  top: 6.5rem; /* высота шапки */
+  bottom: 0;
+  left: 0; right: 0;
+  overflow-y: auto;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  z-index: 1;
+  transition: padding-bottom 0.3s ease;
+}
+/* Отступ снизу при показе клавиатуры */
+#content.with-keyboard {
+  padding-bottom: 35vh;
+}
 
-    .scanner-header {
-      color: white;
-      margin-bottom: 12px;
-      font-size: 1.1rem;
-    }
+.item {
+  margin: 0.5rem auto;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  max-width: 600px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: linear-gradient(135deg, #1e1e2f, #2a2a40);
+  color: #fff;
+  border-left: 6px solid transparent;
+}
+.item.match { border-left-color: #22c55e; }
+.item.missing { border-left-color: #ef4444; }
+.item.excess { border-left-color: #3b82f6; }
+.field { margin-bottom: 0.4rem; font-size: 0.9rem; }
+.label { font-weight: 600; }
 
-    .close-scanner {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      color: white;
-      font-size: 2.2rem;
-      cursor: pointer;
-      z-index: 100000;
-    }
-</style>
+input[data-code] {
+  width: 100%;
+  padding: 0.6rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fefefe;
+  color: #000;
+
+  /* ✨ добавлено: цвет курсора */
+  caret-color: var(--accent, #6a11cb);
+}
+
+    /* Клавиатура */
+    #custom-keyboard {
+  position: fixed;
+  bottom: -40vh;
+  left: 0; right: 0;
+  height: 33vh;
+  background: #111;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  z-index: 3000;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 0.5rem;
+  transition: bottom 0.3s ease;
+
+  /* 🔒 отключаем выделение и вызовы по долгому тапу */
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+#custom-keyboard.show { bottom: 0; }
+
+#custom-keyboard button {
+  width: 100%;
+  height: 100%;
+  font-size: 1.6rem;           /* ≥16px, чтобы iOS не зумил */
+  background: #333;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+
+  /* 🔥 убираем двойной тап‑зум */
+  touch-action: manipulation;
+
+  /* отключаем выделение текста на кнопках */
+  -webkit-user-select: none;
+  user-select: none;
+
+  /* плавный отклик */
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+/* Эффект нажатия */
+#custom-keyboard button:active {
+  background: #555;
+  transform: scale(0.95);
+}
+
+
+   /* Обёртка меню */
+#menu-wrapper {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-family: "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+}
+
+#menu-toggle, #flashlight-btn, #ocr-btn {
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color: #fff;
+  border: none;
+  padding: 0.8rem 1.2rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.35), 0 0 12px rgba(106,17,203,0.6);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(6px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+   
+/* SVG внутри кнопок */
+#menu-toggle svg, #flashlight-btn svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+  fill: #fff;
+}
+
+/* Hover‑эффект */
+#menu-toggle:hover, #flashlight-btn:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.5), 0 0 18px rgba(37,117,252,0.8);
+}
+
+/* Active‑состояние */
+#menu-toggle:active, #flashlight-btn:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: inset 0 3px 8px rgba(0,0,0,0.6);
+}
+
+/* Выпадающее меню (glassmorphism) */
+#menu-actions {
+  display: none;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.7rem;
+  background: rgba(20, 20, 20, 0.7);
+  padding: 1rem;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+  backdrop-filter: blur(12px) saturate(180%);
+  animation: fadeIn 0.35s ease;
+}
+
+/* Кнопки меню */
+#menu-actions button {
+  background: linear-gradient(145deg, #1f1f1f, #2c2c2c);
+  color: #f9f9f9;
+  border: none;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 14px rgba(0,0,0,0.4);
+  letter-spacing: 0.3px;
+}
+
+#menu-actions button:hover {
+  background: linear-gradient(145deg, #2c2c2c, #3a3a3a);
+  transform: translateX(-3px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6), 0 0 10px rgba(255,255,255,0.15);
+}
+
+#menu-actions button:active {
+  transform: translateX(0) scale(0.97);
+  box-shadow: inset 0 3px 8px rgba(0,0,0,0.6);
+}
+
+/* Анимация появления */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+
+
+
+    /* Скрытие карточек при поиске */
+    .hidden { display: none !important; }
+
+    /* Экспорт PDF — уменьшенный шрифт */
+    #export-area {
+  font-size: 8px;   /* компактный шрифт */
+  line-height: 1.2; /* плотнее строки */
+}
+
+#export-area th,
+#export-area td {
+  padding: 2px 3px; /* меньше отступы */
+}
+/* Кнопка сканера */
+#barcode-scan-btn {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 1.45rem;
+  cursor: pointer;
+  z-index: 2;
+}
+
+/* Модальное окно сканера */
+#scanner-modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.95);
+  z-index: 99999;
+  justify-content: center;
+  align-items: center;
+}
+
+#scanner-container {
+  width: 92%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.scanner-header {
+  color: white;
+  margin-bottom: 12px;
+  font-size: 1.1rem;
+}
+
+.close-scanner {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  color: white;
+  font-size: 2.2rem;
+  cursor: pointer;
+  z-index: 100000;
+}
+  </style>
 </head>
 <body>
   <!-- Фон canvas -->
