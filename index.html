@@ -2,945 +2,117 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8" />
-    <title>RecountPro — умный склад, инвентаризация и касса в одном месте</title>
+    <title>RecountPro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
     <style>
         :root {
             --bg: #020617;
-            --bg-alt: #020617;
             --accent: #4f46e5;
-            --accent-soft: rgba(79, 70, 229, 0.18);
             --accent2: #22c55e;
-            --accent3: #a855f7;
             --text: #f9fafb;
             --muted: #9ca3af;
-            --card: #020617;
-            --border: #1f2937;
-            --radius-lg: 18px;
-            --radius-xl: 26px;
-            --radius-pill: 999px;
-            --shadow-soft: 0 22px 60px rgba(0, 0, 0, 0.75);
         }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-            background:
-                radial-gradient(circle at top left, rgba(79, 70, 229, 0.25), transparent 55%),
-                radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.18), transparent 55%),
-                #020617;
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
             color: var(--text);
-            overflow-x: hidden;
+            line-height: 1.6;
+            padding: 20px;
         }
-
-        a { color: inherit; text-decoration: none; }
-
-        /* ANIMATIONS */
-
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(24px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes fadeDown {
-            from { opacity: 0; transform: translateY(-16px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes glowPulse {
-            0%   { box-shadow: 0 0 0 rgba(79, 70, 229, 0.0); }
-            50%  { box-shadow: 0 0 26px rgba(79, 70, 229, 0.7); }
-            100% { box-shadow: 0 0 0 rgba(79, 70, 229, 0.0); }
-        }
-
-        .fade-up { opacity: 0; animation: fadeUp 0.9s ease forwards; }
-        .fade-down { opacity: 0; animation: fadeDown 0.9s ease forwards; }
-
-        .delay-1 { animation-delay: 0.15s; }
-        .delay-2 { animation-delay: 0.3s; }
-        .delay-3 { animation-delay: 0.45s; }
-        .delay-4 { animation-delay: 0.6s; }
-
-        /* HEADER */
-
         header {
-            position: sticky;
-            top: 0;
-            z-index: 40;
-            backdrop-filter: blur(18px);
-            background: linear-gradient(to bottom, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.75));
-            border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+            text-align: center;
+            padding: 20px 0;
         }
-
-        .nav {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 14px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 6px;
         }
-
-        .logo-block {
+        .subtitle {
+            color: var(--muted);
+            font-size: 15px;
+        }
+        .hero {
+            text-align: center;
+            max-width: 700px;
+            margin: 60px auto 40px;
+        }
+        h1 {
+            font-size: 42px;
+            line-height: 1.2;
+            margin-bottom: 20px;
+        }
+        h1 span {
+            background: linear-gradient(90deg, #4f46e5, #22c55e);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        p {
+            font-size: 18px;
+            color: var(--muted);
+            margin-bottom: 40px;
+        }
+        .buttons {
             display: flex;
             flex-direction: column;
-            gap: 2px;
-        }
-
-        .logo-text-main {
-            font-weight: 700;
-            font-size: 19px;
-            letter-spacing: 0.06em;
-        }
-
-        .logo-text-sub {
-            font-size: 11px;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.16em;
-        }
-
-        .nav-cta {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .nav-cta button {
-            border-radius: var(--radius-pill);
-            padding: 8px 16px;
-            font-size: 13px;
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            background: rgba(15, 23, 42, 0.9);
-            color: var(--muted);
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .nav-cta button:hover {
-            background: rgba(148, 163, 184, 0.08);
-        }
-
-        .nav-cta-primary {
-            background: linear-gradient(135deg, #4f46e5, #6366f1, #22c55e);
-            border: none !important;
-            color: #fff !important;
-            animation: glowPulse 3.2s infinite ease-in-out;
-        }
-
-        /* HERO */
-
-        .hero {
-            max-width: 1180px;
+            gap: 14px;
+            max-width: 380px;
             margin: 0 auto;
-            padding: 40px 20px 70px;
-            display: grid;
-            grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-            gap: 40px;
-            align-items: center;
         }
-
-        .hero-left {
-            position: relative;
-        }
-
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 4px 10px;
-            border-radius: var(--radius-pill);
-            border: 1px solid rgba(148, 163, 184, 0.4);
-            background: rgba(15, 23, 42, 0.9);
-            font-size: 11px;
-            color: var(--muted);
-            margin-bottom: 14px;
-        }
-
-        .hero-badge-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 999px;
-            background: var(--accent2);
-            box-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
-        }
-
-        .hero-title {
-            font-size: 40px;
-            font-weight: 800;
-            line-height: 1.2;
-        }
-
-        .hero-title span {
-            background: linear-gradient(135deg, #4f46e5, #a855f7, #22c55e);
-            -webkit-background-clip: text;
-            color: transparent;
-        }
-
-        .hero-subtitle {
-            font-size: 15px;
-            color: #e5e7eb;
-            max-width: 520px;
-            margin-top: 14px;
-            line-height: 1.7;
-        }
-
-        .hero-actions {
-            margin-top: 24px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .btn {
-            border-radius: var(--radius-pill);
-            padding: 11px 22px;
-            font-size: 14px;
+        button {
+            padding: 16px 24px;
+            font-size: 17px;
             font-weight: 600;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: 0.2s;
+            border-radius: 999px;
             border: none;
+            cursor: pointer;
+            transition: all 0.2s;
         }
-
         .btn-primary {
-            background: linear-gradient(135deg, #4f46e5, #6366f1, #22c55e);
-            color: #fff;
-            box-shadow: 0 18px 40px rgba(79, 70, 229, 0.7);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-        }
-
-        .btn-ghost {
-            background: rgba(15, 23, 42, 0.9);
-            border: 1px solid rgba(148, 163, 184, 0.5);
-            color: #e5e7eb;
-        }
-
-        .btn-ghost:hover {
-            background: rgba(148, 163, 184, 0.08);
-        }
-
-        .hero-note {
-            margin-top: 12px;
-            font-size: 12px;
-            color: var(--muted);
-        }
-
-        /* HERO RIGHT — VISUAL */
-
-        .hero-right {
-            position: relative;
-        }
-
-        .hero-panel {
-            position: relative;
-            border-radius: var(--radius-xl);
-            background: radial-gradient(circle at top left, rgba(79, 70, 229, 0.4), rgba(15, 23, 42, 0.98));
-            border: 1px solid rgba(148, 163, 184, 0.4);
-            padding: 18px 18px 20px;
-            box-shadow: var(--shadow-soft);
-            overflow: hidden;
-        }
-
-        .hero-panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 14px;
-            font-size: 12px;
-        }
-
-        .hero-panel-dots {
-            display: flex;
-            gap: 5px;
-        }
-
-        .hero-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 999px;
-            background: rgba(15, 23, 42, 0.9);
-        }
-
-        .hero-dot:nth-child(1) { background: #f97316; }
-        .hero-dot:nth-child(2) { background: #eab308; }
-        .hero-dot:nth-child(3) { background: #22c55e; }
-
-        .hero-panel-title {
-            font-size: 12px;
-            color: #e5e7eb;
-        }
-
-        .hero-panel-tag {
-            font-size: 11px;
-            padding: 4px 8px;
-            border-radius: var(--radius-pill);
-            background: rgba(15, 23, 42, 0.85);
-            border: 1px solid rgba(148, 163, 184, 0.4);
-            color: var(--muted);
-        }
-
-        .hero-panel-grid {
-            display: grid;
-            grid-template-columns: 1.1fr 0.9fr;
-            gap: 12px;
-            margin-top: 6px;
-        }
-
-        .hero-mini-card {
-            border-radius: 14px;
-            background: rgba(15, 23, 42, 0.9);
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            padding: 10px 12px;
-            font-size: 11px;
-        }
-
-        .hero-mini-label {
-            font-size: 10px;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            margin-bottom: 4px;
-        }
-
-        .hero-mini-value {
-            font-size: 13px;
-        }
-
-        .hero-mini-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 6px;
-            padding: 3px 8px;
-            border-radius: 999px;
-            background: rgba(22, 163, 74, 0.12);
-            border: 1px solid rgba(34, 197, 94, 0.5);
-            font-size: 10px;
-            color: #bbf7d0;
-        }
-
-        .hero-mini-pill-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 999px;
-            background: #22c55e;
-        }
-
-        .hero-stats-row {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .hero-stat {
-            flex: 1;
-            border-radius: 999px;
-            padding: 6px 10px;
-            font-size: 11px;
-            background: rgba(15, 23, 42, 0.9);
-            border: 1px solid rgba(148, 163, 184, 0.3);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .hero-stat span:nth-child(1) {
-            color: var(--muted);
-        }
-
-        .hero-stat span:nth-child(2) {
-            color: #e5e7eb;
-            font-weight: 600;
-        }
-
-        .hero-panel-footer {
-            margin-top: 12px;
-            font-size: 10px;
-            color: var(--muted);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .hero-panel-footer-pill {
-            padding: 4px 8px;
-            border-radius: 999px;
-            background: rgba(79, 70, 229, 0.25);
-            border: 1px solid rgba(129, 140, 248, 0.7);
-            color: #c7d2fe;
-        }
-
-        .hero-glow {
-            position: absolute;
-            inset: -40%;
-            background:
-                radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.35), transparent 55%),
-                radial-gradient(circle at 100% 100%, rgba(34, 197, 94, 0.25), transparent 55%);
-            opacity: 0.5;
-            pointer-events: none;
-        }
-
-        /* GENERIC SECTIONS */
-
-        .section {
-            border-top: 1px solid rgba(15, 23, 42, 1);
-            background: radial-gradient(circle at top, rgba(15, 23, 42, 0.9), #020617 55%);
-        }
-
-        .section-inner {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 50px 20px 70px;
-        }
-
-        .section-header {
-            max-width: 760px;
-            margin-bottom: 32px;
-        }
-
-        .section-kicker {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.16em;
-            color: var(--muted);
-            margin-bottom: 6px;
-        }
-
-        .section-title {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-
-        .section-subtitle {
-            font-size: 14px;
-            color: var(--muted);
-            line-height: 1.7;
-        }
-
-        .grid-3 {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 18px;
-        }
-
-        .card {
-            border-radius: var(--radius-lg);
-            background: rgba(15, 23, 42, 0.96);
-            border: 1px solid rgba(31, 41, 55, 0.9);
-            padding: 18px;
-            box-shadow: var(--shadow-soft);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .card::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at top left, rgba(79, 70, 229, 0.18), transparent 55%);
-            opacity: 0;
-            transition: 0.25s;
-            pointer-events: none;
-        }
-
-        .card:hover::before {
-            opacity: 1;
-        }
-
-        .card h3 {
-            font-size: 16px;
-            margin-bottom: 8px;
-        }
-
-        .card p {
-            font-size: 13px;
-            color: var(--muted);
-            line-height: 1.7;
-        }
-
-        .card-tag {
-            display: inline-block;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.16em;
-            color: var(--muted);
-            margin-bottom: 6px;
-        }
-
-        /* TIMELINE / HOW IT WORKS */
-
-        .timeline {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 18px;
-        }
-
-        .timeline-step {
-            position: relative;
-            padding: 18px;
-            border-radius: var(--radius-lg);
-            background: rgba(15, 23, 42, 0.96);
-            border: 1px solid rgba(31, 41, 55, 0.9);
-            box-shadow: var(--shadow-soft);
-        }
-
-        .timeline-step-number {
-            width: 26px;
-            height: 26px;
-            border-radius: 999px;
-            background: rgba(79, 70, 229, 0.2);
-            border: 1px solid rgba(129, 140, 248, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            color: #c7d2fe;
-            margin-bottom: 8px;
-        }
-
-        .timeline-step h3 {
-            font-size: 15px;
-            margin-bottom: 6px;
-        }
-
-        .timeline-step p {
-            font-size: 13px;
-            color: var(--muted);
-            line-height: 1.7;
-        }
-
-        /* STATS */
-
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 18px;
-            margin-top: 20px;
-        }
-
-        .stat-card {
-            border-radius: var(--radius-lg);
-            background: rgba(15, 23, 42, 0.96);
-            border: 1px solid rgba(31, 41, 55, 0.9);
-            padding: 16px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 4px;
             background: linear-gradient(135deg, #4f46e5, #22c55e);
-            -webkit-background-clip: text;
-            color: transparent;
+            color: white;
         }
-
-        .stat-label {
-            font-size: 12px;
-            color: var(--muted);
+        .btn-secondary {
+            background: #1f2937;
+            color: white;
         }
-
-        /* CTA */
-
-        .cta {
-            border-top: 1px solid rgba(15, 23, 42, 1);
-            background: #020617;
+        .btn-test {
+            background: #22c55e;
+            color: #000;
         }
-
-        .cta-inner {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 50px 20px 60px;
-            text-align: center;
+        button:hover {
+            transform: translateY(-3px);
         }
-
-        .cta-inner h2 {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-
-        .cta-inner p {
-            font-size: 14px;
-            color: var(--muted);
-            margin-bottom: 20px;
-            line-height: 1.7;
-        }
-
-        /* FOOTER */
-
         footer {
-            padding: 18px 20px 26px;
             text-align: center;
-            font-size: 11px;
+            margin-top: 80px;
             color: var(--muted);
-        }
-
-        /* RESPONSIVE */
-
-        @media (max-width: 1024px) {
-            .hero {
-                grid-template-columns: 1fr;
-            }
-            .hero-right {
-                order: -1;
-            }
-        }
-
-        @media (max-width: 900px) {
-            .grid-3,
-            .timeline,
-            .stats-row {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 640px) {
-            .hero-title {
-                font-size: 30px;
-            }
-            .hero-subtitle {
-                font-size: 14px;
-            }
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-            .nav {
-                padding-inline: 14px;
-            }
+            font-size: 14px;
         }
     </style>
 </head>
-
 <body>
 
-<header>
-    <nav class="nav fade-down">
-        <div class="logo-block">
-            <div class="logo-text-main">RecountPro</div>
-            <div class="logo-text-sub">Склад • Инвентаризация • Касса • ERP</div>
+    <header>
+        <div class="logo">RecountPro</div>
+        <div class="subtitle">Склад • Инвентаризация • Касса</div>
+    </header>
+
+    <div class="hero">
+        <h1>Умный учёт товара<br>всё в одном месте</h1>
+        <p>Пересчёт, движение товаров, касса и аналитика — просто и быстро.</p>
+
+        <div class="buttons">
+            <a href="Login.html"><button class="btn-primary">Начать работу</button></a>
+            <a href="recount-test.html"><button class="btn-test">Тесты (Демо)</button></a>
+            <a href="login1.html"><button class="btn-secondary">Войти в кабинет</button></a>
         </div>
+    </div>
 
-        <div class="nav-cta">
-            <a href="login1.html"><button>Войти в КБ</button></a>
-            <a href="Login.html"><button class="nav-cta-primary">Начать</button></a>
-        </div>
-    </nav>
-</header>
-
-<main>
-
-    <!-- HERO -->
-    <section class="hero">
-        <div class="hero-left fade-up delay-1">
-            <div class="hero-badge">
-                <div class="hero-badge-dot"></div>
-                <span>Живой учёт вместо хаоса в таблицах</span>
-            </div>
-
-            <h1 class="hero-title">
-                Склад, инвентаризация и касса,
-                <br>которые <span>работают как единая система</span>.
-            </h1>
-
-            <p class="hero-subtitle">
-                RecountPro превращает разрозненные процессы в понятную, управляемую систему:
-                сканирование, движение товаров, инвентаризация, фискальные чеки и аналитика
-                собираются в одном месте — без лишних действий и потерь.
-            </p>
-
-            <div class="hero-actions">
-                <a href="Login.html"><button class="btn btn-primary">Начать сейчас</button></a>
-                <a href="login1.html"><button class="btn btn-ghost">Войти в КБ</button></a>
-            </div>
-
-            <div class="hero-note">
-                Меньше минуты — чтобы понять логику. Пара часов — чтобы почувствовать разницу.
-            </div>
-        </div>
-
-        <div class="hero-right fade-up delay-2">
-            <div class="hero-panel">
-                <div class="hero-glow"></div>
-
-                <div class="hero-panel-header">
-                    <div class="hero-panel-dots">
-                        <div class="hero-dot"></div>
-                        <div class="hero-dot"></div>
-                        <div class="hero-dot"></div>
-                    </div>
-                    <div class="hero-panel-title">RecountPro • Живой склад</div>
-                    <div class="hero-panel-tag">Онлайн‑контроль</div>
-                </div>
-
-                <div class="hero-panel-grid">
-                    <div class="hero-mini-card">
-                        <div class="hero-mini-label">Сейчас на складе</div>
-                        <div class="hero-mini-value">12 483 единицы товара</div>
-                        <div class="hero-mini-pill">
-                            <div class="hero-mini-pill-dot"></div>
-                            <span>Все остатки синхронизированы</span>
-                        </div>
-                    </div>
-
-                    <div class="hero-mini-card">
-                        <div class="hero-mini-label">Инвентаризация</div>
-                        <div class="hero-mini-value">Завершена на 94%</div>
-                        <div style="margin-top:6px; font-size:10px; color:var(--muted);">
-                            Без остановки работы, по зонам и ответственным.
-                        </div>
-                    </div>
-                </div>
-
-                <div class="hero-stats-row">
-                    <div class="hero-stat">
-                        <span>Ошибки в остатках</span>
-                        <span>−73%</span>
-                    </div>
-                    <div class="hero-stat">
-                        <span>Время инвентаризации</span>
-                        <span>×3 быстрее</span>
-                    </div>
-                </div>
-
-                <div class="hero-panel-footer">
-                    <span>Сканер • Инвентаризация • Касса • Фискальные чеки</span>
-                    <span class="hero-panel-footer-pill">Работает поверх вашего бизнеса, не ломая его</span>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- БОЛИ БИЗНЕСА -->
-    <section class="section">
-        <div class="section-inner fade-up delay-1">
-            <div class="section-header">
-                <div class="section-kicker">Проблемы, которые обычно «терпят»</div>
-                <h2 class="section-title">То, что кажется нормой, на самом деле съедает прибыль</h2>
-                <p class="section-subtitle">
-                    Ручные таблицы, устные договорённости, «потом разберёмся», пересортица, недостачи,
-                    инвентаризация раз в год «через боль» — всё это не особенности бизнеса,
-                    а последствия отсутствия нормальной системы учёта.
-                </p>
-            </div>
-
-            <div class="grid-3">
-                <div class="card">
-                    <div class="card-tag">Хаос в остатках</div>
-                    <h3>Остатки «примерно верные»</h3>
-                    <p>
-                        Когда цифры в системе и на складе живут разной жизнью, решения принимаются на ощущениях.
-                        RecountPro делает так, чтобы цифры и реальность совпадали — каждый день.
-                    </p>
-                </div>
-
-                <div class="card">
-                    <div class="card-tag">Инвентаризация</div>
-                    <h3>Пересчёт как стихийное бедствие</h3>
-                    <p>
-                        Закрытый склад, ночные смены, усталые люди, бесконечные списки.
-                        В RecountPro инвентаризация становится рабочим процессом, а не событием года.
-                    </p>
-                </div>
-
-                <div class="card">
-                    <div class="card-tag">Продажи и касса</div>
-                    <h3>Продали — забыли списать</h3>
-                    <p>
-                        Касса живёт отдельно, склад — отдельно, отчёты — отдельно.
-                        RecountPro связывает продажи, склад и фискальные чеки в одну логику.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ДЛЯ КОГО -->
-    <section class="section">
-        <div class="section-inner fade-up delay-2">
-            <div class="section-header">
-                <div class="section-kicker">Для кого</div>
-                <h2 class="section-title">RecountPro нужен везде, где есть товар и ответственность</h2>
-                <p class="section-subtitle">
-                    Не важно, сколько у вас квадратов и позиций. Важно, что вы хотите видеть картину,
-                    а не догадываться. RecountPro одинаково органично чувствует себя и в маленьком магазине,
-                    и в распределительном складе.
-                </p>
-            </div>
-
-            <div class="grid-3">
-                <div class="card">
-                    <h3>Магазины и розница</h3>
-                    <p>
-                        Быстрые продажи, фискальные чеки, списание остатков, контроль движения.
-                        Никаких «забыли пробить», «не списали», «потом внесём».
-                    </p>
-                </div>
-
-                <div class="card">
-                    <h3>Склады и логистика</h3>
-                    <p>
-                        Зоны, ячейки, партии, движение между складами, ответственность сотрудников —
-                        всё фиксируется и остаётся прозрачным.
-                    </p>
-                </div>
-
-                <div class="card">
-                    <h3>Производство и комплектация</h3>
-                    <p>
-                        Учёт сырья, полуфабрикатов и готовой продукции.
-                        Понимание, что, когда и куда ушло — без догадок и ручных сводок.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ПОЧЕМУ ЛУЧШЕ -->
-    <section class="section">
-        <div class="section-inner fade-up delay-2">
-            <div class="section-header">
-                <div class="section-kicker">Почему именно RecountPro</div>
-                <h2 class="section-title">Не ещё одна программа, а рабочий инструмент</h2>
-                <p class="section-subtitle">
-                    Систем много. Но большинство либо перегружены, либо требуют отдельного человека,
-                    который будет «жить» в учёте. RecountPro создавался так, чтобы им могли пользоваться
-                    обычные люди — и при этом бизнес получал уровень контроля, как в большой ERP.
-                </p>
-            </div>
-
-            <div class="grid-3">
-                <div class="card">
-                    <h3>Простота без примитивности</h3>
-                    <p>
-                        Логика понятна с первых минут.  
-                        Но под капотом — полноценная система движения, инвентаризации и кассы.
-                    </p>
-                </div>
-
-                <div class="card">
-                    <h3>Глубина без перегруза</h3>
-                    <p>
-                        Только то, что реально нужно для управления товаром и деньгами.
-                        Никаких «ради галочки» модулей.
-                    </p>
-                </div>
-
-                <div class="card">
-                    <h3>Скорость без хаоса</h3>
-                    <p>
-                        Быстрые операции, мгновенный поиск, моментальное обновление остатков.
-                        Всё ускоряется — но ничего не разваливается.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ЭКОНОМИЯ -->
-    <section class="section">
-        <div class="section-inner fade-up delay-3">
-            <div class="section-header">
-                <div class="section-kicker">Экономика</div>
-                <h2 class="section-title">Сколько денег обычно теряется «между строк»</h2>
-                <p class="section-subtitle">
-                    Потери от ошибок, пересортицы, недостач и хаоса редко видны сразу.
-                    Но в сумме это месяцы работы и проценты оборота. RecountPro не «зарабатывает» за вас —
-                    он перестаёт позволять деньгам уходить незаметно.
-                </p>
-            </div>
-
-            <div class="stats-row">
-                <div class="stat-card">
-                    <div class="stat-value">3–12%</div>
-                    <div class="stat-label">Средний диапазон потерь от хаоса в учёте</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">×3</div>
-                    <div class="stat-label">Ускорение инвентаризации после внедрения системы</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">−70%</div>
-                    <div class="stat-label">Снижение ошибок в остатках и движении</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- КАК РАБОТАЕТ -->
-    <section class="section">
-        <div class="section-inner fade-up delay-3">
-            <div class="section-header">
-                <div class="section-kicker">Как это работает</div>
-                <h2 class="section-title">Вы сканируете — система делает остальное</h2>
-                <p class="section-subtitle">
-                    RecountPro не требует менять бизнес под себя. Он аккуратно ложится поверх текущих процессов
-                    и делает их прозрачными, управляемыми и предсказуемыми.
-                </p>
-            </div>
-
-            <div class="timeline">
-                <div class="timeline-step">
-                    <div class="timeline-step-number">1</div>
-                    <h3>Сканирование и база товаров</h3>
-                    <p>
-                        Телефон или терминал превращается в сканер.  
-                        Любой товар — по штрих‑коду.  
-                        Вы создаёте свою базу, а не подстраиваетесь под чужую.
-                    </p>
-                </div>
-
-                <div class="timeline-step">
-                    <div class="timeline-step-number">2</div>
-                    <h3>Движение и инвентаризация</h3>
-                    <p>
-                        Приходы, списания, перемещения, зоны, партии — всё фиксируется.
-                        Инвентаризация проводится по частям, по зонам, по людям —
-                        без остановки работы и ночных пересчётов.
-                    </p>
-                </div>
-
-                <div class="timeline-step">
-                    <div class="timeline-step-number">3</div>
-                    <h3>Касса и фискальные чеки</h3>
-                    <p>
-                        Подключаете терминал оплаты — и RecountPro становится кассой.
-                        Продажи, фискальные чеки, списание остатков и аналитика
-                        живут в одной системе, а не в трёх разных.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- CTA -->
-    <section class="cta">
-        <div class="cta-inner fade-up delay-4">
-            <h2>Попробуйте RecountPro и посмотрите на свой склад по‑новому</h2>
-            <p>
-                Несколько минут — чтобы почувствовать логику.  
-                Несколько дней — чтобы увидеть порядок.  
-                Несколько недель — чтобы забыть, как было «до».
-            </p>
-
-            <a href="Login.html"><button class="btn btn-primary">Начать работу</button></a>
-        </div>
-    </section>
-
-</main>
-
-<footer>
-    RecountPro — склад, инвентаризация, касса и ERP в одном приложении.
-</footer>
+    <footer>
+        RecountPro © 2026 — Склад и инвентаризация без лишней сложности
+    </footer>
 
 </body>
 </html>
