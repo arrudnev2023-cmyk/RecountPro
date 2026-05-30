@@ -1607,7 +1607,7 @@ animate();
     if (isRunning) return;
     isRunning = true;
 
-    // 🔥 НАТИВНЫЙ ПОТОК КАМЕРЫ — БЕЗ ЗУМА
+    // Нормальная камера без зума
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: { ideal: "environment" },
@@ -1624,11 +1624,10 @@ animate();
     scannerEl.innerHTML = "";
     scannerEl.appendChild(video);
 
-    // Canvas для передачи кадров в Quagga
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
-    function tick() {
+    function scanFrame() {
       if (!isRunning) return;
 
       canvas.width = video.videoWidth;
@@ -1638,16 +1637,11 @@ animate();
 
       const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-      Quagga.decodeSingle({
-        src: frame,
-        numOfWorkers: 0,
-        inputStream: {
-          size: canvas.width
-        },
+      Quagga.decodeFromImageData(frame, {
         decoder: {
           readers: ["ean_reader", "ean_8_reader", "code_128_reader"]
         }
-      }, result => {
+      }, (result) => {
         if (result && result.codeResult) {
           const code = result.codeResult.code;
 
@@ -1661,10 +1655,10 @@ animate();
         }
       });
 
-      requestAnimationFrame(tick);
+      requestAnimationFrame(scanFrame);
     }
 
-    tick();
+    scanFrame();
   }
 
   function stopCamera() {
