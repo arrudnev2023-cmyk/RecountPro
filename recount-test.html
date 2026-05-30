@@ -1604,9 +1604,18 @@ animate();
         constraints: {
           facingMode: "environment",
           width: { ideal: 1280 },
-          height: { ideal: 720 }
+          height: { ideal: 720 },
+          advanced: [{ zoom: 1 }] // 🔥 отключаем авто‑зум
         }
       },
+
+      locate: false, // 🔥 отключаем авто‑кроп
+
+      locator: {
+        patchSize: "medium",
+        halfSample: false
+      },
+
       decoder: {
         readers: [
           "ean_reader",
@@ -1617,8 +1626,7 @@ animate();
           "upc_e_reader",
           "i2of5_reader"
         ]
-      },
-      locate: true
+      }
     }, err => {
       if (err) {
         console.error("Ошибка Quagga:", err);
@@ -1642,10 +1650,10 @@ animate();
     const code = result.codeResult.code;
     if (!code) return;
 
-    // Вставляем штрих-код в поиск
+    // Вставляем штрих‑код
     searchInput.value = code;
 
-    // Автопоиск (если у тебя форма — триггерим submit)
+    // Автопоиск
     const form = searchInput.closest('form');
     if (form) form.submit();
 
@@ -1654,6 +1662,7 @@ animate();
     modal.style.display = 'none';
   }
 })();
+
 
 
 
