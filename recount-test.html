@@ -437,6 +437,45 @@ input[data-code] {
 
     </div>
   </div>
+  <div id="barcode-modal" style="
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.7); justify-content:center; align-items:center;
+  z-index:9999;">
+  
+  <div style="background:#fff; padding:20px; border-radius:12px; text-align:center; position:relative;">
+    <h3>Сканирование штрих‑кода</h3>
+
+    <div id="barcode-scanner" style="
+      width:300px; height:220px; position:relative; overflow:hidden; border-radius:10px;">
+      
+      <!-- Рамка -->
+      <div style="
+        position:absolute; inset:0; border:3px solid rgba(255,255,255,0.8);
+        border-radius:10px; z-index:10;">
+      </div>
+
+      <!-- Лазер -->
+      <div id="laser-line" style="
+        position:absolute; left:0; right:0; height:3px;
+        background:red; opacity:0.8; z-index:11;
+        animation: scanline 1.4s linear infinite;">
+      </div>
+
+      <style>
+        @keyframes scanline {
+          0% { top: 0; }
+          50% { top: 210px; }
+          100% { top: 0; }
+        }
+      </style>
+
+    </div>
+
+    <br>
+    <button id="barcode-close" style="padding:10px 20px;">Закрыть</button>
+  </div>
+</div>
+
   <!-- Контент -->
   <div id="content">
     <div id="list"></div>
@@ -1556,7 +1595,6 @@ animate();
 
   function startScanner() {
     if (isRunning) return;
-
     isRunning = true;
 
     Quagga.init({
@@ -1602,15 +1640,21 @@ animate();
 
   function onDetected(result) {
     const code = result.codeResult.code;
-
     if (!code) return;
 
+    // Вставляем штрих-код в поиск
     searchInput.value = code;
 
+    // Автопоиск (если у тебя форма — триггерим submit)
+    const form = searchInput.closest('form');
+    if (form) form.submit();
+
+    // Закрываем модалку
     stopScanner();
     modal.style.display = 'none';
   }
 })();
+
 
 
 
