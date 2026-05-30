@@ -1563,8 +1563,12 @@ animate();
   let codeReader = null;
   let isRunning = false;
 
-  voiceBtn.addEventListener('click', () => {
+  voiceBtn.addEventListener('click', async () => {
     modal.style.display = 'flex';
+
+    // Safari fix — ждём рендер модалки
+    await new Promise(r => setTimeout(r, 150));
+
     startScanner();
   });
 
@@ -1580,22 +1584,16 @@ animate();
     codeReader = new ZXing.BrowserMultiFormatReader();
 
     try {
-      const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-
-      const backCam = devices.find(d => d.label.toLowerCase().includes("back"))
-                    || devices[0];
-
+      // Автоматический выбор камеры (фикс для всех устройств)
       await codeReader.decodeFromVideoDevice(
-        backCam.deviceId,
+        null, // ← выбирает первую доступную камеру
         video,
         (result, err) => {
           if (result) {
             const code = result.text;
 
-            // Вставляем штрих‑код
             searchInput.value = code;
 
-            // Автопоиск
             const form = searchInput.closest('form');
             if (form) form.submit();
 
@@ -1619,6 +1617,7 @@ animate();
     }
   }
 })();
+
 
 
 
