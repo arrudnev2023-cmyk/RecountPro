@@ -1566,8 +1566,11 @@ animate();
   voiceBtn.addEventListener('click', async () => {
     modal.style.display = 'flex';
 
-    // Safari fix — ждём рендер
-    await new Promise(r => setTimeout(r, 200));
+    // Ждём пока модалка реально появится в DOM
+    await waitForVisible(video);
+
+    // Safari требует задержку
+    await delay(150);
 
     startScanner();
   });
@@ -1585,7 +1588,7 @@ animate();
 
     try {
       await codeReader.decodeFromVideoDevice(
-        null, // ← выбирает первую доступную камеру (самый надёжный способ)
+        null, // ← ZXing сам выберет рабочую камеру
         video,
         (result, err) => {
           if (result) {
@@ -1615,7 +1618,26 @@ animate();
       codeReader = null;
     }
   }
+
+  function delay(ms) {
+    return new Promise(r => setTimeout(r, ms));
+  }
+
+  function waitForVisible(el) {
+    return new Promise(resolve => {
+      const check = () => {
+        const style = window.getComputedStyle(el);
+        if (style.display !== 'none' && el.offsetParent !== null) {
+          resolve();
+        } else {
+          requestAnimationFrame(check);
+        }
+      };
+      check();
+    });
+  }
 })();
+
 
 
 
