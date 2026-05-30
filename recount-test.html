@@ -1590,92 +1590,92 @@ animate();
   const closeBtn = document.getElementById('barcode-close');
   const scannerEl = document.getElementById('barcode-scanner');
 
-  if (!searchInput || !voiceBtn) return;
-
+  let stream = null;
   let isRunning = false;
 
   voiceBtn.addEventListener('click', () => {
     modal.style.display = 'flex';
-    startScanner();
+    startCamera();
   });
 
   closeBtn.addEventListener('click', () => {
-    stopScanner();
+    stopCamera();
     modal.style.display = 'none';
   });
 
-  function startScanner() {
+  async function startCamera() {
     if (isRunning) return;
     isRunning = true;
 
-    Quagga.init({
-      inputStream: {
-        type: "LiveStream",
-        target: scannerEl,
-        constraints: {
-          facingMode: "environment",
-
-          // 🔥 ВАЖНО: отключаем авто‑зум камеры
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-
-          // 🔥 Safari/Chrome: запретить цифровой зум
-          advanced: [
-            { zoom: 1 },
-            { torch: false }
-          ]
-        }
-      },
-
-      // 🔥 Отключаем locate — он и создаёт эффект зума
-      locate: false,
-
-      locator: {
-        patchSize: "medium",
-        halfSample: false
-      },
-
-      decoder: {
-        readers: [
-          "ean_reader",
-          "ean_8_reader",
-          "code_128_reader",
-          "code_39_reader",
-          "upc_reader",
-          "upc_e_reader",
-          "i2of5_reader"
-        ]
+    // 🔥 НАТИВНЫЙ ПОТОК КАМЕРЫ — БЕЗ ЗУМА
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
       }
-    }, err => {
-      if (err) {
-        console.error("Ошибка Quagga:", err);
-        return;
-      }
-      Quagga.start();
     });
 
-    Quagga.onDetected(onDetected);
+    const video = document.createElement('video');
+    video.setAttribute('playsinline', true);
+    video.srcObject = stream;
+    await video.play();
+
+    scannerEl.innerHTML = "";
+    scannerEl.appendChild(video);
+
+    // Canvas для передачи кадров в Quagga
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    function tick() {
+      if (!isRunning) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      Quagga.decodeSingle({
+        src: frame,
+        numOfWorkers: 0,
+        inputStream: {
+          size: canvas.width
+        },
+        decoder: {
+          readers: ["ean_reader", "ean_8_reader", "code_128_reader"]
+        }
+      }, result => {
+        if (result && result.codeResult) {
+          const code = result.codeResult.code;
+
+          searchInput.value = code;
+
+          const form = searchInput.closest('form');
+          if (form) form.submit();
+
+          stopCamera();
+          modal.style.display = 'none';
+        }
+      });
+
+      requestAnimationFrame(tick);
+    }
+
+    tick();
   }
 
-  function stopScanner() {
-    if (!isRunning) return;
+  function stopCamera() {
     isRunning = false;
 
-    Quagga.offDetected(onDetected);
-    Quagga.stop();
-  }
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
 
-  function onDetected(result) {
-    const code = result.codeResult.code;
-    if (!code) return;
-
-    searchInput.value = code;
-
-    const form = searchInput.closest('form');
-    if (form) form.submit();
-
-    stopScanner();
-    modal.style.display = 'none';
+    scannerEl.innerHTML = "";
   }
 })();
 
