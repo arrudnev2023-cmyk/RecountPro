@@ -437,7 +437,10 @@ input[data-code] {
 
     </div>
   </div>
-  <div id="barcode-modal" style="
+  <!-- Звук "пик" -->
+<audio id="beep-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+
+<div id="barcode-modal" style="
   display:none; position:fixed; inset:0;
   background:rgba(0,0,0,0.7); justify-content:center; align-items:center;
   z-index:9999;">
@@ -446,12 +449,14 @@ input[data-code] {
     <h3>Сканирование штрих‑кода</h3>
 
     <div id="barcode-scanner" style="
-      width:300px; height:220px; position:relative; overflow:hidden; border-radius:10px;">
-      
-      <!-- Рамка -->
-      <div style="
-        position:absolute; inset:0; border:3px solid rgba(255,255,255,0.8);
-        border-radius:10px; z-index:10;">
+      width:300px; height:220px; position:relative; overflow:hidden; border-radius:12px;">
+
+      <!-- Углы рамки -->
+      <div style="position:absolute; inset:0; z-index:10; pointer-events:none;">
+        <div style="position:absolute; top:0; left:0; width:30px; height:30px; border-top:4px solid #00eaff; border-left:4px solid #00eaff;"></div>
+        <div style="position:absolute; top:0; right:0; width:30px; height:30px; border-top:4px solid #00eaff; border-right:4px solid #00eaff;"></div>
+        <div style="position:absolute; bottom:0; left:0; width:30px; height:30px; border-bottom:4px solid #00eaff; border-left:4px solid #00eaff;"></div>
+        <div style="position:absolute; bottom:0; right:0; width:30px; height:30px; border-bottom:4px solid #00eaff; border-right:4px solid #00eaff;"></div>
       </div>
 
       <!-- Лазер -->
@@ -470,6 +475,12 @@ input[data-code] {
       </style>
 
     </div>
+
+    <br>
+    <button id="barcode-close" style="padding:10px 20px;">Закрыть</button>
+  </div>
+</div>
+
 
     <br>
     <button id="barcode-close" style="padding:10px 20px;">Закрыть</button>
@@ -1578,6 +1589,7 @@ animate();
   const modal = document.getElementById('barcode-modal');
   const closeBtn = document.getElementById('barcode-close');
   const scannerEl = document.getElementById('barcode-scanner');
+  const beep = document.getElementById('beep-sound');
 
   if (!searchInput || !voiceBtn) return;
 
@@ -1605,11 +1617,11 @@ animate();
           facingMode: "environment",
           width: { ideal: 1280 },
           height: { ideal: 720 },
-          advanced: [{ zoom: 1 }] // 🔥 отключаем авто‑зум
+          advanced: [{ zoom: 1 }] // отключаем авто‑зум
         }
       },
 
-      locate: false, // 🔥 отключаем авто‑кроп
+      locate: false, // отключаем авто‑кроп
 
       locator: {
         patchSize: "medium",
@@ -1650,6 +1662,13 @@ animate();
     const code = result.codeResult.code;
     if (!code) return;
 
+    // Вибрация
+    if (navigator.vibrate) navigator.vibrate(150);
+
+    // Звук
+    beep.currentTime = 0;
+    beep.play().catch(() => {});
+
     // Вставляем штрих‑код
     searchInput.value = code;
 
@@ -1662,6 +1681,7 @@ animate();
     modal.style.display = 'none';
   }
 })();
+
 
 
 
