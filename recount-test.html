@@ -38,7 +38,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
+ <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@latest"></script>
+
 
 
   <style>
@@ -438,8 +439,6 @@ input[data-code] {
     </div>
   </div>
   <!-- Звук "пик" -->
-<audio id="beep-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
-
 <div id="barcode-modal" style="
   display:none; position:fixed; inset:0;
   background:rgba(0,0,0,0.7); justify-content:center; align-items:center;
@@ -448,44 +447,13 @@ input[data-code] {
   <div style="background:#fff; padding:20px; border-radius:12px; text-align:center; position:relative;">
     <h3>Сканирование штрих‑кода</h3>
 
-    <div id="barcode-scanner" style="
-      width:300px; height:220px; position:relative; overflow:hidden; border-radius:12px;">
-
-      <!-- Углы рамки -->
-      <div style="position:absolute; inset:0; z-index:10; pointer-events:none;">
-        <div style="position:absolute; top:0; left:0; width:30px; height:30px; border-top:4px solid #00eaff; border-left:4px solid #00eaff;"></div>
-        <div style="position:absolute; top:0; right:0; width:30px; height:30px; border-top:4px solid #00eaff; border-right:4px solid #00eaff;"></div>
-        <div style="position:absolute; bottom:0; left:0; width:30px; height:30px; border-bottom:4px solid #00eaff; border-left:4px solid #00eaff;"></div>
-        <div style="position:absolute; bottom:0; right:0; width:30px; height:30px; border-bottom:4px solid #00eaff; border-right:4px solid #00eaff;"></div>
-      </div>
-
-      <!-- Лазер -->
-      <div id="laser-line" style="
-        position:absolute; left:0; right:0; height:3px;
-        background:red; opacity:0.8; z-index:11;
-        animation: scanline 1.4s linear infinite;">
-      </div>
-
-      <style>
-        @keyframes scanline {
-          0% { top: 0; }
-          50% { top: 210px; }
-          100% { top: 0; }
-        }
-      </style>
-
-    </div>
+    <video id="barcode-video" style="width:300px; height:220px; border-radius:12px;"></video>
 
     <br>
     <button id="barcode-close" style="padding:10px 20px;">Закрыть</button>
   </div>
 </div>
 
-
-    <br>
-    <button id="barcode-close" style="padding:10px 20px;">Закрыть</button>
-  </div>
-</div>
 
   <!-- Контент -->
   <div id="content">
@@ -1588,11 +1556,11 @@ animate();
   const voiceBtn = document.getElementById('voice-search-btn');
   const modal = document.getElementById('barcode-modal');
   const closeBtn = document.getElementById('barcode-close');
-  const scannerEl = document.getElementById('barcode-scanner');
-  const beep = document.getElementById('beep-sound');
+  const video = document.getElementById('barcode-video');
 
   if (!searchInput || !voiceBtn) return;
 
+  let codeReader = null;
   let isRunning = false;
 
   voiceBtn.addEventListener('click', () => {
@@ -1605,82 +1573,53 @@ animate();
     modal.style.display = 'none';
   });
 
-  function startScanner() {
+  async function startScanner() {
     if (isRunning) return;
     isRunning = true;
 
-    Quagga.init({
-      inputStream: {
-        type: "LiveStream",
-        target: scannerEl,
-        constraints: {
-          facingMode: "environment",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          advanced: [{ zoom: 1 }] // отключаем авто‑зум
+    codeReader = new ZXing.BrowserMultiFormatReader();
+
+    try {
+      const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+
+      const backCam = devices.find(d => d.label.toLowerCase().includes("back"))
+                    || devices[0];
+
+      await codeReader.decodeFromVideoDevice(
+        backCam.deviceId,
+        video,
+        (result, err) => {
+          if (result) {
+            const code = result.text;
+
+            // Вставляем штрих‑код
+            searchInput.value = code;
+
+            // Автопоиск
+            const form = searchInput.closest('form');
+            if (form) form.submit();
+
+            stopScanner();
+            modal.style.display = 'none';
+          }
         }
-      },
-
-      locate: false, // отключаем авто‑кроп
-
-      locator: {
-        patchSize: "medium",
-        halfSample: false
-      },
-
-      decoder: {
-        readers: [
-          "ean_reader",
-          "ean_8_reader",
-          "code_128_reader",
-          "code_39_reader",
-          "upc_reader",
-          "upc_e_reader",
-          "i2of5_reader"
-        ]
-      }
-    }, err => {
-      if (err) {
-        console.error("Ошибка Quagga:", err);
-        return;
-      }
-      Quagga.start();
-    });
-
-    Quagga.onDetected(onDetected);
+      );
+    } catch (e) {
+      console.error("Ошибка ZXing:", e);
+    }
   }
 
   function stopScanner() {
     if (!isRunning) return;
     isRunning = false;
 
-    Quagga.offDetected(onDetected);
-    Quagga.stop();
-  }
-
-  function onDetected(result) {
-    const code = result.codeResult.code;
-    if (!code) return;
-
-    // Вибрация
-    if (navigator.vibrate) navigator.vibrate(150);
-
-    // Звук
-    beep.currentTime = 0;
-    beep.play().catch(() => {});
-
-    // Вставляем штрих‑код
-    searchInput.value = code;
-
-    // Автопоиск
-    const form = searchInput.closest('form');
-    if (form) form.submit();
-
-    // Закрываем модалку
-    stopScanner();
-    modal.style.display = 'none';
+    if (codeReader) {
+      codeReader.reset();
+      codeReader = null;
+    }
   }
 })();
+
 
 
 
