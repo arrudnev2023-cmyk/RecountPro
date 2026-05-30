@@ -1566,8 +1566,8 @@ animate();
   voiceBtn.addEventListener('click', async () => {
     modal.style.display = 'flex';
 
-    // Safari fix — ждём рендер модалки
-    await new Promise(r => setTimeout(r, 150));
+    // Safari fix — ждём рендер
+    await new Promise(r => setTimeout(r, 200));
 
     startScanner();
   });
@@ -1584,9 +1584,8 @@ animate();
     codeReader = new ZXing.BrowserMultiFormatReader();
 
     try {
-      // Автоматический выбор камеры (фикс для всех устройств)
       await codeReader.decodeFromVideoDevice(
-        null, // ← выбирает первую доступную камеру
+        null, // ← выбирает первую доступную камеру (самый надёжный способ)
         video,
         (result, err) => {
           if (result) {
