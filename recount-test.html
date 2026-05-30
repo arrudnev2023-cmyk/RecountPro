@@ -445,9 +445,15 @@ input[data-code] {
   z-index:9999;">
   
   <div style="background:#fff; padding:20px; border-radius:12px; text-align:center; position:relative;">
-    <h3>Сканирование штрих‑кода</h3>
+    <h3>Сканирование штрих-кода</h3>
 
-    <video id="barcode-video" style="width:300px; height:220px; border-radius:12px;"></video>
+    <!-- ВОТ ТУТ СТАВИМ ВИДЕО -->
+    <video id="barcode-video"
+           style="width:300px; height:220px; border-radius:12px; background:#000;"
+           playsinline
+           autoplay
+           muted>
+    </video>
 
     <br>
     <button id="barcode-close" style="padding:10px 20px;">Закрыть</button>
@@ -1566,11 +1572,8 @@ animate();
   voiceBtn.addEventListener('click', async () => {
     modal.style.display = 'flex';
 
-    // Ждём пока модалка реально появится в DOM
-    await waitForVisible(video);
-
-    // Safari требует задержку
-    await delay(150);
+    // Ждём пока модалка появится
+    await new Promise(r => setTimeout(r, 200));
 
     startScanner();
   });
@@ -1617,24 +1620,6 @@ animate();
       codeReader.reset();
       codeReader = null;
     }
-  }
-
-  function delay(ms) {
-    return new Promise(r => setTimeout(r, ms));
-  }
-
-  function waitForVisible(el) {
-    return new Promise(resolve => {
-      const check = () => {
-        const style = window.getComputedStyle(el);
-        if (style.display !== 'none' && el.offsetParent !== null) {
-          resolve();
-        } else {
-          requestAnimationFrame(check);
-        }
-      };
-      check();
-    });
   }
 })();
 
