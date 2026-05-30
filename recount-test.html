@@ -38,6 +38,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
+
 
   <style>
     :root {
@@ -1536,72 +1538,80 @@ animate();
   const voiceBtn = document.getElementById('voice-search-btn');
   const modal = document.getElementById('barcode-modal');
   const closeBtn = document.getElementById('barcode-close');
-  const video = document.getElementById('barcode-video');
+  const scannerEl = document.getElementById('barcode-scanner');
 
   if (!searchInput || !voiceBtn) return;
 
-  // При клике — открываем модалку и запускаем сканер
+  let isRunning = false;
+
   voiceBtn.addEventListener('click', () => {
     modal.style.display = 'flex';
     startScanner();
   });
 
-  // Закрытие модалки
   closeBtn.addEventListener('click', () => {
     stopScanner();
     modal.style.display = 'none';
   });
 
-  let stream = null;
-  let scanning = false;
+  function startScanner() {
+    if (isRunning) return;
 
-  async function startScanner() {
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      });
-      video.srcObject = stream;
-      video.setAttribute('playsinline', true);
-      await video.play();
-      scanning = true;
-      scanLoop();
-    } catch (e) {
-      console.error('Ошибка камеры', e);
-    }
+    isRunning = true;
+
+    Quagga.init({
+      inputStream: {
+        type: "LiveStream",
+        target: scannerEl,
+        constraints: {
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      },
+      decoder: {
+        readers: [
+          "ean_reader",
+          "ean_8_reader",
+          "code_128_reader",
+          "code_39_reader",
+          "upc_reader",
+          "upc_e_reader",
+          "i2of5_reader"
+        ]
+      },
+      locate: true
+    }, err => {
+      if (err) {
+        console.error("Ошибка Quagga:", err);
+        return;
+      }
+      Quagga.start();
+    });
+
+    Quagga.onDetected(onDetected);
   }
 
   function stopScanner() {
-    scanning = false;
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
-      stream = null;
-    }
+    if (!isRunning) return;
+    isRunning = false;
+
+    Quagga.offDetected(onDetected);
+    Quagga.stop();
   }
 
-  // Используем BarcodeDetector (нативный API)
-  const detector = ('BarcodeDetector' in window)
-    ? new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'upc_a'] })
-    : null;
+  function onDetected(result) {
+    const code = result.codeResult.code;
 
-  async function scanLoop() {
-    if (!scanning || !detector) return;
+    if (!code) return;
 
-    try {
-      const barcodes = await detector.detect(video);
-      if (barcodes.length > 0) {
-        const code = barcodes[0].rawValue;
-        searchInput.value = code;   // ← ВСТАВЛЯЕМ ШТРИХ-КОД В ПОИСК
-        stopScanner();
-        modal.style.display = 'none';
-        return;
-      }
-    } catch (e) {
-      console.warn('Ошибка сканирования', e);
-    }
+    searchInput.value = code;
 
-    requestAnimationFrame(scanLoop);
+    stopScanner();
+    modal.style.display = 'none';
   }
 })();
+
 
 
 
