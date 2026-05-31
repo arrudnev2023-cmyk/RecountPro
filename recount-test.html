@@ -1580,8 +1580,9 @@ function animate() {
 animate();
   // Голосовой поиск для поля #search с предобработкой, фуззи-поиском и авто-заменой
 // ZXing continuous scanner: вставляет код в #search и отправляет форму
+
 (function() {
-  const triggerBtn = document.getElementById('voice-search-btn'); // кнопка открытия
+  const triggerBtn = document.getElementById('voice-search-btn'); // твоя кнопка
   const modal = document.getElementById('barcode-modal');
   const scannerEl = document.getElementById('barcode-scanner');
   const closeBtn = document.getElementById('barcode-close');
@@ -1591,7 +1592,7 @@ animate();
   const searchInput = document.getElementById('search');
 
   if (!triggerBtn || !modal || !scannerEl || !closeBtn || !searchInput) {
-    console.warn('Не найдены обязательные элементы: #voice-search-btn, #barcode-modal, #barcode-scanner, #barcode-close, #search');
+    console.warn('Required elements missing: #voice-search-btn, #barcode-modal, #barcode-scanner, #barcode-close, #search');
     return;
   }
 
@@ -1602,7 +1603,7 @@ animate();
   let currentTrack = null;
   let torchOn = false;
   let lastDetected = 0;
-  const COOLDOWN = 800;
+  const COOLDOWN = 700;
   const REQUIRED_CONFIRM = 2;
   const CONFIRM_WINDOW = 1200;
   let confirmState = null;
@@ -1635,13 +1636,11 @@ animate();
     if (!track) return;
     try {
       const caps = track.getCapabilities ? track.getCapabilities() : {};
-      // минимизируем zoom
       if (caps.zoom) {
         const minZoom = (typeof caps.zoom.min === 'number') ? caps.zoom.min : 1;
         await track.applyConstraints({ advanced: [{ zoom: minZoom }] }).catch(()=>{});
         log('zoom -> ' + minZoom, true);
       }
-      // continuous focus
       if (caps.focusMode && caps.focusMode.includes('continuous')) {
         await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(()=>{});
         log('focusMode continuous applied', true);
@@ -1722,7 +1721,7 @@ animate();
     codeReader = new ZXing.BrowserMultiFormatReader();
 
     try {
-      // получаем поток через getUserMedia — даём браузеру меньше повода зумить
+      // сначала пробуем getUserMedia с умеренным разрешением
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
@@ -1749,12 +1748,11 @@ animate();
         }
         currentTrack.addEventListener('ended', () => {
           log('Video track ended', true);
-          // не закрываем модалку автоматически, но останавливаем сканер
           stopAll();
         });
       }
 
-      // запускаем непрерывное распознавание
+      // непрерывное распознавание
       codeReader.decodeFromVideoElementContinuously(videoEl, (result, err) => {
         if (result) {
           const code = result.text;
@@ -1774,7 +1772,6 @@ animate();
           log('Detected: ' + code + ' confirmed=' + (confirmState ? confirmState.count : 0), true);
 
           if (confirmed) {
-            // звук и вибрация
             try { if (navigator.vibrate) navigator.vibrate(120); } catch(e){}
             if (beep) { beep.currentTime = 0; beep.play().catch(()=>{}); }
 
@@ -1792,7 +1789,6 @@ animate();
             modal.style.display = 'none';
           }
         } else if (err) {
-          // NotFoundException — нормальное поведение, игнорируем
           const name = err && err.name ? err.name : '';
           if (name === 'NotFoundException') return;
           log('ZXing error: ' + (err && err.message ? err.message : err), true);
@@ -1803,20 +1799,18 @@ animate();
 
     } catch (e) {
       log('Camera start error: ' + e, true);
+      // если не удалось, пробуем перечислить устройства и показать подсказку
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cams = devices.filter(d => d.kind === 'videoinput');
+        log('Available video devices: ' + cams.length, true);
+        cams.forEach((c,i) => log('cam['+i+'] label: "' + (c.label||'hidden') + '" id: ' + c.deviceId, true));
+      } catch (ee) {
+        log('enumerateDevices failed: ' + ee, true);
+      }
       stopAll();
       running = false;
     }
-  }
-
-  // Вспомогательная: регистрация подтверждений
-  function registerConfirm(code) {
-    const now = Date.now();
-    if (!confirmState || confirmState.code !== code || (now - confirmState.firstAt) > CONFIRM_WINDOW) {
-      confirmState = { code: code, count: 1, firstAt: now };
-      return false;
-    }
-    confirmState.count++;
-    return confirmState.count >= REQUIRED_CONFIRM;
   }
 
   // UI handlers
@@ -1873,7 +1867,6 @@ animate();
   // expose for debug
   window._zxingScanner = { start: startScanner, stop: stopAll };
 
-})();
 
 
 
