@@ -39,6 +39,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@latest"></script>
+
 
 
 
@@ -441,18 +443,36 @@ input[data-code] {
   </div>
   <!-- Звук "пик" -->
 <!-- Модалка сканера -->
-<div id="barcode-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; z-index:9999;">
+<!-- Звук "пик" -->
+<audio id="beep-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+
+<div id="barcode-modal" style="
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.7); justify-content:center; align-items:center;
+  z-index:9999;">
   <div style="background:#fff; padding:18px; border-radius:12px; text-align:center; position:relative; width:380px;">
     <h3 style="margin:0 0 12px 0;">Сканирование штрих-кода</h3>
+
     <div id="barcode-scanner" style="width:340px; height:260px; margin:0 auto; position:relative; overflow:hidden; border-radius:10px; background:#000;">
-      <!-- video будет вставлен сюда -->
+      <!-- video будет вставлен сюда динамически -->
+      <div style="position:absolute; inset:0; pointer-events:none;">
+        <div style="position:absolute; top:8px; left:8px; width:36px; height:36px; border-top:4px solid #00eaff; border-left:4px solid #00eaff;"></div>
+        <div style="position:absolute; top:8px; right:8px; width:36px; height:36px; border-top:4px solid #00eaff; border-right:4px solid #00eaff;"></div>
+        <div style="position:absolute; bottom:8px; left:8px; width:36px; height:36px; border-bottom:4px solid #00eaff; border-left:4px solid #00eaff;"></div>
+        <div style="position:absolute; bottom:8px; right:8px; width:36px; height:36px; border-bottom:4px solid #00eaff; border-right:4px solid #00eaff;"></div>
+      </div>
+      <div id="laser-line" style="position:absolute; left:0; right:0; height:3px; background:rgba(255,0,0,0.85); z-index:11; animation:scanline 1.4s linear infinite;"></div>
+      <style>
+        @keyframes scanline { 0%{top:8px} 50%{top:220px} 100%{top:8px} }
+      </style>
     </div>
-    <div id="diag" style="text-align:left; margin-top:10px; font-size:12px; color:#333; max-height:120px; overflow:auto;"></div>
+
     <div style="margin-top:12px;">
       <button id="barcode-close" style="padding:8px 14px; margin-right:8px;">Закрыть</button>
     </div>
   </div>
 </div>
+
 
 
 
@@ -1555,36 +1575,62 @@ function animate() {
 animate();
   // Голосовой поиск для поля #search с предобработкой, фуззи-поиском и авто-заменой
 (function() {
+  // Элементы страницы
+  const searchInput = document.getElementById('search');
+  const triggerBtn = document.getElementById('voice-search-btn');
   const modal = document.getElementById('barcode-modal');
-  const scannerEl = document.getElementById('barcode-scanner');
-  const diagEl = document.getElementById('diag');
   const closeBtn = document.getElementById('barcode-close');
-  const trigger = document.getElementById('voice-search-btn'); // твоя кнопка
-  let stream = null;
-  let videoEl = null;
+  const scannerEl = document.getElementById('barcode-scanner');
+  const beep = document.getElementById('beep-sound');
 
-  function log(msg) {
-    console.log(msg);
-    const p = document.createElement('div');
-    p.textContent = typeof msg === 'string' ? msg : JSON.stringify(msg);
-    diagEl.appendChild(p);
-    diagEl.scrollTop = diagEl.scrollHeight;
+  if (!searchInput || !triggerBtn || !modal || !scannerEl) {
+    console.warn('Barcode scanner: required DOM elements not found (#search, #voice-search-btn, #barcode-modal, #barcode-scanner).');
+    return;
   }
 
-  async function start() {
-    diagEl.innerHTML = '';
+  // Состояние
+  let stream = null;
+  let videoEl = null;
+  let running = false;
+  let codeReader = null;
+  let lastScanAt = 0;
+  const SCAN_COOLDOWN = 1200; // ms между успешными сканами
+
+  // Настройки распознавания
+  const ZXING_HINTS = {
+    // можно сузить форматы для ускорения, например:
+    // possibleFormats: ['EAN_13','CODE_128']
+  };
+
+  // Запуск по кнопке
+  triggerBtn.addEventListener('click', async () => {
     modal.style.display = 'flex';
     await new Promise(r => setTimeout(r, 180)); // дать рендеру появиться
+    startCameraAndScan();
+  });
+
+  closeBtn.addEventListener('click', () => {
+    stopAll();
+    modal.style.display = 'none';
+  });
+
+  // Основная функция: старт камеры и цикл сканирования
+  async function startCameraAndScan() {
+    if (running) return;
+    running = true;
 
     try {
-      log('Запрашиваем камеру...');
+      // 1) Получаем поток камеры
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
         audio: false
       });
-      log('Поток получен');
 
-      // создаём video
+      // 2) Создаём video элемент
       videoEl = document.createElement('video');
       videoEl.setAttribute('playsinline', '');
       videoEl.setAttribute('autoplay', '');
@@ -1594,111 +1640,215 @@ animate();
       videoEl.style.objectFit = 'cover';
       videoEl.srcObject = stream;
 
-      // вставляем и ждём play
-      scannerEl.innerHTML = '';
-      scannerEl.appendChild(videoEl);
+      // Вставляем видео в контейнер
+      scannerEl.querySelectorAll('video').forEach(n => n.remove());
+      scannerEl.insertBefore(videoEl, scannerEl.firstChild);
 
+      // Ждём, пока видео начнёт играть
+      await videoEl.play().catch(e => {
+        console.warn('video.play() failed', e);
+      });
+
+      // Попытка отключить цифровой зум, если поддерживается
       try {
-        await videoEl.play();
-        log('video.play() успешно');
-      } catch (playErr) {
-        log('Ошибка при video.play(): ' + playErr);
-      }
-
-      // проверяем трек
-      const [track] = stream.getVideoTracks();
-      if (!track) {
-        log('Нет видеотрека в потоке');
-        return;
-      }
-
-      const settings = track.getSettings ? track.getSettings() : {};
-      const caps = track.getCapabilities ? track.getCapabilities() : {};
-      log('Track settings: ' + JSON.stringify(settings));
-      log('Track capabilities: ' + JSON.stringify(caps));
-
-      // попытка отключить зум если поддерживается
-      try {
-        if (caps.zoom) {
-          const minZoom = caps.zoom.min || 1;
-          log('Попытка установить zoom = ' + minZoom);
-          await track.applyConstraints({ advanced: [{ zoom: minZoom }] });
-          log('applyConstraints zoom OK');
-        } else {
-          log('zoom capability отсутствует');
+        const [track] = stream.getVideoTracks();
+        if (track && track.getCapabilities) {
+          const caps = track.getCapabilities();
+          if (caps.zoom) {
+            const minZoom = caps.zoom.min || 1;
+            await track.applyConstraints({ advanced: [{ zoom: minZoom }] }).catch(()=>{});
+            console.debug('Applied zoom constraint', minZoom);
+          }
         }
       } catch (e) {
-        log('applyConstraints zoom failed: ' + e);
+        console.debug('applyConstraints zoom failed', e);
       }
 
-      // попытка установить focusMode continuous если поддерживается
-      try {
-        if (caps.focusMode && caps.focusMode.includes('continuous')) {
-          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-          log('applyConstraints focusMode continuous OK');
-        } else {
-          log('focusMode continuous не поддерживается');
+      // 3) Инициализируем ZXing
+      codeReader = new ZXing.BrowserMultiFormatReader();
+
+      // 4) Создаём canvas для обработки
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      // Вспомогательные функции предобработки
+      function preprocessImageData(imageData, contrast = 1.2, brightness = 0) {
+        const d = imageData.data;
+        // простая коррекция контраста/яркости и grayscale
+        for (let i = 0; i < d.length; i += 4) {
+          // grayscale
+          const r = d[i], g = d[i+1], b = d[i+2];
+          let v = 0.299*r + 0.587*g + 0.114*b;
+          // contrast
+          v = ((v - 128) * contrast) + 128 + brightness;
+          v = Math.max(0, Math.min(255, v));
+          d[i] = d[i+1] = d[i+2] = v;
         }
-      } catch (e) {
-        log('applyConstraints focusMode failed: ' + e);
+        return imageData;
       }
 
-      // перечисляем устройства
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const cams = devices.filter(d => d.kind === 'videoinput');
-        log('Найдено видеоустройств: ' + cams.length);
-        cams.forEach((c, i) => log('cam['+i+'] label: "' + (c.label||'hidden') + '" id: ' + c.deviceId));
-      } catch (e) {
-        log('enumerateDevices failed: ' + e);
+      // Попытка распознать кадр: пробуем несколько масштабов и поворотов
+      async function tryDecodeFromCanvas(cnv) {
+        // создаём Image элемент из canvas
+        return new Promise(async (resolve) => {
+          const img = new Image();
+          img.onload = async () => {
+            try {
+              // ZXing: decodeFromImageElement возвращает Promise
+              const result = await codeReader.decodeFromImageElement(img);
+              resolve(result);
+            } catch (e) {
+              resolve(null);
+            }
+          };
+          img.onerror = () => resolve(null);
+          img.src = cnv.toDataURL('image/png');
+        });
       }
 
-      // финальная проверка видимости видео
-      const style = window.getComputedStyle(videoEl);
-      if (style.display === 'none' || videoEl.offsetParent === null) {
-        log('Video элемент невидим. Проверь CSS/overlay/z-index.');
-      } else {
-        log('Video видим в DOM. Если экран всё ещё чёрный — проверь аппарат/браузер.');
+      // Основной цикл: захват -> предобработка -> попытки распознавания
+      let frameCount = 0;
+      async function scanLoop() {
+        if (!running) return;
+
+        if (videoEl.readyState < 2) {
+          requestAnimationFrame(scanLoop);
+          return;
+        }
+
+        // Подгоняем canvas под видео
+        const vw = videoEl.videoWidth;
+        const vh = videoEl.videoHeight;
+        if (!vw || !vh) {
+          requestAnimationFrame(scanLoop);
+          return;
+        }
+
+        // Для скорости работаем с уменьшенным разрешением, но сохраняем соотношение
+        const targetW = 800; // можно уменьшить до 640 для старых устройств
+        const scale = Math.min(1, targetW / vw);
+        canvas.width = Math.round(vw * scale);
+        canvas.height = Math.round(vh * scale);
+
+        // Рисуем кадр
+        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+        // Берём ImageData и делаем предобработку
+        let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        imageData = preprocessImageData(imageData, 1.15, 0); // немного контраста
+        ctx.putImageData(imageData, 0, 0);
+
+        // ROI: обрезаем центральную полосу (штрихкоды обычно в центре)
+        const roiHeight = Math.round(canvas.height * 0.35);
+        const roiY = Math.round((canvas.height - roiHeight) / 2);
+        const roiCanvas = document.createElement('canvas');
+        roiCanvas.width = canvas.width;
+        roiCanvas.height = roiHeight;
+        const roiCtx = roiCanvas.getContext('2d');
+        roiCtx.drawImage(canvas, 0, roiY, canvas.width, roiHeight, 0, 0, canvas.width, roiHeight);
+
+        // Попытки распознавания: сначала ROI, затем полный кадр, с поворотами
+        let result = null;
+
+        // 1) ROI, нормальная ориентация
+        result = await tryDecodeFromCanvas(roiCanvas);
+        if (!result) {
+          // 2) ROI, поворот 90
+          const rot90 = rotateCanvas(roiCanvas, 90);
+          result = await tryDecodeFromCanvas(rot90);
+        }
+        if (!result) {
+          // 3) Полный кадр
+          result = await tryDecodeFromCanvas(canvas);
+        }
+        if (!result) {
+          // 4) Полный кадр поворот 90
+          const rotFull90 = rotateCanvas(canvas, 90);
+          result = await tryDecodeFromCanvas(rotFull90);
+        }
+
+        if (result && result.text) {
+          const now = Date.now();
+          if (now - lastScanAt > SCAN_COOLDOWN) {
+            lastScanAt = now;
+            handleSuccess(result.text);
+          }
+        }
+
+        frameCount++;
+        // регулировка частоты: не перегружаем CPU — пропускаем кадры
+        await new Promise(r => setTimeout(r, 120)); // ~8 FPS обработки
+        requestAnimationFrame(scanLoop);
       }
+
+      // Вспомогательная: поворот canvas на угол (90/180/270)
+      function rotateCanvas(srcCanvas, angle) {
+        const dst = document.createElement('canvas');
+        const sW = srcCanvas.width, sH = srcCanvas.height;
+        if (angle % 180 === 0) {
+          dst.width = sW; dst.height = sH;
+        } else {
+          dst.width = sH; dst.height = sW;
+        }
+        const dctx = dst.getContext('2d');
+        dctx.translate(dst.width / 2, dst.height / 2);
+        dctx.rotate((angle * Math.PI) / 180);
+        dctx.drawImage(srcCanvas, -sW / 2, -sH / 2);
+        return dst;
+      }
+
+      // Успешный результат
+      function handleSuccess(code) {
+        console.log('Barcode detected:', code);
+
+        // Вибрация и звук
+        if (navigator.vibrate) navigator.vibrate(120);
+        if (beep) { beep.currentTime = 0; beep.play().catch(()=>{}); }
+
+        // Вставляем код и отправляем форму
+        searchInput.value = code;
+        const form = searchInput.closest('form');
+        if (form) {
+          try { form.submit(); } catch(e) { console.warn('Form submit failed', e); }
+        }
+
+        // Останавливаем
+        stopAll();
+        modal.style.display = 'none';
+      }
+
+      // Старт цикла
+      requestAnimationFrame(scanLoop);
 
     } catch (err) {
-      log('Ошибка getUserMedia: ' + err);
-      // если отказано в доступе — покажем подсказку
-      if (err && err.name === 'NotAllowedError') {
-        log('Доступ к камере запрещён. Проверь настройки сайта в браузере.');
-      }
-      // остановим и очистим
-      stop();
+      console.error('Scanner start error', err);
+      stopAll();
+      modal.style.display = 'none';
     }
   }
 
-  function stop() {
+  // Остановка и очистка
+  function stopAll() {
+    running = false;
     try {
-      if (stream) {
-        stream.getTracks().forEach(t => t.stop());
-        stream = null;
-      }
-      if (videoEl) {
-        videoEl.pause();
-        videoEl.srcObject = null;
-        videoEl.remove();
-        videoEl = null;
-      }
-    } catch (e) {
-      console.warn(e);
+      if (codeReader) { codeReader.reset(); codeReader = null; }
+    } catch(e){}
+
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
     }
-    modal.style.display = 'none';
+    if (videoEl) {
+      try { videoEl.pause(); } catch(e){}
+      try { videoEl.srcObject = null; } catch(e){}
+      videoEl.remove();
+      videoEl = null;
+    }
   }
 
-  // привязка событий
-  if (trigger) trigger.addEventListener('click', start);
-  closeBtn.addEventListener('click', stop);
-
-  // экспорт для отладки в консоли
-  window._scannerDebug = { start, stop };
+  // Авто-остановка при уходе со страницы
+  window.addEventListener('pagehide', stopAll);
 })();
-
-
 
 
 
