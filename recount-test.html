@@ -444,35 +444,35 @@ input[data-code] {
   </div>
   <!-- Звук "пик" -->
 <!-- Звук при успешном скане -->
-<audio id="beep-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+<!-- Scanner UI (вставь в body) -->
+<div id="ean-scanner-modal" style="display:none; position:fixed; inset:0; z-index:99999; justify-content:center; align-items:center; background:rgba(0,0,0,0.7);">
+  <div style="width:360px; max-width:94vw; background:#fff; border-radius:10px; padding:12px; text-align:center; position:relative;">
+    <h3 style="margin:6px 0 10px 0; font-size:16px;">Сканирование штрих‑кода</h3>
 
-<!-- Модалка сканера -->
-<div id="barcode-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); justify-content:center; align-items:center; z-index:99999;">
-  <div style="background:#fff; padding:14px; border-radius:12px; width:380px; max-width:92vw; text-align:center; position:relative;">
-    <h3 style="margin:0 0 10px 0; font-size:18px;">Сканирование штрих‑кода</h3>
-
-    <div id="barcode-scanner" style="width:320px; height:240px; margin:0 auto; background:#000; border-radius:8px; overflow:hidden; position:relative;">
-      <!-- video вставляется динамически сюда -->
+    <div id="ean-scanner-frame" style="width:320px; height:220px; margin:0 auto; background:#000; border-radius:8px; overflow:hidden; position:relative;">
+      <video id="ean-preview" playsinline muted style="width:100%; height:100%; object-fit:contain;"></video>
       <div style="pointer-events:none; position:absolute; inset:0;">
         <div style="position:absolute; left:8px; top:8px; width:36px; height:36px; border-top:3px solid #0ff; border-left:3px solid #0ff;"></div>
         <div style="position:absolute; right:8px; top:8px; width:36px; height:36px; border-top:3px solid #0ff; border-right:3px solid #0ff;"></div>
         <div style="position:absolute; left:8px; bottom:8px; width:36px; height:36px; border-bottom:3px solid #0ff; border-left:3px solid #0ff;"></div>
         <div style="position:absolute; right:8px; bottom:8px; width:36px; height:36px; border-bottom:3px solid #0ff; border-right:3px solid #0ff;"></div>
       </div>
-      <div id="laser-line" style="position:absolute; left:0; right:0; height:3px; background:rgba(255,0,0,0.85); z-index:11; animation:scanline 1.4s linear infinite;"></div>
-      <style>
-        @keyframes scanline { 0%{top:8px} 50%{top:210px} 100%{top:8px} }
-      </style>
+      <div id="ean-scan-line" style="position:absolute; left:0; right:0; height:3px; background:rgba(255,0,0,0.85); top:50%; transform:translateY(-50%);"></div>
     </div>
 
-    <div style="margin-top:12px;">
-      <button id="barcode-close" style="padding:8px 12px; margin-right:8px;">Закрыть</button>
-      <button id="barcode-toggle-torch" style="padding:8px 12px;">Фонарь</button>
+    <div style="margin-top:10px;">
+      <select id="ean-device-select" style="width:60%; padding:6px;"></select>
     </div>
 
-    <div id="scanner-log" style="font-size:12px; color:#444; text-align:left; margin-top:10px; max-height:120px; overflow:auto; display:none;"></div>
+    <div style="margin-top:10px;">
+      <button id="ean-close-btn" style="padding:8px 12px; margin-right:8px;">Закрыть</button>
+      <button id="ean-torch-btn" style="padding:8px 12px;">Фонарь</button>
+    </div>
+
+    <div id="ean-scan-log" style="font-size:12px; color:#333; text-align:left; margin-top:10px; max-height:120px; overflow:auto; display:none;"></div>
   </div>
 </div>
+
 
 
 
@@ -1579,379 +1579,209 @@ function animate() {
 }
 animate();
   // Голосовой поиск для поля #search с предобработкой, фуззи-поиском и авто-заменой
-// Универсальный привязчик и запуск сканера
-// Вставь этот скрипт в конец страницы перед </body>.
-// Требует элементы: #scannerCard, #preview (video), #deviceSelect, #torchBtn, #closeScannerBtn, #scan-btn, #toast, #scanResult, #search
+// ean-online style scanner: BarcodeDetector + ZXing fallback
+// Requires: element ids from HTML above and an input #search to receive result
+(function(){
+  const ZXING_CDN = 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest';
+  const modal = document.getElementById('ean-scanner-modal');
+  const preview = document.getElementById('ean-preview');
+  const deviceSelect = document.getElementById('ean-device-select');
+  const closeBtn = document.getElementById('ean-close-btn');
+  const torchBtn = document.getElementById('ean-torch-btn');
+  const logEl = document.getElementById('ean-scan-log');
+  const searchInput = document.getElementById('search');
 
-(function () {
-  // Ждём готовности DOM (на случай, если скрипт вставлен в head)
-  function onReady(fn) {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', fn);
-    } else {
-      fn();
+  let stream = null;
+  let scanning = false;
+  let currentDeviceId = null;
+  let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
+  let lastDetected = {code:null, ts:0};
+  const DEBOUNCE = 900;
+  let zxingLoaded = false;
+
+  function log(msg, show=false){
+    console.log('[ean-scanner] ' + msg);
+    if(!logEl) return;
+    if(show) { logEl.style.display='block'; const d=document.createElement('div'); d.textContent=msg; logEl.appendChild(d); logEl.scrollTop=logEl.scrollHeight; }
+  }
+
+  async function loadZXing(){
+    if(zxingLoaded || typeof ZXing !== 'undefined') { zxingLoaded = true; return; }
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = ZXING_CDN;
+      s.onload = () => { zxingLoaded = true; res(); };
+      s.onerror = () => rej(new Error('ZXing load error'));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function enumerateCameras(){
+    try{
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter(d=>d.kind==='videoinput');
+      deviceSelect.innerHTML = '';
+      cams.forEach((c, i)=>{
+        const o = document.createElement('option');
+        o.value = c.deviceId;
+        o.text = c.label || `Камера ${i+1}`;
+        deviceSelect.appendChild(o);
+      });
+      if(cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
+      if(currentDeviceId) deviceSelect.value = currentDeviceId;
+    }catch(e){ log('enumerate error: '+e, true); }
+  }
+
+  async function getStreamWithTries(deviceId){
+    const tries = [
+      { width:{ideal:1280}, height:{ideal:720} },
+      { width:{ideal:960}, height:{ideal:540} },
+      { width:{ideal:640}, height:{ideal:480} }
+    ];
+    for(const c of tries){
+      try{
+        const constraints = { video: Object.assign({ deviceId: deviceId?{exact:deviceId}:undefined, facingMode:{ideal:'environment'} }, c), audio:false };
+        const s = await navigator.mediaDevices.getUserMedia(constraints);
+        if(s.getVideoTracks().length) return s;
+        s.getTracks().forEach(t=>t.stop());
+      }catch(e){ await new Promise(r=>setTimeout(r,120)); }
+    }
+    return navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'} }, audio:false });
+  }
+
+  async function tryDecodeCanvas(canvas){
+    // native detector
+    if(detector){
+      try{
+        const bitmap = await createImageBitmap(canvas);
+        const res = await detector.detect(bitmap);
+        bitmap.close();
+        if(res && res.length) return String(res[0].rawValue);
+      }catch(e){ /* fallback */ }
+    }
+    // ZXing fallback
+    try{
+      if(!zxingLoaded) await loadZXing().catch(()=>null);
+      if(typeof ZXing !== 'undefined'){
+        const src = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+        const bin = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
+        const res = new ZXing.MultiFormatReader().decode(bin);
+        if(res && res.text) return String(res.text);
+      }
+    }catch(e){}
+    return null;
+  }
+
+  function preprocess(ctx, w, h){
+    try{
+      const id = ctx.getImageData(0,0,w,h);
+      const d = id.data;
+      for(let i=0;i<d.length;i+=4){
+        const r=d[i], g=d[i+1], b=d[i+2];
+        let v = 0.299*r + 0.587*g + 0.114*b;
+        v = ((v-128)*1.15)+128;
+        d[i]=d[i+1]=d[i+2]=v;
+      }
+      ctx.putImageData(id,0,0);
+    }catch(e){}
+  }
+
+  async function scanFrame(){
+    if(!scanning || !preview.videoWidth || !preview.videoHeight) { if(scanning) requestAnimationFrame(scanFrame); return; }
+    const w = preview.videoWidth, h = preview.videoHeight;
+    const max = 900;
+    const scale = Math.max(1, Math.floor(Math.max(w,h)/max));
+    const sw = Math.floor(w/scale), sh = Math.floor(h/scale);
+    const canvas = document.createElement('canvas'); canvas.width=sw; canvas.height=sh;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(preview,0,0,w,h,0,0,sw,sh);
+
+    const roiH = Math.floor(sh*0.5), roiY = Math.floor((sh-roiH)/2);
+    const roi = document.createElement('canvas'); roi.width=sw; roi.height=roiH;
+    const rctx = roi.getContext('2d'); rctx.drawImage(canvas,0,roiY,sw,roiH,0,0,sw,roiH);
+    preprocess(rctx, sw, roiH);
+
+    const code = await tryDecodeCanvas(roi);
+    const now = Date.now();
+    if(code && (lastDetected.code !== code || now - lastDetected.ts > DEBOUNCE)){
+      lastDetected = {code, ts:now};
+      onDetected(code.trim());
+    }
+    if(scanning) requestAnimationFrame(scanFrame);
+  }
+
+  function onDetected(code){
+    log('Detected: '+code, true);
+    if(searchInput) { searchInput.value = code; const form = searchInput.closest('form'); if(form) setTimeout(()=>{ try{ form.submit(); }catch(e){} },80); }
+    // auto stop
+    stopScanner();
+  }
+
+  async function startScanner(){
+    if(scanning) return;
+    scanning = true;
+    await enumerateCameras();
+    try{
+      stream = await getStreamWithTries(deviceSelect?deviceSelect.value:currentDeviceId);
+      preview.srcObject = stream;
+      await preview.play();
+      const t = stream.getVideoTracks()[0];
+      currentDeviceId = t.getSettings().deviceId || currentDeviceId;
+      if(deviceSelect && currentDeviceId) deviceSelect.value = currentDeviceId;
+      // try minimize zoom/focus
+      try{
+        if(t.getCapabilities && t.applyConstraints){
+          const caps = t.getCapabilities();
+          const adv = [];
+          if(caps.zoom && typeof caps.zoom.min==='number') adv.push({zoom:caps.zoom.min});
+          if(caps.focusMode && caps.focusMode.includes('continuous')) adv.push({focusMode:'continuous'});
+          if(adv.length) await t.applyConstraints({advanced:adv}).catch(()=>{});
+        }
+      }catch(e){}
+      modal.style.display='flex';
+      requestAnimationFrame(scanFrame);
+    }catch(e){
+      log('start error: '+e, true);
+      scanning=false;
+      try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }catch(e){}
     }
   }
 
-  onReady(() => {
-    // --- Настройки (можешь подправить) ---
-    const DEBOUNCE_MS = 900;
-    const MAX_CANVAS_DIM = 900;
-    const CONSTRAINTS_TRIES = [
-      { width: { ideal: 1280 }, height: { ideal: 720 } },
-      { width: { ideal: 960 }, height: { ideal: 540 } },
-      { width: { ideal: 640 }, height: { ideal: 480 } }
-    ];
-    const ZXING_CDN = 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest';
+  function stopScanner(){
+    scanning=false;
+    try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }catch(e){}
+    try{ preview.pause(); preview.srcObject=null; }catch(e){}
+    modal.style.display='none';
+  }
 
-    // --- Состояние ---
-    let stream = null;
-    let scanning = false;
-    let currentDeviceId = null;
-    let reader = null;
-    let detector = ('BarcodeDetector' in window)
-      ? new BarcodeDetector({ formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "itf"] })
-      : null;
-    let canvasPool = [];
-    let lastDetected = { code: null, ts: 0 };
+  async function toggleTorch(){
+    if(!stream) return;
+    const t = stream.getVideoTracks()[0];
+    if(!t) return;
+    try{
+      const caps = t.getCapabilities ? t.getCapabilities() : {};
+      if(!caps.torch){ log('Torch not supported', true); return; }
+      const settings = t.getSettings ? t.getSettings() : {};
+      const current = settings.torch || false;
+      await t.applyConstraints({ advanced:[{ torch: !current }] });
+    }catch(e){ log('torch error: '+e, true); }
+  }
 
-    // --- DOM (гибкая привязка: ищем по id, затем по data-action, затем по классу) ---
-    const scannerCard = document.getElementById("scannerCard");
-    const preview = document.getElementById("preview"); // <video>
-    const deviceSelect = document.getElementById("deviceSelect");
-    const torchBtn = document.getElementById("torchBtn");
-    const closeScannerBtn = document.getElementById("closeScannerBtn");
-    const scanResult = document.getElementById("scanResult");
-    const toastEl = document.getElementById("toast");
-    // кнопка сканера — ищем несколько вариантов
-    let scanBtn = document.getElementById("scan-btn")
-      || document.querySelector('[data-action="open-scanner"]')
-      || document.querySelector('.scan-btn')
-      || null;
+  // bindings
+  deviceSelect && deviceSelect.addEventListener('change', async ()=>{ currentDeviceId = deviceSelect.value; if(scanning){ await startScanner(); }});
+  closeBtn && closeBtn.addEventListener('click', stopScanner);
+  torchBtn && torchBtn.addEventListener('click', toggleTorch);
 
-    // Если кнопки нет — пробуем найти любую кнопку с текстом "Сканер" или "Сканировать"
-    if (!scanBtn) {
-      const candidates = Array.from(document.querySelectorAll('button, a'));
-      scanBtn = candidates.find(el => /сканер|сканировать|scan/i.test(el.textContent));
-    }
+  // expose API and auto-init
+  window.eanScanner = { start: startScanner, stop: stopScanner, enumerate: enumerateCameras };
+  (async()=>{ await enumerateCameras(); })();
 
-    // --- Утилиты UI ---
-    function showToast(text, ms = 1200) {
-      if (!toastEl) {
-        console.log('[toast]', text);
-        return;
-      }
-      toastEl.textContent = text;
-      toastEl.style.transition = 'opacity 200ms';
-      toastEl.style.opacity = "1";
-      setTimeout(() => { toastEl.style.opacity = "0"; }, ms);
-    }
-    function logResult(text) {
-      if (scanResult) scanResult.textContent = text;
-      console.log('[scanner]', text);
-    }
+  // auto bind any button with data-action="open-scanner" or id "scan-btn"
+  const autoBtn = document.querySelector('#scan-btn') || document.querySelector('[data-action="open-scanner"]');
+  if(autoBtn) autoBtn.addEventListener('click', startScanner);
 
-    // --- Canvas pool ---
-    function getCanvas(w, h) {
-      for (const c of canvasPool) if (c.width === w && c.height === h) return c;
-      const c = document.createElement("canvas");
-      c.width = w; c.height = h;
-      canvasPool.push(c);
-      return c;
-    }
-
-    // --- ZXing loader (UMD) ---
-    function loadZXingIfNeeded() {
-      return new Promise((resolve, reject) => {
-        if (typeof ZXing !== 'undefined' && ZXing && ZXing.BrowserMultiFormatReader) return resolve();
-        const existing = Array.from(document.scripts).find(s => s.src && s.src.indexOf(ZXING_CDN) !== -1);
-        if (existing) {
-          existing.addEventListener('load', () => (typeof ZXing !== 'undefined' ? resolve() : reject(new Error('ZXing not available after load'))));
-          existing.addEventListener('error', () => reject(new Error('ZXing load error')));
-          return;
-        }
-        const s = document.createElement('script');
-        s.src = ZXING_CDN;
-        s.async = false;
-        s.onload = () => (typeof ZXing !== 'undefined' ? resolve() : reject(new Error('ZXing not available after load')));
-        s.onerror = () => reject(new Error('ZXing load error'));
-        document.head.appendChild(s);
-      });
-    }
-
-    // --- Попытка декодирования canvas: BarcodeDetector -> ZXing fallback ---
-    async function tryDecodeCanvas(canvas) {
-      if (detector) {
-        try {
-          const bitmap = await createImageBitmap(canvas);
-          const res = await detector.detect(bitmap);
-          bitmap.close();
-          if (res && res.length) return String(res[0].rawValue);
-        } catch (e) {
-          // ignore and fallback
-        }
-      }
-
-      try {
-        if (typeof ZXing === 'undefined') {
-          await loadZXingIfNeeded().catch(() => null);
-        }
-        if (typeof ZXing !== 'undefined') {
-          const src = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
-          const bin = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
-          const readerLocal = new ZXing.MultiFormatReader();
-          const result = readerLocal.decode(bin);
-          if (result && result.text) return String(result.text);
-        }
-      } catch (e) {
-        // ignore
-      }
-      return null;
-    }
-
-    // --- Предобработка (улучшение контраста) ---
-    function preprocessCanvas(ctx, w, h) {
-      try {
-        const id = ctx.getImageData(0, 0, w, h);
-        const d = id.data;
-        for (let i = 0; i < d.length; i += 4) {
-          const r = d[i], g = d[i + 1], b = d[i + 2];
-          let v = 0.299 * r + 0.587 * g + 0.114 * b;
-          v = ((v - 128) * 1.15) + 128;
-          d[i] = d[i + 1] = d[i + 2] = v;
-        }
-        ctx.putImageData(id, 0, 0);
-      } catch (e) {
-        // ignore
-      }
-    }
-
-    // --- Основной цикл сканирования ---
-    async function scanLoop() {
-      if (!scanning || !preview || !preview.videoWidth || !preview.videoHeight) {
-        if (scanning) requestAnimationFrame(scanLoop);
-        return;
-      }
-
-      const w = preview.videoWidth;
-      const h = preview.videoHeight;
-      const scale = Math.max(1, Math.floor(Math.max(w, h) / MAX_CANVAS_DIM));
-      const sw = Math.floor(w / scale);
-      const sh = Math.floor(h / scale);
-
-      const small = getCanvas(sw, sh);
-      const sctx = small.getContext("2d");
-      sctx.drawImage(preview, 0, 0, w, h, 0, 0, sw, sh);
-
-      // ROI: центральная полоса
-      const roiH = Math.floor(sh * 0.5);
-      const roiY = Math.floor((sh - roiH) / 2);
-      const roi = getCanvas(sw, roiH);
-      const rctx = roi.getContext("2d");
-      rctx.clearRect(0, 0, sw, roiH);
-      rctx.drawImage(small, 0, roiY, sw, roiH, 0, 0, sw, roiH);
-
-      preprocessCanvas(rctx, sw, roiH);
-
-      const code = await tryDecodeCanvas(roi);
-      const now = Date.now();
-      if (code && (lastDetected.code !== code || now - lastDetected.ts > DEBOUNCE_MS)) {
-        lastDetected = { code, ts: now };
-        onBarcodeDetected(String(code).trim());
-      }
-
-      if (scanning) requestAnimationFrame(scanLoop);
-    }
-
-    // --- Обработчик найденного штрихкода ---
-    function onBarcodeDetected(code) {
-      logResult('Detected: ' + code);
-      showToast('Код: ' + code, 1200);
-      if (scanResult) scanResult.textContent = code;
-      const searchInput = document.getElementById('search');
-      if (searchInput) {
-        searchInput.value = code;
-        const form = searchInput.closest('form');
-        if (form) setTimeout(() => { try { form.submit(); } catch (e) {} }, 80);
-      }
-      stopCamera();
-    }
-
-    // --- Перечисление камер ---
-    async function enumerateCameras() {
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const cams = devices.filter(d => d.kind === "videoinput");
-        if (deviceSelect) {
-          deviceSelect.innerHTML = "";
-          cams.forEach((c, idx) => {
-            const opt = document.createElement("option");
-            opt.value = c.deviceId;
-            opt.text = c.label || `Камера ${idx + 1}`;
-            deviceSelect.appendChild(opt);
-          });
-          if (cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
-          if (currentDeviceId) deviceSelect.value = currentDeviceId;
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
-
-    // --- Попытка получить поток с перебором constraints ---
-    async function tryGetStreamWithTries(deviceId) {
-      for (const c of CONSTRAINTS_TRIES) {
-        try {
-          const constraints = {
-            audio: false,
-            video: Object.assign({ deviceId: deviceId ? { exact: deviceId } : undefined, facingMode: { ideal: "environment" } }, c)
-          };
-          const s = await navigator.mediaDevices.getUserMedia(constraints);
-          const tracks = s.getVideoTracks();
-          if (!tracks || !tracks.length) { s.getTracks().forEach(t => t.stop()); continue; }
-          return s;
-        } catch (e) {
-          await new Promise(r => setTimeout(r, 150));
-        }
-      }
-      return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
-    }
-
-    // --- Старт камеры ---
-    async function startCamera() {
-      if (scanning) return;
-      stopCamera();
-      scanning = true;
-
-      await enumerateCameras();
-
-      try {
-        stream = await tryGetStreamWithTries(deviceSelect ? deviceSelect.value : currentDeviceId);
-        if (preview) {
-          preview.srcObject = stream;
-          await preview.play();
-        }
-
-        const tracks = stream.getVideoTracks();
-        if (tracks && tracks.length) {
-          currentDeviceId = tracks[0].getSettings().deviceId || currentDeviceId;
-          if (deviceSelect && currentDeviceId) deviceSelect.value = currentDeviceId;
-          try {
-            const t = tracks[0];
-            if (t.getCapabilities && t.applyConstraints) {
-              const caps = t.getCapabilities();
-              const adv = [];
-              if (caps.zoom && typeof caps.zoom.min === 'number') adv.push({ zoom: caps.zoom.min });
-              if (caps.focusMode && caps.focusMode.includes('continuous')) adv.push({ focusMode: 'continuous' });
-              if (adv.length) await t.applyConstraints({ advanced: adv }).catch(()=>{});
-            }
-          } catch (e) {}
-        }
-
-        if (typeof ZXing === 'undefined') loadZXingIfNeeded().catch(()=>{});
-        if (!reader && typeof ZXing !== 'undefined' && ZXing.BrowserMultiFormatReader) {
-          try { reader = new ZXing.BrowserMultiFormatReader(); } catch (e) { reader = null; }
-        }
-
-        if (scannerCard) scannerCard.style.display = "block";
-        showToast("Сканер включён");
-        logResult('Camera started');
-
-        requestAnimationFrame(scanLoop);
-      } catch (err) {
-        console.error(err);
-        showToast("Ошибка доступа к камере");
-        scanning = false;
-        logResult('Camera error: ' + (err && err.message ? err.message : err));
-      }
-    }
-
-    // --- Остановка камеры ---
-    function stopCamera() {
-      scanning = false;
-      if (preview && preview.srcObject) {
-        try { preview.srcObject.getTracks().forEach(t => t.stop()); } catch (e) {}
-        preview.srcObject = null;
-      }
-      if (scannerCard) scannerCard.style.display = "none";
-      logResult('Scanner stopped');
-    }
-
-    // --- Переключение фонарика ---
-    async function toggleTorch() {
-      if (!stream) return;
-      const tracks = stream.getVideoTracks();
-      if (!tracks || !tracks.length) return;
-      const t = tracks[0];
-      try {
-        const caps = t.getCapabilities ? t.getCapabilities() : {};
-        if (!caps.torch) { showToast('Torch не поддерживается', 1000); return; }
-        const settings = t.getSettings ? t.getSettings() : {};
-        const current = settings.torch || false;
-        await t.applyConstraints({ advanced: [{ torch: !current }] });
-        showToast(!current ? 'Фонарик включён' : 'Фонарик выключен', 900);
-      } catch (e) {
-        showToast('Не удалось переключить фонарик', 900);
-      }
-    }
-
-    // --- UI events binding: гарантированная привязка ---
-    function bindUI() {
-      // scanBtn может быть найден ранее; если нет — ищем снова
-      if (!scanBtn) {
-        scanBtn = document.getElementById("scan-btn")
-          || document.querySelector('[data-action="open-scanner"]')
-          || document.querySelector('.scan-btn')
-          || Array.from(document.querySelectorAll('button, a')).find(el => /сканер|сканировать|scan/i.test(el.textContent));
-      }
-
-      if (scanBtn) {
-        // удаляем старые обработчики и вешаем новый
-        scanBtn.removeEventListener('click', startCamera);
-        scanBtn.addEventListener('click', startCamera);
-        console.log('[scanner] Bound startCamera to', scanBtn);
-      } else {
-        console.warn('[scanner] scan button not found — проверь id или текст кнопки');
-      }
-
-      if (closeScannerBtn) {
-        closeScannerBtn.removeEventListener('click', stopCamera);
-        closeScannerBtn.addEventListener('click', stopCamera);
-      }
-      if (deviceSelect) {
-        deviceSelect.removeEventListener('change', onDeviceChange);
-        deviceSelect.addEventListener('change', onDeviceChange);
-      }
-      if (torchBtn) {
-        torchBtn.removeEventListener('click', toggleTorch);
-        torchBtn.addEventListener('click', toggleTorch);
-      }
-    }
-
-    async function onDeviceChange() {
-      currentDeviceId = deviceSelect.value;
-      if (scanning) {
-        await startCamera();
-      }
-    }
-
-    // --- Инициализация ---
-    bindUI();
-    (async function init() {
-      try { await enumerateCameras(); } catch (e) {}
-      console.log('[scanner] init done. scanBtn:', scanBtn);
-    })();
-
-    // Экспорт для отладки
-    window._barcodeScanner = {
-      startCamera,
-      stopCamera,
-      enumerateCameras,
-      tryDecodeCanvas,
-      getCanvas
-    };
-  }); // onReady end
 })();
+
 
 
 
