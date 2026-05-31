@@ -1579,89 +1579,79 @@ function animate() {
 }
 animate();
   // Голосовой поиск для поля #search с предобработкой, фуззи-поиском и авто-заменой
-// Универсальный ZXing canvas-сканер, tuned for iPhone Safari (paste after page HTML).
-// Требует в DOM: #voice-search-btn, #barcode-modal, #barcode-scanner, #barcode-close, #search.
-// Подгружает ZXing автоматически если нужно, отключает цифровой зум (если возможно),
-// делает canvas-предобработку и декодирует на нескольких масштабах/поворотах.
-// Вставь этот скрипт в конец страницы (перед </body>).
-
+// Полный скрипт сканера (BarcodeDetector + ZXing fallback)
+// Требует в DOM элементы с id:
+// #scannerCard, #preview (video), #deviceSelect, #torchBtn, #closeScannerBtn, #scan-btn, #scanResult, #toast
+// Подключи ZXing UMD (https://cdn.jsdelivr.net/npm/@zxing/browser@latest) в <head> или скрипт подгрузится автоматически.
 (function () {
   // --- Настройки ---
+  const DEBOUNCE_MS = 900;
+  const MAX_CANVAS_DIM = 900; // downscale target for speed
   const CONSTRAINTS_TRIES = [
+    { width: { ideal: 1280 }, height: { ideal: 720 } },
     { width: { ideal: 960 }, height: { ideal: 540 } },
-    { width: { ideal: 640 }, height: { ideal: 480 } },
-    { width: { ideal: 480 }, height: { ideal: 360 } }
+    { width: { ideal: 640 }, height: { ideal: 480 } }
   ];
-  const SCALES = [1.0, 1.6, 0.8];
-  const ROTATIONS = [0, 90, -90];
-  const TARGET_W = 900;           // уменьшай для слабых устройств
-  const PROCESS_INTERVAL = 120;   // ms (~8 FPS)
-  const CONFIRM_REQUIRED = 2;
-  const CONFIRM_WINDOW = 1200;    // ms
-  const COOLDOWN = 700;           // ms between accepted scans
+  const ZXING_CDN = 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest';
+
+  // --- Состояние ---
+  let stream = null;
+  let scanning = false;
+  let currentDeviceId = null;
+  let reader = null;
+  let detector = ('BarcodeDetector' in window)
+    ? new BarcodeDetector({ formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "itf"] })
+    : null;
+
+  let canvasPool = [];
+  let lastDetected = { code: null, ts: 0 };
 
   // --- DOM ---
-  const triggerBtn = document.getElementById('voice-search-btn');
-  const modal = document.getElementById('barcode-modal');
-  const scannerEl = document.getElementById('barcode-scanner');
-  const closeBtn = document.getElementById('barcode-close');
-  const searchInput = document.getElementById('search');
-  const logEl = document.getElementById('scanner-log'); // optional
-  const beep = document.getElementById('beep-sound'); // optional
+  const scannerCard = document.getElementById("scannerCard");
+  const preview = document.getElementById("preview"); // <video>
+  const deviceSelect = document.getElementById("deviceSelect");
+  const torchBtn = document.getElementById("torchBtn");
+  const closeScannerBtn = document.getElementById("closeScannerBtn");
+  const scanResult = document.getElementById("scanResult");
+  const scanBtn = document.getElementById("scan-btn");
+  const toastEl = document.getElementById("toast");
 
-  if (!triggerBtn || !modal || !scannerEl || !closeBtn || !searchInput) {
-    console.warn('Scanner: required DOM elements missing.');
-    return;
+  // --- Утилиты UI ---
+  function showToast(text, ms = 1200) {
+    if (!toastEl) return;
+    toastEl.textContent = text;
+    toastEl.style.transition = 'opacity 200ms';
+    toastEl.style.opacity = "1";
+    setTimeout(() => { toastEl.style.opacity = "0"; }, ms);
   }
 
-  // --- State ---
-  let stream = null;
-  let video = null;
-  let track = null;
-  let running = false;
-  let codeReader = null;
-  let manualTimer = null;
-  let lastDetected = 0;
-  let confirmState = null;
-
-  // --- Logging helper ---
-  function log(msg, show = true) {
-    console.log('[scanner] ' + msg);
-    if (logEl && show) {
-      logEl.style.display = 'block';
-      const d = document.createElement('div');
-      d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-      logEl.appendChild(d);
-      logEl.scrollTop = logEl.scrollHeight;
-    }
+  function logResult(text) {
+    if (scanResult) scanResult.textContent = text;
+    console.log('[scanner]', text);
   }
 
-  // --- Confirm helper ---
-  function resetConfirm() { confirmState = null; }
-  function registerConfirm(code) {
-    const now = Date.now();
-    if (!confirmState || confirmState.code !== code || (now - confirmState.firstAt) > CONFIRM_WINDOW) {
-      confirmState = { code: code, count: 1, firstAt: now };
-      return false;
-    }
-    confirmState.count++;
-    return confirmState.count >= CONFIRM_REQUIRED;
+  // --- Canvas pool ---
+  function getCanvas(w, h) {
+    for (const c of canvasPool) if (c.width === w && c.height === h) return c;
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    canvasPool.push(c);
+    return c;
   }
 
-  // --- Load ZXing UMD if missing ---
+  // --- ZXing loader (UMD) ---
   function loadZXingIfNeeded() {
     return new Promise((resolve, reject) => {
       if (typeof ZXing !== 'undefined' && ZXing && ZXing.BrowserMultiFormatReader) return resolve();
-      const src = 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest';
-      // If a script with same src exists, wait for it
-      const existing = Array.from(document.scripts).find(s => s.src && s.src.indexOf(src) !== -1);
+      // check existing script tags
+      const existing = Array.from(document.scripts).find(s => s.src && s.src.indexOf(ZXING_CDN) !== -1);
       if (existing) {
-        existing.addEventListener('load', () => (typeof ZXing !== 'undefined' ? resolve() : reject(new Error('ZXing not found after load'))));
+        existing.addEventListener('load', () => (typeof ZXing !== 'undefined' ? resolve() : reject(new Error('ZXing not available after load'))));
         existing.addEventListener('error', () => reject(new Error('ZXing load error')));
         return;
       }
       const s = document.createElement('script');
-      s.src = src;
+      s.src = ZXING_CDN;
       s.async = false;
       s.onload = () => (typeof ZXing !== 'undefined' ? resolve() : reject(new Error('ZXing not available after load')));
       s.onerror = () => reject(new Error('ZXing load error'));
@@ -1669,264 +1659,279 @@ animate();
     });
   }
 
-  // --- getUserMedia tries to avoid auto-zoom ---
-  async function tryGetStream() {
-    for (let c of CONSTRAINTS_TRIES) {
+  // --- Попытка декодирования canvas: сначала BarcodeDetector, затем ZXing fallback ---
+  async function tryDecodeCanvas(canvas) {
+    // 1) BarcodeDetector (fast, native)
+    if (detector) {
       try {
-        log(`getUserMedia try: ${JSON.stringify(c)}`);
-        const s = await navigator.mediaDevices.getUserMedia({
-          video: Object.assign({ facingMode: { ideal: 'environment' } }, c),
-          audio: false
-        });
+        const ctx = canvas.getContext("2d");
+        // BarcodeDetector accepts ImageBitmap or ImageData; pass ImageBitmap for performance
+        const bitmap = await createImageBitmap(canvas);
+        const res = await detector.detect(bitmap);
+        bitmap.close();
+        if (res && res.length) {
+          // return first rawValue
+          return String(res[0].rawValue);
+        }
+      } catch (e) {
+        // ignore and fallback
+      }
+    }
+
+    // 2) ZXing fallback (synchronous decode via BinaryBitmap)
+    try {
+      // ensure ZXing loaded
+      if (typeof ZXing === 'undefined') {
+        await loadZXingIfNeeded().catch(() => null);
+      }
+      if (typeof ZXing !== 'undefined') {
+        // Use HTMLCanvasElementLuminanceSource + HybridBinarizer
+        const src = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+        const bin = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
+        const readerLocal = new ZXing.MultiFormatReader();
+        const result = readerLocal.decode(bin);
+        if (result && result.text) return String(result.text);
+      }
+    } catch (e) {
+      // ZXing decode failed — ignore
+    }
+
+    return null;
+  }
+
+  // --- Предобработка: grayscale + contrast-ish (in-place on canvas) ---
+  function preprocessCanvas(ctx, w, h) {
+    try {
+      const id = ctx.getImageData(0, 0, w, h);
+      const d = id.data;
+      // simple grayscale + contrast boost
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        let v = 0.299 * r + 0.587 * g + 0.114 * b;
+        v = ((v - 128) * 1.15) + 128; // contrast
+        d[i] = d[i + 1] = d[i + 2] = v;
+      }
+      ctx.putImageData(id, 0, 0);
+    } catch (e) {
+      // ignore if cross-origin or other issues
+    }
+  }
+
+  // --- Основной цикл сканирования ---
+  async function scanLoop() {
+    if (!scanning || !preview || !preview.videoWidth || !preview.videoHeight) {
+      if (scanning) requestAnimationFrame(scanLoop);
+      return;
+    }
+
+    const w = preview.videoWidth;
+    const h = preview.videoHeight;
+
+    // downscale to speed up decoding while preserving aspect
+    const scale = Math.max(1, Math.floor(Math.max(w, h) / MAX_CANVAS_DIM));
+    const sw = Math.floor(w / scale);
+    const sh = Math.floor(h / scale);
+
+    const small = getCanvas(sw, sh);
+    const sctx = small.getContext("2d");
+    sctx.drawImage(preview, 0, 0, w, h, 0, 0, sw, sh);
+
+    // ROI: central horizontal band (wider) to increase chance to hit barcode
+    const roiH = Math.floor(sh * 0.5);
+    const roiY = Math.floor((sh - roiH) / 2);
+    const roi = getCanvas(sw, roiH);
+    const rctx = roi.getContext("2d");
+    rctx.clearRect(0, 0, sw, roiH);
+    rctx.drawImage(small, 0, roiY, sw, roiH, 0, 0, sw, roiH);
+
+    // preprocess to improve contrast
+    preprocessCanvas(rctx, sw, roiH);
+
+    // try decode
+    const code = await tryDecodeCanvas(roi);
+    const now = Date.now();
+    if (code && (lastDetected.code !== code || now - lastDetected.ts > DEBOUNCE_MS)) {
+      lastDetected = { code, ts: now };
+      onBarcodeDetected(String(code).trim());
+    }
+
+    if (scanning) requestAnimationFrame(scanLoop);
+  }
+
+  // --- Обработчик найденного штрихкода ---
+  function onBarcodeDetected(code) {
+    logResult('Detected: ' + code);
+    showToast('Код: ' + code, 1200);
+    // вставляем в поле результата и останавливаем сканер
+    if (scanResult) scanResult.textContent = code;
+    // если нужно отправить форму или вставить в #search:
+    const searchInput = document.getElementById('search');
+    if (searchInput) {
+      searchInput.value = code;
+      const form = searchInput.closest('form');
+      if (form) {
+        setTimeout(() => {
+          try { form.submit(); } catch (e) { /* ignore */ }
+        }, 80);
+      }
+    }
+    // остановим сканер автоматически после успешного чтения
+    stopCamera();
+  }
+
+  // --- Перечисление камер ---
+  async function enumerateCameras() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter(d => d.kind === "videoinput");
+      deviceSelect.innerHTML = "";
+      cams.forEach((c, idx) => {
+        const opt = document.createElement("option");
+        opt.value = c.deviceId;
+        opt.text = c.label || `Камера ${idx + 1}`;
+        deviceSelect.appendChild(opt);
+      });
+      if (cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
+      if (currentDeviceId) deviceSelect.value = currentDeviceId;
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // --- Попытка получить поток с перебором constraints (чтобы уменьшить авто-zoom) ---
+  async function tryGetStreamWithTries(deviceId) {
+    for (const c of CONSTRAINTS_TRIES) {
+      try {
+        const constraints = {
+          audio: false,
+          video: Object.assign({ deviceId: deviceId ? { exact: deviceId } : undefined, facingMode: { ideal: "environment" } }, c)
+        };
+        const s = await navigator.mediaDevices.getUserMedia(constraints);
         const tracks = s.getVideoTracks();
         if (!tracks || !tracks.length) { s.getTracks().forEach(t => t.stop()); continue; }
         return s;
       } catch (e) {
-        log('getUserMedia failed: ' + (e && e.name ? e.name : e));
-        await new Promise(r => setTimeout(r, 180));
+        // try next
+        await new Promise(r => setTimeout(r, 150));
       }
     }
-    throw new Error('getUserMedia failed for all constraints');
+    // final attempt with minimal constraints
+    return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
   }
 
-  // --- apply hints to track (min zoom, continuous focus) ---
-  async function applyTrackHints(t) {
-    if (!t || !t.getCapabilities || !t.applyConstraints) return;
+  // --- Старт камеры ---
+  async function startCamera() {
+    if (scanning) return;
+    stopCamera(); // ensure clean state
+    scanning = true;
+
+    await enumerateCameras();
+
     try {
-      const caps = t.getCapabilities();
-      log('Track capabilities: ' + JSON.stringify(caps));
-      const adv = [];
-      if (caps.zoom && typeof caps.zoom.min === 'number') adv.push({ zoom: caps.zoom.min });
-      if (caps.focusMode && caps.focusMode.includes('continuous')) adv.push({ focusMode: 'continuous' });
-      if (adv.length) await t.applyConstraints({ advanced: adv }).catch(e => log('applyConstraints catch: ' + e));
-    } catch (e) {
-      log('applyTrackHints error: ' + e);
-    }
-  }
+      stream = await tryGetStreamWithTries(deviceSelect.value || currentDeviceId);
+      preview.srcObject = stream;
+      await preview.play();
 
-  // --- try enable torch (iOS Safari usually won't allow) ---
-  async function tryEnableTorch(t) {
-    if (!t || !t.getCapabilities || !t.applyConstraints) return false;
-    try {
-      const caps = t.getCapabilities();
-      if (caps.torch) {
-        await t.applyConstraints({ advanced: [{ torch: true }] }).catch(()=>{});
-        return true;
-      }
-    } catch (e) { /* ignore */ }
-    return false;
-  }
-
-  // --- Preprocess: grayscale + contrast + simple global threshold ---
-  function preprocessCanvas(ctx, w, h) {
-    const id = ctx.getImageData(0, 0, w, h);
-    const d = id.data;
-    // grayscale + contrast boost
-    for (let i = 0; i < d.length; i += 4) {
-      const r = d[i], g = d[i+1], b = d[i+2];
-      let v = 0.299*r + 0.587*g + 0.114*b;
-      v = ((v - 128) * 1.2) + 128;
-      d[i] = d[i+1] = d[i+2] = v;
-    }
-    // global mean threshold
-    let sum = 0, cnt = 0;
-    for (let i = 0; i < d.length; i += 4) { sum += d[i]; cnt++; }
-    const mean = sum / cnt;
-    for (let i = 0; i < d.length; i += 4) {
-      const v = d[i] > mean ? 255 : 0;
-      d[i] = d[i+1] = d[i+2] = v;
-    }
-    ctx.putImageData(id, 0, 0);
-  }
-
-  // --- decode helper using ZXing.decodeFromImageElement ---
-  function decodeCanvasWithZXing(canvas) {
-    return new Promise(resolve => {
-      const img = new Image();
-      img.onload = async () => {
+      const tracks = stream.getVideoTracks();
+      if (tracks && tracks.length) {
+        currentDeviceId = tracks[0].getSettings().deviceId || currentDeviceId;
+        if (currentDeviceId) deviceSelect.value = currentDeviceId;
+        // try to apply hints: minimize zoom, continuous focus
         try {
-          const res = await codeReader.decodeFromImageElement(img).catch(()=>null);
-          resolve(res && res.text ? res.text : null);
-        } catch (e) { resolve(null); }
-      };
-      img.onerror = () => resolve(null);
-      img.src = canvas.toDataURL('image/png');
-    });
+          const t = tracks[0];
+          if (t.getCapabilities && t.applyConstraints) {
+            const caps = t.getCapabilities();
+            const adv = [];
+            if (caps.zoom && typeof caps.zoom.min === 'number') adv.push({ zoom: caps.zoom.min });
+            if (caps.focusMode && caps.focusMode.includes('continuous')) adv.push({ focusMode: 'continuous' });
+            if (adv.length) await t.applyConstraints({ advanced: adv }).catch(()=>{});
+          }
+        } catch (e) { /* ignore */ }
+      }
+
+      // ensure ZXing reader available for fallback (lazy load)
+      if (typeof ZXing === 'undefined') {
+        // load but don't block UI; fallback will attempt to load when needed
+        loadZXingIfNeeded().catch(()=>{});
+      }
+
+      // create reader instance for continuous decode if needed (not used in current canvas flow)
+      if (!reader && typeof ZXing !== 'undefined' && ZXing.BrowserMultiFormatReader) {
+        try { reader = new ZXing.BrowserMultiFormatReader(); } catch (e) { reader = null; }
+      }
+
+      scannerCard.style.display = "block";
+      showToast("Сканер включён");
+      logResult('Camera started');
+
+      requestAnimationFrame(scanLoop);
+    } catch (err) {
+      console.error(err);
+      showToast("Ошибка доступа к камере");
+      scanning = false;
+      logResult('Camera error: ' + (err && err.message ? err.message : err));
+    }
   }
 
-  // --- manual processing loop (robust) ---
-  async function manualLoop() {
-    if (!running || !video || video.readyState < 2) {
-      if (running) manualTimer = setTimeout(manualLoop, 200);
-      return;
+  // --- Остановка камеры ---
+  function stopCamera() {
+    scanning = false;
+    if (preview && preview.srcObject) {
+      try { preview.srcObject.getTracks().forEach(t => t.stop()); } catch (e) { /* ignore */ }
+      preview.srcObject = null;
     }
-
-    const vw = video.videoWidth || 1280;
-    const vh = video.videoHeight || 720;
-    const targetW = Math.min(TARGET_W, vw);
-    const scale = targetW / vw;
-    const cw = Math.round(vw * scale);
-    const ch = Math.round(vh * scale);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = cw;
-    canvas.height = ch;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, cw, ch);
-
-    // ROI: central horizontal band (wider)
-    const roiH = Math.round(ch * 0.5);
-    const roiY = Math.round((ch - roiH) / 2);
-    const roiCanvas = document.createElement('canvas');
-    roiCanvas.width = cw;
-    roiCanvas.height = roiH;
-    const rctx = roiCanvas.getContext('2d');
-    rctx.drawImage(canvas, 0, roiY, cw, roiH, 0, 0, cw, roiH);
-
-    // preprocess
-    preprocessCanvas(rctx, roiCanvas.width, roiCanvas.height);
-
-    let found = null;
-    for (let s of SCALES) {
-      const tmp = document.createElement('canvas');
-      tmp.width = Math.max(200, Math.round(roiCanvas.width * s));
-      tmp.height = Math.max(60, Math.round(roiCanvas.height * s));
-      const tctx = tmp.getContext('2d');
-      tctx.drawImage(roiCanvas, 0, 0, roiCanvas.width, roiCanvas.height, 0, 0, tmp.width, tmp.height);
-
-      for (let rot of ROTATIONS) {
-        let src = tmp;
-        if (rot !== 0) {
-          const rotC = document.createElement('canvas');
-          rotC.width = tmp.height;
-          rotC.height = tmp.width;
-          const r2 = rotC.getContext('2d');
-          r2.translate(rotC.width/2, rotC.height/2);
-          r2.rotate(rot * Math.PI / 180);
-          r2.drawImage(tmp, -tmp.width/2, -tmp.height/2);
-          src = rotC;
-        }
-        const code = await decodeCanvasWithZXing(src);
-        if (code) { found = code; log(`decode success: ${code} (scale ${s}, rot ${rot})`); break; }
-      }
-      if (found) break;
-    }
-
-    if (found && /^[0-9A-Z\-]{4,40}$/.test(found)) {
-      const now = Date.now();
-      if (now - lastDetected > COOLDOWN) {
-        lastDetected = now;
-        const confirmed = registerConfirm(found);
-        log(`Candidate: ${found} confirmed=${confirmState ? confirmState.count : 0}`);
-        if (confirmed) {
-          try { if (navigator.vibrate) navigator.vibrate(120); } catch(e){}
-          if (beep) { try { beep.currentTime = 0; beep.play().catch(()=>{}); } catch(e){} }
-          searchInput.value = found;
-          const form = searchInput.closest('form');
-          if (form) setTimeout(() => { try { form.submit(); } catch(e) { console.warn(e); } }, 80);
-          stopScanner();
-          modal.style.display = 'none';
-          return;
-        }
-      }
-    } else {
-      if (confirmState && (Date.now() - confirmState.firstAt) > CONFIRM_WINDOW) resetConfirm();
-    }
-
-    manualTimer = setTimeout(manualLoop, PROCESS_INTERVAL);
+    scannerCard.style.display = "none";
+    logResult('Scanner stopped');
   }
 
-  // --- attach stream to video and prepare track ---
-  async function attachStreamAndPrepare(s) {
-    stream = s;
-    video = document.createElement('video');
-    video.setAttribute('playsinline', '');
-    video.muted = true;
-    video.autoplay = true;
-    video.style.width = '100%';
-    video.style.height = '100%';
-    video.style.objectFit = 'contain';
-    scannerEl.querySelectorAll('video').forEach(n => n.remove());
-    scannerEl.insertBefore(video, scannerEl.firstChild);
-    video.srcObject = stream;
-    try { await video.play(); log('video.play OK'); } catch (e) { log('video.play failed: ' + e); }
+  // --- Переключение фонарика (torch) ---
+  async function toggleTorch() {
+    if (!stream) return;
     const tracks = stream.getVideoTracks();
-    if (tracks && tracks.length) {
-      track = tracks[0];
-      track.addEventListener('ended', () => { log('track ended'); stopScanner(); });
-      await applyTrackHints(track);
-    }
-  }
-
-  // --- start/stop scanner ---
-  async function startScanner() {
-    if (running) return;
-    running = true;
-    resetConfirm();
-    log('Starting scanner (iPhone tuned)...');
-
+    if (!tracks || !tracks.length) return;
+    const t = tracks[0];
     try {
-      await loadZXingIfNeeded();
-    } catch (e) {
-      log('ZXing load failed: ' + e, true);
-      running = false;
-      return;
-    }
-
-    try {
-      codeReader = new ZXing.BrowserMultiFormatReader();
-    } catch (e) {
-      log('ZXing init failed: ' + e, true);
-      running = false;
-      return;
-    }
-
-    try {
-      const s = await tryGetStream();
-      await attachStreamAndPrepare(s);
-      if (track) {
-        const torchOk = await tryEnableTorch(track);
-        log('Torch attempt: ' + (torchOk ? 'requested' : 'not available'));
+      const caps = t.getCapabilities ? t.getCapabilities() : {};
+      if (!caps.torch) {
+        showToast('Torch не поддерживается', 1000);
+        return;
       }
-      manualLoop();
+      const settings = t.getSettings ? t.getSettings() : {};
+      const current = settings.torch || false;
+      await t.applyConstraints({ advanced: [{ torch: !current }] });
+      showToast(!current ? 'Фонарик включён' : 'Фонарик выключен', 900);
     } catch (e) {
-      log('startScanner error: ' + e, true);
-      stopScanner();
+      showToast('Не удалось переключить фонарик', 900);
     }
   }
 
-  function stopScanner() {
-    running = false;
-    try { if (codeReader) { codeReader.reset(); codeReader = null; } } catch(e){}
-    try { if (manualTimer) { clearTimeout(manualTimer); manualTimer = null; } } catch(e){}
-    try { if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; } } catch(e){}
-    if (video) { try { video.pause(); } catch(e){} try { video.srcObject = null; } catch(e){} video.remove(); video = null; }
-    if (track) { try { track.stop(); } catch(e){} track = null; }
-    resetConfirm();
-    log('Scanner stopped');
-  }
-
-  // --- UI bindings ---
-  triggerBtn.addEventListener('click', async () => {
-    modal.style.display = 'flex';
-    if (logEl) logEl.innerHTML = '';
-    await new Promise(r => setTimeout(r, 160));
-    startScanner();
+  // --- UI events binding ---
+  if (scanBtn) scanBtn.addEventListener('click', startCamera);
+  if (closeScannerBtn) closeScannerBtn.addEventListener('click', stopCamera);
+  if (deviceSelect) deviceSelect.addEventListener('change', async () => {
+    currentDeviceId = deviceSelect.value;
+    if (scanning) {
+      await startCamera();
+    }
   });
+  if (torchBtn) torchBtn.addEventListener('click', toggleTorch);
 
-  closeBtn.addEventListener('click', () => {
-    stopScanner();
-    modal.style.display = 'none';
-  });
+  // --- Expose for debug ---
+  window._barcodeScanner = {
+    startCamera,
+    stopCamera,
+    tryDecodeCanvas,
+    getCanvas,
+    enumerateCameras
+  };
 
-  window.addEventListener('pagehide', () => { stopScanner(); });
-
-  // expose for debug
-  window.startScanner = startScanner;
-  window.stopScanner = stopScanner;
-  window._iphoneZxingScanner = { start: startScanner, stop: stopScanner, log };
+  // --- Auto-init: enumerate devices on load for UI readiness ---
+  (async function init() {
+    try { await enumerateCameras(); } catch (e) { /* ignore */ }
+  })();
 
 })();
+
 
 
 
