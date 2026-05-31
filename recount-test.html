@@ -442,23 +442,32 @@ input[data-code] {
     </div>
   </div>
   <!-- Звук "пик" -->
+<!-- Звук при успешном скане -->
 <audio id="beep-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 
+<!-- Модалка сканера -->
 <div id="barcode-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; z-index:9999;">
-  <div style="background:#fff; padding:18px; border-radius:12px; text-align:center; position:relative; width:380px;">
-    <h3 style="margin:0 0 12px 0;">Сканирование штрих-кода</h3>
+  <div style="background:#fff; padding:16px; border-radius:10px; width:360px; text-align:center; position:relative;">
+    <h3 style="margin:0 0 10px 0;">Сканирование штрих‑кода</h3>
 
-    <div id="barcode-scanner" style="width:340px; height:260px; margin:0 auto; position:relative; overflow:hidden; border-radius:10px; background:#000;">
-      <!-- video вставляется динамически -->
+    <div id="barcode-scanner" style="width:320px; height:240px; margin:0 auto; background:#000; border-radius:8px; overflow:hidden; position:relative;">
+      <!-- video вставляется динамически сюда -->
+      <div id="scanner-overlay" style="pointer-events:none; position:absolute; inset:0;">
+        <div style="position:absolute; left:8px; top:8px; width:36px; height:36px; border-top:3px solid #0ff; border-left:3px solid #0ff;"></div>
+        <div style="position:absolute; right:8px; top:8px; width:36px; height:36px; border-top:3px solid #0ff; border-right:3px solid #0ff;"></div>
+        <div style="position:absolute; left:8px; bottom:8px; width:36px; height:36px; border-bottom:3px solid #0ff; border-left:3px solid #0ff;"></div>
+        <div style="position:absolute; right:8px; bottom:8px; width:36px; height:36px; border-bottom:3px solid #0ff; border-right:3px solid #0ff;"></div>
+      </div>
     </div>
-
-    <div id="scanner-diag" style="text-align:left; margin-top:10px; font-size:12px; color:#333; max-height:120px; overflow:auto;"></div>
 
     <div style="margin-top:12px;">
-      <button id="barcode-close" style="padding:8px 14px; margin-right:8px;">Закрыть</button>
+      <button id="barcode-close" style="padding:8px 12px; margin-right:8px;">Закрыть</button>
     </div>
+
+    <div id="scanner-log" style="font-size:12px; color:#444; text-align:left; margin-top:8px; max-height:80px; overflow:auto; display:none;"></div>
   </div>
 </div>
+
 
 
 
@@ -1563,36 +1572,41 @@ function animate() {
 animate();
   // Голосовой поиск для поля #search с предобработкой, фуззи-поиском и авто-заменой
 (function() {
-  const triggerBtn = document.getElementById('voice-search-btn'); // кнопка открытия
+  const triggerBtn = document.getElementById('voice-search-btn'); // твоя кнопка
   const modal = document.getElementById('barcode-modal');
   const scannerEl = document.getElementById('barcode-scanner');
   const closeBtn = document.getElementById('barcode-close');
-  const diagEl = document.getElementById('scanner-diag');
+  const logEl = document.getElementById('scanner-log');
   const beep = document.getElementById('beep-sound');
   const searchInput = document.getElementById('search');
 
-  if (!triggerBtn || !modal || !scannerEl || !closeBtn) return;
+  if (!triggerBtn || !modal || !scannerEl || !closeBtn || !searchInput) {
+    console.warn('Не найдены обязательные элементы: #voice-search-btn, #barcode-modal, #barcode-scanner, #barcode-close, #search');
+    return;
+  }
 
   let codeReader = null;
   let videoEl = null;
   let stream = null;
   let running = false;
-  let restartTimer = null;
+  let restartTimeout = null;
 
-  function log(msg) {
+  function log(msg, show=false) {
     console.log(msg);
-    if (!diagEl) return;
-    const d = document.createElement('div');
-    d.textContent = typeof msg === 'string' ? msg : JSON.stringify(msg);
-    diagEl.appendChild(d);
-    diagEl.scrollTop = diagEl.scrollHeight;
+    if (!logEl) return;
+    if (show) {
+      logEl.style.display = 'block';
+      const d = document.createElement('div');
+      d.textContent = msg;
+      logEl.appendChild(d);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
   }
 
   triggerBtn.addEventListener('click', async () => {
     modal.style.display = 'flex';
-    diagEl.innerHTML = '';
-    log('Открываем модалку, запускаем сканер...');
-    await new Promise(r => setTimeout(r, 180)); // дать рендеру появиться
+    logEl && (logEl.innerHTML = '');
+    await new Promise(r => setTimeout(r, 160)); // дать рендеру появиться
     startScanner();
   });
 
@@ -1602,22 +1616,19 @@ animate();
   });
 
   async function startScanner() {
-    if (running) {
-      log('Сканер уже запущен');
-      return;
-    }
+    if (running) return;
     running = true;
     codeReader = new ZXing.BrowserMultiFormatReader();
 
     try {
-      log('Запрашиваем камеру...');
+      log('Запрашиваем камеру...', true);
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false
       });
-      log('Поток получен');
+      log('Камера получена', true);
 
-      // создаём video элемент
+      // создаём video
       videoEl = document.createElement('video');
       videoEl.setAttribute('playsinline', '');
       videoEl.setAttribute('autoplay', '');
@@ -1627,84 +1638,78 @@ animate();
       videoEl.style.objectFit = 'cover';
       videoEl.srcObject = stream;
 
-      // вставляем видео
+      // вставляем видео в контейнер
       scannerEl.querySelectorAll('video').forEach(n => n.remove());
       scannerEl.insertBefore(videoEl, scannerEl.firstChild);
 
-      // ждём play
       try {
         await videoEl.play();
-        log('video.play() OK');
+        log('video.play() OK', true);
       } catch (e) {
-        log('video.play() failed: ' + e);
+        log('video.play() failed: ' + e, true);
       }
 
-      // следим за треком — если закончится, пробуем перезапустить
-      const [track] = stream.getVideoTracks();
-      if (track) {
-        track.addEventListener('ended', () => {
-          log('Видеотрек завершился');
-          scheduleRestart();
-        });
-      }
-
-      // пробуем отключить цифровой зум, если поддерживается
+      // попытка отключить цифровой зум, если поддерживается
       try {
+        const [track] = stream.getVideoTracks();
         if (track && track.getCapabilities) {
           const caps = track.getCapabilities();
           if (caps.zoom) {
             const minZoom = caps.zoom.min || 1;
             await track.applyConstraints({ advanced: [{ zoom: minZoom }] }).catch(()=>{});
-            log('applyConstraints zoom -> ' + minZoom);
+            log('Установлен zoom = ' + minZoom, true);
           }
         }
       } catch (e) {
-        log('applyConstraints failed: ' + e);
+        log('applyConstraints zoom failed: ' + e, true);
       }
 
-      // Запускаем непрерывное распознавание, но НЕ закрываем модалку при ошибках
+      // следим за окончанием трека
+      const [track] = stream.getVideoTracks();
+      if (track) {
+        track.addEventListener('ended', () => {
+          log('Видеотрек завершился, перезапуск...', true);
+          scheduleRestart();
+        });
+      }
+
+      // непрерывное распознавание
       codeReader.decodeFromVideoElementContinuously(videoEl, (result, err) => {
         if (result) {
           const code = result.text;
           if (!code) return;
-          log('Найден код: ' + code);
+          log('Код найден: ' + code, true);
 
           // звук и вибрация
           try { if (navigator.vibrate) navigator.vibrate(120); } catch(e){}
           if (beep) { beep.currentTime = 0; beep.play().catch(()=>{}); }
 
-          // вставляем в input и отправляем форму
-          if (searchInput) {
-            searchInput.value = code;
-            const form = searchInput.closest('form');
-            if (form) {
-              // даём чуть времени, чтобы UI успел обработать вставку
-              setTimeout(() => {
-                try { form.submit(); } catch(e) { console.warn('form.submit failed', e); }
-              }, 80);
-            }
+          // вставляем код в поле и отправляем форму
+          searchInput.value = code;
+          const form = searchInput.closest('form');
+          if (form) {
+            setTimeout(() => {
+              try { form.submit(); } catch(e) { console.warn('form.submit failed', e); }
+            }, 80);
           }
 
-          // останавливаем сканер только после успешного результата
+          // останавливаем и закрываем
           stopScanner();
           modal.style.display = 'none';
         } else if (err) {
-          // NotFoundException — нормальное поведение, игнорируем
+          // NotFoundException — норм, игнорируем
           const name = err && err.name ? err.name : '';
-          if (name === 'NotFoundException' || err instanceof ZXing.NotFoundException) {
-            // ничего не делаем
+          if (name === 'NotFoundException' || (typeof ZXing !== 'undefined' && err instanceof ZXing.NotFoundException)) {
             return;
           }
-          // другие ошибки логируем, но не закрываем модалку
-          log('ZXing error: ' + (err && err.message ? err.message : err));
+          log('ZXing error: ' + (err && err.message ? err.message : err), true);
         }
       });
 
-      log('Сканер запущен, ожидаем штрихкод');
+      log('Сканер запущен, наведите камеру на штрих‑код', true);
 
     } catch (err) {
-      log('Ошибка при старте сканера: ' + (err && err.message ? err.message : err));
-      // не закрываем модалку автоматически — даём пользователю увидеть сообщение
+      log('Ошибка при старте камеры: ' + (err && err.message ? err.message : err), true);
       running = false;
       cleanupStream();
     }
@@ -1712,12 +1717,7 @@ animate();
 
   function stopScanner() {
     running = false;
-    try {
-      if (codeReader) {
-        codeReader.reset();
-        codeReader = null;
-      }
-    } catch(e) { console.debug(e); }
+    try { if (codeReader) { codeReader.reset(); codeReader = null; } } catch(e){}
     cleanupStream();
     if (videoEl) {
       try { videoEl.pause(); } catch(e){}
@@ -1725,35 +1725,26 @@ animate();
       videoEl.remove();
       videoEl = null;
     }
-    if (restartTimer) {
-      clearTimeout(restartTimer);
-      restartTimer = null;
-    }
-    log('Сканер остановлен');
+    if (restartTimeout) { clearTimeout(restartTimeout); restartTimeout = null; }
+    log('Сканер остановлен', true);
   }
 
   function cleanupStream() {
     if (stream) {
-      try {
-        stream.getTracks().forEach(t => t.stop());
-      } catch(e) {}
+      try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
       stream = null;
     }
   }
 
   function scheduleRestart(delay = 700) {
-    if (restartTimer) return;
-    log('Планируем перезапуск через ' + delay + 'ms');
-    restartTimer = setTimeout(async () => {
-      restartTimer = null;
-      if (!running) {
-        log('Перезапуск сканера');
-        startScanner();
-      }
+    if (restartTimeout) return;
+    restartTimeout = setTimeout(() => {
+      restartTimeout = null;
+      if (!running) startScanner();
     }, delay);
   }
 
-  // если пользователь уходит со страницы — останавливаем
+  // остановка при уходе со страницы
   window.addEventListener('pagehide', stopScanner);
 })();
 
