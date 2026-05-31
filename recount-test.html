@@ -441,36 +441,19 @@ input[data-code] {
   </div>
   <!-- Звук "пик" -->
 <!-- Модалка сканера -->
-<audio id="beep-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
-
-<div id="barcode-modal" style="
-  display:none; position:fixed; inset:0;
-  background:rgba(0,0,0,0.7); justify-content:center; align-items:center;
-  z-index:9999;">
-  <div style="background:#fff; padding:18px; border-radius:12px; text-align:center; position:relative; width:360px;">
+<div id="barcode-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; z-index:9999;">
+  <div style="background:#fff; padding:18px; border-radius:12px; text-align:center; position:relative; width:380px;">
     <h3 style="margin:0 0 12px 0;">Сканирование штрих-кода</h3>
-
-    <div id="barcode-scanner" style="width:320px; height:240px; margin:0 auto; position:relative; overflow:hidden; border-radius:10px; background:#000;">
-      <!-- Видео вставляется динамически сюда -->
-      <!-- Рамка -->
-      <div style="position:absolute; inset:0; pointer-events:none;">
-        <div style="position:absolute; top:6px; left:6px; width:36px; height:36px; border-top:4px solid #00eaff; border-left:4px solid #00eaff;"></div>
-        <div style="position:absolute; top:6px; right:6px; width:36px; height:36px; border-top:4px solid #00eaff; border-right:4px solid #00eaff;"></div>
-        <div style="position:absolute; bottom:6px; left:6px; width:36px; height:36px; border-bottom:4px solid #00eaff; border-left:4px solid #00eaff;"></div>
-        <div style="position:absolute; bottom:6px; right:6px; width:36px; height:36px; border-bottom:4px solid #00eaff; border-right:4px solid #00eaff;"></div>
-      </div>
-      <!-- Лазер -->
-      <div id="laser-line" style="position:absolute; left:0; right:0; height:3px; background:rgba(255,0,0,0.85); z-index:11; animation:scanline 1.4s linear infinite;"></div>
-      <style>
-        @keyframes scanline { 0%{top:6px} 50%{top:210px} 100%{top:6px} }
-      </style>
+    <div id="barcode-scanner" style="width:340px; height:260px; margin:0 auto; position:relative; overflow:hidden; border-radius:10px; background:#000;">
+      <!-- video будет вставлен сюда -->
     </div>
-
+    <div id="diag" style="text-align:left; margin-top:10px; font-size:12px; color:#333; max-height:120px; overflow:auto;"></div>
     <div style="margin-top:12px;">
       <button id="barcode-close" style="padding:8px 14px; margin-right:8px;">Закрыть</button>
     </div>
   </div>
 </div>
+
 
 
 
@@ -1572,48 +1555,36 @@ function animate() {
 animate();
   // Голосовой поиск для поля #search с предобработкой, фуззи-поиском и авто-заменой
 (function() {
-  const searchInput = document.getElementById('search');
-  const voiceBtn = document.getElementById('voice-search-btn');
   const modal = document.getElementById('barcode-modal');
-  const closeBtn = document.getElementById('barcode-close');
   const scannerEl = document.getElementById('barcode-scanner');
-  const beep = document.getElementById('beep-sound');
-
-  if (!searchInput || !voiceBtn) return;
-
+  const diagEl = document.getElementById('diag');
+  const closeBtn = document.getElementById('barcode-close');
+  const trigger = document.getElementById('voice-search-btn'); // твоя кнопка
   let stream = null;
-  let codeReader = null;
   let videoEl = null;
-  let running = false;
 
-  voiceBtn.addEventListener('click', async () => {
-    modal.style.display = 'flex';
-    // даём браузеру отрисовать модалку
-    await new Promise(r => setTimeout(r, 180));
-    start();
-  });
-
-  closeBtn.addEventListener('click', () => {
-    stop();
-    modal.style.display = 'none';
-  });
+  function log(msg) {
+    console.log(msg);
+    const p = document.createElement('div');
+    p.textContent = typeof msg === 'string' ? msg : JSON.stringify(msg);
+    diagEl.appendChild(p);
+    diagEl.scrollTop = diagEl.scrollHeight;
+  }
 
   async function start() {
-    if (running) return;
-    running = true;
+    diagEl.innerHTML = '';
+    modal.style.display = 'flex';
+    await new Promise(r => setTimeout(r, 180)); // дать рендеру появиться
 
     try {
-      // 1) Получаем поток камеры (нативный, минимальный запрос разрешений)
+      log('Запрашиваем камеру...');
       stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false
       });
+      log('Поток получен');
 
-      // 2) Создаём video элемент с нужными атрибутами (playsinline важен для iPhone)
+      // создаём video
       videoEl = document.createElement('video');
       videoEl.setAttribute('playsinline', '');
       videoEl.setAttribute('autoplay', '');
@@ -1623,105 +1594,109 @@ animate();
       videoEl.style.objectFit = 'cover';
       videoEl.srcObject = stream;
 
-      // Очищаем контейнер и вставляем видео
-      scannerEl.querySelectorAll('video').forEach(n => n.remove());
-      scannerEl.insertBefore(videoEl, scannerEl.firstChild);
+      // вставляем и ждём play
+      scannerEl.innerHTML = '';
+      scannerEl.appendChild(videoEl);
 
-      // Ждём пока видео начнёт играть
-      await videoEl.play().catch(()=>{});
-
-      // 3) Попытка отключить цифровой зум, если камера поддерживает
       try {
-        const [track] = stream.getVideoTracks();
-        const caps = track.getCapabilities ? track.getCapabilities() : {};
-        const settings = track.getSettings ? track.getSettings() : {};
-        // если есть zoom capability — принудительно установить 1
+        await videoEl.play();
+        log('video.play() успешно');
+      } catch (playErr) {
+        log('Ошибка при video.play(): ' + playErr);
+      }
+
+      // проверяем трек
+      const [track] = stream.getVideoTracks();
+      if (!track) {
+        log('Нет видеотрека в потоке');
+        return;
+      }
+
+      const settings = track.getSettings ? track.getSettings() : {};
+      const caps = track.getCapabilities ? track.getCapabilities() : {};
+      log('Track settings: ' + JSON.stringify(settings));
+      log('Track capabilities: ' + JSON.stringify(caps));
+
+      // попытка отключить зум если поддерживается
+      try {
         if (caps.zoom) {
-          await track.applyConstraints({ advanced: [{ zoom: caps.zoom.min || 1 }] });
-        }
-        // если есть torch capability — выключаем
-        if (caps.torch !== undefined) {
-          await track.applyConstraints({ advanced: [{ torch: false }] }).catch(()=>{});
-        }
-        // если есть focusMode — пробуем установить continuous
-        if (caps.focusMode && caps.focusMode.includes('continuous')) {
-          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(()=>{});
+          const minZoom = caps.zoom.min || 1;
+          log('Попытка установить zoom = ' + minZoom);
+          await track.applyConstraints({ advanced: [{ zoom: minZoom }] });
+          log('applyConstraints zoom OK');
+        } else {
+          log('zoom capability отсутствует');
         }
       } catch (e) {
-        // не критично — просто продолжаем
-        console.debug('zoom/torch applyConstraints failed', e);
+        log('applyConstraints zoom failed: ' + e);
       }
 
-      // 4) Инициализация ZXing и запуск непрерывного распознавания
-      codeReader = new ZXing.BrowserMultiFormatReader();
-
-      // Настройки фильтрации: уменьшаем ложные срабатывания
-      const hints = new Map();
-      // можно добавить конкретные форматы, если нужно ускорить:
-      // hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.CODE_128]);
-
-      codeReader.decodeFromVideoElementContinuously(videoEl, (result, err) => {
-        if (result) {
-          const code = result.text;
-          if (!code) return;
-
-          // Вибрация и звук
-          if (navigator.vibrate) navigator.vibrate(120);
-          if (beep) { beep.currentTime = 0; beep.play().catch(()=>{}); }
-
-          // Вставляем код и отправляем форму
-          searchInput.value = code;
-          const form = searchInput.closest('form');
-          if (form) form.submit();
-
-          // Останавливаем
-          stop();
-          modal.style.display = 'none';
-        } else if (err && !(err instanceof ZXing.NotFoundException)) {
-          // логируем другие ошибки (NotFoundException — нормальное поведение)
-          console.debug('ZXing error', err);
+      // попытка установить focusMode continuous если поддерживается
+      try {
+        if (caps.focusMode && caps.focusMode.includes('continuous')) {
+          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+          log('applyConstraints focusMode continuous OK');
+        } else {
+          log('focusMode continuous не поддерживается');
         }
-      });
+      } catch (e) {
+        log('applyConstraints focusMode failed: ' + e);
+      }
+
+      // перечисляем устройства
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cams = devices.filter(d => d.kind === 'videoinput');
+        log('Найдено видеоустройств: ' + cams.length);
+        cams.forEach((c, i) => log('cam['+i+'] label: "' + (c.label||'hidden') + '" id: ' + c.deviceId));
+      } catch (e) {
+        log('enumerateDevices failed: ' + e);
+      }
+
+      // финальная проверка видимости видео
+      const style = window.getComputedStyle(videoEl);
+      if (style.display === 'none' || videoEl.offsetParent === null) {
+        log('Video элемент невидим. Проверь CSS/overlay/z-index.');
+      } else {
+        log('Video видим в DOM. Если экран всё ещё чёрный — проверь аппарат/браузер.');
+      }
 
     } catch (err) {
-      console.error('Ошибка запуска камеры:', err);
-      // если не удалось запустить поток — показываем сообщение в консоли и закрываем
-      running = false;
-      if (stream) {
-        stream.getTracks().forEach(t => t.stop());
-        stream = null;
+      log('Ошибка getUserMedia: ' + err);
+      // если отказано в доступе — покажем подсказку
+      if (err && err.name === 'NotAllowedError') {
+        log('Доступ к камере запрещён. Проверь настройки сайта в браузере.');
       }
+      // остановим и очистим
+      stop();
     }
   }
 
   function stop() {
-    running = false;
     try {
-      if (codeReader) {
-        codeReader.reset();
-        codeReader = null;
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
       }
-    } catch(e){}
-
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
-      stream = null;
+      if (videoEl) {
+        videoEl.pause();
+        videoEl.srcObject = null;
+        videoEl.remove();
+        videoEl = null;
+      }
+    } catch (e) {
+      console.warn(e);
     }
-    if (videoEl) {
-      videoEl.pause();
-      videoEl.srcObject = null;
-      videoEl.remove();
-      videoEl = null;
-    }
+    modal.style.display = 'none';
   }
 
-  // Автоматическое закрытие при уходе со страницы
-  window.addEventListener('pagehide', stop);
+  // привязка событий
+  if (trigger) trigger.addEventListener('click', start);
+  closeBtn.addEventListener('click', stop);
+
+  // экспорт для отладки в консоли
+  window._scannerDebug = { start, stop };
 })();
-
-
-
-
 
 
 
