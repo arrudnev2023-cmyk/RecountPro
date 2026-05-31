@@ -39,7 +39,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@latest"></script>
+ 
 
 
 
@@ -451,7 +451,7 @@ input[data-code] {
     <h3 style="margin:0 0 10px 0;">Сканирование штрих‑кода</h3>
 
     <div id="barcode-scanner" style="width:320px; height:240px; margin:0 auto; background:#000; border-radius:8px; overflow:hidden; position:relative;">
-      <!-- video вставляется динамически сюда -->
+      <!-- Quagga вставит canvas/video сюда -->
       <div id="scanner-overlay" style="pointer-events:none; position:absolute; inset:0;">
         <div style="position:absolute; left:8px; top:8px; width:36px; height:36px; border-top:3px solid #0ff; border-left:3px solid #0ff;"></div>
         <div style="position:absolute; right:8px; top:8px; width:36px; height:36px; border-top:3px solid #0ff; border-right:3px solid #0ff;"></div>
@@ -467,6 +467,7 @@ input[data-code] {
     <div id="scanner-log" style="font-size:12px; color:#444; text-align:left; margin-top:8px; max-height:80px; overflow:auto; display:none;"></div>
   </div>
 </div>
+
 
 
 
@@ -1585,11 +1586,8 @@ animate();
     return;
   }
 
-  let codeReader = null;
-  let videoEl = null;
-  let stream = null;
   let running = false;
-  let restartTimeout = null;
+  let restartTimer = null;
 
   function log(msg, show=false) {
     console.log(msg);
@@ -1605,148 +1603,149 @@ animate();
 
   triggerBtn.addEventListener('click', async () => {
     modal.style.display = 'flex';
-    logEl && (logEl.innerHTML = '');
+    if (logEl) logEl.innerHTML = '';
     await new Promise(r => setTimeout(r, 160)); // дать рендеру появиться
-    startScanner();
+    startQuagga();
   });
 
   closeBtn.addEventListener('click', () => {
-    stopScanner();
+    stopQuagga();
     modal.style.display = 'none';
   });
 
-  async function startScanner() {
+  function startQuagga() {
     if (running) return;
     running = true;
-    codeReader = new ZXing.BrowserMultiFormatReader();
+
+    // Очистка контейнера
+    scannerEl.querySelectorAll('video, canvas').forEach(n => n.remove());
+
+    // Конфигурация Quagga
+    const config = {
+      inputStream: {
+        name: "Live",
+        type: "LiveStream",
+        target: scannerEl,
+        constraints: {
+          facingMode: "environment",
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          // попытка запретить цифровой зум
+          advanced: [{ zoom: 1 }]
+        },
+        area: { // ROI — центральная полоса
+          top: "25%",    // верхняя граница
+          right: "5%",   // правая граница
+          left: "5%",    // левая граница
+          bottom: "25%"  // нижняя граница
+        }
+      },
+      locator: {
+        patchSize: "medium",
+        halfSample: true
+      },
+      numOfWorkers: (navigator.hardwareConcurrency || 2),
+      frequency: 10, // попыток в секунду
+      locate: false, // отключаем locate — уменьшает "зум"
+      decoder: {
+        readers: [
+          "ean_reader",
+          "ean_8_reader",
+          "code_128_reader",
+          "code_39_reader",
+          "upc_reader",
+          "upc_e_reader"
+        ]
+      },
+      multiple: false
+    };
 
     try {
-      log('Запрашиваем камеру...', true);
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false
-      });
-      log('Камера получена', true);
-
-      // создаём video
-      videoEl = document.createElement('video');
-      videoEl.setAttribute('playsinline', '');
-      videoEl.setAttribute('autoplay', '');
-      videoEl.setAttribute('muted', '');
-      videoEl.style.width = '100%';
-      videoEl.style.height = '100%';
-      videoEl.style.objectFit = 'cover';
-      videoEl.srcObject = stream;
-
-      // вставляем видео в контейнер
-      scannerEl.querySelectorAll('video').forEach(n => n.remove());
-      scannerEl.insertBefore(videoEl, scannerEl.firstChild);
-
-      try {
-        await videoEl.play();
-        log('video.play() OK', true);
-      } catch (e) {
-        log('video.play() failed: ' + e, true);
-      }
-
-      // попытка отключить цифровой зум, если поддерживается
-      try {
-        const [track] = stream.getVideoTracks();
-        if (track && track.getCapabilities) {
-          const caps = track.getCapabilities();
-          if (caps.zoom) {
-            const minZoom = caps.zoom.min || 1;
-            await track.applyConstraints({ advanced: [{ zoom: minZoom }] }).catch(()=>{});
-            log('Установлен zoom = ' + minZoom, true);
-          }
-        }
-      } catch (e) {
-        log('applyConstraints zoom failed: ' + e, true);
-      }
-
-      // следим за окончанием трека
-      const [track] = stream.getVideoTracks();
-      if (track) {
-        track.addEventListener('ended', () => {
-          log('Видеотрек завершился, перезапуск...', true);
+      Quagga.init(config, function(err) {
+        if (err) {
+          log('Quagga init error: ' + err, true);
+          running = false;
           scheduleRestart();
-        });
-      }
-
-      // непрерывное распознавание
-      codeReader.decodeFromVideoElementContinuously(videoEl, (result, err) => {
-        if (result) {
-          const code = result.text;
-          if (!code) return;
-          log('Код найден: ' + code, true);
-
-          // звук и вибрация
-          try { if (navigator.vibrate) navigator.vibrate(120); } catch(e){}
-          if (beep) { beep.currentTime = 0; beep.play().catch(()=>{}); }
-
-          // вставляем код в поле и отправляем форму
-          searchInput.value = code;
-          const form = searchInput.closest('form');
-          if (form) {
-            setTimeout(() => {
-              try { form.submit(); } catch(e) { console.warn('form.submit failed', e); }
-            }, 80);
-          }
-
-          // останавливаем и закрываем
-          stopScanner();
-          modal.style.display = 'none';
-        } else if (err) {
-          // NotFoundException — норм, игнорируем
-          const name = err && err.name ? err.name : '';
-          if (name === 'NotFoundException' || (typeof ZXing !== 'undefined' && err instanceof ZXing.NotFoundException)) {
-            return;
-          }
-          log('ZXing error: ' + (err && err.message ? err.message : err), true);
+          return;
         }
+        Quagga.start();
+        log('Quagga started', true);
+
+        // Если поток не появился — проверяем через 700ms и перезапускаем
+        setTimeout(() => {
+          const video = scannerEl.querySelector('video');
+          if (!video || video.readyState < 2) {
+            log('Видео не готово, перезапуск Quagga...', true);
+            stopQuagga();
+            scheduleRestart(600);
+          }
+        }, 700);
       });
 
-      log('Сканер запущен, наведите камеру на штрих‑код', true);
+      Quagga.onDetected(onDetected);
+      Quagga.onProcessed(result => {
+        // можно включить дебаг: показать рамки/контуры
+        // оставляем пустым, чтобы не засорять UI
+      });
 
-    } catch (err) {
-      log('Ошибка при старте камеры: ' + (err && err.message ? err.message : err), true);
+    } catch (e) {
+      log('Quagga start exception: ' + e, true);
       running = false;
-      cleanupStream();
+      scheduleRestart();
     }
   }
 
-  function stopScanner() {
-    running = false;
-    try { if (codeReader) { codeReader.reset(); codeReader = null; } } catch(e){}
-    cleanupStream();
-    if (videoEl) {
-      try { videoEl.pause(); } catch(e){}
-      try { videoEl.srcObject = null; } catch(e){}
-      videoEl.remove();
-      videoEl = null;
+  function onDetected(data) {
+    try {
+      const code = data && data.codeResult && data.codeResult.code;
+      if (!code) return;
+      log('Код найден: ' + code, true);
+
+      // звук и вибрация
+      try { if (navigator.vibrate) navigator.vibrate(120); } catch(e){}
+      if (beep) { beep.currentTime = 0; beep.play().catch(()=>{}); }
+
+      // вставляем код и отправляем форму
+      searchInput.value = code;
+      const form = searchInput.closest('form');
+      if (form) {
+        setTimeout(() => {
+          try { form.submit(); } catch(e) { console.warn('form.submit failed', e); }
+        }, 80);
+      }
+
+      // остановка
+      stopQuagga();
+      modal.style.display = 'none';
+    } catch (err) {
+      console.error('onDetected error', err);
     }
-    if (restartTimeout) { clearTimeout(restartTimeout); restartTimeout = null; }
+  }
+
+  function stopQuagga() {
+    running = false;
+    try {
+      Quagga.offDetected(onDetected);
+      Quagga.stop();
+    } catch (e) { console.debug(e); }
+    // очистка DOM
+    scannerEl.querySelectorAll('video, canvas').forEach(n => n.remove());
+    if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
     log('Сканер остановлен', true);
   }
 
-  function cleanupStream() {
-    if (stream) {
-      try { stream.getTracks().forEach(t => t.stop()); } catch(e){}
-      stream = null;
-    }
-  }
-
-  function scheduleRestart(delay = 700) {
-    if (restartTimeout) return;
-    restartTimeout = setTimeout(() => {
-      restartTimeout = null;
-      if (!running) startScanner();
+  function scheduleRestart(delay = 800) {
+    if (restartTimer) return;
+    restartTimer = setTimeout(() => {
+      restartTimer = null;
+      if (!running) startQuagga();
     }, delay);
   }
 
-  // остановка при уходе со страницы
-  window.addEventListener('pagehide', stopScanner);
+  // если пользователь уходит со страницы — останавливаем
+  window.addEventListener('pagehide', stopQuagga);
 })();
+
 
 
 
