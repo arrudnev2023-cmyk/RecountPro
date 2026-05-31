@@ -1579,93 +1579,259 @@ function animate() {
 }
 animate();
   // Голосовой поиск для поля #search с предобработкой, фуззи-поиском и авто-заменой
-// Диагностический инспектор для модалки сканера
-// Вставь этот скрипт в конец страницы. Он логирует ВСЁ в #scanner-log и в консоль,
-// пробует разные constraints, показывает capabilities, события video/track, и если ZXing есть — логирует его работу.
-// Требует в DOM: #voice-search-btn, #barcode-modal, #barcode-scanner, #barcode-close, опционально #scanner-log, #beep-sound, #search
-
-(function () {
+// ZXing iPhone14/Safari robust canvas scanner
+// Paste after ZXing script. Requires elements: #voice-search-btn, #barcode-modal, #barcode-scanner, #barcode-close, #search
+(function() {
   const triggerBtn = document.getElementById('voice-search-btn');
   const modal = document.getElementById('barcode-modal');
   const scannerEl = document.getElementById('barcode-scanner');
   const closeBtn = document.getElementById('barcode-close');
-  let logEl = document.getElementById('scanner-log');
+  const logEl = document.getElementById('scanner-log'); // optional
+  const beep = document.getElementById('beep-sound'); // optional
+  const searchInput = document.getElementById('search');
 
-  if (!logEl) {
-    logEl = document.createElement('div');
-    logEl.id = 'scanner-log';
-    logEl.style.cssText = 'font-size:12px;color:#111;text-align:left;margin-top:10px;max-height:220px;overflow:auto;background:#f7f7f7;padding:8px;border-radius:6px;display:block;';
-    if (modal) {
-      // вставляем в конец модалки
-      const container = modal.querySelector('div') || modal;
-      container.appendChild(logEl);
-    } else {
-      document.body.appendChild(logEl);
-    }
+  if (!triggerBtn || !modal || !scannerEl || !closeBtn || !searchInput) {
+    console.warn('Required elements missing.');
+    return;
   }
 
-  // --- утилиты логирования ---
-  function appendLog(text, level = 'info') {
-    const time = new Date().toLocaleTimeString();
-    const row = document.createElement('div');
-    row.style.marginBottom = '6px';
-    row.style.lineHeight = '1.2';
-    if (level === 'err') row.style.color = '#b00020';
-    else if (level === 'warn') row.style.color = '#b36b00';
-    else row.style.color = '#111';
-    row.textContent = `[${time}] ${text}`;
-    logEl.appendChild(row);
-    logEl.scrollTop = logEl.scrollHeight;
-    console.log('[scanner-inspector]', text);
-  }
-  function clearLogs() { logEl.innerHTML = ''; }
-
-  // --- состояние ---
+  // Settings tuned for iPhone 14 / Safari
   const CONSTRAINTS_TRIES = [
-    { width: { ideal: 1280 }, height: { ideal: 720 } },
     { width: { ideal: 960 }, height: { ideal: 540 } },
     { width: { ideal: 640 }, height: { ideal: 480 } },
     { width: { ideal: 480 }, height: { ideal: 360 } }
   ];
-  let stream = null;
-  let video = null;
-  let track = null;
-  let running = false;
-  let zxReader = null;
-  let mutationObserver = null;
-  let periodicStatus = null;
-  let manualDecodeTimer = null;
+  const SCALES = [1.0, 1.6, 0.8];
+  const ROTATIONS = [0, 90, -90];
+  const TARGET_W = 900; // reduce if device slow
+  const PROCESS_INTERVAL = 120; // ms (~8 FPS)
+  const CONFIRM_REQUIRED = 2;
+  const CONFIRM_WINDOW = 1200;
+  const COOLDOWN = 700;
 
-  // --- перебор constraints для getUserMedia ---
+  let stream = null, video = null, track = null;
+  let running = false, codeReader = null;
+  let manualTimer = null, lastDetected = 0;
+  let confirmState = null;
+
+  function log(msg, show = true) {
+    console.log('[scanner] ' + msg);
+    if (logEl && show) {
+      logEl.style.display = 'block';
+      const d = document.createElement('div');
+      d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      logEl.appendChild(d);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+  }
+
+  function resetConfirm() { confirmState = null; }
+  function registerConfirm(code) {
+    const now = Date.now();
+    if (!confirmState || confirmState.code !== code || (now - confirmState.firstAt) > CONFIRM_WINDOW) {
+      confirmState = { code: code, count: 1, firstAt: now };
+      return false;
+    }
+    confirmState.count++;
+    return confirmState.count >= CONFIRM_REQUIRED;
+  }
+
   async function tryGetStream() {
-    appendLog('Попытка получить поток камеры (перебор constraints)...');
-    for (let i = 0; i < CONSTRAINTS_TRIES.length; i++) {
-      const c = CONSTRAINTS_TRIES[i];
-      appendLog(`Попытка ${i+1}: ${JSON.stringify(c)}`);
+    for (let c of CONSTRAINTS_TRIES) {
       try {
+        log(`getUserMedia try: ${JSON.stringify(c)}`, true);
         const s = await navigator.mediaDevices.getUserMedia({
           video: Object.assign({ facingMode: { ideal: 'environment' } }, c),
           audio: false
         });
         const tracks = s.getVideoTracks();
-        if (!tracks || !tracks.length) {
-          appendLog('Поток получен, но видеотрек отсутствует — останавливаем и пробуем дальше', 'warn');
-          s.getTracks().forEach(t => t.stop());
-          continue;
-        }
-        appendLog('Поток получен успешно', 'info');
+        if (!tracks || !tracks.length) { s.getTracks().forEach(t => t.stop()); continue; }
         return s;
-      } catch (err) {
-        appendLog(`getUserMedia ошибка: ${err && err.name ? err.name : err}`, 'warn');
+      } catch (e) {
+        log('getUserMedia failed: ' + (e && e.name ? e.name : e), true);
         await new Promise(r => setTimeout(r, 180));
       }
     }
-    appendLog('Все попытки getUserMedia не удались', 'err');
-    throw new Error('getUserMedia failed');
+    throw new Error('getUserMedia failed for all constraints');
   }
 
-  // --- прикрепление потока к video и логирование ---
-  async function attachStream(s) {
+  async function applyHints(t) {
+    if (!t || !t.getCapabilities) return;
+    try {
+      const caps = t.getCapabilities();
+      log('Track capabilities: ' + JSON.stringify(caps), true);
+      const adv = [];
+      if (caps.zoom && typeof caps.zoom.min === 'number') adv.push({ zoom: caps.zoom.min });
+      if (caps.focusMode && caps.focusMode.includes('continuous')) adv.push({ focusMode: 'continuous' });
+      if (adv.length) await t.applyConstraints({ advanced: adv }).catch(e => log('applyConstraints catch: ' + e, true));
+    } catch (e) {
+      log('applyHints error: ' + e, true);
+    }
+  }
+
+  async function tryEnableTorch(t) {
+    if (!t || !t.getCapabilities) return false;
+    try {
+      const caps = t.getCapabilities();
+      if (caps.torch) {
+        await t.applyConstraints({ advanced: [{ torch: true }] }).catch(()=>{});
+        return true;
+      }
+    } catch (e) { /* ignore */ }
+    return false;
+  }
+
+  // Preprocess: grayscale + contrast boost + simple adaptive threshold
+  function preprocessCanvas(ctx, w, h) {
+    const id = ctx.getImageData(0, 0, w, h);
+    const d = id.data;
+    // grayscale + contrast
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i+1], b = d[i+2];
+      let v = 0.299*r + 0.587*g + 0.114*b;
+      v = ((v - 128) * 1.2) + 128; // contrast
+      d[i] = d[i+1] = d[i+2] = v;
+    }
+    // simple adaptive threshold by local mean blocks
+    // compute global mean as fallback
+    let sum = 0, cnt = 0;
+    for (let i = 0; i < d.length; i += 4) { sum += d[i]; cnt++; }
+    const mean = sum / cnt;
+    for (let i = 0; i < d.length; i += 4) {
+      const v = d[i] > mean ? 255 : 0;
+      d[i] = d[i+1] = d[i+2] = v;
+    }
+    ctx.putImageData(id, 0, 0);
+  }
+
+  async function decodeCanvasWithZXing(canvas) {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const res = await codeReader.decodeFromImageElement(img).catch(()=>null);
+          resolve(res && res.text ? res.text : null);
+        } catch (e) { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = canvas.toDataURL('image/png');
+    });
+  }
+
+  async function manualLoop() {
+    if (!running || !video || video.readyState < 2) {
+      if (running) manualTimer = setTimeout(manualLoop, 200);
+      return;
+    }
+
+    const vw = video.videoWidth || 1280;
+    const vh = video.videoHeight || 720;
+    const targetW = Math.min(TARGET_W, vw);
+    const scale = targetW / vw;
+    const cw = Math.round(vw * scale);
+    const ch = Math.round(vh * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cw;
+    canvas.height = ch;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, cw, ch);
+
+    // ROI: централь horizontal band (wider to catch various placements)
+    const roiH = Math.round(ch * 0.5);
+    const roiY = Math.round((ch - roiH) / 2);
+    const roiCanvas = document.createElement('canvas');
+    roiCanvas.width = cw;
+    roiCanvas.height = roiH;
+    const rctx = roiCanvas.getContext('2d');
+    rctx.drawImage(canvas, 0, roiY, cw, roiH, 0, 0, cw, roiH);
+
+    // preprocess
+    preprocessCanvas(rctx, roiCanvas.width, roiCanvas.height);
+
+    let found = null;
+    for (let s of SCALES) {
+      const tmp = document.createElement('canvas');
+      tmp.width = Math.max(200, Math.round(roiCanvas.width * s));
+      tmp.height = Math.max(60, Math.round(roiCanvas.height * s));
+      const tctx = tmp.getContext('2d');
+      tctx.drawImage(roiCanvas, 0, 0, roiCanvas.width, roiCanvas.height, 0, 0, tmp.width, tmp.height);
+
+      for (let rot of ROTATIONS) {
+        let src = tmp;
+        if (rot !== 0) {
+          const rotC = document.createElement('canvas');
+          rotC.width = tmp.height;
+          rotC.height = tmp.width;
+          const r2 = rotC.getContext('2d');
+          r2.translate(rotC.width/2, rotC.height/2);
+          r2.rotate(rot * Math.PI / 180);
+          r2.drawImage(tmp, -tmp.width/2, -tmp.height/2);
+          src = rotC;
+        }
+        const code = await decodeCanvasWithZXing(src);
+        if (code) { found = code; log(`decode success: ${code} (scale ${s}, rot ${rot})`, true); break; }
+      }
+      if (found) break;
+    }
+
+    if (found && /^[0-9A-Z\-]{4,40}$/.test(found)) {
+      const now = Date.now();
+      if (now - lastDetected > COOLDOWN) {
+        lastDetected = now;
+        const confirmed = registerConfirm(found);
+        log(`Candidate: ${found} confirmed=${confirmState ? confirmState.count : 0}`, true);
+        if (confirmed) {
+          try { if (navigator.vibrate) navigator.vibrate(120); } catch(e){}
+          if (beep) { try { beep.currentTime = 0; beep.play().catch(()=>{}); } catch(e){} }
+          searchInput.value = found;
+          const form = searchInput.closest('form');
+          if (form) setTimeout(() => { try { form.submit(); } catch(e) { console.warn(e); } }, 80);
+          stopScanner();
+          modal.style.display = 'none';
+          return;
+        }
+      }
+    } else {
+      if (confirmState && (Date.now() - confirmState.firstAt) > CONFIRM_WINDOW) resetConfirm();
+    }
+
+    manualTimer = setTimeout(manualLoop, PROCESS_INTERVAL);
+  }
+
+  async function startScanner() {
+    if (running) return;
+    running = true;
+    resetConfirm();
+    clearLogIfExists();
+    log('Starting scanner (iPhone tuned)...', true);
+
+    try {
+      codeReader = new ZXing.BrowserMultiFormatReader();
+    } catch (e) {
+      log('ZXing init failed: ' + e, true);
+      running = false;
+      return;
+    }
+
+    try {
+      const s = await tryGetStream();
+      await attachStreamAndPrepare(s);
+      // try to apply hints and torch (iOS Safari likely won't allow torch)
+      if (track) {
+        await applyHints(track);
+        const torchOk = await tryEnableTorch(track);
+        log('Torch attempt: ' + (torchOk ? 'requested' : 'not available'), true);
+      }
+      // start manual loop (robust)
+      manualLoop();
+    } catch (e) {
+      log('startScanner error: ' + e, true);
+      stopScanner();
+    }
+  }
+
+  async function attachStreamAndPrepare(s) {
     stream = s;
     video = document.createElement('video');
     video.setAttribute('playsinline', '');
@@ -1677,256 +1843,53 @@ animate();
     scannerEl.querySelectorAll('video').forEach(n => n.remove());
     scannerEl.insertBefore(video, scannerEl.firstChild);
     video.srcObject = stream;
-
-    try {
-      await video.play();
-      appendLog('video.play() успешно', 'info');
-    } catch (e) {
-      appendLog('video.play() ошибка: ' + (e && e.name ? e.name : e), 'warn');
-    }
-
+    try { await video.play(); log('video.play OK', true); } catch(e) { log('video.play failed: ' + e, true); }
     const tracks = stream.getVideoTracks();
     if (tracks && tracks.length) {
       track = tracks[0];
-      appendLog('Видеотрек получен: id=' + track.id, 'info');
+      track.addEventListener('ended', () => { log('track ended', true); stopScanner(); });
       try {
         const settings = track.getSettings ? track.getSettings() : {};
         const caps = track.getCapabilities ? track.getCapabilities() : {};
-        appendLog('Track settings: ' + JSON.stringify(settings), 'info');
-        appendLog('Track capabilities: ' + JSON.stringify(caps), 'info');
-      } catch (e) {
-        appendLog('Ошибка чтения settings/capabilities: ' + e, 'warn');
-      }
-      track.addEventListener('ended', () => appendLog('Событие: track ended', 'warn'));
-      track.addEventListener('mute', () => appendLog('Событие: track mute', 'warn'));
-      track.addEventListener('unmute', () => appendLog('Событие: track unmute', 'info'));
+        log('Track settings: ' + JSON.stringify(settings), true);
+        log('Track capabilities: ' + JSON.stringify(caps), true);
+      } catch(e) { log('settings/capabilities read error: ' + e, true); }
     } else {
-      appendLog('Видеотрек не найден в потоке', 'err');
-    }
-
-    // периодический статус видео
-    periodicStatus = setInterval(() => {
-      if (!video) return;
-      appendLog(`video readyState=${video.readyState}, videoWidth=${video.videoWidth}, videoHeight=${video.videoHeight}`, false);
-    }, 1200);
-  }
-
-  // --- попытка применить constraints (zoom/focus) ---
-  async function applyTrackHints() {
-    if (!track || !track.applyConstraints) {
-      appendLog('applyConstraints не поддерживается треком', 'warn');
-      return;
-    }
-    try {
-      const caps = track.getCapabilities ? track.getCapabilities() : {};
-      appendLog('Попытка applyConstraints, capabilities: ' + JSON.stringify(caps));
-      const adv = [];
-      if (caps.zoom && typeof caps.zoom.min === 'number') adv.push({ zoom: caps.zoom.min });
-      if (caps.focusMode && caps.focusMode.includes('continuous')) adv.push({ focusMode: 'continuous' });
-      if (adv.length) {
-        await track.applyConstraints({ advanced: adv }).catch(e => appendLog('applyConstraints catch: ' + e, 'warn'));
-        appendLog('applyConstraints применены: ' + JSON.stringify(adv), 'info');
-      } else {
-        appendLog('Нет подходящих capabilities для applyConstraints (zoom/focusMode)', 'info');
-      }
-    } catch (e) {
-      appendLog('Ошибка applyConstraints: ' + e, 'warn');
+      log('No video tracks found in stream', true);
     }
   }
 
-  // --- попытка включить torch ---
-  async function tryEnableTorch() {
-    if (!track) return false;
-    try {
-      const caps = track.getCapabilities ? track.getCapabilities() : {};
-      if (caps.torch) {
-        await track.applyConstraints({ advanced: [{ torch: true }] }).catch(()=>{});
-        appendLog('Запрошено включение torch', 'info');
-        return true;
-      } else {
-        appendLog('Torch capability отсутствует', 'info');
-        return false;
-      }
-    } catch (e) {
-      appendLog('Ошибка включения torch: ' + e, 'warn');
-      return false;
-    }
-  }
+  function clearLogIfExists() { if (logEl) logEl.innerHTML = ''; }
 
-  // --- наблюдатель за DOM контейнером сканера ---
-  function startMutationObserver() {
-    if (!scannerEl) return;
-    mutationObserver = new MutationObserver(muts => {
-      muts.forEach(m => {
-        appendLog('DOM mutation: type=' + m.type + ' addedNodes=' + (m.addedNodes.length) + ' removedNodes=' + (m.removedNodes.length));
-      });
-    });
-    mutationObserver.observe(scannerEl, { childList: true, subtree: true, attributes: true });
-    appendLog('MutationObserver запущен', 'info');
-  }
-  function stopMutationObserver() {
-    if (mutationObserver) { mutationObserver.disconnect(); mutationObserver = null; appendLog('MutationObserver остановлен', 'info'); }
-  }
-
-  // --- ZXing continuous logging (если доступен) ---
-  function startZXingContinuous() {
-    if (!window.ZXing || !window.ZXing.BrowserMultiFormatReader) {
-      appendLog('ZXing не обнаружен на странице', 'warn');
-      return false;
-    }
-    try {
-      zxReader = new ZXing.BrowserMultiFormatReader();
-      zxReader.decodeFromVideoElementContinuously(video, (result, err) => {
-        if (result) {
-          appendLog('ZXing result: ' + (result.text || '[empty]'), 'info');
-        } else if (err) {
-          const name = err && err.name ? err.name : '';
-          if (name !== 'NotFoundException') appendLog('ZXing error: ' + (err && err.message ? err.message : err), 'warn');
-        }
-      });
-      appendLog('ZXing decodeFromVideoElementContinuously запущен', 'info');
-      return true;
-    } catch (e) {
-      appendLog('ZXing continuous start failed: ' + e, 'warn');
-      return false;
-    }
-  }
-
-  // --- Canvas fallback: захват кадра и попытка decodeFromImageElement (логируем результат) ---
-  async function startManualCanvasDecodeLoop() {
-    if (!video) return;
-    appendLog('Запуск ручного цикла декодирования через canvas -> ZXing.decodeFromImageElement', 'info');
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    async function loop() {
-      if (!running || !video || video.readyState < 2) {
-        manualDecodeTimer = setTimeout(loop, 300);
-        return;
-      }
-      const vw = video.videoWidth || 640;
-      const vh = video.videoHeight || 480;
-      const targetW = Math.min(900, vw);
-      const scale = targetW / vw;
-      canvas.width = Math.round(vw * scale);
-      canvas.height = Math.round(vh * scale);
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      // ROI: центральная полоса
-      const roiH = Math.round(canvas.height * 0.45);
-      const roiY = Math.round((canvas.height - roiH) / 2);
-      const roi = ctx.getImageData(0, roiY, canvas.width, roiH);
-      // лёгкая предобработка (grayscale/contrast)
-      for (let i = 0; i < roi.data.length; i += 4) {
-        const r = roi.data[i], g = roi.data[i+1], b = roi.data[i+2];
-        let v = 0.299*r + 0.587*g + 0.114*b;
-        v = Math.max(0, Math.min(255, (v - 128) * 1.15 + 128));
-        roi.data[i] = roi.data[i+1] = roi.data[i+2] = v;
-      }
-      ctx.putImageData(roi, 0, roiY);
-
-      // создаём image и пробуем ZXing.decodeFromImageElement
-      const img = new Image();
-      img.onload = async () => {
-        try {
-          if (window.ZXing && window.ZXing.BrowserMultiFormatReader) {
-            const tmpReader = new ZXing.BrowserMultiFormatReader();
-            const res = await tmpReader.decodeFromImageElement(img).catch(()=>null);
-            if (res && res.text) appendLog('Manual ZXing decode success: ' + res.text, 'info');
-            else appendLog('Manual ZXing decode: no result', false);
-            try { tmpReader.reset(); } catch(e){}
-          } else {
-            appendLog('ZXing отсутствует — пропускаем manual decode', 'warn');
-          }
-        } catch (e) {
-          appendLog('Manual decode error: ' + e, 'warn');
-        }
-      };
-      img.onerror = () => appendLog('Image load error for manual decode', 'warn');
-      img.src = canvas.toDataURL('image/png');
-
-      manualDecodeTimer = setTimeout(loop, 120);
-    }
-
-    loop();
-  }
-
-  function stopManualCanvasLoop() {
-    if (manualDecodeTimer) { clearTimeout(manualDecodeTimer); manualDecodeTimer = null; appendLog('Manual decode loop stopped', 'info'); }
-  }
-
-  // --- Полная последовательность диагностики при нажатии кнопки ---
-  async function startDiagnostics() {
-    clearLogs();
-    appendLog('=== Диагностика: старт ===', 'info');
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      appendLog('navigator.mediaDevices.getUserMedia не поддерживается', 'err');
-      return;
-    }
-    try {
-      const s = await tryGetStream();
-      await attachStream(s);
-      await applyTrackHints();
-      const torch = await tryEnableTorch();
-      appendLog('Попытка включить torch: ' + (torch ? 'запрошено' : 'не поддерживается/не включено'), 'info');
-
-      startMutationObserver();
-
-      // Запускаем ZXing continuous, если доступен; иначе manual loop
-      const zxOk = startZXingContinuous();
-      if (!zxOk) startManualCanvasDecodeLoop();
-
-      appendLog('=== Диагностика запущена. Сделай скрин логов и пришли мне ===', 'info');
-    } catch (e) {
-      appendLog('Ошибка старта диагностики: ' + e, 'err');
-    }
-  }
-
-  // --- Остановка и очистка ---
-  function stopAll() {
-    appendLog('Остановка диагностики и очистка...', 'info');
-    try { if (periodicStatus) { clearInterval(periodicStatus); periodicStatus = null; } } catch(e){}
-    stopMutationObserver();
-    stopManualCanvasLoop();
-    try { if (zxReader) { zxReader.reset(); zxReader = null; } } catch(e){}
-    try { if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; } } catch(e){}
-    if (video) {
-      try { video.pause(); } catch(e){}
-      try { video.srcObject = null; } catch(e){}
-      video.remove();
-      video = null;
-    }
-    track = null;
+  function stopScanner() {
     running = false;
-    appendLog('Остановлено', 'info');
+    try { if (codeReader) { codeReader.reset(); codeReader = null; } } catch(e){}
+    try { if (manualTimer) { clearTimeout(manualTimer); manualTimer = null; } } catch(e){}
+    try { if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; } } catch(e){}
+    if (video) { try { video.pause(); } catch(e){} try { video.srcObject = null; } catch(e){} video.remove(); video = null; }
+    if (track) { try { track.stop(); } catch(e){} track = null; }
+    resetConfirm();
+    log('Scanner stopped', true);
   }
 
-  // --- UI привязки ---
+  // UI bindings
   triggerBtn.addEventListener('click', async () => {
-    if (!modal) { alert('Модалка #barcode-modal не найдена'); return; }
     modal.style.display = 'flex';
+    if (logEl) logEl.innerHTML = '';
     await new Promise(r => setTimeout(r, 160));
-    running = true;
-    startDiagnostics();
+    startScanner();
   });
 
   closeBtn.addEventListener('click', () => {
-    stopAll();
-    if (modal) modal.style.display = 'none';
+    stopScanner();
+    modal.style.display = 'none';
   });
 
-  // остановка при уходе со страницы
-  window.addEventListener('pagehide', () => { stopAll(); });
+  window.addEventListener('pagehide', () => { stopScanner(); });
 
-  // экспорт для отладки
-  window._scannerInspector = {
-    start: startDiagnostics,
-    stop: stopAll,
-    clearLogs,
-    appendLog
-  };
+  // expose for debug
+  window._iphoneZxingScanner = { start: startScanner, stop: stopScanner, log };
 
-  appendLog('Inspector loaded. Нажми кнопку сканера, сделай скрин логов и пришли мне — я подгоню параметры.', 'info');
 })();
 
 
