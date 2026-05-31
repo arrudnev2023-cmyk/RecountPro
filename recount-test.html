@@ -1578,35 +1578,35 @@ function animate() {
 }
 animate();
   // Голосовой поиск для поля #search с предобработкой, фуззи-поиском и авто-заменой
-// Полный скрипт Quagga + авто‑фонарик + защита от искажений
+// Полный Quagga скрипт с авто‑фонариком, фильтрацией ложных срабатываний и подтверждением
 (function() {
-  // Настройка: селекторы на странице
-  const triggerBtn = document.getElementById('voice-search-btn'); // кнопка открытия сканера
+  const triggerBtn = document.getElementById('voice-search-btn');
   const modal = document.getElementById('barcode-modal');
   const scannerEl = document.getElementById('barcode-scanner');
   const closeBtn = document.getElementById('barcode-close');
-  const torchBtn = document.getElementById('barcode-toggle-torch'); // опционально
-  const logEl = document.getElementById('scanner-log'); // опционально
-  const beep = document.getElementById('beep-sound'); // опционально
+  const torchBtn = document.getElementById('barcode-toggle-torch');
+  const logEl = document.getElementById('scanner-log');
+  const beep = document.getElementById('beep-sound');
   const searchInput = document.getElementById('search');
 
   if (!triggerBtn || !modal || !scannerEl || !closeBtn || !searchInput) {
-    console.warn('Barcode scanner: required DOM elements not found (#voice-search-btn, #barcode-modal, #barcode-scanner, #barcode-close, #search).');
+    console.warn('Не найдены обязательные элементы: #voice-search-btn, #barcode-modal, #barcode-scanner, #barcode-close, #search');
     return;
   }
 
-  // Состояние
   let running = false;
-  let restartTimer = null;
   let currentTrack = null;
   let torchOn = false;
+  let restartTimer = null;
   let lastDetectedAt = 0;
-  const DETECT_COOLDOWN = 800; // ms между срабатываниями
-  const MAX_RESTARTS = 5;
-  let restartAttempts = 0;
+  const DETECT_COOLDOWN = 700;
+  const REQUIRED_CONFIRMATIONS = 3;
+  const CONFIRM_WINDOW_MS = 1200;
 
-  // Логирование в модалке (опционально)
-  function log(msg, show = false) {
+  // Хранилище подтверждений: {code: string, count: number, firstAt: timestamp}
+  let confirmState = null;
+
+  function log(msg, show=false) {
     console.log('[scanner] ' + msg);
     if (!logEl) return;
     if (show) {
@@ -1618,64 +1618,48 @@ animate();
     }
   }
 
-  // Применить constraints к треку (zoom, torch, focusMode)
   async function applyTrackConstraints(track, opts = {}) {
-    if (!track || !track.applyConstraints) return false;
+    if (!track || !track.applyConstraints) return;
     try {
       const caps = track.getCapabilities ? track.getCapabilities() : {};
       const adv = [];
-
       if (caps.zoom) {
         const minZoom = (typeof caps.zoom.min === 'number') ? caps.zoom.min : 1;
         adv.push({ zoom: minZoom });
       }
-
       if (opts.torch !== undefined && caps.torch !== undefined) {
         adv.push({ torch: opts.torch });
       }
-
       if (caps.focusMode && caps.focusMode.includes('continuous')) {
         adv.push({ focusMode: 'continuous' });
       }
-
       if (adv.length) {
         await track.applyConstraints({ advanced: adv }).catch(()=>{});
-        return true;
       }
     } catch (e) {
       console.debug('applyConstraints failed', e);
     }
-    return false;
   }
 
-  // Включить torch максимально надёжно (несколько стратегий)
   async function enableTorchIfPossible(track) {
     if (!track) return false;
     try {
       const caps = track.getCapabilities ? track.getCapabilities() : {};
-      // 1) Прямой способ
       if (caps.torch) {
         await track.applyConstraints({ advanced: [{ torch: true }] }).catch(()=>{});
         return true;
       }
-      // 2) Попытка через ImageCapture (часто не даёт управления torch, но пробуем)
       if (typeof ImageCapture !== 'undefined') {
         try {
           const ic = new ImageCapture(track);
           const photoCaps = await ic.getPhotoCapabilities().catch(()=>null);
           if (photoCaps && photoCaps.fillLightMode && photoCaps.fillLightMode.length) {
-            // Некоторые реализации могут поддерживать fillLightMode
-            // Попытка takePhoto не гарантирует включение torch, но пробуем
             await ic.takePhoto({ imageWidth: 1, imageHeight: 1 }).catch(()=>{});
-            // затем пробуем applyConstraints torch=true как fallback
             await track.applyConstraints({ advanced: [{ torch: true }] }).catch(()=>{});
             return true;
           }
-        } catch (e) {
-          // ignore
-        }
+        } catch (e) {}
       }
-      // 3) fallback: попытка applyConstraints torch=true в любом случае
       await track.applyConstraints({ advanced: [{ torch: true }] }).catch(()=>{});
       return false;
     } catch (e) {
@@ -1684,44 +1668,47 @@ animate();
     }
   }
 
-  // Остановка и очистка (выключаем torch если возможно)
-  function stopQuaggaAndCleanup() {
-    running = false;
-    try { Quagga.offDetected(onDetected); } catch(e){}
-    try { Quagga.stop(); } catch(e){}
-    if (currentTrack) {
-      try {
-        // попытка выключить torch
-        const caps = currentTrack.getCapabilities ? currentTrack.getCapabilities() : {};
-        if (caps && caps.torch) {
-          currentTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(()=>{});
-        }
-      } catch(e){}
-      try { currentTrack.stop(); } catch(e){}
-      currentTrack = null;
+  function resetConfirmState() {
+    confirmState = null;
+  }
+
+  function registerDetection(code, box) {
+    const now = Date.now();
+    if (!confirmState || confirmState.code !== code || (now - confirmState.firstAt) > CONFIRM_WINDOW_MS) {
+      confirmState = { code: code, count: 1, firstAt: now, lastBox: box };
+      return false;
     }
-    // очистка DOM
-    scannerEl.querySelectorAll('video, canvas').forEach(n => n.remove());
-    if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
-    log('Сканер остановлен', true);
+    confirmState.count++;
+    confirmState.lastBox = box;
+    return confirmState.count >= REQUIRED_CONFIRMATIONS;
   }
 
-  // Планируем перезапуск
-  function scheduleRestart(delay = 700) {
-    if (restartTimer) return;
-    restartTimer = setTimeout(() => {
-      restartTimer = null;
-      if (!running && restartAttempts < MAX_RESTARTS) {
-        restartAttempts++;
-        log('Перезапуск сканера, попытка #' + restartAttempts, true);
-        startQuaggaWithAutoTorch();
-      } else {
-        log('Достигнут лимит перезапусков', true);
-      }
-    }, delay);
+  function isBoxReasonable(box, container) {
+    if (!box || !container) return true;
+    // вычисляем площадь ограничивающего прямоугольника
+    const xs = box.map(p => p[0]);
+    const ys = box.map(p => p[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const w = Math.max(1, maxX - minX);
+    const h = Math.max(1, maxY - minY);
+    const area = w * h;
+    const containerArea = container.clientWidth * container.clientHeight;
+    const ratio = area / containerArea;
+    // игнорируем слишком маленькие или слишком большие боксы
+    if (ratio < 0.02) return false;
+    if (ratio > 0.95) return false;
+    return true;
   }
 
-  // Обработчик успешного детекта
+  function looksLikeBarcode(code) {
+    if (!code) return false;
+    // EAN/UPC numeric patterns or alnum for code128
+    if (/^\d{8,13}$/.test(code)) return true;
+    if (/^[0-9A-Z\-]{4,40}$/.test(code)) return true;
+    return false;
+  }
+
   function onDetected(data) {
     try {
       const code = data && data.codeResult && data.codeResult.code;
@@ -1730,266 +1717,211 @@ animate();
       if (now - lastDetectedAt < DETECT_COOLDOWN) return;
       lastDetectedAt = now;
 
-      log('Код найден: ' + code, true);
-
-      // звук и вибрация
-      try { if (navigator.vibrate) navigator.vibrate(120); } catch(e){}
-      if (beep) { beep.currentTime = 0; beep.play().catch(()=>{}); }
-
-      // вставляем код и отправляем форму
-      searchInput.value = code;
-      const form = searchInput.closest('form');
-      if (form) {
-        setTimeout(() => {
-          try { form.submit(); } catch(e) { console.warn('form.submit failed', e); }
-        }, 80);
+      const box = data.box || data.boxes && data.boxes[0];
+      if (!isBoxReasonable(box, scannerEl)) {
+        log('Игнорируем детект: неподходящий размер бокса', true);
+        return;
       }
 
-      // остановка и закрытие
-      stopQuaggaAndCleanup();
-      modal.style.display = 'none';
+      if (!looksLikeBarcode(code)) {
+        log('Игнорируем детект: не похоже на штрихкод ' + code, true);
+        return;
+      }
+
+      const confirmed = registerDetection(code, box);
+      log('Найден код ' + code + ' подтверждений ' + (confirmState ? confirmState.count : 0), true);
+
+      if (confirmed) {
+        // финальная проверка качества: если есть decodedCodes с error=0 — приоритет
+        const decoded = data.codeResult && data.codeResult.decodedCodes;
+        let highQuality = false;
+        if (Array.isArray(decoded)) {
+          for (let d of decoded) {
+            if (d && (d.error === 0 || d.error === undefined)) {
+              highQuality = true;
+              break;
+            }
+          }
+        }
+        if (!highQuality) {
+          log('Качество низкое, но подтверждений достаточно — принимаем', true);
+        }
+
+        // звук и вибрация
+        try { if (navigator.vibrate) navigator.vibrate(120); } catch(e){}
+        if (beep) { beep.currentTime = 0; beep.play().catch(()=>{}); }
+
+        // вставляем код и отправляем форму
+        searchInput.value = code;
+        const form = searchInput.closest('form');
+        if (form) {
+          setTimeout(() => {
+            try { form.submit(); } catch(e) { console.warn('form.submit failed', e); }
+          }, 80);
+        }
+
+        // останавливаем сканер и закрываем модалку
+        try { Quagga.offDetected(onDetected); } catch(e){}
+        try { Quagga.stop(); } catch(e){}
+        if (currentTrack) {
+          try {
+            const caps = currentTrack.getCapabilities ? currentTrack.getCapabilities() : {};
+            if (caps && caps.torch) currentTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(()=>{});
+          } catch(e){}
+          try { currentTrack.stop(); } catch(e){}
+          currentTrack = null;
+        }
+        modal.style.display = 'none';
+        resetConfirmState();
+      }
     } catch (err) {
       console.error('onDetected error', err);
     }
   }
 
-  // Основная функция: старт Quagga + авто‑фонарик + защита от искажений
-  function startQuaggaWithAutoTorch() {
-    if (running) return;
-    running = true;
-    restartAttempts = 0;
-    log('Инициализация Quagga с авто‑фонариком...', true);
-
-    // Очистка контейнера
-    scannerEl.querySelectorAll('video, canvas').forEach(n => n.remove());
-
-    // Набор конфигураций, пробуем по очереди для максимальной совместимости
-    const configs = [
-      // Высокое разрешение
-      {
-        inputStream: {
-          name: "Live",
-          type: "LiveStream",
-          target: scannerEl,
-          constraints: {
-            facingMode: "environment",
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            advanced: [{ zoom: 1 }]
-          },
-          area: { top: "18%", right: "6%", left: "6%", bottom: "18%" }
-        },
-        locator: { patchSize: "medium", halfSample: true },
-        numOfWorkers: Math.max(1, (navigator.hardwareConcurrency || 2) - 1),
-        frequency: 15,
-        locate: false,
-        decoder: {
-          readers: [
-            "ean_reader","ean_8_reader","upc_reader","upc_e_reader",
-            "code_128_reader","code_39_reader","code_39_vin_reader",
-            "codabar_reader","i2of5_reader","2of5_reader","code_93_reader"
-          ]
-        },
-        multiple: false
-      },
-      // Среднее разрешение (часто лучше на iPhone)
-      {
-        inputStream: {
-          name: "Live",
-          type: "LiveStream",
-          target: scannerEl,
-          constraints: {
-            facingMode: "environment",
-            width: { ideal: 960 },
-            height: { ideal: 540 },
-            advanced: [{ zoom: 1 }]
-          },
-          area: { top: "18%", right: "6%", left: "6%", bottom: "18%" }
-        },
-        locator: { patchSize: "medium", halfSample: true },
-        numOfWorkers: 1,
-        frequency: 12,
-        locate: false,
-        decoder: { readers: ["ean_reader","code_128_reader","upc_reader","i2of5_reader"] },
-        multiple: false
-      },
-      // Низкое разрешение для слабых устройств
-      {
-        inputStream: {
-          name: "Live",
-          type: "LiveStream",
-          target: scannerEl,
-          constraints: {
-            facingMode: "environment",
-            width: { ideal: 640 },
-            height: { ideal: 480 },
-            advanced: [{ zoom: 1 }]
-          },
-          area: { top: "15%", right: "8%", left: "8%", bottom: "15%" }
-        },
-        locator: { patchSize: "large", halfSample: true },
-        numOfWorkers: 1,
-        frequency: 8,
-        locate: false,
-        decoder: { readers: ["ean_reader","code_128_reader","upc_reader"] },
-        multiple: false
-      }
-    ];
-
-    let idx = 0;
-
-    function tryNextConfig() {
-      if (idx >= configs.length) {
-        log('Все конфигурации не сработали, планируем перезапуск', true);
-        running = false;
-        scheduleRestart(700);
-        return;
-      }
-      const cfg = configs[idx++];
-      log('Попытка конфигурации #' + idx, true);
-
-      try {
-        Quagga.init(cfg, function(err) {
-          if (err) {
-            log('Quagga init error: ' + err, true);
-            try { Quagga.stop(); } catch(e){}
-            setTimeout(tryNextConfig, 300);
-            return;
-          }
-
-          try {
-            Quagga.start();
-            log('Quagga запущен (конфиг #' + idx + ')', true);
-
-            // Небольшая задержка, чтобы video элемент появился
-            setTimeout(async () => {
-              const video = scannerEl.querySelector('video');
-              if (!video) {
-                log('Видео элемент не найден после старта', true);
-                try { Quagga.stop(); } catch(e){}
-                setTimeout(tryNextConfig, 300);
-                return;
-              }
-
-              // Стили чтобы не искажать картинку
-              video.style.objectFit = 'contain';
-              video.style.width = '100%';
-              video.style.height = '100%';
-
-              // Получаем трек и пробуем применить constraints + включить torch
-              const stream = video.srcObject;
-              if (!stream) {
-                log('video.srcObject отсутствует', true);
-                try { Quagga.stop(); } catch(e){}
-                setTimeout(tryNextConfig, 300);
-                return;
-              }
-              const tracks = stream.getVideoTracks();
-              if (!tracks || !tracks.length) {
-                log('Видеотрек не найден', true);
-                try { Quagga.stop(); } catch(e){}
-                setTimeout(tryNextConfig, 300);
-                return;
-              }
-              currentTrack = tracks[0];
-
-              // Принудительно минимизируем zoom и включаем continuous focus если возможно
-              await applyTrackConstraints(currentTrack, { torch: false }).catch(()=>{});
-
-              // Попытка включить torch автоматически
-              const torchResult = await enableTorchIfPossible(currentTrack).catch(()=>false);
-              if (torchResult) {
-                torchOn = true;
-                log('Фонарик автоматически включён', true);
-              } else {
-                log('Авто‑фонарик не поддерживается/не включён', true);
-              }
-
-              // Подписка на окончание трека
-              currentTrack.addEventListener('ended', () => {
-                log('Видеотрек завершился', true);
-                stopQuaggaAndCleanup();
-                scheduleRestart(500);
-              });
-
-              // Подписка на детект
-              Quagga.onDetected(onDetected);
-
-              // Проверка: если видео не готово — перезапуск
-              setTimeout(() => {
-                const v = scannerEl.querySelector('video');
-                if (!v || v.readyState < 2) {
-                  log('Видео не готово после старта, перезапуск...', true);
-                  try { Quagga.stop(); } catch(e){}
-                  setTimeout(tryNextConfig, 300);
-                }
-              }, 700);
-
-            }, 450);
-
-          } catch (e) {
-            log('Quagga start exception: ' + e, true);
-            try { Quagga.stop(); } catch(e){}
-            setTimeout(tryNextConfig, 300);
-          }
-        });
-      } catch (e) {
-        log('Quagga.init exception: ' + e, true);
-        setTimeout(tryNextConfig, 300);
-      }
-    }
-
-    tryNextConfig();
-  }
-
-  // Обёртка остановки, которая выключает torch и очищает
-  function stopQuaggaAndCleanup() {
-    try {
-      if (currentTrack) {
-        try {
-          const caps = currentTrack.getCapabilities ? currentTrack.getCapabilities() : {};
-          if (caps && caps.torch) {
-            currentTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(()=>{});
-          }
-        } catch(e){}
-      }
-    } catch(e){}
-    stopQuaggaAndCleanupInner();
-  }
-
-  // Внутренняя остановка (чистая)
-  function stopQuaggaAndCleanupInner() {
-    running = false;
+  function stopScanner() {
     try { Quagga.offDetected(onDetected); } catch(e){}
     try { Quagga.stop(); } catch(e){}
     if (currentTrack) {
+      try {
+        const caps = currentTrack.getCapabilities ? currentTrack.getCapabilities() : {};
+        if (caps && caps.torch) currentTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(()=>{});
+      } catch(e){}
       try { currentTrack.stop(); } catch(e){}
       currentTrack = null;
     }
     scannerEl.querySelectorAll('video, canvas').forEach(n => n.remove());
+    running = false;
+    resetConfirmState();
     if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
-    log('Сканер остановлен (cleanup)', true);
+    log('Сканер остановлен', true);
   }
 
-  // Привязка событий к кнопкам
+  function scheduleRestart(delay = 700) {
+    if (restartTimer) return;
+    restartTimer = setTimeout(() => {
+      restartTimer = null;
+      if (!running) startScanner();
+    }, delay);
+  }
+
+  function startScanner() {
+    if (running) return;
+    running = true;
+    log('Запуск Quagga...', true);
+
+    // очистка
+    scannerEl.querySelectorAll('video, canvas').forEach(n => n.remove());
+
+    const config = {
+      inputStream: {
+        name: "Live",
+        type: "LiveStream",
+        target: scannerEl,
+        constraints: {
+          facingMode: "environment",
+          width: { ideal: 960 },
+          height: { ideal: 540 },
+          advanced: [{ zoom: 1 }]
+        },
+        area: { top: "18%", right: "6%", left: "6%", bottom: "18%" }
+      },
+      locator: { patchSize: "medium", halfSample: true },
+      numOfWorkers: Math.max(1, (navigator.hardwareConcurrency || 2) - 1),
+      frequency: 12,
+      locate: false,
+      decoder: {
+        readers: [
+          "ean_reader","ean_8_reader","upc_reader","upc_e_reader",
+          "code_128_reader","code_39_reader","codabar_reader","i2of5_reader"
+        ]
+      },
+      multiple: false
+    };
+
+    Quagga.init(config, function(err) {
+      if (err) {
+        log('Quagga init error: ' + err, true);
+        running = false;
+        scheduleRestart(600);
+        return;
+      }
+      try {
+        Quagga.start();
+        log('Quagga запущен', true);
+
+        // ждём появления video и пробуем applyConstraints + torch
+        setTimeout(async () => {
+          const video = scannerEl.querySelector('video');
+          if (!video) {
+            log('Видео не найдено после старта', true);
+            try { Quagga.stop(); } catch(e){}
+            running = false;
+            scheduleRestart(500);
+            return;
+          }
+
+          // сохраняем пропорции, не искажаем
+          video.style.objectFit = 'contain';
+          video.style.width = '100%';
+          video.style.height = '100%';
+
+          const stream = video.srcObject;
+          if (!stream) {
+            log('video.srcObject отсутствует', true);
+            try { Quagga.stop(); } catch(e){}
+            running = false;
+            scheduleRestart(500);
+            return;
+          }
+
+          const tracks = stream.getVideoTracks();
+          if (!tracks || !tracks.length) {
+            log('Видеотрек не найден', true);
+            try { Quagga.stop(); } catch(e){}
+            running = false;
+            scheduleRestart(500);
+            return;
+          }
+
+          currentTrack = tracks[0];
+          await applyTrackConstraints(currentTrack, { torch: false }).catch(()=>{});
+          const torchResult = await enableTorchIfPossible(currentTrack).catch(()=>false);
+          if (torchResult) {
+            torchOn = true;
+            log('Фонарик включён автоматически', true);
+          } else {
+            log('Авто‑фонарик не поддерживается', true);
+          }
+
+          currentTrack.addEventListener('ended', () => {
+            log('Видеотрек завершился', true);
+            stopScanner();
+            scheduleRestart(500);
+          });
+
+          Quagga.onDetected(onDetected);
+
+        }, 450);
+
+      } catch (e) {
+        log('Quagga start exception: ' + e, true);
+        running = false;
+        scheduleRestart(500);
+      }
+    });
+  }
+
+  // Кнопки
   triggerBtn.addEventListener('click', async () => {
     modal.style.display = 'flex';
     if (logEl) logEl.innerHTML = '';
     await new Promise(r => setTimeout(r, 160));
-    startQuaggaWithAutoTorch();
+    startScanner();
   });
 
   closeBtn.addEventListener('click', () => {
-    // выключаем torch и останавливаем
-    try {
-      if (currentTrack) {
-        const caps = currentTrack.getCapabilities ? currentTrack.getCapabilities() : {};
-        if (caps && caps.torch) {
-          currentTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(()=>{});
-        }
-      }
-    } catch(e){}
-    stopQuaggaAndCleanupInner();
+    stopScanner();
     modal.style.display = 'none';
   });
 
@@ -2014,26 +1946,21 @@ animate();
     });
   }
 
-  // Останавливаем при уходе со страницы
   window.addEventListener('pagehide', () => {
     try {
       if (currentTrack) {
         const caps = currentTrack.getCapabilities ? currentTrack.getCapabilities() : {};
-        if (caps && caps.torch) {
-          currentTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(()=>{});
-        }
+        if (caps && caps.torch) currentTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(()=>{});
       }
     } catch(e){}
     try { Quagga.stop(); } catch(e){}
   });
 
-  // Экспорт для отладки (опционально)
-  window._quaggaScanner = {
-    start: startQuaggaWithAutoTorch,
-    stop: stopQuaggaAndCleanupInner
-  };
+  // Экспорт для отладки
+  window._quaggaScanner = { start: startScanner, stop: stopScanner };
 
 })();
+
 
 
 
