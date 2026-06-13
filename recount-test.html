@@ -1,1796 +1,300 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>RecountPro — Пересчёт</title>
-
-  <!-- 🔥 Проверка авторизации и таймера -->
-  <script>
-    // Проверяем, авторизован ли пользователь
-    const isLoggedIn = localStorage.getItem("isLoggedIn");
-    const loginTime = localStorage.getItem("loginTime");
-
-    // Если нет данных — отправляем на логин
-    if (!isLoggedIn || !loginTime) {
-      window.location.href = "login1.html";
-    }
-
-    // Проверяем, прошло ли больше 2 часов (7200000 мс)
-    const now = Date.now();
-    const diff = now - Number(loginTime);
-
-    if (diff > 7200000) {
-      // Удаляем данные авторизации
-      localStorage.removeItem("isLoggedIn");
-      localStorage.removeItem("loginTime");
-
-      // Отправляем на логин
-      window.location.href = "login1.html";
-    }
-
-    // Обновляем время активности
-    localStorage.setItem("loginTime", Date.now());
-  </script>
-  <!-- 🔥 Конец проверки -->
-<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@latest"></script>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
- 
-
-
-
-
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Сканер штрих-кодов</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+    
     :root {
-      --accent: #6d28d9;
-      --accent-light: #a78bfa;
-      --text: #1f2937;
-      --border: #d1d5db;
+      --font-sans: 'Inter', system_ui, sans-serif;
     }
+    
     body {
-
-      font-family: "Segoe UI", system-ui, sans-serif;
-      margin: 0;
-      color: var(--text);
+      font-family: var(--font-sans);
+    }
+    
+    #qr-reader {
+      border-radius: 20px;
       overflow: hidden;
-      background: #000;
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     }
-
-    /* Фон canvas */
-    #bg {
-      position: fixed;
-      top:0; left:0;
-      width:100%; height:100%;
-      z-index:-1;
-      background: #000;
+    
+    #qr-reader video {
+      width: 100% !important;
+      height: auto !important;
+      border-radius: 20px;
+      display: block;
     }
-
-    /* Макет: 3 зоны */
-   /* Шапка */
-#header {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  z-index: 1000;
-  background: rgba(20, 20, 20, 0.7); /* полупрозрачный тёмный фон */
-  color: #f5f5f5;
-  padding: 0.8rem 1rem;
-  border-radius: 0 0 20px 20px; /* скруглённые нижние углы */
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-  backdrop-filter: blur(12px) saturate(180%); /* эффект стекла */
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  animation: fadeInDown 0.4s ease;
-}
-
-/* Заголовок */
-#header h1 {
-  margin: 0;
-  font-size: 1.3rem;
-  text-align: center;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-/* Контейнер поиска */
-#search-container {
-  margin-top: 0.6rem;
-  background: rgba(40, 40, 40, 0.6);
-  border-radius: 12px;
-  padding: 0.4rem;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-/* Поле поиска */
-#search {
-  width: 100%;
-  padding: 0.6rem 2.5rem 0.6rem 0.8rem;
-  font-size: 1rem;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 10px;
-  box-sizing: border-box;
-  background: rgba(30,30,30,0.8);
-  color: #f5f5f5;
-  transition: border 0.2s ease, background 0.2s ease;
-}
-
-#search:focus {
-  border: 1px solid #6a11cb; /* акцент при фокусе */
-  background: rgba(40,40,40,0.9);
-  outline: none;
-}
-
-/* Кнопка очистки */
-/* Кнопка очистки (обновлённая позиция, чтобы не мешать микрофону) */
-#clear-search {
-  position: absolute;
-  right: 0.6rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  color: #aaa;
-  cursor: pointer;
-  transition: color 0.2s ease;
-  z-index: 2;
-}
-#clear-search:hover { color: #fff; }
-
-}
-    /* Голосовой поиск: индикатор записи */
-#voice-search-btn {
-  position: absolute;
-  right: 2.6rem; /* согласуется с правкой #clear-search */
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  z-index: 2;
-}
-#voice-search-btn[aria-pressed="true"] #voice-icon path {
-  stroke: var(--accent);
-  transition: stroke 0.15s ease;
-}
-#voice-search-btn.recording #voice-icon {
-  animation: pulse 1s infinite;
-}
-@keyframes pulse {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.08); opacity: 0.85; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-
-#clear-search:hover {
-  color: #fff;
-}
-
-/* Анимация появления */
-@keyframes fadeInDown {
-  from { opacity: 0; transform: translateY(-20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-
-    /* Контент (карточки) */
- 
-#content {
-  position: fixed;
-  top: 6.5rem; /* высота шапки */
-  bottom: 0;
-  left: 0; right: 0;
-  overflow-y: auto;
-  padding: 0.5rem;
-  box-sizing: border-box;
-  z-index: 1;
-  transition: padding-bottom 0.3s ease;
-}
-/* Отступ снизу при показе клавиатуры */
-#content.with-keyboard {
-  padding-bottom: 35vh;
-}
-
-.item {
-  margin: 0.5rem auto;
-  padding: 1rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  max-width: 600px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  background: linear-gradient(135deg, #1e1e2f, #2a2a40);
-  color: #fff;
-  border-left: 6px solid transparent;
-}
-.item.match { border-left-color: #22c55e; }
-.item.missing { border-left-color: #ef4444; }
-.item.excess { border-left-color: #3b82f6; }
-.field { margin-bottom: 0.4rem; font-size: 0.9rem; }
-.label { font-weight: 600; }
-
-input[data-code] {
-  width: 100%;
-  padding: 0.6rem;
-  font-size: 1rem;
-  box-sizing: border-box;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #fefefe;
-  color: #000;
-
-  /* ✨ добавлено: цвет курсора */
-  caret-color: var(--accent, #6a11cb);
-}
-
-    /* Клавиатура */
-    #custom-keyboard {
-  position: fixed;
-  bottom: -40vh;
-  left: 0; right: 0;
-  height: 33vh;
-  background: #111;
-  padding: 0.5rem;
-  box-sizing: border-box;
-  z-index: 3000;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(4, 1fr);
-  gap: 0.5rem;
-  transition: bottom 0.3s ease;
-
-  /* 🔒 отключаем выделение и вызовы по долгому тапу */
-  -webkit-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-}
-
-#custom-keyboard.show { bottom: 0; }
-
-#custom-keyboard button {
-  width: 100%;
-  height: 100%;
-  font-size: 1.6rem;           /* ≥16px, чтобы iOS не зумил */
-  background: #333;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-
-  /* 🔥 убираем двойной тап‑зум */
-  touch-action: manipulation;
-
-  /* отключаем выделение текста на кнопках */
-  -webkit-user-select: none;
-  user-select: none;
-
-  /* плавный отклик */
-  transition: background 0.15s ease, transform 0.1s ease;
-}
-
-/* Эффект нажатия */
-#custom-keyboard button:active {
-  background: #555;
-  transform: scale(0.95);
-}
-
-
-   /* Обёртка меню */
-#menu-wrapper {
-  position: fixed;
-  bottom: 1rem;
-  right: 1rem;
-  z-index: 1001;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  font-family: "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
-}
-
-#menu-toggle, #flashlight-btn, #ocr-btn {
-  background: linear-gradient(135deg, #6a11cb, #2575fc);
-  color: #fff;
-  border: none;
-  padding: 0.8rem 1.2rem;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.35), 0 0 12px rgba(106,17,203,0.6);
-  transition: all 0.3s ease;
-  backdrop-filter: blur(6px);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-   
-/* SVG внутри кнопок */
-#menu-toggle svg, #flashlight-btn svg {
-  display: block;
-  width: 22px;
-  height: 22px;
-  fill: #fff;
-}
-
-/* Hover‑эффект */
-#menu-toggle:hover, #flashlight-btn:hover {
-  transform: translateY(-3px) scale(1.03);
-  box-shadow: 0 10px 28px rgba(0,0,0,0.5), 0 0 18px rgba(37,117,252,0.8);
-}
-
-/* Active‑состояние */
-#menu-toggle:active, #flashlight-btn:active {
-  transform: translateY(0) scale(0.98);
-  box-shadow: inset 0 3px 8px rgba(0,0,0,0.6);
-}
-
-/* Выпадающее меню (glassmorphism) */
-#menu-actions {
-  display: none;
-  flex-direction: column;
-  gap: 0.6rem;
-  margin-top: 0.7rem;
-  background: rgba(20, 20, 20, 0.7);
-  padding: 1rem;
-  border-radius: 16px;
-  box-shadow: 0 12px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
-  backdrop-filter: blur(12px) saturate(180%);
-  animation: fadeIn 0.35s ease;
-}
-
-/* Кнопки меню */
-#menu-actions button {
-  background: linear-gradient(145deg, #1f1f1f, #2c2c2c);
-  color: #f9f9f9;
-  border: none;
-  padding: 0.7rem 1rem;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 14px rgba(0,0,0,0.4);
-  letter-spacing: 0.3px;
-}
-
-#menu-actions button:hover {
-  background: linear-gradient(145deg, #2c2c2c, #3a3a3a);
-  transform: translateX(-3px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.6), 0 0 10px rgba(255,255,255,0.15);
-}
-
-#menu-actions button:active {
-  transform: translateX(0) scale(0.97);
-  box-shadow: inset 0 3px 8px rgba(0,0,0,0.6);
-}
-
-/* Анимация появления */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-
-
-
-    /* Скрытие карточек при поиске */
-    .hidden { display: none !important; }
-
-    /* Экспорт PDF — уменьшенный шрифт */
-    #export-area {
-  font-size: 8px;   /* компактный шрифт */
-  line-height: 1.2; /* плотнее строки */
-}
-
-#export-area th,
-#export-area td {
-  padding: 2px 3px; /* меньше отступы */
-}
-
+    
+    .scan-result {
+      animation: fadeInScale 0.3s ease-out forwards;
+    }
+    
+    @keyframes fadeInScale {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    
+    .barcode-value {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      word-break: break-all;
+    }
   </style>
 </head>
-<body>
-  <!-- Фон canvas -->
-  <canvas id="bg"></canvas>
-
-  <!-- Шапка -->
-  <div id="header">
-    <h1>RecountPro — Пересчёт</h1>
-    <div id="search-container">
-      <div id="search-wrapper" style="position:relative;">
-  <input type="text" id="search" placeholder="Поиск..."
-         autocomplete="off" autocorrect="off"
-         autocapitalize="off" spellcheck="false" aria-label="Поиск" />
-  <button id="clear-search" type="button" aria-label="Очистить поиск">×</button>
-
-  <!-- Кнопка голосового поиска -->
- <button id="voice-search-btn" type="button" aria-label="Голосовой поиск" aria-pressed="false"
-        style="position:absolute; right:2.6rem; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:4px;">
-  <svg id="voice-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-
-    <!-- рамка сканера -->
-    <path d="M4 7V5a2 2 0 0 1 2-2h2" stroke="#aaa" stroke-width="1.8" stroke-linecap="round"/>
-    <path d="M20 7V5a2 2 0 0 0-2-2h-2" stroke="#aaa" stroke-width="1.8" stroke-linecap="round"/>
-    <path d="M4 17v2a2 2 0 0 0 2 2h2" stroke="#aaa" stroke-width="1.8" stroke-linecap="round"/>
-    <path d="M20 17v2a2 2 0 0 1-2 2h-2" stroke="#aaa" stroke-width="1.8" stroke-linecap="round"/>
-
-    <!-- штрих-код -->
-    <rect x="7" y="8" width="1.5" height="8" fill="#aaa"/>
-    <rect x="10" y="8" width="1" height="8" fill="#aaa"/>
-    <rect x="12" y="8" width="1.5" height="8" fill="#aaa"/>
-    <rect x="15" y="8" width="1" height="8" fill="#aaa"/>
-
-    <!-- анимированная красная линия -->
-    <line x1="6" y1="9" x2="18" y2="9" stroke="#ff3b3b" stroke-width="2" stroke-linecap="round">
-      <animate attributeName="y1" values="9;15;9" dur="1.4s" repeatCount="indefinite"/>
-      <animate attributeName="y2" values="9;15;9" dur="1.4s" repeatCount="indefinite"/>
-    </line>
-
-  </svg>
-</button>
-
-
-</div>
-
-    </div>
-  </div>
-  <!-- Звук "пик" -->
-<!-- Звук при успешном скане -->
-<!-- Scanner UI (вставь в body) -->
-<div id="ean-scanner-modal" style="display:none; position:fixed; inset:0; z-index:99999; justify-content:center; align-items:center; background:rgba(0,0,0,0.7);">
-  <div style="width:360px; max-width:94vw; background:#fff; border-radius:10px; padding:12px; text-align:center; position:relative;">
-    <h3 style="margin:6px 0 10px 0; font-size:16px;">Сканирование штрих‑кода</h3>
-
-    <div id="ean-scanner-frame" style="width:320px; height:220px; margin:0 auto; background:#000; border-radius:8px; overflow:hidden; position:relative;">
-      <video id="ean-preview" playsinline muted style="width:100%; height:100%; object-fit:contain;"></video>
-      <div style="pointer-events:none; position:absolute; inset:0;">
-        <div style="position:absolute; left:8px; top:8px; width:36px; height:36px; border-top:3px solid #0ff; border-left:3px solid #0ff;"></div>
-        <div style="position:absolute; right:8px; top:8px; width:36px; height:36px; border-top:3px solid #0ff; border-right:3px solid #0ff;"></div>
-        <div style="position:absolute; left:8px; bottom:8px; width:36px; height:36px; border-bottom:3px solid #0ff; border-left:3px solid #0ff;"></div>
-        <div style="position:absolute; right:8px; bottom:8px; width:36px; height:36px; border-bottom:3px solid #0ff; border-right:3px solid #0ff;"></div>
+<body class="bg-zinc-950 text-white">
+  <div class="max-w-md mx-auto min-h-screen flex flex-col">
+    <!-- Header -->
+    <div class="px-6 pt-8 pb-4">
+      <div class="flex items-center gap-x-3">
+        <div class="w-11 h-11 bg-emerald-500 rounded-2xl flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-3xl font-semibold tracking-tighter">Сканер</h1>
+          <p class="text-zinc-400 text-sm">Штрих-коды и QR</p>
+        </div>
       </div>
-      <div id="ean-scan-line" style="position:absolute; left:0; right:0; height:3px; background:rgba(255,0,0,0.85); top:50%; transform:translateY(-50%);"></div>
     </div>
 
-    <div style="margin-top:10px;">
-      <select id="ean-device-select" style="width:60%; padding:6px;"></select>
-    </div>
-
-    <div style="margin-top:10px;">
-      <button id="ean-close-btn" style="padding:8px 12px; margin-right:8px;">Закрыть</button>
-      <button id="ean-torch-btn" style="padding:8px 12px;">Фонарь</button>
-    </div>
-
-    <div id="ean-scan-log" style="font-size:12px; color:#333; text-align:left; margin-top:10px; max-height:120px; overflow:auto; display:none;"></div>
-  </div>
-</div>
-
-
-
-
-
-
-
-
-
-
-
-  <!-- Контент -->
-  <div id="content">
-    <div id="list"></div>
-  </div>
-
-  <!-- Клавиатура -->
-  <div id="custom-keyboard">
-    <button>1</button><button>2</button><button>3</button>
-    <button>4</button><button>5</button><button>6</button>
-    <button>7</button><button>8</button><button>9</button>
-    <button>+</button><button>0</button><button>←</button>
-  </div>
-
-  <!-- Меню -->
-  <div id="menu-wrapper">
-    <div style="display:flex; gap:0.5rem;">
-     <!-- Кнопки -->
-<div style="display:flex; gap:0.5rem;">
- <button id="flashlight-btn" aria-label="Flashlight">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <!-- ТВОЙ ФОНАРИК -->
-    <g stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="8" y="2.5" width="8" height="4" rx="1.2" fill="none"/>
-      <rect x="9.5" y="6.5" width="5" height="9" rx="1.2" fill="none"/>
-      <rect x="8.5" y="16.5" width="7" height="4.5" rx="1.4" fill="none"/>
-      <line x1="12" y1="2" x2="12" y2="0.5" />
-      <line x1="9"  y1="3" x2="7.5" y2="1.8" />
-      <line x1="15" y1="3" x2="16.5" y2="1.8" />
-    </g>
-    <circle cx="12" cy="11" r="0.9" fill="#111"/>
-  </svg>
- </button>
-  
-  <button id="menu-toggle" aria-label="Menu">
-    <!-- SVG меню (три полоски) -->
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <rect x="4" y="6" width="16" height="2.2" rx="1.1" fill="white"/>
-      <rect x="4" y="11" width="16" height="2.2" rx="1.1" fill="white"/>
-      <rect x="4" y="16" width="16" height="2.2" rx="1.1" fill="white"/>
-    </svg>
-  </button>
-</div>
-
-    </div>
-
-
-
-    <div id="ocr-debug" style="
-  position: fixed;
-  bottom: 10px;
-  left: 10px;
-  background: rgba(0,0,0,0.7);
-  color: #0f0;
-  padding: 10px;
-  font-size: 16px;
-  z-index: 99999;
-  max-width: 90vw;
-  white-space: pre-wrap;
-"></div>
-
-
-
-
-    
-    <div id="menu-actions">
-  <button onclick="document.getElementById('upload').click()"> Загрузить ЛР</button>
-  <button onclick="exportPDF()"> Скачать ЛР</button>
-  <button onclick="saveSession()"> Сохранить </button>
-  <button onclick="openSessionModal()"> Управлять </button>
-  <button onclick="showSummaryModal()"> Итог</button>
-  <button onclick="clearRecount()"> Очистить пересчёт</button>
-
-  <button onclick="window.location.href='Scaner.html'"> База штрих кодов</button>
-</div>
-
-  </div>
-
-  <!-- Скрытый input для загрузки PDF -->
-  <input type="file" id="upload" accept=".pdf" style="display:none;">
-
-  <!-- Модальное окно для итогов -->
- <div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
-       background:rgba(0,0,0,0.6); z-index:2000; justify-content:center; align-items:center;">
-  <div style="background:#fff; max-width:95%; width:95%; max-height:85%; 
-              border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.4); 
-              position:relative; display:flex; flex-direction:column;">
-
-    <!-- Хедер с заголовком и крестиком -->
-    <div style="position:sticky; top:0; background:#fff; 
-                display:flex; justify-content:center; align-items:center;
-                padding:0.5rem 2rem; border-bottom:1px solid #ddd; z-index:10;">
-      <h2 style="margin:0; font-size:1rem; color:var(--accent); flex:1; text-align:center;">
-        Итог пересчёта
-      </h2>
-      <button onclick="document.getElementById('modal').style.display='none'"
-              style="position:absolute; top:8px; right:8px; background:none; border:none; 
-                     font-size:1.4rem; cursor:pointer; color:#666;">✖</button>
-    </div>
-
-    <!-- Контент с таблицей -->
-    <div style="flex:1; overflow:auto; padding:0.5rem;">
-      <div id="modal-content" style="font-size:0.75rem;"></div>
-    </div>
-
-    <!-- Футер с кнопкой -->
-    <div style="padding:0.5rem; border-top:1px solid #ddd;">
-      <button onclick="document.getElementById('modal').style.display='none'" 
-              style="background:var(--accent); color:#fff; border:none; padding:0.5rem 1rem;
-                     border-radius:6px; cursor:pointer; width:100%; font-size:0.9rem;">
-        Закрыть
-      </button>
-    </div>
-  </div>
-</div>
-
-  <!-- Модальное окно для сессий -->
-  <div id="session-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
-       background:rgba(0,0,0,0.6); z-index:2000; justify-content:center; align-items:center;">
-    <div style="background:#fff; max-width:600px; width:90%; max-height:80%; overflow-y:auto;
-                border-radius:12px; padding:1rem; box-shadow:0 4px 16px rgba(0,0,0,0.4);">
-      <h2 style="margin-top:0; font-size:1.2rem; color:var(--accent);">Сессии</h2>
-      <div id="session-list"></div>
-      <button onclick="document.getElementById('session-modal').style.display='none'" 
-              style="margin-top:1rem; background:var(--accent); color:#fff; border:none; padding:0.6rem 1rem;
-                     border-radius:8px; cursor:pointer; width:100%;">Закрыть</button>
-    </div>
-  </div>
-
-  <div id="barcode-modal" style="
-  display:none; position:fixed; inset:0;
-  background:rgba(0,0,0,0.7); justify-content:center; align-items:center;
-  z-index:9999;
-">
-  <div style="background:#fff; padding:20px; border-radius:12px; text-align:center;">
-    <h3>Сканирование штрих‑кода</h3>
-    <video id="barcode-video" style="width:300px; height:auto; border-radius:8px;"></video>
-    <br><br>
-    <button id="barcode-close" style="padding:10px 20px;">Закрыть</button>
-  </div>
-</div>
-
-
-  <!-- Область экспорта PDF -->
-  <div id="export-area" style="display:none; padding:0.5rem; background:#fff; color:#000;">
-    <h2 style="margin:0; font-size:1rem; color:var(--accent);">Итог пересчёта</h2>
-    <div id="export-summary" style="margin-bottom:0.5rem;"></div>
-    <table style="width:100%; border-collapse:collapse; table-layout:fixed; font-size:0.8rem;">
-      <thead>
-        <tr style="background:#f3f4f6;">
-          <th style="width:60px; border:1px solid #ccc; padding:4px;">Артикул</th>
-          <th style="width:140px; border:1px solid #ccc; padding:4px;">Название</th>
-          <th style="width:60px; border:1px solid #ccc; padding:4px;">Размерность</th>
-          <th style="width:50px; border:1px solid #ccc; padding:4px;">Цена</th>
-          <th style="width:60px; border:1px solid #ccc; padding:4px;">По документам</th>
-          <th style="width:140px; border:1px solid #ccc; padding:4px;">Факт</th>
-          <th style="width:50px; border:1px solid #ccc; padding:4px;">Расхождение</th>
-        </tr>
-      </thead>
-      <tbody id="export-table-body"></tbody>
-    </table>
-  </div>
-<script>
-
-  // Время последней активности
-  const LAST_ACTIVITY_KEY = "lastActivity";
-  const MAX_IDLE_TIME = 6 * 60 * 60 * 1000; // 6 часов
-
-  function updateActivity() {
-    localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
-  }
-
-  function checkIdleTime() {
-    const last = parseInt(localStorage.getItem(LAST_ACTIVITY_KEY) || "0", 10);
-    const now = Date.now();
-    if (last && now - last > MAX_IDLE_TIME) {
-      localStorage.removeItem("isAuth");
-      window.location.href = "/demo.html";
-    }
-  }
-
-  // Обновляем активность при действиях
-  ["click", "keydown", "mousemove", "scroll", "touchstart"].forEach(evt => {
-    document.addEventListener(evt, updateActivity, { passive: true });
-  });
-
-  // Проверка каждые 60 секунд
-  setInterval(checkIdleTime, 30 * 60 * 1000);
-  updateActivity();
-
-  // Базовые переменные
-  const list = document.getElementById("list");
-  const searchInput = document.getElementById("search");
-  const keyboard = document.getElementById("custom-keyboard");
-  let allItems = [], activeInput = null;
-  let sessionValues = {};
-
-// Восстановление при загрузке страницы
-window.addEventListener("DOMContentLoaded", () => {
-  // 🔑 определяем ID локалки: берём docId из JSON, если нет — fallback по дате
-  const currentLocalkaId = (window.localkaData && window.localkaData.docId)
-    ? window.localkaData.docId
-    : "loc_" + new Date().toISOString().slice(0,10);
-
-  const sessionKey = "autosave_session_" + currentLocalkaId;
-
-  // пробуем восстановить сохранённую сессию именно этой локалки
-  const savedSession = localStorage.getItem(sessionKey);
-  if (savedSession) {
-    try {
-      const session = JSON.parse(savedSession);
-      allItems = session.items || [];
-      sessionValues = session.values || {};
-    } catch {
-      allItems = [];
-      sessionValues = {};
-    }
-  } else {
-    allItems = [];
-    sessionValues = {};
-  }
-
-  if (allItems.length > 0) {
-    render(allItems);
-  }
-});
-
-// Загрузка новой локалки
-function loadLocalka(data) {
-  // определяем ID локалки
-  const currentLocalkaId = data.docId || "loc_" + new Date().toISOString().slice(0,10);
-  const sessionKey = "autosave_session_" + currentLocalkaId;
-
-  // ❌ очищаем автосейв для этой локалки (чистый старт)
-  localStorage.removeItem(sessionKey);
-
-  allItems = data;
-  sessionValues = {};
-
-  // сохраняем ссылку на текущую локалку глобально, чтобы autosave знал её ID
-  window.localkaData = data;
-
-  render(allItems);
-}
-
-// Автосохранение
-function autosave() {
-  const currentLocalkaId = (window.localkaData && window.localkaData.docId)
-    ? window.localkaData.docId
-    : "loc_" + new Date().toISOString().slice(0,10);
-
-  const sessionKey = "autosave_session_" + currentLocalkaId;
-
-  const session = {
-    items: allItems,
-    values: sessionValues
-  };
-
-  localStorage.setItem(sessionKey, JSON.stringify(session));
-}
-
-  // Автосохранение при закрытии вкладки
-  window.addEventListener("beforeunload", autosave);
-
-  // Группировка текста по строкам PDF
-  function groupByY(items) {
-    const lines = {};
-    items.forEach(item => {
-      const y = Math.round(item.transform[5]);
-      if (!lines[y]) lines[y] = [];
-      lines[y].push({ str: item.str, x: item.transform[4] });
-    });
-    return Object.values(lines).map(words =>
-      words.sort((a, b) => a.x - b.x).map(w => w.str).join(' ')
-    );
-  }
-
-  // Парсинг строк в объекты товаров
-  function parseLines(lines) {
-    const items = [];
-    for (let line of lines) {
-      line = line.trim();
-      if (!/^\d+\s+\d{4,6}/.test(line)) continue;
-
-      const match = line.match(/^(\d+)\s+(\d{4,6})\s+(.+?)\s+(\d+\*\d+)?\s+([\d.,]+)\s+(.*)$/i);
-      if (match) {
-        const rawTail = match[6];
-        const qtyMatches = [...rawTail.matchAll(/(\d+)\s*шт/gi)];
-        const docQty = qtyMatches.length > 0 ? parseInt(qtyMatches[qtyMatches.length - 1][1]) : null;
-
-        items.push({
-          code: match[2],
-          name: match[3].trim(),
-          unit: match[4] || '',
-          price: parseFloat(match[5].replace(',', '.')),
-          docQty
-        });
-      }
-    }
-    return items;
-  }
-
-  // Обновление итогов
-  function updateSummary(items) {
-    let match = 0, missing = 0, excess = 0, delta = 0;
-    items.forEach(item => {
-      const input = document.querySelector(`input[data-code="${item.code}"]`);
-      if (!input) return;
-      const raw = input.value.trim();
-      const actual = parseFloat(raw.replace(',', '.')) || 0;
-      if (actual === item.docQty) match++;
-      else if (actual < item.docQty) { missing++; delta += item.docQty - actual; }
-      else { excess++; delta += actual - item.docQty; }
-    });
-  }
-  // Рендер списка товаров
-
-function render(items) {
-  list.innerHTML = '';
-  items.forEach(item => {
-    const value = sessionValues[item.code] || localStorage.getItem("qty_" + item.code) || "";
-    const div = document.createElement("div");
-    div.className = "item";
-    div.dataset.code = item.code;
-    div.innerHTML = `
-      <div class="field"><span class="label">Артикул:</span> ${item.code}</div>
-      <div class="field"><span class="label">Название:</span> ${item.name}</div>
-      <div class="field"><span class="label">Размерность:</span> ${item.unit}</div>
-      <div class="field"><span class="label">Цена:</span> ${item.price.toFixed(2)} ₽</div>
-      <div class="field"><span class="label">По документам:</span> ${item.docQty} шт</div>
-      <div class="field">
-        <span class="label">Фактическое количество:</span>
-        <input type="text" data-code="${item.code}" value="${value}" inputmode="none" readonly />
-      </div>
-    `;
-
-    // начальная окраска при рендере
-    let actual = 0;
-    try { actual = Function("return " + value.replace(',', '.'))() || 0; } catch {}
-    if (actual === item.docQty) div.classList.add("match");
-    else if (actual < item.docQty) div.classList.add("missing");
-    else if (actual > item.docQty) div.classList.add("excess");
-
-    list.appendChild(div);
-  });
-  updateSummary(allItems);
-  attachInputHandlers(); // подключаем твою кастомную клавиатуру и обработку ввода
-}
-
-// Подключение обработчиков для инпутов и клавиатуры
-function attachInputHandlers() {
-  document.querySelectorAll('input[data-code]').forEach(input => {
-    input.addEventListener('focus', () => {
-      activeInput = input;
-      keyboard.classList.add("show");
-      document.getElementById("content").classList.add("with-keyboard");
-      setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
-    });
-    input.addEventListener('click', () => {
-      activeInput = input;
-      keyboard.classList.add("show");
-      document.getElementById("content").classList.add("with-keyboard");
-      setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
-    });
-  });
-
-  // Клики по кнопкам клавиатуры
-  keyboard.querySelectorAll('button').forEach(btn => {
-    btn.onclick = () => {
-      if (!activeInput) return;
-      const val = btn.textContent;
-      if (val === "←") {
-        activeInput.value = activeInput.value.slice(0, -1);
-      } else {
-        activeInput.value += val;
-      }
-      // 🔥 теперь событие всплывает и ловится глобальным обработчиком
-      activeInput.dispatchEvent(new Event("input", { bubbles: true }));
-    };
-  });
-
-  // Скрытие клавиатуры при клике вне
-  document.addEventListener("click", e => {
-    if (!e.target.closest("#custom-keyboard") && !e.target.matches("input[data-code]")) {
-      keyboard.classList.remove("show");
-      document.getElementById("content").classList.remove("with-keyboard");
-      activeInput = null;
-    }
-  });
-}
-
-
-// Поиск
-
-// Функция нормализации текста для поиска
-function normalize(str) {
-  return String(str || "")
-    .toLowerCase()
-    .replace(/ё/g, "е")   // ё → е
-    .replace(/№/g, "")    // убираем символ №
-    .replace(/\s+/g, " ") // схлопываем пробелы
-    .trim();
-}
-
-// Проверка: все ли слова из запроса встречаются в строке
-function matchesQuery(text, query) {
-  const words = query.split(" ");
-  return words.every(w => text.includes(w));
-}
-
-// Поиск
-searchInput.addEventListener("input", () => {
-  const q = normalize(searchInput.value);
-
-  document.querySelectorAll("#list .item").forEach(div => {
-    const code = normalize(div.dataset.code);
-    const item = allItems.find(i => i.code === div.dataset.code);
-    if (!item) { 
-      div.classList.add("hidden"); 
-      return; 
-    }
-
-    const name = normalize(item.name);
-
-    // теперь ищем по частям: каждое слово из запроса должно встретиться
-    const match = matchesQuery(name, q) || matchesQuery(code, q);
-
-    div.classList.toggle("hidden", !match);
-  });
-});
-
-
-// Очистка поиска
-document.getElementById("clear-search").addEventListener("click", () => {
-  searchInput.value = '';
-  document.querySelectorAll("#list .item").forEach(div => div.classList.remove("hidden"));
-});
-
-// Обработка ввода значений и перекраска карточек
-list.addEventListener("input", e => {
-  if (e.target.tagName === "INPUT") {
-    const code = e.target.dataset.code;
-    const value = e.target.value;
-    sessionValues[code] = value;
-    localStorage.setItem("qty_" + code, value);
-
-    const raw = value.replace(',', '.').trim();
-    let actual = NaN;
-
-    try {
-      let safeRaw = raw;
-
-      // если строка оканчивается на оператор (+ - * /), убираем его
-      if (/[\+\-\*\/]$/.test(safeRaw)) {
-        safeRaw = safeRaw.slice(0, -1);
-      }
-
-      if (safeRaw) {
-        actual = Function("return " + safeRaw)();
-      }
-    } catch {
-      actual = NaN;
-    }
-
-    const item = allItems.find(i => i.code === code);
-    const card = e.target.closest(".item");
-    card.classList.remove("match", "missing", "excess");
-
-    if (!value) {
-      // нейтральный вид
-    } else if (!isNaN(actual)) {
-      if (actual === item.docQty) {
-        card.classList.add("match");
-      } else if (actual < item.docQty) {
-        card.classList.add("missing");
-      } else if (actual > item.docQty) {
-        card.classList.add("excess");
-      }
-    }
-
-    updateSummary(allItems);
-    autosave();
-  }
-});
-
-
-
-
-  // Экспорт PDF
- // глобальная переменная для фиксации времени загрузки локалки
-
-let startTime = new Date();
-
-function exportPDF() {
-  autosave();
-  const exportArea = document.getElementById("export-area");
-  exportArea.innerHTML = ""; 
-  exportArea.style.display = "block";
-  exportArea.style.fontFamily = "Arial, sans-serif";
-  window.scrollTo(0, 0);
-
-  let totalPlus = 0, totalMinus = 0;
-
-  // сортировка по алфавиту
-  const sortedItems = [...allItems].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-
-  // ввод данных
-  const filename = prompt("Введите имя файла", "RecountPro.pdf");
-  if (!filename) {
-    exportArea.style.display = "none";
-    return;
-  }
-  const groupName = prompt("Введите название группы", "");
-  const countedBy = prompt("Кто считал?", "");
-
-  // фиксируем время окончания
-  const endTime = new Date();
-
-  // форматируем дату и время
-  const formattedDate = endTime.toLocaleDateString("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  });
-  const formatTime = d => d.toLocaleTimeString("ru-RU", {hour: "2-digit", minute: "2-digit"});
-  const startStr = formatTime(startTime);
-  const endStr = formatTime(endTime);
-
-  // заголовок
-  const title = document.createElement("div");
-  title.style.textAlign = "center";
-  title.style.fontSize = "10px";
-  title.style.marginBottom = "4px";
-  title.innerText = "Акт контрольно-ревизионной проверки по количеству и качеству";
-  exportArea.appendChild(title);
-
-  const dateLine = document.createElement("div");
-  dateLine.style.textAlign = "center";
-  dateLine.style.fontSize = "12px";
-  dateLine.style.marginBottom = "10px";
-  dateLine.innerText = formattedDate;
-  exportArea.appendChild(dateLine);
-
-  // верхняя строка
-  const topRow = document.createElement("div");
-  topRow.style.display = "flex";
-  topRow.style.justifyContent = "space-between";
-  topRow.style.alignItems = "flex-start";
-  topRow.style.marginBottom = "10px";
-
-  const leftBlock = document.createElement("div");
-  leftBlock.style.textAlign = "left";
-  leftBlock.style.fontSize = "12px";
-  leftBlock.innerHTML = `Итог:<br>–0 ₽<br>+0 ₽`;
-
-  const rightBlock = document.createElement("div");
-  rightBlock.style.textAlign = "right";
-  rightBlock.style.fontSize = "12px";
-  rightBlock.innerHTML = `
-    Считал: ${countedBy || ""}<br>
-    <span style="display:inline-block; border-bottom:1px solid #000; width:300px;"></span><br>
-    <span style="display:inline-block; border-bottom:1px solid #000; width:300px;"></span>
-  `;
-
-  topRow.appendChild(leftBlock);
-  topRow.appendChild(rightBlock);
-  exportArea.appendChild(topRow);
-
-  // таблица
-  const table = document.createElement("table");
-  table.style.borderCollapse = "collapse";
-  table.style.width = "100%";
-  table.style.fontSize = "10px";
-  table.style.pageBreakInside = "avoid";
-
-  const thead = document.createElement("thead");
-  thead.style.pageBreakInside = "avoid";
-  thead.innerHTML = `
-    <tr>
-      <th colspan="8" style="border:1px solid #444; padding:4px; text-align:center; font-size:12px; font-weight:bold;">
-        ${groupName || ""}
-      </th>
-    </tr>
-    <tr>
-      <th style="border:1px solid #444; padding:2px; width:28px; text-align:center;">№</th>
-      <th style="border:1px solid #444; padding:2px; width:60px;">Артикул</th>
-      <th style="border:1px solid #444; padding:2px;">Название</th>
-      <th style="border:1px solid #444; padding:2px; width:40px;">Ед.</th>
-      <th style="border:1px solid #444; padding:2px; width:45px; text-align:right;">Цена</th>
-      <th style="border:1px solid #444; padding:2px; width:45px; text-align:right;">Остаток</th>
-      <th style="border:1px solid #444; padding:2px; width:120px; text-align:right;">Факт</th>
-      <th style="border:1px solid #444; padding:2px; width:55px; text-align:right;">Разн.</th>
-    </tr>
-  `;
-  table.appendChild(thead);
-
-  const tbody = document.createElement("tbody");
-  tbody.style.pageBreakInside = "avoid";
-  let index = 1;
-
-  // Форматирование разницы: пустая ячейка для нуля, +/− для ненулевых
-  function formatDiffCell(diff) {
-    const n = Number(diff);
-    const EPS = 1e-9;
-    if (!isFinite(n) || Math.abs(n) <= EPS) return ''; // пустая ячейка вместо "0"
-    // Сохраняем целочисленный вид, иначе показываем с двумя знаками
-    const s = (Math.abs(n % 1) < EPS) ? String(n) : String(Number(n.toFixed(2)));
-    return (n > 0 ? '+' : '') + s;
-  }
-
-  sortedItems.forEach(item => {
-    const input = document.querySelector(`input[data-code="${item.code}"]`);
-    const raw = input ? input.value.trim() : "";
-    let actual = 0;
-
-    try {
-      let safe = raw.replace(',', '.').replace(/[^0-9+\-*/().]/g, '').trim();
-      if (/[\+\-\*\/]$/.test(safe)) {
-        safe = safe.slice(0, -1);
-      }
-      if (safe) {
-        actual = Function(`"use strict"; return (${safe})`)() || 0;
-      }
-    } catch {
-      actual = 0;
-    }
-
-    const delta = actual - item.docQty;
-    const deltaStr = formatDiffCell(delta);
-
-    if (delta > 0) totalPlus += delta * item.price;
-    else if (delta < 0) totalMinus += Math.abs(delta) * item.price;
-
-    const row = document.createElement("tr");
-    row.style.pageBreakInside = "avoid";
-    row.innerHTML = `
-      <td style="border:1px solid #444; padding:2px; text-align:center;">${index}</td>
-      <td style="border:1px solid #444; padding:2px;">${item.code}</td>
-      <td style="border:1px solid #444; padding:2px; font-size:9px;">${item.name}</td>
-      <td style="border:1px solid #444; padding:2px;">${item.unit}</td>
-      <td style="border:1px solid #444; padding:2px; text-align:right;">${item.price.toFixed(2)}</td>
-      <td style="border:1px solid #444; padding:2px; text-align:right;">${item.docQty}</td>
-      <td style="border:1px solid #444; padding:2px; text-align:right;">${raw}</td>
-      <td style="border:1px solid #444; padding:2px; text-align:right;">${deltaStr}</td>
-    `;
-    tbody.appendChild(row);
-    index++;
-  });
-
-  table.appendChild(tbody);
-  exportArea.appendChild(table);
-
-  // итоги
-  leftBlock.innerHTML = `
-    Итог:<br>
-    –${totalMinus.toFixed(2)} ₽<br>
-    +${totalPlus.toFixed(2)} ₽
-  `;
-
-
-  // подпись снизу
-  const footer = document.createElement("div");
-  footer.style.textAlign = "right";
-  footer.style.fontSize = "8px";
-  footer.style.marginTop = "5px";
-  footer.innerText = `Время пересчёта: с ${startStr} по ${endStr}`;
-  exportArea.appendChild(footer);
-
-
-  
-    // блок подписей (3 строки, подписи под линиями, уменьшенные отступы)
-  const signBlock = document.createElement("table");
-  signBlock.style.width = "100%";
-  signBlock.style.borderCollapse = "collapse";
-  signBlock.style.fontSize = "10px";
-  signBlock.style.marginTop = "10px"; // меньше отступ сверху
-
-  signBlock.innerHTML = `
-    <tr>
-      <td style="border-bottom:1px solid #000; height:20px; width:33%; text-align:center;"></td>
-      <td style="border-bottom:1px solid #000; width:33%; text-align:center;"></td>
-      <td style="border-bottom:1px solid #000; width:33%; text-align:center;"></td>
-    </tr>
-    <tr>
-      <td style="font-size:8px; text-align:center;">Должность</td>
-      <td style="font-size:8px; text-align:center;">Подпись</td>
-      <td style="font-size:8px; text-align:center;">Расшифровка подписи</td>
-    </tr>
-    <tr>
-      <td style="border-bottom:1px solid #000; height:20px; text-align:center;"></td>
-      <td style="border-bottom:1px solid #000; text-align:center;"></td>
-      <td style="border-bottom:1px solid #000; text-align:center;"></td>
-    </tr>
-    <tr>
-      <td style="font-size:8px; text-align:center;">Должность</td>
-      <td style="font-size:8px; text-align:center;">Подпись</td>
-      <td style="font-size:8px; text-align:center;">Расшифровка подписи</td>
-    </tr>
-    <tr>
-      <td style="border-bottom:1px solid #000; height:20px; text-align:center;"></td>
-      <td style="border-bottom:1px solid #000; text-align:center;"></td>
-      <td style="border-bottom:1px solid #000; text-align:center;"></td>
-    </tr>
-    <tr>
-      <td style="font-size:8px; text-align:center;">Должность</td>
-      <td style="font-size:8px; text-align:center;">Подпись</td>
-      <td style="font-size:8px; text-align:center;">Расшифровка подписи</td>
-    </tr>
-  `;
-  exportArea.appendChild(signBlock);
- 
-
-  // экспорт
-  const opt = {
-    margin: 0.2,
-    filename,
-    image: { type: 'jpeg', quality: 0.95 },
-    html2canvas: { scale: 2, useCORS: true },
-    jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['avoid-all'] }
-  };
-
-  html2pdf().set(opt).from(exportArea).save().then(() => {
-    exportArea.style.display = "none";
-  });
-}
-  // Итоговое окно (все позиции + цветовая индикация)
-function showSummaryModal() {
-  const rows = allItems.map(item => {
-    const input = document.querySelector(`input[data-code="${item.code}"]`);
-    const raw = (input ? input.value.trim() : (sessionValues[item.code] || "")).trim();
-
-    // actual должен быть 0 при пустом/невалидном факте — чтобы разница считалась (0 - docQty)
-    let actual = 0;
-
-    try {
-      let safeRaw = raw.replace(',', '.').replace(/[^0-9+\-*/().]/g, '').trim();
-
-      // если строка оканчивается на оператор (+ - * /), убираем его
-      if (/[\+\-\*\/]$/.test(safeRaw)) {
-        safeRaw = safeRaw.slice(0, -1);
-      }
-
-      if (safeRaw) {
-        actual = Function(`"use strict"; return (${safeRaw})`)() || 0;
-      }
-    } catch {
-      actual = 0;
-    }
-
-    // разницу считаем всегда: даже если факт пустой → 0 - docQty
-    const delta = actual - item.docQty;
-
-    // цвет и знак для разницы
-    const color = delta > 0 ? "green" : (delta < 0 ? "red" : "gray");
-    const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
-
-    // в колонке «Факт» показываем пусто, если поле факта пустое; иначе — посчитанное значение
-    const factCell = raw !== "" ? actual : "";
-
-    return `
-      <tr>
-        <td style="border:1px solid #ccc; padding:4px;">${item.code}</td>
-        <td style="border:1px solid #ccc; padding:4px;">${item.name}</td>
-        <td style="border:1px solid #ccc; padding:4px;">${item.docQty}</td>
-        <td style="border:1px solid #ccc; padding:4px;">${factCell}</td>
-        <td style="border:1px solid #ccc; padding:4px; color:${color};">${deltaStr}</td>
-      </tr>
-    `;
-  });
-
-  const html = `
-    <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
-      <thead style="position:sticky; top:0; background:#fff; z-index:1;">
-        <tr style="background:#f3f4f6;">
-          <th style="border:1px solid #ccc; padding:4px;">Артикул</th>
-          <th style="border:1px solid #ccc; padding:4px;">Название</th>
-          <th style="border:1px solid #ccc; padding:4px;">Документы</th>
-          <th style="border:1px solid #ccc; padding:4px;">Факт</th>
-          <th style="border:1px solid #ccc; padding:4px;">Δ</th>
-        </tr>
-      </thead>
-      <tbody>${rows.join("")}</tbody>
-    </table>
-  `;
-
-  document.getElementById("modal-content").innerHTML = html;
-  document.getElementById("modal").style.display = "flex";
-}
-
-
-  // Меню
-  document.getElementById("menu-toggle").addEventListener("click", () => {
-    const menu = document.getElementById("menu-actions");
-    menu.style.display = menu.style.display === "flex" ? "none" : "flex";
-  });
-
-  // Загрузка PDF
-  document.getElementById("upload").addEventListener("change", async e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const arrayBuffer = await file.arrayBuffer();
-
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
-
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let allLines = [];
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const grouped = groupByY(content.items);
-      allLines.push(...grouped);
-    }
-    allItems = parseLines(allLines);
-
-    const overwrite = confirm("Заменить текущие данные пересчёта?");
-    if (overwrite) {
-      sessionValues = {};
-    } else {
-      allItems.forEach(item => {
-        const saved = localStorage.getItem("qty_" + item.code);
-        if (saved) sessionValues[item.code] = saved;
-      });
-    }
-
-    render(allItems);
-    autosave();
-  });
-
-  // Очистка пересчёта
- function clearRecount() {
-  if (confirm("Очистить пересчёт?")) {
-    // определяем ID текущей локалки (если есть)
-    const currentLocalkaId = (window.localkaData && window.localkaData.docId)
-      ? window.localkaData.docId
-      : "loc_" + new Date().toISOString().slice(0,10);
-
-    const sessionKey = "autosave_session_" + currentLocalkaId;
-
-    // 1) удаляем автосессию
-    localStorage.removeItem(sessionKey);
-
-    // 2) удаляем все qty_* значения для текущих товаров
-    if (Array.isArray(allItems) && allItems.length > 0) {
-      allItems.forEach(item => {
-        if (item && item.code) {
-          localStorage.removeItem("qty_" + item.code);
-        }
-      });
-    }
-
-    // 3) сбрасываем состояние в памяти
-    allItems = [];
-    sessionValues = {};
-
-    // 4) чистим интерфейс
-    list.innerHTML = '';
-    updateSummary([]);
-  }
-}
-
-
-  // Сессии
-  function saveSession() {
-    const name = prompt("Введите имя сессии");
-    if (!name) return;
-
-    // Собираем актуальные значения из всех инпутов
-    document.querySelectorAll('input[data-code]').forEach(input => {
-      sessionValues[input.dataset.code] = input.value;
-    });
-
-    const session = { items: allItems, values: sessionValues };
-    localStorage.setItem("session_" + name, JSON.stringify(session));
-    localStorage.setItem("active_session", name);
-    alert("Сессия сохранена: " + name);
-  }
-
-  function openSessionModal() {
-    const container = document.getElementById("session-list");
-    container.innerHTML = '';
-    const keys = Object.keys(localStorage).filter(k => k.startsWith("session_"));
-    if (keys.length === 0) {
-      container.innerHTML = "<div>Нет сохранённых сессий</div>";
-    } else {
-      keys.forEach(key => {
-        const name = key.replace("session_", "");
-        const div = document.createElement("div");
-        div.style = "margin-bottom:0.5rem; padding:0.5rem; border:1px solid var(--border); border-radius:6px;";
-        div.innerHTML = `
-          <strong>${name}</strong>
-          <div style="margin-top:0.3rem;">
-            <button onclick="loadSession('${name}')">📂 Загрузить</button>
-            <button onclick="switchSession('${name}')">🔁 Активировать</button>
-            <button onclick="deleteSession('${name}')">🗑 Удалить</button>
+    <!-- Main Content -->
+    <div class="flex-1 px-6 pb-8">
+      
+      <!-- Start Screen -->
+      <div id="start-screen">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center">
+          <div class="mx-auto w-20 h-20 bg-zinc-800 rounded-2xl flex items-center justify-center mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
           </div>
-        `;
-        container.appendChild(div);
+          
+          <h2 class="text-2xl font-semibold tracking-tight mb-2">Отсканируй штрих-код</h2>
+          <p class="text-zinc-400 mb-8">Нажми кнопку ниже и наведи камеру на штрих-код или QR-код</p>
+          
+          <button 
+            onclick="startScanning()"
+            class="w-full bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 transition-all text-white font-semibold py-4 px-8 rounded-2xl text-lg flex items-center justify-center gap-x-3 shadow-lg shadow-emerald-500/20">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>Начать сканирование</span>
+          </button>
+        </div>
+        
+        <div class="mt-6 text-center">
+          <p class="text-xs text-zinc-500">Поддерживаются: QR, EAN-13, Code 128, Code 39, UPC и другие</p>
+        </div>
+      </div>
+
+      <!-- Scanner Screen -->
+      <div id="scanner-screen" class="hidden">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
+          <div class="flex items-center justify-between mb-4 px-1">
+            <div>
+              <div class="font-semibold">Сканирование</div>
+              <div class="text-xs text-emerald-400">Камера активна</div>
+            </div>
+            <button onclick="stopScanning()" 
+                    class="px-4 py-2 text-sm font-medium bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-2xl flex items-center gap-x-2">
+              <span>Остановить</span>
+            </button>
+          </div>
+          
+          <!-- QR Reader Container -->
+          <div id="qr-reader" class="w-full bg-black rounded-2xl overflow-hidden"></div>
+          
+          <div class="mt-4 text-center">
+            <p class="text-sm text-zinc-400">Наведите камеру на штрих-код</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result Screen -->
+      <div id="result-screen" class="hidden">
+        <div class="scan-result bg-zinc-900 border border-zinc-700 rounded-3xl p-6">
+          <div class="flex items-center gap-x-2 mb-4">
+            <div class="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></div>
+            <span class="text-emerald-400 text-sm font-medium tracking-wider">УСПЕШНО ОТСКАНИРОВАНО</span>
+          </div>
+          
+          <div class="mb-6">
+            <div class="text-xs text-zinc-400 mb-1.5">Значение штрих-кода</div>
+            <div id="result-value" 
+                 class="barcode-value text-3xl font-semibold text-white leading-tight break-all"></div>
+            <div id="result-format" class="text-xs text-zinc-500 mt-2 font-mono"></div>
+          </div>
+          
+          <div class="flex gap-3">
+            <button onclick="copyToClipboard()" 
+                    id="copy-btn"
+                    class="flex-1 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 transition-colors font-medium py-3.5 rounded-2xl flex items-center justify-center gap-x-2 text-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16v-4m4 4v4m4-8v8m4-4v-4m-16 8h16a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2" />
+              </svg>
+              <span>Скопировать</span>
+            </button>
+            
+            <button onclick="scanAgain()" 
+                    class="flex-1 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 transition-all font-semibold py-3.5 rounded-2xl text-sm">
+              Сканировать ещё
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="px-6 pb-8 text-center">
+      <p class="text-[10px] text-zinc-600">Данные никуда не отправляются • Работает полностью в браузере</p>
+    </div>
+  </div>
+
+  <script>
+    let html5QrCode = null;
+    let currentResult = '';
+
+    function startScanning() {
+      // Hide start screen
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('scanner-screen').classList.remove('hidden');
+      document.getElementById('result-screen').classList.add('hidden');
+
+      // Create new scanner instance
+      html5QrCode = new Html5Qrcode("qr-reader");
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 260, height: 260 },
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E
+        ]
+      };
+
+      html5QrCode.start(
+        { facingMode: "environment" }, // rear camera
+        config,
+        (decodedText, decodedResult) => {
+          // Success callback
+          showResult(decodedText, decodedResult);
+          
+          // Stop the scanner
+          if (html5QrCode) {
+            html5QrCode.stop().catch(() => {});
+          }
+        },
+        (errorMessage) => {
+          // Ignore continuous scan errors (normal behavior)
+        }
+      ).catch(err => {
+        console.error(err);
+        alert("Не удалось запустить камеру.\n\nПроверьте, что вы разрешили доступ к камере и используете HTTPS или открываете файл через веб-сервер.");
+        resetToStart();
       });
     }
-    document.getElementById("session-modal").style.display = "flex";
-  }
 
-  function loadSession(name) {
-    const raw = localStorage.getItem("session_" + name);
-    if (!raw) return alert("Сессия не найдена");
-    try {
-      const session = JSON.parse(raw);
-      allItems = session.items;
-      sessionValues = session.values || {};
-      render(allItems);
-      alert("Сессия загружена: " + name);
-    } catch {
-      alert("Ошибка при загрузке сессии");
-    }
-  }
-
-  function switchSession(name) {
-    localStorage.setItem("active_session", name);
-    loadSession(name);
-  }
-
-  function deleteSession(name) {
-    if (!confirm("Удалить сессию: " + name + "?")) return;
-    localStorage.removeItem("session_" + name);
-    if (localStorage.getItem("active_session") === name) {
-      localStorage.removeItem("active_session");
-    }
-    openSessionModal();
-  }
-  // 🔦 Фонарик
-  let flashlightStream = null;
-  let flashlightTrack = null;
-  let flashlightOn = false;
-
-  async function toggleFlashlight() {
-    try {
-      if (!flashlightOn) {
-        flashlightStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { exact: "environment" } }
+    function stopScanning() {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          resetToStart();
+        }).catch(() => {
+          resetToStart();
         });
-        flashlightTrack = flashlightStream.getVideoTracks()[0];
-        await flashlightTrack.applyConstraints({ advanced: [{ torch: true }] });
-        flashlightOn = true;
       } else {
-        if (flashlightTrack) {
-          await flashlightTrack.applyConstraints({ advanced: [{ torch: false }] });
-          flashlightTrack.stop();
-        }
-        if (flashlightStream) {
-          flashlightStream.getTracks().forEach(t => t.stop());
-        }
-        flashlightOn = false;
+        resetToStart();
       }
-    } catch (err) {
-      alert("Фонарик не поддерживается на этом устройстве или браузере");
-      console.error(err);
-    }
-  }
-
-  document.getElementById("flashlight-btn").addEventListener("click", toggleFlashlight);
-
-// 🌌 Анимация фона (звёзды + кометы + клики)
-const canvas = document.getElementById("bg");
-const ctx = canvas.getContext("2d");
-
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
-
-// --- Звёзды с параллаксом ---
-let stars = [];
-for (let i = 0; i < 200; i++) {
-  stars.push({
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height,
-    r: Math.random() * 1.5 + 0.5,
-    alpha: Math.random(),
-    speed: Math.random() * 0.2 + 0.05
-  });
-}
-
-// --- Несколько комет ---
-let comets = [];
-function spawnComet() {
-  comets.push({
-    x: -100,
-    y: Math.random() * canvas.height * 0.5,
-    vx: 6 + Math.random() * 2,
-    vy: 2 + Math.random(),
-    life: 0,
-    maxLife: 300
-  });
-}
-
-// --- Частицы от кликов ---
-let clickParticles = [];
-canvas.addEventListener("click", e => {
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-
-  for (let i = 0; i < 20; i++) {
-    clickParticles.push({
-      x,
-      y,
-      vx: (Math.random() - 0.5) * 4,
-      vy: (Math.random() - 0.5) * 4,
-      life: 0,
-      maxLife: 60,
-      r: Math.random() * 2 + 1
-    });
-  }
-});
-
-function drawClickParticles() {
-  clickParticles.forEach((p, i) => {
-    ctx.fillStyle = `rgba(255,255,200,${1 - p.life / p.maxLife})`;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fill();
-
-    p.x += p.vx;
-    p.y += p.vy;
-    p.life++;
-
-    if (p.life > p.maxLife) {
-      clickParticles.splice(i, 1);
-    }
-  });
-}
-
-// --- Анимация ---
-function animate() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Звёзды
-  stars.forEach(s => {
-    s.alpha += (Math.random() - 0.5) * 0.05;
-    if (s.alpha < 0) s.alpha = 0;
-    if (s.alpha > 1) s.alpha = 1;
-
-    s.y += s.speed;
-    if (s.y > canvas.height) {
-      s.y = 0;
-      s.x = Math.random() * canvas.width;
     }
 
-    ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-    ctx.fill();
-  });
+    function showResult(text, decodedResult) {
+      // Hide scanner
+      document.getElementById('scanner-screen').classList.add('hidden');
+      document.getElementById('result-screen').classList.remove('hidden');
 
-  // Случайный запуск кометы
-  if (Math.random() < 0.005) {
-    spawnComet();
-  }
+      // Set result
+      currentResult = text;
+      document.getElementById('result-value').textContent = text;
 
-  // Кометы
-  comets.forEach((c, i) => {
-    let grad = ctx.createLinearGradient(c.x, c.y, c.x - 120, c.y - 60);
-    grad.addColorStop(0, "rgba(255,255,255,0.8)");
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(c.x, c.y);
-    ctx.lineTo(c.x - 120, c.y - 60);
-    ctx.stroke();
-
-    ctx.fillStyle = "#fff";
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, 3.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    c.x += c.vx;
-    c.y += c.vy;
-    c.life++;
-
-    if (c.x > canvas.width + 150 || c.y > canvas.height + 150 || c.life > c.maxLife) {
-      comets.splice(i, 1);
+      // Show format if available
+      const formatEl = document.getElementById('result-format');
+      if (decodedResult && decodedResult.result && decodedResult.result.format) {
+        formatEl.textContent = 'Формат: ' + decodedResult.result.format.toString();
+      } else {
+        formatEl.textContent = '';
+      }
     }
-  });
 
-  // Частицы от кликов
-  drawClickParticles();
+    function copyToClipboard() {
+      if (!currentResult) return;
 
-  requestAnimationFrame(animate);
-}
-animate();
-  // Голосовой поиск для поля #search с предобработкой, фуззи-поиском и авто-заменой
-// ean-online style scanner: BarcodeDetector + ZXing fallback
-// Requires: element ids from HTML above and an input #search to receive result
-(function(){
-  const ZXING_CDN = 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest';
-  const modal = document.getElementById('ean-scanner-modal');
-  const preview = document.getElementById('ean-preview');
-  const deviceSelect = document.getElementById('ean-device-select');
-  const closeBtn = document.getElementById('ean-close-btn');
-  const torchBtn = document.getElementById('ean-torch-btn');
-  const logEl = document.getElementById('ean-scan-log');
-  const searchInput = document.getElementById('search');
+      navigator.clipboard.writeText(currentResult).then(() => {
+        const btn = document.getElementById('copy-btn');
+        const originalText = btn.innerHTML;
+        
+        btn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 10l7-7m0 0l7 7" />
+          </svg>
+          <span>Скопировано!</span>
+        `;
+        btn.classList.add('!bg-emerald-500', 'text-white');
 
-  let stream = null;
-  let scanning = false;
-  let currentDeviceId = null;
-  let detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","itf"]}) : null;
-  let lastDetected = {code:null, ts:0};
-  const DEBOUNCE = 900;
-  let zxingLoaded = false;
-
-  function log(msg, show=false){
-    console.log('[ean-scanner] ' + msg);
-    if(!logEl) return;
-    if(show) { logEl.style.display='block'; const d=document.createElement('div'); d.textContent=msg; logEl.appendChild(d); logEl.scrollTop=logEl.scrollHeight; }
-  }
-
-  async function loadZXing(){
-    if(zxingLoaded || typeof ZXing !== 'undefined') { zxingLoaded = true; return; }
-    return new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = ZXING_CDN;
-      s.onload = () => { zxingLoaded = true; res(); };
-      s.onerror = () => rej(new Error('ZXing load error'));
-      document.head.appendChild(s);
-    });
-  }
-
-  async function enumerateCameras(){
-    try{
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const cams = devices.filter(d=>d.kind==='videoinput');
-      deviceSelect.innerHTML = '';
-      cams.forEach((c, i)=>{
-        const o = document.createElement('option');
-        o.value = c.deviceId;
-        o.text = c.label || `Камера ${i+1}`;
-        deviceSelect.appendChild(o);
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.classList.remove('!bg-emerald-500', 'text-white');
+        }, 2200);
+      }).catch(() => {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = currentResult;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        alert('Скопировано в буфер обмена');
       });
-      if(cams.length && !currentDeviceId) currentDeviceId = cams[0].deviceId;
-      if(currentDeviceId) deviceSelect.value = currentDeviceId;
-    }catch(e){ log('enumerate error: '+e, true); }
-  }
-
-  async function getStreamWithTries(deviceId){
-    const tries = [
-      { width:{ideal:1280}, height:{ideal:720} },
-      { width:{ideal:960}, height:{ideal:540} },
-      { width:{ideal:640}, height:{ideal:480} }
-    ];
-    for(const c of tries){
-      try{
-        const constraints = { video: Object.assign({ deviceId: deviceId?{exact:deviceId}:undefined, facingMode:{ideal:'environment'} }, c), audio:false };
-        const s = await navigator.mediaDevices.getUserMedia(constraints);
-        if(s.getVideoTracks().length) return s;
-        s.getTracks().forEach(t=>t.stop());
-      }catch(e){ await new Promise(r=>setTimeout(r,120)); }
     }
-    return navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'} }, audio:false });
-  }
 
-  async function tryDecodeCanvas(canvas){
-    // native detector
-    if(detector){
-      try{
-        const bitmap = await createImageBitmap(canvas);
-        const res = await detector.detect(bitmap);
-        bitmap.close();
-        if(res && res.length) return String(res[0].rawValue);
-      }catch(e){ /* fallback */ }
+    function scanAgain() {
+      // Reset and start again
+      document.getElementById('result-screen').classList.add('hidden');
+      startScanning();
     }
-    // ZXing fallback
-    try{
-      if(!zxingLoaded) await loadZXing().catch(()=>null);
-      if(typeof ZXing !== 'undefined'){
-        const src = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
-        const bin = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
-        const res = new ZXing.MultiFormatReader().decode(bin);
-        if(res && res.text) return String(res.text);
+
+    function resetToStart() {
+      document.getElementById('start-screen').classList.remove('hidden');
+      document.getElementById('scanner-screen').classList.add('hidden');
+      document.getElementById('result-screen').classList.add('hidden');
+      
+      if (html5QrCode) {
+        html5QrCode = null;
       }
-    }catch(e){}
-    return null;
-  }
-
-  function preprocess(ctx, w, h){
-    try{
-      const id = ctx.getImageData(0,0,w,h);
-      const d = id.data;
-      for(let i=0;i<d.length;i+=4){
-        const r=d[i], g=d[i+1], b=d[i+2];
-        let v = 0.299*r + 0.587*g + 0.114*b;
-        v = ((v-128)*1.15)+128;
-        d[i]=d[i+1]=d[i+2]=v;
-      }
-      ctx.putImageData(id,0,0);
-    }catch(e){}
-  }
-
-  async function scanFrame(){
-    if(!scanning || !preview.videoWidth || !preview.videoHeight) { if(scanning) requestAnimationFrame(scanFrame); return; }
-    const w = preview.videoWidth, h = preview.videoHeight;
-    const max = 900;
-    const scale = Math.max(1, Math.floor(Math.max(w,h)/max));
-    const sw = Math.floor(w/scale), sh = Math.floor(h/scale);
-    const canvas = document.createElement('canvas'); canvas.width=sw; canvas.height=sh;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(preview,0,0,w,h,0,0,sw,sh);
-
-    const roiH = Math.floor(sh*0.5), roiY = Math.floor((sh-roiH)/2);
-    const roi = document.createElement('canvas'); roi.width=sw; roi.height=roiH;
-    const rctx = roi.getContext('2d'); rctx.drawImage(canvas,0,roiY,sw,roiH,0,0,sw,roiH);
-    preprocess(rctx, sw, roiH);
-
-    const code = await tryDecodeCanvas(roi);
-    const now = Date.now();
-    if(code && (lastDetected.code !== code || now - lastDetected.ts > DEBOUNCE)){
-      lastDetected = {code, ts:now};
-      onDetected(code.trim());
     }
-    if(scanning) requestAnimationFrame(scanFrame);
-  }
 
-  function onDetected(code){
-    log('Detected: '+code, true);
-    if(searchInput) { searchInput.value = code; const form = searchInput.closest('form'); if(form) setTimeout(()=>{ try{ form.submit(); }catch(e){} },80); }
-    // auto stop
-    stopScanner();
-  }
-
-  async function startScanner(){
-    if(scanning) return;
-    scanning = true;
-    await enumerateCameras();
-    try{
-      stream = await getStreamWithTries(deviceSelect?deviceSelect.value:currentDeviceId);
-      preview.srcObject = stream;
-      await preview.play();
-      const t = stream.getVideoTracks()[0];
-      currentDeviceId = t.getSettings().deviceId || currentDeviceId;
-      if(deviceSelect && currentDeviceId) deviceSelect.value = currentDeviceId;
-      // try minimize zoom/focus
-      try{
-        if(t.getCapabilities && t.applyConstraints){
-          const caps = t.getCapabilities();
-          const adv = [];
-          if(caps.zoom && typeof caps.zoom.min==='number') adv.push({zoom:caps.zoom.min});
-          if(caps.focusMode && caps.focusMode.includes('continuous')) adv.push({focusMode:'continuous'});
-          if(adv.length) await t.applyConstraints({advanced:adv}).catch(()=>{});
-        }
-      }catch(e){}
-      modal.style.display='flex';
-      requestAnimationFrame(scanFrame);
-    }catch(e){
-      log('start error: '+e, true);
-      scanning=false;
-      try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }catch(e){}
-    }
-  }
-
-  function stopScanner(){
-    scanning=false;
-    try{ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }catch(e){}
-    try{ preview.pause(); preview.srcObject=null; }catch(e){}
-    modal.style.display='none';
-  }
-
-  async function toggleTorch(){
-    if(!stream) return;
-    const t = stream.getVideoTracks()[0];
-    if(!t) return;
-    try{
-      const caps = t.getCapabilities ? t.getCapabilities() : {};
-      if(!caps.torch){ log('Torch not supported', true); return; }
-      const settings = t.getSettings ? t.getSettings() : {};
-      const current = settings.torch || false;
-      await t.applyConstraints({ advanced:[{ torch: !current }] });
-    }catch(e){ log('torch error: '+e, true); }
-  }
-
-  // bindings
-  deviceSelect && deviceSelect.addEventListener('change', async ()=>{ currentDeviceId = deviceSelect.value; if(scanning){ await startScanner(); }});
-  closeBtn && closeBtn.addEventListener('click', stopScanner);
-  torchBtn && torchBtn.addEventListener('click', toggleTorch);
-
-  // expose API and auto-init
-  window.eanScanner = { start: startScanner, stop: stopScanner, enumerate: enumerateCameras };
-  (async()=>{ await enumerateCameras(); })();
-
-  // auto bind any button with data-action="open-scanner" or id "scan-btn"
-  const autoBtn = document.querySelector('#scan-btn') || document.querySelector('[data-action="open-scanner"]');
-  if(autoBtn) autoBtn.addEventListener('click', startScanner);
-
-})();
-
-
-
-
-
-
-
-
-</script>
-
-
+    // Optional: Auto-focus on mobile when opened
+    window.onload = function() {
+      // You can add any initialization here if needed
+    };
+  </script>
 </body>
 </html>
