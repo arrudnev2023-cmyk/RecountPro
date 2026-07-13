@@ -3,13 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Сканер</title>
-  <!-- Более стабильный CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+  <title>Сканер товаров</title>
+  <!-- html5-qrcode -->
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       font-family: system-ui, -apple-system, sans-serif;
       background: #0f0f0f;
@@ -21,7 +19,7 @@
     h1 {
       text-align: center;
       margin: 0 0 16px 0;
-      font-size: 1.4rem;
+      font-size: 1.35rem;
     }
     .top-bar {
       display: flex;
@@ -61,6 +59,7 @@
     .item-header {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       margin-bottom: 4px;
     }
     .item-code {
@@ -81,7 +80,7 @@
       z-index: 99999;
       justify-content: center;
       align-items: flex-start;
-      padding-top: 40px;
+      padding-top: 30px;
     }
     .scanner-box {
       background: #111;
@@ -91,15 +90,16 @@
       padding: 16px;
       position: relative;
     }
-    video {
+    #qr-reader {
       width: 100%;
       border-radius: 14px;
-      background: #000;
+      overflow: hidden;
     }
     #scanner-status {
       text-align: center;
       color: #aaa;
       margin: 10px 0;
+      font-size: 0.95rem;
     }
     .close-btn {
       position: absolute;
@@ -138,8 +138,8 @@
   <div id="scanner-modal">
     <div class="scanner-box">
       <button class="close-btn" id="close-scanner">✕</button>
-      <h3 style="text-align:center; margin: 0 0 10px;">Сканирование</h3>
-      <video id="video" autoplay playsinline></video>
+      <h3 style="text-align:center; margin:0 0 10px;">Сканирование</h3>
+      <div id="qr-reader"></div>
       <p id="scanner-status"></p>
       <button id="torch-btn">💡 Фонарик</button>
     </div>
@@ -150,14 +150,11 @@
     const listContainer = document.getElementById("list");
     const modal = document.getElementById("scanner-modal");
     const statusEl = document.getElementById("scanner-status");
-    const video = document.getElementById("video");
     const torchBtn = document.getElementById("torch-btn");
     const scanBtn = document.getElementById("scan-btn");
 
     let items = [];
-    let codeReader = null;
-    let currentStream = null;
-    let torchTrack = null;
+    let html5QrCode = null;
     let isScanning = false;
 
     function renderList() {
@@ -176,6 +173,7 @@
       });
     }
 
+    // Поиск
     searchInput.addEventListener("input", () => {
       const q = searchInput.value.toLowerCase().trim();
       const filtered = items.filter(i => 
@@ -196,33 +194,8 @@
       });
     });
 
-    // Инициализация сканера
-    function initScanner() {
-      if (codeReader) return true;
-
-      if (typeof ZXing === 'undefined') {
-        alert("Библиотека сканера не загрузилась. Попробуй обновить страницу.");
-        return false;
-      }
-
-      try {
-        codeReader = new ZXing.BrowserMultiFormatReader();
-        const hints = new Map();
-        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-        codeReader.setHints(hints);
-        return true;
-      } catch (e) {
-        console.error(e);
-        alert("Ошибка инициализации сканера");
-        return false;
-      }
-    }
-
-    scanBtn.addEventListener("click", () => {
-      if (!initScanner()) return;
-      startScanning();
-    });
-
+    // Кнопка сканирования
+    scanBtn.addEventListener("click", startScanning);
     document.getElementById("close-scanner").addEventListener("click", stopScanning);
 
     async function startScanning() {
@@ -231,24 +204,28 @@
       isScanning = true;
 
       try {
-        currentStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" }
-        });
+        html5QrCode = new Html5Qrcode("qr-reader");
 
-        video.srcObject = currentStream;
-        await video.play();
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { 
+            fps: 15, 
+            qrbox: { width: 280, height: 200 },
+            aspectRatio: 1.5
+          },
+          (decodedText) => {
+            if (isScanning) {
+              handleScanSuccess(decodedText.trim());
+            }
+          },
+          () => {}
+        );
 
-        torchTrack = currentStream.getVideoTracks()[0];
-        statusEl.innerText = "Наведи на штрих-код";
-
-        codeReader.decodeFromVideoDevice(null, video, (result) => {
-          if (result && isScanning) {
-            handleScanSuccess(result.getText());
-          }
-        });
+        statusEl.innerText = "Наведи камеру на штрих-код";
 
       } catch (err) {
-        statusEl.innerText = "Ошибка камеры";
+        console.error(err);
+        statusEl.innerText = "Не удалось запустить камеру";
       }
     }
 
@@ -261,7 +238,7 @@
         existing.count++;
         renderList();
       } else {
-        const name = prompt("Название товара:", "Товар");
+        const name = prompt("Введите название товара:", "Товар");
         if (name) {
           items.push({ code, name: name.trim(), count: 1 });
           renderList();
@@ -269,31 +246,34 @@
       }
     }
 
-    function stopScanning() {
+    async function stopScanning() {
       isScanning = false;
 
-      if (codeReader) {
-        try { codeReader.reset(); } catch (e) {}
-      }
-      if (currentStream) {
-        currentStream.getTracks().forEach(t => t.stop());
-        currentStream = null;
+      if (html5QrCode) {
+        try {
+          await html5QrCode.stop();
+        } catch (e) {}
+        html5QrCode = null;
       }
 
       modal.style.display = "none";
       statusEl.innerText = "";
-      torchTrack = null;
       torchBtn.innerText = "💡 Фонарик";
     }
 
-    // Фонарик
+    // Фонарик (html5-qrcode)
     torchBtn.addEventListener("click", async () => {
-      if (!torchTrack) return;
+      if (!html5QrCode) return;
+
       try {
         const isOn = torchBtn.innerText.includes("Выключить");
-        await torchTrack.applyConstraints({ advanced: [{ torch: !isOn }] });
+        await html5QrCode.applyVideoConstraints({
+          advanced: [{ torch: !isOn }]
+        });
         torchBtn.innerText = isOn ? "💡 Фонарик" : "💡 Выключить";
-      } catch (e) {}
+      } catch (e) {
+        statusEl.innerText = "Фонарик не поддерживается";
+      }
     });
   </script>
 
