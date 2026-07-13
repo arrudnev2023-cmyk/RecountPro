@@ -3,20 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Тест сканера</title>
+  <title>Тест сканера v2</title>
   <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     body {
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: system-ui, sans-serif;
       background: #111;
       color: #fff;
       margin: 0;
       padding: 20px;
     }
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
+    h1 { text-align: center; }
     .search-container {
       display: flex;
       gap: 10px;
@@ -25,46 +22,37 @@
     }
     #search {
       flex: 1;
-      padding: 12px 16px;
+      padding: 14px 16px;
       font-size: 1.1rem;
       border: 2px solid #333;
       border-radius: 12px;
       background: #1f1f1f;
       color: #fff;
-      outline: none;
-    }
-    #search:focus {
-      border-color: #6d28d9;
     }
     #scan-btn {
-      padding: 12px 24px;
+      padding: 14px 22px;
       font-size: 1.1rem;
       background: linear-gradient(135deg, #6d28d9, #a78bfa);
       color: white;
       border: none;
       border-radius: 12px;
-      cursor: pointer;
       font-weight: 600;
+      cursor: pointer;
     }
     .item {
       background: #1f1f1f;
-      padding: 16px;
-      margin-bottom: 10px;
-      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 8px;
+      border-radius: 10px;
       max-width: 600px;
       margin-left: auto;
       margin-right: auto;
     }
-    .item.match {
-      border: 2px solid #22c55e;
-    }
-    /* Модалка сканера */
     #scanner-modal {
       display: none;
       position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.9);
+      inset: 0;
+      background: rgba(0,0,0,0.92);
       z-index: 9999;
       justify-content: center;
       align-items: center;
@@ -74,97 +62,85 @@
       width: 95%;
       max-width: 420px;
       border-radius: 16px;
-      padding: 20px;
+      padding: 16px;
       position: relative;
     }
-    #qr-reader {
-      width: 100%;
-      border-radius: 12px;
-      overflow: hidden;
-    }
-    #scanner-status {
-      text-align: center;
-      color: #aaa;
-      margin-top: 10px;
-    }
+    #qr-reader { width: 100%; border-radius: 12px; overflow: hidden; }
+    #scanner-status { text-align: center; color: #aaa; margin-top: 8px; font-size: 0.95rem; }
     .close-btn {
-      position: absolute;
-      top: 10px;
-      right: 15px;
-      background: none;
-      border: none;
+      position: absolute; top: 12px; right: 16px;
+      background: none; border: none; color: #fff; font-size: 26px; cursor: pointer;
+    }
+    #torch-btn {
+      margin-top: 12px;
+      width: 100%;
+      padding: 10px;
+      background: #333;
       color: #fff;
-      font-size: 28px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
       cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-  <h1>Тест сканера</h1>
+  <h1>Тест сканера v2</h1>
 
-  <!-- Поиск + кнопка сканирования -->
   <div class="search-container">
-    <input type="text" id="search" placeholder="Поиск по коду или названию...">
+    <input type="text" id="search" placeholder="Поиск...">
     <button id="scan-btn">📷 Сканировать</button>
   </div>
 
-  <!-- Список товаров (для теста фильтрации) -->
   <div id="list"></div>
 
-  <!-- Модальное окно сканера -->
+  <!-- Модалка сканера -->
   <div id="scanner-modal">
     <div class="scanner-box">
       <button class="close-btn" id="close-scanner">✕</button>
-      <h3 style="margin-top:0; text-align:center;">Сканирование штрих-кода</h3>
+      <h3 style="text-align:center; margin: 0 0 10px;">Сканирование штрих-кода</h3>
+      
       <div id="qr-reader"></div>
       <p id="scanner-status"></p>
+
+      <!-- Кнопка фонарика -->
+      <button id="torch-btn">💡 Включить фонарик</button>
     </div>
   </div>
 
   <script>
-    // ==================== ДАННЫЕ ДЛЯ ТЕСТА ====================
+    // ==================== ТЕСТОВЫЕ ДАННЫЕ ====================
     let items = [
+      { code: "4600682057161", name: "Пиво светлое ГОСТовское" },
       { code: "123456", name: "Кофе растворимый 100г" },
-      { code: "234567", name: "Чай чёрный 25 пакетиков" },
-      { code: "345678", name: "Шоколад молочный 90г" },
-      { code: "456789", name: "Печенье овсяное 300г" },
-      { code: "567890", name: "Сахар песок 1кг" },
-      { code: "678901", name: "Молоко 1л" },
+      { code: "234567", name: "Чай чёрный 25 пак." },
     ];
 
     const listContainer = document.getElementById("list");
     const searchInput = document.getElementById("search");
 
-    // Рендер списка
-    function renderList(filteredItems) {
+    function renderList(filtered) {
       listContainer.innerHTML = "";
-      filteredItems.forEach(item => {
+      filtered.forEach(item => {
         const div = document.createElement("div");
         div.className = "item";
-        div.innerHTML = `
-          <strong>${item.code}</strong><br>
-          ${item.name}
-        `;
+        div.innerHTML = `<strong>${item.code}</strong><br>${item.name}`;
         listContainer.appendChild(div);
       });
     }
-
-    // Первоначальный рендер
     renderList(items);
 
-    // Поиск
     searchInput.addEventListener("input", () => {
-      const query = searchInput.value.toLowerCase().trim();
-      const filtered = items.filter(item => 
-        item.code.toLowerCase().includes(query) || 
-        item.name.toLowerCase().includes(query)
-      );
+      const q = searchInput.value.toLowerCase();
+      const filtered = items.filter(i => i.code.includes(q) || i.name.toLowerCase().includes(q));
       renderList(filtered);
     });
 
     // ==================== СКАНЕР ====================
     let html5QrCode = null;
+    let torchOn = false;
+    let currentTrack = null;
 
     document.getElementById("scan-btn").addEventListener("click", () => {
       const modal = document.getElementById("scanner-modal");
@@ -178,57 +154,68 @@
       html5QrCode = new Html5Qrcode("qr-reader");
 
       html5QrCode.start(
-        { facingMode: { exact: "environment" } }, // Только задняя камера
-        { fps: 10, qrbox: { width: 260, height: 260 } },
+        { facingMode: "environment" },           // Задняя камера (без exact)
+        { fps: 10, qrbox: { width: 280, height: 200 } },
         (decodedText) => {
-          // Успешно отсканировали
           handleScanSuccess(decodedText.trim());
         },
-        (error) => {
-          // Можно игнорировать
-        }
+        () => {}
       ).catch(err => {
-        status.innerText = "Не удалось запустить камеру";
+        status.innerText = "Ошибка запуска камеры";
         console.error(err);
       });
     });
 
-    // Закрытие модалки
-    document.getElementById("close-scanner").addEventListener("click", () => {
-      closeScanner();
-    });
+    // Закрытие
+    document.getElementById("close-scanner").addEventListener("click", closeScanner);
 
     function closeScanner() {
       const modal = document.getElementById("scanner-modal");
       if (html5QrCode) {
         html5QrCode.stop().then(() => {
           modal.style.display = "none";
-        }).catch(() => {
-          modal.style.display = "none";
-        });
+          torchOn = false;
+          currentTrack = null;
+        }).catch(() => modal.style.display = "none");
       } else {
         modal.style.display = "none";
       }
     }
 
-    // Что делать после успешного сканирования
     function handleScanSuccess(code) {
       closeScanner();
-
-      // Подставляем код в строку поиска
       searchInput.value = code;
-
-      // Запускаем поиск (фильтрацию)
       searchInput.dispatchEvent(new Event("input", { bubbles: true }));
-
-      // Можно добавить визуальный эффект
-      setTimeout(() => {
-        searchInput.style.borderColor = "#22c55e";
-        setTimeout(() => {
-          searchInput.style.borderColor = "#333";
-        }, 1500);
-      }, 100);
     }
+
+    // ==================== ФОНАРИК ====================
+    document.getElementById("torch-btn").addEventListener("click", async () => {
+      const btn = document.getElementById("torch-btn");
+      const status = document.getElementById("scanner-status");
+
+      if (!html5QrCode) return;
+
+      try {
+        const stream = html5QrCode.getRunningTrackCameraCapabilities
+          ? await html5QrCode.getRunningTrackCameraCapabilities()
+          : null;
+
+        // Пробуем применить torch
+        const track = html5QrCode.getRunningTrack();
+        if (track) {
+          currentTrack = track;
+          await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
+          torchOn = !torchOn;
+          btn.innerText = torchOn ? "💡 Выключить фонарик" : "💡 Включить фонарик";
+          status.innerText = torchOn ? "Фонарик включён" : "";
+        } else {
+          status.innerText = "Фонарик не поддерживается";
+        }
+      } catch (e) {
+        status.innerText = "Фонарик недоступен на этом устройстве";
+        console.error(e);
+      }
+    });
   </script>
 
 </body>
