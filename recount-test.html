@@ -3,298 +3,233 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Сканер штрих-кодов</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <title>Тест сканера</title>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
-    
-    :root {
-      --font-sans: 'Inter', system_ui, sans-serif;
-    }
-    
     body {
-      font-family: var(--font-sans);
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #111;
+      color: #fff;
+      margin: 0;
+      padding: 20px;
     }
-    
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .search-container {
+      display: flex;
+      gap: 10px;
+      max-width: 600px;
+      margin: 0 auto 20px;
+    }
+    #search {
+      flex: 1;
+      padding: 12px 16px;
+      font-size: 1.1rem;
+      border: 2px solid #333;
+      border-radius: 12px;
+      background: #1f1f1f;
+      color: #fff;
+      outline: none;
+    }
+    #search:focus {
+      border-color: #6d28d9;
+    }
+    #scan-btn {
+      padding: 12px 24px;
+      font-size: 1.1rem;
+      background: linear-gradient(135deg, #6d28d9, #a78bfa);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .item {
+      background: #1f1f1f;
+      padding: 16px;
+      margin-bottom: 10px;
+      border-radius: 12px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .item.match {
+      border: 2px solid #22c55e;
+    }
+    /* Модалка сканера */
+    #scanner-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+    .scanner-box {
+      background: #1a1a1a;
+      width: 95%;
+      max-width: 420px;
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+    }
     #qr-reader {
-      border-radius: 20px;
+      width: 100%;
+      border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     }
-    
-    #qr-reader video {
-      width: 100% !important;
-      height: auto !important;
-      border-radius: 20px;
-      display: block;
+    #scanner-status {
+      text-align: center;
+      color: #aaa;
+      margin-top: 10px;
     }
-    
-    .scan-result {
-      animation: fadeInScale 0.3s ease-out forwards;
-    }
-    
-    @keyframes fadeInScale {
-      from {
-        opacity: 0;
-        transform: scale(0.95);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1);
-      }
-    }
-    
-    .barcode-value {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      word-break: break-all;
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 28px;
+      cursor: pointer;
     }
   </style>
 </head>
-<body class="bg-zinc-950 text-white">
-  <div class="max-w-md mx-auto min-h-screen flex flex-col">
-    <!-- Header -->
-    <div class="px-6 pt-8 pb-4">
-      <div class="flex items-center gap-x-3">
-        <div class="w-11 h-11 bg-emerald-500 rounded-2xl flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </div>
-        <div>
-          <h1 class="text-3xl font-semibold tracking-tighter">Сканер</h1>
-          <p class="text-zinc-400 text-sm">Штрих-коды и QR</p>
-        </div>
-      </div>
-    </div>
+<body>
 
-    <!-- Main Content -->
-    <div class="flex-1 px-6 pb-8">
-      
-      <!-- Start Screen -->
-      <div id="start-screen">
-        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center">
-          <div class="mx-auto w-20 h-20 bg-zinc-800 rounded-2xl flex items-center justify-center mb-6">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          
-          <h2 class="text-2xl font-semibold tracking-tight mb-2">Отсканируй штрих-код</h2>
-          <p class="text-zinc-400 mb-8">Нажми кнопку ниже и наведи камеру на штрих-код или QR-код</p>
-          
-          <button 
-            onclick="startScanning()"
-            class="w-full bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 transition-all text-white font-semibold py-4 px-8 rounded-2xl text-lg flex items-center justify-center gap-x-3 shadow-lg shadow-emerald-500/20">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span>Начать сканирование</span>
-          </button>
-        </div>
-        
-        <div class="mt-6 text-center">
-          <p class="text-xs text-zinc-500">Поддерживаются: QR, EAN-13, Code 128, Code 39, UPC и другие</p>
-        </div>
-      </div>
+  <h1>Тест сканера</h1>
 
-      <!-- Scanner Screen -->
-      <div id="scanner-screen" class="hidden">
-        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
-          <div class="flex items-center justify-between mb-4 px-1">
-            <div>
-              <div class="font-semibold">Сканирование</div>
-              <div class="text-xs text-emerald-400">Камера активна</div>
-            </div>
-            <button onclick="stopScanning()" 
-                    class="px-4 py-2 text-sm font-medium bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-2xl flex items-center gap-x-2">
-              <span>Остановить</span>
-            </button>
-          </div>
-          
-          <!-- QR Reader Container -->
-          <div id="qr-reader" class="w-full bg-black rounded-2xl overflow-hidden"></div>
-          
-          <div class="mt-4 text-center">
-            <p class="text-sm text-zinc-400">Наведите камеру на штрих-код</p>
-          </div>
-        </div>
-      </div>
+  <!-- Поиск + кнопка сканирования -->
+  <div class="search-container">
+    <input type="text" id="search" placeholder="Поиск по коду или названию...">
+    <button id="scan-btn">📷 Сканировать</button>
+  </div>
 
-      <!-- Result Screen -->
-      <div id="result-screen" class="hidden">
-        <div class="scan-result bg-zinc-900 border border-zinc-700 rounded-3xl p-6">
-          <div class="flex items-center gap-x-2 mb-4">
-            <div class="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></div>
-            <span class="text-emerald-400 text-sm font-medium tracking-wider">УСПЕШНО ОТСКАНИРОВАНО</span>
-          </div>
-          
-          <div class="mb-6">
-            <div class="text-xs text-zinc-400 mb-1.5">Значение штрих-кода</div>
-            <div id="result-value" 
-                 class="barcode-value text-3xl font-semibold text-white leading-tight break-all"></div>
-            <div id="result-format" class="text-xs text-zinc-500 mt-2 font-mono"></div>
-          </div>
-          
-          <div class="flex gap-3">
-            <button onclick="copyToClipboard()" 
-                    id="copy-btn"
-                    class="flex-1 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 transition-colors font-medium py-3.5 rounded-2xl flex items-center justify-center gap-x-2 text-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16v-4m4 4v4m4-8v8m4-4v-4m-16 8h16a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2" />
-              </svg>
-              <span>Скопировать</span>
-            </button>
-            
-            <button onclick="scanAgain()" 
-                    class="flex-1 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 transition-all font-semibold py-3.5 rounded-2xl text-sm">
-              Сканировать ещё
-            </button>
-          </div>
-        </div>
-      </div>
+  <!-- Список товаров (для теста фильтрации) -->
+  <div id="list"></div>
 
-    </div>
-
-    <!-- Footer -->
-    <div class="px-6 pb-8 text-center">
-      <p class="text-[10px] text-zinc-600">Данные никуда не отправляются • Работает полностью в браузере</p>
+  <!-- Модальное окно сканера -->
+  <div id="scanner-modal">
+    <div class="scanner-box">
+      <button class="close-btn" id="close-scanner">✕</button>
+      <h3 style="margin-top:0; text-align:center;">Сканирование штрих-кода</h3>
+      <div id="qr-reader"></div>
+      <p id="scanner-status"></p>
     </div>
   </div>
 
   <script>
+    // ==================== ДАННЫЕ ДЛЯ ТЕСТА ====================
+    let items = [
+      { code: "123456", name: "Кофе растворимый 100г" },
+      { code: "234567", name: "Чай чёрный 25 пакетиков" },
+      { code: "345678", name: "Шоколад молочный 90г" },
+      { code: "456789", name: "Печенье овсяное 300г" },
+      { code: "567890", name: "Сахар песок 1кг" },
+      { code: "678901", name: "Молоко 1л" },
+    ];
+
+    const listContainer = document.getElementById("list");
+    const searchInput = document.getElementById("search");
+
+    // Рендер списка
+    function renderList(filteredItems) {
+      listContainer.innerHTML = "";
+      filteredItems.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <strong>${item.code}</strong><br>
+          ${item.name}
+        `;
+        listContainer.appendChild(div);
+      });
+    }
+
+    // Первоначальный рендер
+    renderList(items);
+
+    // Поиск
+    searchInput.addEventListener("input", () => {
+      const query = searchInput.value.toLowerCase().trim();
+      const filtered = items.filter(item => 
+        item.code.toLowerCase().includes(query) || 
+        item.name.toLowerCase().includes(query)
+      );
+      renderList(filtered);
+    });
+
+    // ==================== СКАНЕР ====================
     let html5QrCode = null;
-    let currentResult = '';
 
-    function startScanning() {
-      // Hide start screen
-      document.getElementById('start-screen').classList.add('hidden');
-      document.getElementById('scanner-screen').classList.remove('hidden');
-      document.getElementById('result-screen').classList.add('hidden');
+    document.getElementById("scan-btn").addEventListener("click", () => {
+      const modal = document.getElementById("scanner-modal");
+      const status = document.getElementById("scanner-status");
+      modal.style.display = "flex";
+      status.innerText = "Запуск задней камеры...";
 
-      // Create new scanner instance
+      const qrReader = document.getElementById("qr-reader");
+      qrReader.innerHTML = "";
+
       html5QrCode = new Html5Qrcode("qr-reader");
 
-      const config = {
-        fps: 10,
-        qrbox: { width: 260, height: 260 },
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.QR_CODE,
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E
-        ]
-      };
-
       html5QrCode.start(
-        { facingMode: "environment" }, // rear camera
-        config,
-        (decodedText, decodedResult) => {
-          // Success callback
-          showResult(decodedText, decodedResult);
-          
-          // Stop the scanner
-          if (html5QrCode) {
-            html5QrCode.stop().catch(() => {});
-          }
+        { facingMode: { exact: "environment" } }, // Только задняя камера
+        { fps: 10, qrbox: { width: 260, height: 260 } },
+        (decodedText) => {
+          // Успешно отсканировали
+          handleScanSuccess(decodedText.trim());
         },
-        (errorMessage) => {
-          // Ignore continuous scan errors (normal behavior)
+        (error) => {
+          // Можно игнорировать
         }
       ).catch(err => {
+        status.innerText = "Не удалось запустить камеру";
         console.error(err);
-        alert("Не удалось запустить камеру.\n\nПроверьте, что вы разрешили доступ к камере и используете HTTPS или открываете файл через веб-сервер.");
-        resetToStart();
       });
-    }
+    });
 
-    function stopScanning() {
+    // Закрытие модалки
+    document.getElementById("close-scanner").addEventListener("click", () => {
+      closeScanner();
+    });
+
+    function closeScanner() {
+      const modal = document.getElementById("scanner-modal");
       if (html5QrCode) {
         html5QrCode.stop().then(() => {
-          resetToStart();
+          modal.style.display = "none";
         }).catch(() => {
-          resetToStart();
+          modal.style.display = "none";
         });
       } else {
-        resetToStart();
+        modal.style.display = "none";
       }
     }
 
-    function showResult(text, decodedResult) {
-      // Hide scanner
-      document.getElementById('scanner-screen').classList.add('hidden');
-      document.getElementById('result-screen').classList.remove('hidden');
+    // Что делать после успешного сканирования
+    function handleScanSuccess(code) {
+      closeScanner();
 
-      // Set result
-      currentResult = text;
-      document.getElementById('result-value').textContent = text;
+      // Подставляем код в строку поиска
+      searchInput.value = code;
 
-      // Show format if available
-      const formatEl = document.getElementById('result-format');
-      if (decodedResult && decodedResult.result && decodedResult.result.format) {
-        formatEl.textContent = 'Формат: ' + decodedResult.result.format.toString();
-      } else {
-        formatEl.textContent = '';
-      }
-    }
+      // Запускаем поиск (фильтрацию)
+      searchInput.dispatchEvent(new Event("input", { bubbles: true }));
 
-    function copyToClipboard() {
-      if (!currentResult) return;
-
-      navigator.clipboard.writeText(currentResult).then(() => {
-        const btn = document.getElementById('copy-btn');
-        const originalText = btn.innerHTML;
-        
-        btn.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 10l7-7m0 0l7 7" />
-          </svg>
-          <span>Скопировано!</span>
-        `;
-        btn.classList.add('!bg-emerald-500', 'text-white');
-
+      // Можно добавить визуальный эффект
+      setTimeout(() => {
+        searchInput.style.borderColor = "#22c55e";
         setTimeout(() => {
-          btn.innerHTML = originalText;
-          btn.classList.remove('!bg-emerald-500', 'text-white');
-        }, 2200);
-      }).catch(() => {
-        // Fallback for older browsers
-        const textarea = document.createElement('textarea');
-        textarea.value = currentResult;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-        alert('Скопировано в буфер обмена');
-      });
+          searchInput.style.borderColor = "#333";
+        }, 1500);
+      }, 100);
     }
-
-    function scanAgain() {
-      // Reset and start again
-      document.getElementById('result-screen').classList.add('hidden');
-      startScanning();
-    }
-
-    function resetToStart() {
-      document.getElementById('start-screen').classList.remove('hidden');
-      document.getElementById('scanner-screen').classList.add('hidden');
-      document.getElementById('result-screen').classList.add('hidden');
-      
-      if (html5QrCode) {
-        html5QrCode = null;
-      }
-    }
-
-    // Optional: Auto-focus on mobile when opened
-    window.onload = function() {
-      // You can add any initialization here if needed
-    };
   </script>
+
 </body>
 </html>
