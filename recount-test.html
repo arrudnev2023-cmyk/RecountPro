@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Сканер (ZXing - лучший по чтению)</title>
+  <title>Сканер (ZXing)</title>
   <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
   <style>
     * { box-sizing: border-box; }
@@ -136,7 +136,7 @@
       <h3 style="text-align:center; margin:0 0 8px;">Сканирование</h3>
       <video id="video" autoplay playsinline></video>
       <p id="scanner-status"></p>
-      <p class="tip">Медленно двигай телефон вокруг штрих-кода на упаковке</p>
+      <p class="tip">Медленно двигай телефон вокруг штрих-кода</p>
       <button id="torch-btn">💡 Фонарик</button>
     </div>
   </div>
@@ -201,35 +201,31 @@
       scanning = true;
 
       try {
-        // Проверяем, что ZXing загрузился
+        // Проверка загрузки библиотеки
         if (typeof ZXing === 'undefined') {
-          alert("Библиотека ZXing не загрузилась. Обнови страницу.");
+          alert("Библиотека ZXing ещё не загрузилась. Подожди секунду и попробуй снова.");
           modal.style.display = "none";
           return;
         }
 
         codeReader = new ZXing.BrowserMultiFormatReader();
 
-        // Улучшаем качество чтения
         const hints = new Map();
         hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
         codeReader.setHints(hints);
 
+        // Простые и надёжные настройки камеры
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { 
-            facingMode: "environment",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }
+          video: { facingMode: "environment" }
         });
 
         video.srcObject = stream;
         await video.play();
 
         torchTrack = stream.getVideoTracks()[0];
-        statusEl.innerText = "Медленно двигай телефон вокруг кода";
+        statusEl.innerText = "Медленно двигай телефон вокруг штрих-кода";
 
-        // Запускаем сканирование
+        // Запуск сканирования
         codeReader.decodeFromVideoDevice(null, video, (result, err) => {
           if (result && scanning) {
             handleScanSuccess(result.getText());
@@ -238,7 +234,7 @@
 
       } catch (err) {
         console.error(err);
-        statusEl.innerText = "Ошибка запуска камеры";
+        statusEl.innerText = "Не удалось запустить камеру (разреши доступ в настройках)";
       }
     }
 
@@ -281,12 +277,14 @@
     // Фонарик
     torchBtn.addEventListener("click", async () => {
       if (!torchTrack) return;
+
       try {
         const capabilities = torchTrack.getCapabilities();
         if (!capabilities.torch) {
           statusEl.innerText = "Фонарик не поддерживается";
           return;
         }
+
         const isOn = torchBtn.innerText.includes("Выключить");
         await torchTrack.applyConstraints({ advanced: [{ torch: !isOn }] });
         torchBtn.innerText = isOn ? "💡 Фонарик" : "💡 Выключить";
