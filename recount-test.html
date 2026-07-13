@@ -101,7 +101,7 @@
 
   <div id="list"></div>
 
-  <!-- Модалка -->
+  <!-- Модалка сканера -->
   <div id="scanner-modal">
     <div class="scanner-box">
       <button class="close-btn" id="close-scanner">✕</button>
@@ -118,22 +118,31 @@
     const statusEl = document.getElementById("scanner-status");
     const video = document.getElementById("video");
     const torchBtn = document.getElementById("torch-btn");
+    const scanBtn = document.getElementById("scan-btn");
 
     let codeReader = null;
     let currentStream = null;
     let torchTrack = null;
     let isScanning = false;
 
-    // Проверяем, загрузилась ли библиотека ZXing
-    function initScanner() {
+    // Проверка загрузки ZXing
+    function checkZXing() {
+      if (typeof ZXing === 'undefined' || !ZXing.BrowserMultiFormatReader) {
+        statusEl.innerText = "Ошибка: библиотека не загрузилась";
+        alert("Не удалось загрузить библиотеку сканера. Попробуй обновить страницу.");
+        return false;
+      }
+      return true;
+    }
+
+    // Инициализация сканера
+    function initCodeReader() {
+      if (codeReader) return true;
+      
       try {
-        if (typeof ZXing === 'undefined' || !ZXing.BrowserMultiFormatReader) {
-          statusEl.innerText = "Ошибка: библиотека сканера не загрузилась";
-          return false;
-        }
         codeReader = new ZXing.BrowserMultiFormatReader();
         
-        // Улучшаем распознавание
+        // Улучшаем распознавание мелких кодов
         const hints = new Map();
         hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
         codeReader.setHints(hints);
@@ -146,14 +155,15 @@
       }
     }
 
-    document.getElementById("scan-btn").addEventListener("click", () => {
-      if (!initScanner()) {
-        alert("Не удалось запустить сканер. Попробуй обновить страницу.");
-        return;
-      }
+    // Кнопка "Сканировать"
+    scanBtn.addEventListener("click", () => {
+      if (!checkZXing()) return;
+      if (!initCodeReader()) return;
+      
       startScanning();
     });
 
+    // Закрытие модалки
     document.getElementById("close-scanner").addEventListener("click", stopScanning);
 
     async function startScanning() {
@@ -174,6 +184,7 @@
 
         statusEl.innerText = "Наведи камеру на штрих-код";
 
+        // Запуск сканирования
         codeReader.decodeFromVideoDevice(null, video, (result, err) => {
           if (result && isScanning) {
             handleScanSuccess(result.getText());
@@ -182,7 +193,7 @@
 
       } catch (err) {
         console.error(err);
-        statusEl.innerText = "Не удалось получить доступ к камере";
+        statusEl.innerText = "Не удалось запустить камеру (разреши доступ)";
       }
     }
 
@@ -216,17 +227,20 @@
         statusEl.innerText = "Фонарик недоступен";
         return;
       }
+
       try {
         const capabilities = torchTrack.getCapabilities();
         if (!capabilities.torch) {
           statusEl.innerText = "Фонарик не поддерживается";
           return;
         }
-        const torchOn = torchBtn.innerText.includes("Выключить");
-        await torchTrack.applyConstraints({ advanced: [{ torch: !torchOn }] });
-        torchBtn.innerText = torchOn ? "💡 Включить фонарик" : "💡 Выключить фонарик";
+
+        const isOn = torchBtn.innerText.includes("Выключить");
+        await torchTrack.applyConstraints({ advanced: [{ torch: !isOn }] });
+
+        torchBtn.innerText = isOn ? "💡 Включить фонарик" : "💡 Выключить фонарик";
       } catch (e) {
-        statusEl.innerText = "Ошибка фонарика";
+        statusEl.innerText = "Ошибка при переключении фонарика";
       }
     });
   </script>
