@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Сканер</title>
+  <title>Сканер товаров</title>
   <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
   <style>
     body {
@@ -11,39 +11,68 @@
       background: #0f0f0f;
       color: #fff;
       margin: 0;
-      padding: 20px;
+      padding: 16px;
     }
-    h1 { text-align: center; }
-    .search-container {
+    h1 {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .controls {
       display: flex;
       gap: 10px;
-      max-width: 620px;
-      margin: 0 auto 20px;
+      margin-bottom: 16px;
     }
     #search {
       flex: 1;
-      padding: 14px 16px;
-      font-size: 1.15rem;
+      padding: 14px;
+      font-size: 1.1rem;
       border: 2px solid #333;
-      border-radius: 14px;
+      border-radius: 12px;
       background: #1a1a1a;
       color: #fff;
     }
     #scan-btn {
-      padding: 14px 26px;
+      padding: 14px 24px;
       font-size: 1.1rem;
       background: linear-gradient(135deg, #6d28d9, #a78bfa);
-      color: #fff;
+      color: white;
       border: none;
-      border-radius: 14px;
+      border-radius: 12px;
       font-weight: 700;
-      cursor: pointer;
+      white-space: nowrap;
+    }
+    .item {
+      background: #1a1a1a;
+      padding: 14px;
+      margin-bottom: 10px;
+      border-radius: 12px;
+      border-left: 5px solid #555;
+    }
+    .item.duplicate {
+      border-left-color: #22c55e;
+      background: #1a2a1a;
+    }
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .item-code {
+      font-weight: bold;
+      color: #a78bfa;
+    }
+    .item-count {
+      background: #333;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.85rem;
     }
     #scanner-modal {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.96);
+      background: rgba(0,0,0,0.95);
       z-index: 99999;
       justify-content: center;
       align-items: center;
@@ -51,7 +80,7 @@
     .scanner-box {
       background: #111;
       width: 95%;
-      max-width: 440px;
+      max-width: 420px;
       border-radius: 18px;
       padding: 18px;
       position: relative;
@@ -65,7 +94,6 @@
       text-align: center;
       color: #aaa;
       margin-top: 10px;
-      font-size: 0.95rem;
     }
     .close-btn {
       position: absolute;
@@ -86,16 +114,15 @@
       border: none;
       border-radius: 12px;
       font-size: 1rem;
-      cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-  <h1>Сканер</h1>
+  <h1>Сканер товаров</h1>
 
-  <div class="search-container">
-    <input type="text" id="search" placeholder="Поиск по коду...">
+  <div class="controls">
+    <input type="text" id="search" placeholder="Поиск...">
     <button id="scan-btn">📷 Сканировать</button>
   </div>
 
@@ -105,68 +132,76 @@
   <div id="scanner-modal">
     <div class="scanner-box">
       <button class="close-btn" id="close-scanner">✕</button>
-      <h3 style="text-align:center; margin:0 0 12px;">Сканирование штрих-кода</h3>
+      <h3 style="text-align:center; margin:0 0 12px;">Сканирование</h3>
       <video id="video" autoplay playsinline></video>
       <p id="scanner-status"></p>
-      <button id="torch-btn">💡 Включить фонарик</button>
+      <button id="torch-btn">💡 Фонарик</button>
     </div>
   </div>
 
   <script>
     const searchInput = document.getElementById("search");
+    const listContainer = document.getElementById("list");
     const modal = document.getElementById("scanner-modal");
     const statusEl = document.getElementById("scanner-status");
     const video = document.getElementById("video");
     const torchBtn = document.getElementById("torch-btn");
-    const scanBtn = document.getElementById("scan-btn");
 
+    let items = []; // {code, name, count}
     let codeReader = null;
     let currentStream = null;
     let torchTrack = null;
     let isScanning = false;
 
-    // Проверка загрузки ZXing
-    function checkZXing() {
-      if (typeof ZXing === 'undefined' || !ZXing.BrowserMultiFormatReader) {
-        statusEl.innerText = "Ошибка: библиотека не загрузилась";
-        alert("Не удалось загрузить библиотеку сканера. Попробуй обновить страницу.");
-        return false;
-      }
-      return true;
+    function renderList(filteredItems = items) {
+      listContainer.innerHTML = "";
+
+      filteredItems.forEach((item, index) => {
+        const div = document.createElement("div");
+        div.className = `item ${item.count > 1 ? 'duplicate' : ''}`;
+
+        div.innerHTML = `
+          <div class="item-header">
+            <span class="item-code">${item.code}</span>
+            <span class="item-count">×${item.count}</span>
+          </div>
+          <div>${item.name}</div>
+        `;
+
+        listContainer.appendChild(div);
+      });
     }
 
-    // Инициализация сканера
-    function initCodeReader() {
+    // Поиск
+    searchInput.addEventListener("input", () => {
+      const q = searchInput.value.toLowerCase().trim();
+      const filtered = items.filter(i => 
+        i.code.toLowerCase().includes(q) || i.name.toLowerCase().includes(q)
+      );
+      renderList(filtered);
+    });
+
+    // Кнопка сканирования
+    document.getElementById("scan-btn").addEventListener("click", startScanning);
+    document.getElementById("close-scanner").addEventListener("click", stopScanning);
+
+    function initScanner() {
       if (codeReader) return true;
-      
       try {
         codeReader = new ZXing.BrowserMultiFormatReader();
-        
-        // Улучшаем распознавание мелких кодов
         const hints = new Map();
         hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
         codeReader.setHints(hints);
-        
         return true;
       } catch (e) {
-        console.error(e);
-        statusEl.innerText = "Ошибка инициализации сканера";
+        alert("Ошибка инициализации сканера");
         return false;
       }
     }
 
-    // Кнопка "Сканировать"
-    scanBtn.addEventListener("click", () => {
-      if (!checkZXing()) return;
-      if (!initCodeReader()) return;
-      
-      startScanning();
-    });
-
-    // Закрытие модалки
-    document.getElementById("close-scanner").addEventListener("click", stopScanning);
-
     async function startScanning() {
+      if (!initScanner()) return;
+
       modal.style.display = "flex";
       statusEl.innerText = "Запуск камеры...";
       isScanning = true;
@@ -179,28 +214,37 @@
         video.srcObject = currentStream;
         await video.play();
 
-        const track = currentStream.getVideoTracks()[0];
-        torchTrack = track;
-
+        torchTrack = currentStream.getVideoTracks()[0];
         statusEl.innerText = "Наведи камеру на штрих-код";
 
-        // Запуск сканирования
-        codeReader.decodeFromVideoDevice(null, video, (result, err) => {
+        codeReader.decodeFromVideoDevice(null, video, (result) => {
           if (result && isScanning) {
             handleScanSuccess(result.getText());
           }
         });
 
       } catch (err) {
-        console.error(err);
-        statusEl.innerText = "Не удалось запустить камеру (разреши доступ)";
+        statusEl.innerText = "Не удалось запустить камеру";
       }
     }
 
     function handleScanSuccess(code) {
       stopScanning();
-      searchInput.value = code;
-      searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+      // Проверяем, был ли уже такой код
+      const existing = items.find(i => i.code === code);
+
+      if (existing) {
+        existing.count++;
+        renderList();
+      } else {
+        // Новый код — просим название
+        const name = prompt("Введите название для этого штрих-кода:", "Товар");
+        if (name) {
+          items.push({ code, name, count: 1 });
+          renderList();
+        }
+      }
     }
 
     function stopScanning() {
@@ -209,39 +253,25 @@
       if (codeReader) {
         try { codeReader.reset(); } catch (e) {}
       }
-
       if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
+        currentStream.getTracks().forEach(t => t.stop());
         currentStream = null;
       }
 
       modal.style.display = "none";
       statusEl.innerText = "";
       torchTrack = null;
-      torchBtn.innerText = "💡 Включить фонарик";
+      torchBtn.innerText = "💡 Фонарик";
     }
 
     // Фонарик
     torchBtn.addEventListener("click", async () => {
-      if (!torchTrack) {
-        statusEl.innerText = "Фонарик недоступен";
-        return;
-      }
-
+      if (!torchTrack) return;
       try {
-        const capabilities = torchTrack.getCapabilities();
-        if (!capabilities.torch) {
-          statusEl.innerText = "Фонарик не поддерживается";
-          return;
-        }
-
         const isOn = torchBtn.innerText.includes("Выключить");
         await torchTrack.applyConstraints({ advanced: [{ torch: !isOn }] });
-
-        torchBtn.innerText = isOn ? "💡 Включить фонарик" : "💡 Выключить фонарик";
-      } catch (e) {
-        statusEl.innerText = "Ошибка при переключении фонарика";
-      }
+        torchBtn.innerText = isOn ? "💡 Фонарик" : "💡 Выключить";
+      } catch (e) {}
     });
   </script>
 
