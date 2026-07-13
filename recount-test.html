@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Быстрый сканер</title>
+  <title>Сканер</title>
   <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
   <style>
     body {
@@ -38,14 +38,6 @@
       border-radius: 14px;
       font-weight: 700;
       cursor: pointer;
-    }
-    .item {
-      background: #1a1a1a;
-      padding: 14px;
-      margin-bottom: 8px;
-      border-radius: 12px;
-      max-width: 620px;
-      margin: 0 auto 8px;
     }
     #scanner-modal {
       display: none;
@@ -96,17 +88,11 @@
       font-size: 1rem;
       cursor: pointer;
     }
-    .tip {
-      text-align: center;
-      color: #888;
-      font-size: 0.85rem;
-      margin-top: 8px;
-    }
   </style>
 </head>
 <body>
 
-  <h1>Быстрый сканер</h1>
+  <h1>Сканер</h1>
 
   <div class="search-container">
     <input type="text" id="search" placeholder="Поиск по коду...">
@@ -115,66 +101,59 @@
 
   <div id="list"></div>
 
-  <!-- Модалка сканера -->
+  <!-- Модалка -->
   <div id="scanner-modal">
     <div class="scanner-box">
       <button class="close-btn" id="close-scanner">✕</button>
-      <h3 style="text-align:center; margin:0 0 8px;">Сканирование штрих-кода</h3>
-      
+      <h3 style="text-align:center; margin:0 0 12px;">Сканирование штрих-кода</h3>
       <video id="video" autoplay playsinline></video>
       <p id="scanner-status"></p>
-      <p class="tip">Приближай камеру ближе к мелкому коду</p>
-
       <button id="torch-btn">💡 Включить фонарик</button>
     </div>
   </div>
 
   <script>
-    // ==================== ТЕСТОВЫЕ ДАННЫЕ ====================
-    let items = [
-      { code: "4600682057161", name: "Пиво светлое" },
-      { code: "1234567890128", name: "Тестовый товар" },
-    ];
-
-    const listContainer = document.getElementById("list");
     const searchInput = document.getElementById("search");
-
-    function renderList(filtered) {
-      listContainer.innerHTML = "";
-      filtered.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "item";
-        div.innerHTML = `<strong>${item.code}</strong><br>${item.name}`;
-        listContainer.appendChild(div);
-      });
-    }
-    renderList(items);
-
-    searchInput.addEventListener("input", () => {
-      const q = searchInput.value.toLowerCase().trim();
-      const filtered = items.filter(i => 
-        i.code.toLowerCase().includes(q) || i.name.toLowerCase().includes(q)
-      );
-      renderList(filtered);
-    });
-
-    // ==================== ZXing СКАНЕР ====================
-    const codeReader = new ZXing.BrowserMultiFormatReader();
-    let currentStream = null;
-    let torchTrack = null;
-    let isScanning = false;
-
     const modal = document.getElementById("scanner-modal");
     const statusEl = document.getElementById("scanner-status");
     const video = document.getElementById("video");
     const torchBtn = document.getElementById("torch-btn");
 
-    // Улучшаем распознавание мелких кодов
-    const hints = new Map();
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-    codeReader.setHints(hints);
+    let codeReader = null;
+    let currentStream = null;
+    let torchTrack = null;
+    let isScanning = false;
 
-    document.getElementById("scan-btn").addEventListener("click", startScanning);
+    // Проверяем, загрузилась ли библиотека ZXing
+    function initScanner() {
+      try {
+        if (typeof ZXing === 'undefined' || !ZXing.BrowserMultiFormatReader) {
+          statusEl.innerText = "Ошибка: библиотека сканера не загрузилась";
+          return false;
+        }
+        codeReader = new ZXing.BrowserMultiFormatReader();
+        
+        // Улучшаем распознавание
+        const hints = new Map();
+        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+        codeReader.setHints(hints);
+        
+        return true;
+      } catch (e) {
+        console.error(e);
+        statusEl.innerText = "Ошибка инициализации сканера";
+        return false;
+      }
+    }
+
+    document.getElementById("scan-btn").addEventListener("click", () => {
+      if (!initScanner()) {
+        alert("Не удалось запустить сканер. Попробуй обновить страницу.");
+        return;
+      }
+      startScanning();
+    });
+
     document.getElementById("close-scanner").addEventListener("click", stopScanning);
 
     async function startScanning() {
@@ -183,7 +162,6 @@
       isScanning = true;
 
       try {
-        // Простые и стабильные настройки камеры
         currentStream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" }
         });
@@ -203,8 +181,8 @@
         });
 
       } catch (err) {
-        statusEl.innerText = "Не удалось запустить камеру";
         console.error(err);
+        statusEl.innerText = "Не удалось получить доступ к камере";
       }
     }
 
@@ -218,7 +196,7 @@
       isScanning = false;
 
       if (codeReader) {
-        codeReader.reset();
+        try { codeReader.reset(); } catch (e) {}
       }
 
       if (currentStream) {
@@ -232,27 +210,23 @@
       torchBtn.innerText = "💡 Включить фонарик";
     }
 
-    // ==================== ФОНАРИК ====================
+    // Фонарик
     torchBtn.addEventListener("click", async () => {
       if (!torchTrack) {
         statusEl.innerText = "Фонарик недоступен";
         return;
       }
-
       try {
         const capabilities = torchTrack.getCapabilities();
         if (!capabilities.torch) {
           statusEl.innerText = "Фонарик не поддерживается";
           return;
         }
-
         const torchOn = torchBtn.innerText.includes("Выключить");
         await torchTrack.applyConstraints({ advanced: [{ torch: !torchOn }] });
-
         torchBtn.innerText = torchOn ? "💡 Включить фонарик" : "💡 Выключить фонарик";
       } catch (e) {
-        statusEl.innerText = "Не удалось переключить фонарик";
-        console.error(e);
+        statusEl.innerText = "Ошибка фонарика";
       }
     });
   </script>
