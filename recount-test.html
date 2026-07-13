@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Быстрый сканер (BarcodeDetector)</title>
+  <title>Универсальный сканер</title>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -78,6 +79,11 @@
       padding: 16px;
       position: relative;
     }
+    #qr-reader {
+      width: 100%;
+      border-radius: 14px;
+      overflow: hidden;
+    }
     video {
       width: 100%;
       border-radius: 14px;
@@ -113,7 +119,7 @@
 </head>
 <body>
 
-  <h1>Быстрый сканер</h1>
+  <h1>Универсальный сканер</h1>
 
   <div class="top-bar">
     <input type="text" id="search" placeholder="Поиск...">
@@ -127,7 +133,8 @@
     <div class="scanner-box">
       <button class="close-btn" id="close-scanner">✕</button>
       <h3 style="text-align:center; margin:0 0 8px;">Сканирование</h3>
-      <video id="video" autoplay playsinline></video>
+      <div id="qr-reader"></div>
+      <video id="video" autoplay playsinline style="display:none;"></video>
       <p id="scanner-status"></p>
       <button id="torch-btn">💡 Фонарик</button>
     </div>
@@ -141,8 +148,10 @@
     const torchBtn = document.getElementById("torch-btn");
     const scanBtn = document.getElementById("scan-btn");
     const video = document.getElementById("video");
+    const qrReader = document.getElementById("qr-reader");
 
     let items = [];
+    let html5QrCode = null;
     let stream = null;
     let detector = null;
     let scanning = false;
@@ -190,53 +199,82 @@
     async function startScanning() {
       modal.style.display = "flex";
       statusEl.innerText = "Запуск камеры...";
+      scanning = true;
 
-      try {
-        // Проверяем поддержку BarcodeDetector
-        if (!('BarcodeDetector' in window)) {
-          statusEl.innerText = "Ваш браузер не поддерживает быстрый сканер";
-          alert("К сожалению, ваш браузер не поддерживает BarcodeDetector. Попробуйте Chrome или Edge.");
-          modal.style.display = "none";
+      // Пробуем BarcodeDetector
+      if ('BarcodeDetector' in window) {
+        try {
+          detector = new BarcodeDetector({
+            formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a']
+          });
+          await startWithBarcodeDetector();
           return;
+        } catch (e) {
+          console.log("BarcodeDetector не сработал, переключаемся на html5-qrcode");
         }
+      }
 
-        detector = new BarcodeDetector({
-          formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e']
-        });
+      // Fallback на html5-qrcode
+      await startWithHtml5Qrcode();
+    }
 
+    async function startWithBarcodeDetector() {
+      try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" }
         });
-
         video.srcObject = stream;
         await video.play();
 
         statusEl.innerText = "Наведи камеру на штрих-код";
-        scanning = true;
-        scanLoop();
-
+        scanLoopBarcodeDetector();
       } catch (err) {
-        console.error(err);
-        statusEl.innerText = "Ошибка доступа к камере";
+        statusEl.innerText = "Ошибка камеры";
       }
     }
 
-    async function scanLoop() {
+    async function scanLoopBarcodeDetector() {
       if (!scanning || !detector) return;
 
       try {
-        const barcodes = await detector.detect(video);
-
-        if (barcodes.length > 0) {
-          const code = barcodes[0].rawValue;
-          handleScanSuccess(code);
-          return; // останавливаем цикл после успешного сканирования
+        const results = await detector.detect(video);
+        if (results.length > 0) {
+          handleScanSuccess(results[0].rawValue);
+          return;
         }
-      } catch (e) {
-        // игнорируем ошибки детекции
-      }
+      } catch (e) {}
 
-      animationFrame = requestAnimationFrame(scanLoop);
+      animationFrame = requestAnimationFrame(scanLoopBarcodeDetector);
+    }
+
+    async function startWithHtml5Qrcode() {
+      qrReader.style.display = "block";
+      video.style.display = "none";
+
+      try {
+        html5QrCode = new Html5Qrcode("qr-reader");
+
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          {
+            fps: 20,
+            qrbox: { width: 320, height: 200 },
+            formatsToSupport: [
+              Html5QrcodeSupportedFormats.EAN_13,
+              Html5QrcodeSupportedFormats.EAN_8,
+              Html5QrcodeSupportedFormats.CODE_128,
+              Html5QrcodeSupportedFormats.CODE_39
+            ]
+          },
+          (decodedText) => {
+            if (scanning) handleScanSuccess(decodedText.trim());
+          }
+        );
+
+        statusEl.innerText = "Наведи камеру на штрих-код";
+      } catch (err) {
+        statusEl.innerText = "Ошибка запуска сканера";
+      }
     }
 
     function handleScanSuccess(code) {
@@ -256,7 +294,7 @@
       }
     }
 
-    function stopScanning() {
+    async function stopScanning() {
       scanning = false;
 
       if (animationFrame) {
@@ -264,35 +302,43 @@
         animationFrame = null;
       }
 
+      if (html5QrCode) {
+        try { await html5QrCode.stop(); } catch (e) {}
+        html5QrCode = null;
+      }
+
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach(t => t.stop());
         stream = null;
       }
 
       modal.style.display = "none";
       statusEl.innerText = "";
+      qrReader.style.display = "block";
+      video.style.display = "none";
       torchBtn.innerText = "💡 Фонарик";
     }
 
     // Фонарик
     torchBtn.addEventListener("click", async () => {
-      if (!stream) return;
-
-      const track = stream.getVideoTracks()[0];
-      if (!track) return;
-
-      try {
-        const capabilities = track.getCapabilities();
-        if (!capabilities.torch) {
-          statusEl.innerText = "Фонарик не поддерживается";
-          return;
+      // Для html5-qrcode
+      if (html5QrCode) {
+        try {
+          const isOn = torchBtn.innerText.includes("Выключить");
+          await html5QrCode.applyVideoConstraints({ advanced: [{ torch: !isOn }] });
+          torchBtn.innerText = isOn ? "💡 Фонарик" : "💡 Выключить";
+        } catch (e) {}
+      }
+      // Для BarcodeDetector
+      else if (stream) {
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          try {
+            const isOn = torchBtn.innerText.includes("Выключить");
+            await track.applyConstraints({ advanced: [{ torch: !isOn }] });
+            torchBtn.innerText = isOn ? "💡 Фонарик" : "💡 Выключить";
+          } catch (e) {}
         }
-
-        const isOn = torchBtn.innerText.includes("Выключить");
-        await track.applyConstraints({ advanced: [{ torch: !isOn }] });
-        torchBtn.innerText = isOn ? "💡 Фонарик" : "💡 Выключить";
-      } catch (e) {
-        statusEl.innerText = "Ошибка фонарика";
       }
     });
   </script>
