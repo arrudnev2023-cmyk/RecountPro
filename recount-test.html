@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Сканер штрих-кодов</title>
+  <title>Сканер штрих-кодов • Улучшенный</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
@@ -31,8 +31,13 @@
       letter-spacing: 0.5px;
     }
 
-    .scan-success {
-      animation: success-pop 0.4s ease;
+    .torch-btn {
+      transition: all 0.2s ease;
+    }
+    
+    .torch-btn.active {
+      background-color: #f59e0b;
+      color: white;
     }
   </style>
 </head>
@@ -48,7 +53,7 @@
           </div>
           <h1 class="title-font text-4xl font-semibold tracking-tighter">Сканер</h1>
         </div>
-        <p class="text-zinc-400 text-sm">Штрих-коды и QR • iPhone / Android</p>
+        <p class="text-zinc-400 text-sm">Штрих-коды • QR • Любые поверхности</p>
       </div>
 
       <!-- Main Card -->
@@ -72,7 +77,6 @@
               spellcheck="false"
             >
             
-            <!-- Copy button -->
             <button onclick="copyBarcode()" 
                     class="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 transition-colors rounded-2xl text-xl">
               📋
@@ -80,7 +84,6 @@
           </div>
         </div>
 
-        <!-- Scan Button -->
         <button onclick="startScanner()"
                 class="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 transition-all text-white font-semibold py-[18px] rounded-2xl text-xl shadow-xl shadow-emerald-900/40 active:scale-[0.985]">
           <span class="text-2xl">📷</span>
@@ -88,12 +91,12 @@
         </button>
 
         <div class="mt-4 text-center">
-          <p class="text-[10px] text-zinc-500">Задняя камера • работает на iOS и Android</p>
+          <p class="text-[10px] text-zinc-500">Оптимизировано для неровных поверхностей, маленьких и больших кодов</p>
         </div>
       </div>
 
       <div class="text-center mt-6">
-        <p class="text-xs text-zinc-500">При сканировании код автоматически подставится в строку выше</p>
+        <p class="text-xs text-zinc-500">iOS Safari • Android • Задняя камера</p>
       </div>
     </div>
   </div>
@@ -106,137 +109,163 @@
          class="bg-zinc-900 border border-zinc-700 rounded-3xl w-full max-w-[420px] overflow-hidden shadow-2xl">
       
       <!-- Modal Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
         <div>
           <div class="font-semibold text-lg">Сканирование</div>
-          <div class="text-emerald-400 text-xs">Наведи камеру на код</div>
+          <div class="text-emerald-400 text-xs">Задняя камера • авто-фокус</div>
         </div>
-        <button onclick="stopScanner()" 
-                class="px-4 py-2 text-sm text-zinc-400 hover:text-white active:text-emerald-400 transition-colors">
-          ✕ Закрыть
-        </button>
+        
+        <div class="flex items-center gap-2">
+          <!-- Torch button -->
+          <button id="torch-btn"
+                  onclick="toggleTorch()"
+                  class="torch-btn w-10 h-10 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-amber-600 rounded-2xl text-xl transition-all">
+            🔦
+          </button>
+          
+          <button onclick="stopScanner()" 
+                  class="px-4 py-2 text-sm text-zinc-400 hover:text-white active:text-emerald-400 transition-colors">
+            ✕
+          </button>
+        </div>
       </div>
 
-      <!-- Camera View -->
-      <div id="reader" class="w-full bg-black" style="min-height: 320px; max-height: 65vh;"></div>
+      <!-- Camera -->
+      <div id="reader" class="w-full bg-black" style="min-height: 320px; max-height: 62vh;"></div>
 
-      <!-- Footer hint -->
-      <div class="px-6 py-4 bg-zinc-950 text-center">
-        <p class="text-xs text-zinc-400">
-          Держи код в центре • 10–25 см • хорошее освещение
-        </p>
+      <!-- Tips -->
+      <div class="px-5 py-3.5 bg-zinc-950 text-[10px] text-zinc-400 leading-snug">
+        <div class="flex flex-wrap gap-x-3 gap-y-0.5">
+          <span>• <strong>Маленькие коды</strong> — приближайся</span>
+          <span>• <strong>Неровные</strong> — держи ровно или найди плоский участок</span>
+          <span>• <strong>Блики/темно</strong> — включи вспышку 🔦</span>
+          <span>• <strong>Большие коды</strong> — отойди чуть дальше</span>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    // Tailwind config
-    function initTailwind() {
-      document.documentElement.style.setProperty('--accent', '#10b981');
-    }
-
     let html5QrCode = null;
     let isScanning = false;
+    let torchEnabled = false;
 
-    // === START SCANNER ===
     async function startScanner() {
       const modal = document.getElementById('scanner-modal');
-      const reader = document.getElementById('reader');
+      const torchBtn = document.getElementById('torch-btn');
 
       modal.classList.remove('hidden');
       modal.classList.add('flex');
+      
+      torchEnabled = false;
+      if (torchBtn) torchBtn.classList.remove('active', 'bg-amber-500');
 
       if (!html5QrCode) {
         html5QrCode = new Html5Qrcode("reader", {
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true
-          }
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true }
         });
       }
 
       try {
-        // Получаем список камер и выбираем заднюю
         const cameras = await Html5Qrcode.getCameras();
-        
         let cameraId = null;
         
         if (cameras && cameras.length > 0) {
-          // Ищем заднюю камеру
           const backCamera = cameras.find(cam => 
             /back|rear|environment|задн|основн/i.test(cam.label)
           );
-          
           cameraId = backCamera ? backCamera.id : cameras[cameras.length - 1].id;
         }
 
         const cameraConfig = cameraId ? cameraId : { facingMode: "environment" };
 
         const qrConfig = {
-          fps: 15,
+          fps: 18,
           qrbox: (viewfinderWidth, viewfinderHeight) => {
             const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            const size = Math.floor(minEdge * 0.72);
+            const size = Math.floor(minEdge * 0.78); // больше зона для неровных
             return { width: size, height: size };
           }
         };
 
-        await html5QrCode.start(
-          cameraConfig,
-          qrConfig,
-          onScanSuccess,
-          onScanFailure
-        );
-
+        await html5QrCode.start(cameraConfig, qrConfig, onScanSuccess, onScanFailure);
         isScanning = true;
+
+        // Пробуем включить постоянный автофокус
+        setTimeout(() => {
+          if (html5QrCode && isScanning) {
+            html5QrCode.applyVideoConstraints({
+              advanced: [{ focusMode: "continuous" }]
+            }).catch(() => {});
+          }
+        }, 900);
 
       } catch (err) {
         console.error(err);
-        alert("Не удалось запустить камеру.\n\nПроверь разрешения в Safari:\nНастройки → Safari → Камера → Разрешить");
+        alert("Не удалось запустить камеру. Проверь разрешения в настройках Safari.");
         stopScanner();
       }
     }
 
-    // === SUCCESS ===
-    function onScanSuccess(decodedText, decodedResult) {
+    function onScanSuccess(decodedText) {
       const input = document.getElementById('barcode-input');
-      
       input.value = decodedText;
-      
-      // Визуальный эффект успеха
+
       input.classList.add('!border-emerald-500', 'ring-4', 'ring-emerald-500/20');
       setTimeout(() => {
         input.classList.remove('!border-emerald-500', 'ring-4', 'ring-emerald-500/20');
       }, 1400);
 
-      // Закрываем сканер
       stopScanner();
-
-      // Показываем уведомление
       showToast(`✓ Отсканировано: ${decodedText}`);
     }
 
-    function onScanFailure(err) {
-      // Игнорируем большинство ошибок (это нормально)
-    }
+    function onScanFailure(err) {}
 
-    // === STOP SCANNER ===
     async function stopScanner() {
       const modal = document.getElementById('scanner-modal');
+      const torchBtn = document.getElementById('torch-btn');
       
       if (html5QrCode && isScanning) {
         try {
+          if (torchEnabled) {
+            try { await html5QrCode.applyVideoConstraints({ advanced: [{ torch: false }] }); } catch(e){}
+          }
           await html5QrCode.stop();
-        } catch (e) {
-          // можно игнорировать
-        }
+        } catch(e){}
         isScanning = false;
+        torchEnabled = false;
+        if (torchBtn) torchBtn.classList.remove('active', 'bg-amber-500');
       }
       
       modal.classList.remove('flex');
       modal.classList.add('hidden');
     }
 
-    // === COPY ===
+    async function toggleTorch() {
+      const torchBtn = document.getElementById('torch-btn');
+      if (!html5QrCode || !isScanning) return;
+
+      const newState = !torchEnabled;
+
+      try {
+        await html5QrCode.applyVideoConstraints({ advanced: [{ torch: newState }] });
+        torchEnabled = newState;
+
+        if (torchBtn) {
+          if (torchEnabled) {
+            torchBtn.classList.add('active', 'bg-amber-500');
+            torchBtn.classList.remove('bg-zinc-800');
+          } else {
+            torchBtn.classList.remove('active', 'bg-amber-500');
+            torchBtn.classList.add('bg-zinc-800');
+          }
+        }
+      } catch (err) {
+        showToast("Вспышка не поддерживается на этом устройстве");
+      }
+    }
+
     function copyBarcode() {
       const input = document.getElementById('barcode-input');
       if (!input.value.trim()) return;
@@ -244,46 +273,34 @@
       navigator.clipboard.writeText(input.value).then(() => {
         showToast('Скопировано в буфер обмена');
       }).catch(() => {
-        // fallback
         input.select();
         document.execCommand('copy');
         showToast('Скопировано');
       });
     }
 
-    // === CLEAR ===
     function clearInput() {
       const input = document.getElementById('barcode-input');
       input.value = '';
       input.focus();
     }
 
-    // === TOAST ===
     function showToast(message) {
       const toast = document.createElement('div');
-      toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3.5 rounded-2xl shadow-2xl text-sm font-medium z-[9999] flex items-center gap-2`;
-      toast.innerHTML = `
-        <span>${message}</span>
-      `;
-      
+      toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3.5 rounded-2xl shadow-2xl text-sm font-medium z-[9999]`;
+      toast.innerHTML = `<span>${message}</span>`;
       document.body.appendChild(toast);
       
       setTimeout(() => {
         toast.style.transition = 'all 0.25s ease';
         toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 200);
-      }, 2300);
+      }, 2400);
     }
 
-    // Инициализация
     function init() {
-      initTailwind();
-      
-      // Можно сразу фокусировать input при тапе (удобно на телефоне)
       const input = document.getElementById('barcode-input');
-      input.addEventListener('focus', () => {
-        input.placeholder = '';
-      });
+      input.addEventListener('dblclick', () => startScanner());
     }
 
     window.onload = init;
