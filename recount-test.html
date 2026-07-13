@@ -3,48 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Тест сканера v2</title>
+  <title>Максимальный сканер</title>
   <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     body {
-      font-family: system-ui, sans-serif;
-      background: #111;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f0f0f;
       color: #fff;
       margin: 0;
       padding: 20px;
     }
-    h1 { text-align: center; }
+    h1 { text-align: center; margin-bottom: 10px; }
     .search-container {
       display: flex;
       gap: 10px;
-      max-width: 600px;
+      max-width: 620px;
       margin: 0 auto 20px;
     }
     #search {
       flex: 1;
       padding: 14px 16px;
-      font-size: 1.1rem;
+      font-size: 1.15rem;
       border: 2px solid #333;
-      border-radius: 12px;
-      background: #1f1f1f;
+      border-radius: 14px;
+      background: #1a1a1a;
       color: #fff;
     }
     #scan-btn {
-      padding: 14px 22px;
+      padding: 14px 26px;
       font-size: 1.1rem;
       background: linear-gradient(135deg, #6d28d9, #a78bfa);
       color: white;
       border: none;
-      border-radius: 12px;
-      font-weight: 600;
+      border-radius: 14px;
+      font-weight: 700;
       cursor: pointer;
     }
     .item {
-      background: #1f1f1f;
+      background: #1a1a1a;
       padding: 14px;
       margin-bottom: 8px;
-      border-radius: 10px;
-      max-width: 600px;
+      border-radius: 12px;
+      max-width: 620px;
       margin-left: auto;
       margin-right: auto;
     }
@@ -52,77 +52,84 @@
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.92);
-      z-index: 9999;
+      background: rgba(0,0,0,0.95);
+      z-index: 99999;
       justify-content: center;
       align-items: center;
     }
     .scanner-box {
-      background: #1a1a1a;
-      width: 95%;
-      max-width: 420px;
-      border-radius: 16px;
-      padding: 16px;
+      background: #111;
+      width: 96%;
+      max-width: 440px;
+      border-radius: 18px;
+      padding: 18px;
       position: relative;
     }
-    #qr-reader { width: 100%; border-radius: 12px; overflow: hidden; }
-    #scanner-status { text-align: center; color: #aaa; margin-top: 8px; font-size: 0.95rem; }
+    #qr-reader { width: 100%; border-radius: 14px; overflow: hidden; }
+    #scanner-status { 
+      text-align: center; 
+      color: #aaa; 
+      margin: 10px 0 0; 
+      font-size: 0.95rem;
+      min-height: 22px;
+    }
     .close-btn {
-      position: absolute; top: 12px; right: 16px;
-      background: none; border: none; color: #fff; font-size: 26px; cursor: pointer;
+      position: absolute; top: 14px; right: 18px;
+      background: none; border: none; color: #fff; font-size: 28px; cursor: pointer;
     }
     #torch-btn {
-      margin-top: 12px;
+      margin-top: 14px;
       width: 100%;
-      padding: 10px;
-      background: #333;
+      padding: 12px;
+      background: #222;
       color: #fff;
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 1rem;
       cursor: pointer;
     }
+    #torch-btn:active { background: #333; }
   </style>
 </head>
 <body>
 
-  <h1>Тест сканера v2</h1>
+  <h1>Максимальный сканер</h1>
 
   <div class="search-container">
-    <input type="text" id="search" placeholder="Поиск...">
+    <input type="text" id="search" placeholder="Поиск по коду...">
     <button id="scan-btn">📷 Сканировать</button>
   </div>
 
   <div id="list"></div>
 
-  <!-- Модалка сканера -->
+  <!-- Модалка -->
   <div id="scanner-modal">
     <div class="scanner-box">
       <button class="close-btn" id="close-scanner">✕</button>
-      <h3 style="text-align:center; margin: 0 0 10px;">Сканирование штрих-кода</h3>
+      
+      <h3 style="text-align:center; margin:0 0 12px; font-size:1.1rem;">Сканирование штрих-кода</h3>
       
       <div id="qr-reader"></div>
       <p id="scanner-status"></p>
 
-      <!-- Кнопка фонарика -->
       <button id="torch-btn">💡 Включить фонарик</button>
     </div>
   </div>
 
   <script>
-    // ==================== ТЕСТОВЫЕ ДАННЫЕ ====================
+    // ==================== ТЕСТОВЫЕ ТОВАРЫ ====================
     let items = [
-      { code: "4600682057161", name: "Пиво светлое ГОСТовское" },
-      { code: "123456", name: "Кофе растворимый 100г" },
-      { code: "234567", name: "Чай чёрный 25 пак." },
+      { code: "4600682057161", name: "Пиво светлое" },
+      { code: "1234567890128", name: "Тестовый товар 1" },
+      { code: "5901234123457", name: "Тестовый товар 2" },
     ];
 
     const listContainer = document.getElementById("list");
     const searchInput = document.getElementById("search");
 
-    function renderList(filtered) {
+    function renderList(filteredItems) {
       listContainer.innerHTML = "";
-      filtered.forEach(item => {
+      filteredItems.forEach(item => {
         const div = document.createElement("div");
         div.className = "item";
         div.innerHTML = `<strong>${item.code}</strong><br>${item.name}`;
@@ -132,87 +139,104 @@
     renderList(items);
 
     searchInput.addEventListener("input", () => {
-      const q = searchInput.value.toLowerCase();
-      const filtered = items.filter(i => i.code.includes(q) || i.name.toLowerCase().includes(q));
+      const q = searchInput.value.toLowerCase().trim();
+      const filtered = items.filter(i => 
+        i.code.toLowerCase().includes(q) || i.name.toLowerCase().includes(q)
+      );
       renderList(filtered);
     });
 
     // ==================== СКАНЕР ====================
     let html5QrCode = null;
-    let torchOn = false;
-    let currentTrack = null;
+    let torchEnabled = false;
 
-    document.getElementById("scan-btn").addEventListener("click", () => {
-      const modal = document.getElementById("scanner-modal");
-      const status = document.getElementById("scanner-status");
+    const modal = document.getElementById("scanner-modal");
+    const statusEl = document.getElementById("scanner-status");
+    const torchBtn = document.getElementById("torch-btn");
+
+    document.getElementById("scan-btn").addEventListener("click", startScanner);
+
+    function startScanner() {
       modal.style.display = "flex";
-      status.innerText = "Запуск задней камеры...";
-
+      statusEl.innerText = "Запуск камеры...";
       const qrReader = document.getElementById("qr-reader");
       qrReader.innerHTML = "";
 
       html5QrCode = new Html5Qrcode("qr-reader");
 
+      const config = {
+        fps: 15,
+        qrbox: { width: 320, height: 220 },
+        aspectRatio: 1.5,
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E
+        ]
+      };
+
       html5QrCode.start(
-        { facingMode: "environment" },           // Задняя камера (без exact)
-        { fps: 10, qrbox: { width: 280, height: 200 } },
+        { facingMode: "environment" },
+        config,
         (decodedText) => {
-          handleScanSuccess(decodedText.trim());
+          handleSuccess(decodedText.trim());
         },
-        () => {}
-      ).catch(err => {
-        status.innerText = "Ошибка запуска камеры";
+        (errorMessage) => {
+          // Игнорируем мелкие ошибки
+        }
+      ).then(() => {
+        statusEl.innerText = "Наведи камеру на штрих-код";
+      }).catch(err => {
+        statusEl.innerText = "Не удалось запустить камеру";
         console.error(err);
       });
-    });
+    }
 
-    // Закрытие
-    document.getElementById("close-scanner").addEventListener("click", closeScanner);
+    function handleSuccess(code) {
+      stopScanner();
+      searchInput.value = code;
+      searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+    }
 
-    function closeScanner() {
-      const modal = document.getElementById("scanner-modal");
+    function stopScanner() {
       if (html5QrCode) {
         html5QrCode.stop().then(() => {
           modal.style.display = "none";
-          torchOn = false;
-          currentTrack = null;
-        }).catch(() => modal.style.display = "none");
+          torchEnabled = false;
+          torchBtn.innerText = "💡 Включить фонарик";
+        }).catch(() => {
+          modal.style.display = "none";
+        });
       } else {
         modal.style.display = "none";
       }
     }
 
-    function handleScanSuccess(code) {
-      closeScanner();
-      searchInput.value = code;
-      searchInput.dispatchEvent(new Event("input", { bubbles: true }));
-    }
+    document.getElementById("close-scanner").addEventListener("click", stopScanner);
 
     // ==================== ФОНАРИК ====================
-    document.getElementById("torch-btn").addEventListener("click", async () => {
-      const btn = document.getElementById("torch-btn");
-      const status = document.getElementById("scanner-status");
-
+    torchBtn.addEventListener("click", async () => {
       if (!html5QrCode) return;
 
       try {
-        const stream = html5QrCode.getRunningTrackCameraCapabilities
-          ? await html5QrCode.getRunningTrackCameraCapabilities()
-          : null;
-
-        // Пробуем применить torch
         const track = html5QrCode.getRunningTrack();
-        if (track) {
-          currentTrack = track;
-          await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
-          torchOn = !torchOn;
-          btn.innerText = torchOn ? "💡 Выключить фонарик" : "💡 Включить фонарик";
-          status.innerText = torchOn ? "Фонарик включён" : "";
-        } else {
-          status.innerText = "Фонарик не поддерживается";
+        if (!track) {
+          statusEl.innerText = "Фонарик недоступен";
+          return;
         }
+
+        await track.applyConstraints({
+          advanced: [{ torch: !torchEnabled }]
+        });
+
+        torchEnabled = !torchEnabled;
+        torchBtn.innerText = torchEnabled ? "💡 Выключить фонарик" : "💡 Включить фонарик";
+        statusEl.innerText = torchEnabled ? "Фонарик включён" : "";
       } catch (e) {
-        status.innerText = "Фонарик недоступен на этом устройстве";
+        statusEl.innerText = "Фонарик не поддерживается на этом устройстве";
         console.error(e);
       }
     });
