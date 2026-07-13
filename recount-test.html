@@ -13,10 +13,7 @@
       margin: 0;
       padding: 16px;
     }
-    h1 {
-      text-align: center;
-      margin-bottom: 16px;
-    }
+    h1 { text-align: center; margin-bottom: 16px; }
     .controls {
       display: flex;
       gap: 10px;
@@ -146,8 +143,9 @@
     const statusEl = document.getElementById("scanner-status");
     const video = document.getElementById("video");
     const torchBtn = document.getElementById("torch-btn");
+    const scanBtn = document.getElementById("scan-btn");
 
-    let items = []; // {code, name, count}
+    let items = [];
     let codeReader = null;
     let currentStream = null;
     let torchTrack = null;
@@ -155,11 +153,9 @@
 
     function renderList(filteredItems = items) {
       listContainer.innerHTML = "";
-
-      filteredItems.forEach((item, index) => {
+      filteredItems.forEach(item => {
         const div = document.createElement("div");
         div.className = `item ${item.count > 1 ? 'duplicate' : ''}`;
-
         div.innerHTML = `
           <div class="item-header">
             <span class="item-code">${item.code}</span>
@@ -167,12 +163,10 @@
           </div>
           <div>${item.name}</div>
         `;
-
         listContainer.appendChild(div);
       });
     }
 
-    // Поиск
     searchInput.addEventListener("input", () => {
       const q = searchInput.value.toLowerCase().trim();
       const filtered = items.filter(i => 
@@ -181,12 +175,15 @@
       renderList(filtered);
     });
 
-    // Кнопка сканирования
-    document.getElementById("scan-btn").addEventListener("click", startScanning);
-    document.getElementById("close-scanner").addEventListener("click", stopScanning);
-
+    // Проверка и инициализация ZXing
     function initScanner() {
       if (codeReader) return true;
+
+      if (typeof ZXing === 'undefined' || !ZXing.BrowserMultiFormatReader) {
+        alert("Библиотека сканера не загрузилась. Обнови страницу.");
+        return false;
+      }
+
       try {
         codeReader = new ZXing.BrowserMultiFormatReader();
         const hints = new Map();
@@ -194,14 +191,21 @@
         codeReader.setHints(hints);
         return true;
       } catch (e) {
+        console.error(e);
         alert("Ошибка инициализации сканера");
         return false;
       }
     }
 
-    async function startScanning() {
+    // Кнопка сканирования
+    scanBtn.addEventListener("click", () => {
       if (!initScanner()) return;
+      startScanning();
+    });
 
+    document.getElementById("close-scanner").addEventListener("click", stopScanning);
+
+    async function startScanning() {
       modal.style.display = "flex";
       statusEl.innerText = "Запуск камеры...";
       isScanning = true;
@@ -231,15 +235,13 @@
     function handleScanSuccess(code) {
       stopScanning();
 
-      // Проверяем, был ли уже такой код
       const existing = items.find(i => i.code === code);
 
       if (existing) {
         existing.count++;
         renderList();
       } else {
-        // Новый код — просим название
-        const name = prompt("Введите название для этого штрих-кода:", "Товар");
+        const name = prompt("Введите название товара:", "Товар");
         if (name) {
           items.push({ code, name, count: 1 });
           renderList();
