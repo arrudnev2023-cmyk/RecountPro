@@ -2,288 +2,291 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Сканер штрих-кодов (ZXing)</title>
-  <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Сканер штрих-кодов</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+    
     body {
-      font-family: system-ui, sans-serif;
-      background: #0f0f0f;
-      color: #fff;
-      margin: 0;
-      padding: 12px;
+      font-family: 'Inter', system_ui, sans-serif;
     }
-    h1 { text-align: center; margin-bottom: 16px; }
-    .top {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 16px;
+    
+    .title-font {
+      font-family: 'Space Grotesk', 'Inter', sans-serif;
+      font-weight: 600;
+      letter-spacing: -0.02em;
     }
-    #search {
-      flex: 1;
-      padding: 12px;
-      font-size: 1rem;
-      border: 2px solid #333;
-      border-radius: 12px;
-      background: #1a1a1a;
-      color: #fff;
-    }
-    #scan-btn {
-      padding: 12px 20px;
-      font-size: 1rem;
-      background: linear-gradient(135deg, #6d28d9, #a78bfa);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      font-weight: 700;
-    }
-    .item {
-      background: #1a1a1a;
-      padding: 14px;
-      margin-bottom: 10px;
-      border-radius: 12px;
-      border-left: 5px solid #555;
-    }
-    .item.duplicate {
-      border-left-color: #22c55e;
-      background: #162d16;
-    }
-    .item-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 4px;
-    }
-    .item-code {
-      font-weight: bold;
-      color: #a78bfa;
-    }
-    .item-count {
-      background: #333;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 0.85rem;
-    }
-    #scanner-modal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.95);
-      z-index: 99999;
-      justify-content: center;
-      align-items: flex-start;
-      padding-top: 30px;
-    }
-    .scanner-box {
+
+    #reader video {
+      width: 100% !important;
+      height: auto !important;
+      border-radius: 16px;
       background: #111;
-      width: 94%;
-      max-width: 420px;
-      border-radius: 18px;
-      padding: 16px;
-      position: relative;
     }
-    video {
-      width: 100%;
-      border-radius: 14px;
-      background: #000;
+
+    .barcode-input {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      letter-spacing: 0.5px;
     }
-    #scanner-status {
-      text-align: center;
-      color: #aaa;
-      margin: 10px 0;
-    }
-    .close-btn {
-      position: absolute;
-      top: 12px;
-      right: 16px;
-      background: none;
-      border: none;
-      color: #fff;
-      font-size: 26px;
-      cursor: pointer;
-    }
-    #torch-btn {
-      margin-top: 10px;
-      width: 100%;
-      padding: 12px;
-      background: #222;
-      color: #fff;
-      border: none;
-      border-radius: 12px;
-      font-size: 1rem;
+
+    .scan-success {
+      animation: success-pop 0.4s ease;
     }
   </style>
 </head>
-<body>
+<body class="bg-zinc-950 text-white">
+  <div class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+      
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center gap-3 mb-3">
+          <div class="w-11 h-11 bg-emerald-600 rounded-2xl flex items-center justify-center">
+            <span class="text-3xl">📷</span>
+          </div>
+          <h1 class="title-font text-4xl font-semibold tracking-tighter">Сканер</h1>
+        </div>
+        <p class="text-zinc-400 text-sm">Штрих-коды и QR • iPhone / Android</p>
+      </div>
 
-  <h1>Сканер штрих-кодов</h1>
+      <!-- Main Card -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl">
+        
+        <!-- Input -->
+        <div class="mb-5">
+          <div class="flex items-center justify-between mb-2 px-1">
+            <label class="text-sm font-medium text-zinc-400">Штрих-код / QR-код</label>
+            <span onclick="clearInput()" class="text-xs text-emerald-500 cursor-pointer active:text-emerald-400">очистить</span>
+          </div>
+          
+          <div class="relative">
+            <input 
+              id="barcode-input" 
+              type="text" 
+              class="barcode-input w-full bg-zinc-950 border border-zinc-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all rounded-2xl px-5 py-4 text-2xl font-medium tracking-[1.5px] placeholder:text-zinc-600 outline-none"
+              placeholder="0000000000000"
+              autocomplete="off"
+              autocorrect="off"
+              spellcheck="false"
+            >
+            
+            <!-- Copy button -->
+            <button onclick="copyBarcode()" 
+                    class="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 transition-colors rounded-2xl text-xl">
+              📋
+            </button>
+          </div>
+        </div>
 
-  <div class="top">
-    <input type="text" id="search" placeholder="Поиск...">
-    <button id="scan-btn">📷 Сканировать</button>
+        <!-- Scan Button -->
+        <button onclick="startScanner()"
+                class="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 transition-all text-white font-semibold py-[18px] rounded-2xl text-xl shadow-xl shadow-emerald-900/40 active:scale-[0.985]">
+          <span class="text-2xl">📷</span>
+          <span>Сканировать камерой</span>
+        </button>
+
+        <div class="mt-4 text-center">
+          <p class="text-[10px] text-zinc-500">Задняя камера • работает на iOS и Android</p>
+        </div>
+      </div>
+
+      <div class="text-center mt-6">
+        <p class="text-xs text-zinc-500">При сканировании код автоматически подставится в строку выше</p>
+      </div>
+    </div>
   </div>
 
-  <div id="list"></div>
+  <!-- Scanner Modal -->
+  <div id="scanner-modal" onclick="if (event.target.id === 'scanner-modal') stopScanner()"
+       class="hidden fixed inset-0 bg-black/95 z-[999] flex items-center justify-center p-4">
+    
+    <div onclick="event.stopImmediatePropagation()" 
+         class="bg-zinc-900 border border-zinc-700 rounded-3xl w-full max-w-[420px] overflow-hidden shadow-2xl">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+        <div>
+          <div class="font-semibold text-lg">Сканирование</div>
+          <div class="text-emerald-400 text-xs">Наведи камеру на код</div>
+        </div>
+        <button onclick="stopScanner()" 
+                class="px-4 py-2 text-sm text-zinc-400 hover:text-white active:text-emerald-400 transition-colors">
+          ✕ Закрыть
+        </button>
+      </div>
 
-  <!-- Модалка сканера -->
-  <div id="scanner-modal">
-    <div class="scanner-box">
-      <button class="close-btn" id="close-scanner">✕</button>
-      <h3 style="text-align:center; margin:0 0 10px;">Сканирование</h3>
-      <video id="video" autoplay playsinline></video>
-      <p id="scanner-status"></p>
-      <button id="torch-btn">💡 Фонарик</button>
+      <!-- Camera View -->
+      <div id="reader" class="w-full bg-black" style="min-height: 320px; max-height: 65vh;"></div>
+
+      <!-- Footer hint -->
+      <div class="px-6 py-4 bg-zinc-950 text-center">
+        <p class="text-xs text-zinc-400">
+          Держи код в центре • 10–25 см • хорошее освещение
+        </p>
+      </div>
     </div>
   </div>
 
   <script>
-    const searchInput = document.getElementById("search");
-    const listContainer = document.getElementById("list");
-    const modal = document.getElementById("scanner-modal");
-    const statusEl = document.getElementById("scanner-status");
-    const torchBtn = document.getElementById("torch-btn");
-    const scanBtn = document.getElementById("scan-btn");
-    const video = document.getElementById("video");
-
-    let items = [];
-    let codeReader = null;
-    let stream = null;
-    let torchTrack = null;
-    let scanning = false;
-
-    function renderList() {
-      listContainer.innerHTML = "";
-      items.forEach(item => {
-        const div = document.createElement("div");
-        div.className = `item ${item.count > 1 ? 'duplicate' : ''}`;
-        div.innerHTML = `
-          <div class="item-header">
-            <span class="item-code">${item.code}</span>
-            <span class="item-count">×${item.count}</span>
-          </div>
-          <div>${item.name}</div>
-        `;
-        listContainer.appendChild(div);
-      });
+    // Tailwind config
+    function initTailwind() {
+      document.documentElement.style.setProperty('--accent', '#10b981');
     }
 
-    // Поиск
-    searchInput.addEventListener("input", () => {
-      const q = searchInput.value.toLowerCase().trim();
-      const filtered = items.filter(i => 
-        i.code.toLowerCase().includes(q) || i.name.toLowerCase().includes(q)
-      );
-      listContainer.innerHTML = "";
-      filtered.forEach(item => {
-        const div = document.createElement("div");
-        div.className = `item ${item.count > 1 ? 'duplicate' : ''}`;
-        div.innerHTML = `
-          <div class="item-header">
-            <span class="item-code">${item.code}</span>
-            <span class="item-count">×${item.count}</span>
-          </div>
-          <div>${item.name}</div>
-        `;
-        listContainer.appendChild(div);
-      });
-    });
+    let html5QrCode = null;
+    let isScanning = false;
 
-    // Кнопка сканирования
-    scanBtn.addEventListener("click", startScanning);
-    document.getElementById("close-scanner").addEventListener("click", stopScanning);
+    // === START SCANNER ===
+    async function startScanner() {
+      const modal = document.getElementById('scanner-modal');
+      const reader = document.getElementById('reader');
 
-    async function startScanning() {
-      modal.style.display = "flex";
-      statusEl.innerText = "Запуск камеры...";
-      scanning = true;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
 
-      try {
-        // Проверка, что библиотека загрузилась
-        if (typeof ZXing === 'undefined') {
-          alert("Библиотека ZXing ещё загружается. Подожди 1 секунду и нажми кнопку снова.");
-          modal.style.display = "none";
-          return;
-        }
-
-        codeReader = new ZXing.BrowserMultiFormatReader();
-
-        // Улучшаем качество распознавания
-        const hints = new Map();
-        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-        codeReader.setHints(hints);
-
-        // Запрашиваем камеру (браузер должен показать запрос на разрешение)
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" }
-        });
-
-        video.srcObject = stream;
-        await video.play();
-
-        torchTrack = stream.getVideoTracks()[0];
-        statusEl.innerText = "Наведи камеру на штрих-код";
-
-        // Запускаем сканирование
-        codeReader.decodeFromVideoDevice(null, video, (result) => {
-          if (result && scanning) {
-            handleScanSuccess(result.getText());
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("reader", {
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
           }
         });
+      }
+
+      try {
+        // Получаем список камер и выбираем заднюю
+        const cameras = await Html5Qrcode.getCameras();
+        
+        let cameraId = null;
+        
+        if (cameras && cameras.length > 0) {
+          // Ищем заднюю камеру
+          const backCamera = cameras.find(cam => 
+            /back|rear|environment|задн|основн/i.test(cam.label)
+          );
+          
+          cameraId = backCamera ? backCamera.id : cameras[cameras.length - 1].id;
+        }
+
+        const cameraConfig = cameraId ? cameraId : { facingMode: "environment" };
+
+        const qrConfig = {
+          fps: 15,
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            const size = Math.floor(minEdge * 0.72);
+            return { width: size, height: size };
+          }
+        };
+
+        await html5QrCode.start(
+          cameraConfig,
+          qrConfig,
+          onScanSuccess,
+          onScanFailure
+        );
+
+        isScanning = true;
 
       } catch (err) {
         console.error(err);
-        statusEl.innerText = "Не удалось запустить камеру";
+        alert("Не удалось запустить камеру.\n\nПроверь разрешения в Safari:\nНастройки → Safari → Камера → Разрешить");
+        stopScanner();
       }
     }
 
-    function handleScanSuccess(code) {
-      stopScanning();
+    // === SUCCESS ===
+    function onScanSuccess(decodedText, decodedResult) {
+      const input = document.getElementById('barcode-input');
+      
+      input.value = decodedText;
+      
+      // Визуальный эффект успеха
+      input.classList.add('!border-emerald-500', 'ring-4', 'ring-emerald-500/20');
+      setTimeout(() => {
+        input.classList.remove('!border-emerald-500', 'ring-4', 'ring-emerald-500/20');
+      }, 1400);
 
-      const existing = items.find(i => i.code === code);
+      // Закрываем сканер
+      stopScanner();
 
-      if (existing) {
-        existing.count++;
-        renderList();
-      } else {
-        const name = prompt("Введите название для этого штрих-кода:", "Товар");
-        if (name) {
-          items.push({ code, name: name.trim(), count: 1 });
-          renderList();
+      // Показываем уведомление
+      showToast(`✓ Отсканировано: ${decodedText}`);
+    }
+
+    function onScanFailure(err) {
+      // Игнорируем большинство ошибок (это нормально)
+    }
+
+    // === STOP SCANNER ===
+    async function stopScanner() {
+      const modal = document.getElementById('scanner-modal');
+      
+      if (html5QrCode && isScanning) {
+        try {
+          await html5QrCode.stop();
+        } catch (e) {
+          // можно игнорировать
         }
+        isScanning = false;
       }
+      
+      modal.classList.remove('flex');
+      modal.classList.add('hidden');
     }
 
-    function stopScanning() {
-      scanning = false;
+    // === COPY ===
+    function copyBarcode() {
+      const input = document.getElementById('barcode-input');
+      if (!input.value.trim()) return;
 
-      if (codeReader) {
-        try { codeReader.reset(); } catch (e) {}
-        codeReader = null;
-      }
-
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-      }
-
-      modal.style.display = "none";
-      statusEl.innerText = "";
-      torchTrack = null;
-      torchBtn.innerText = "💡 Фонарик";
+      navigator.clipboard.writeText(input.value).then(() => {
+        showToast('Скопировано в буфер обмена');
+      }).catch(() => {
+        // fallback
+        input.select();
+        document.execCommand('copy');
+        showToast('Скопировано');
+      });
     }
 
-    // Фонарик
-    torchBtn.addEventListener("click", async () => {
-      if (!torchTrack) return;
+    // === CLEAR ===
+    function clearInput() {
+      const input = document.getElementById('barcode-input');
+      input.value = '';
+      input.focus();
+    }
 
-      try {
-        const isOn = torchBtn.innerText.includes("Выключить");
-        await torchTrack.applyConstraints({ advanced: [{ torch: !isOn }] });
-        torchBtn.innerText = isOn ? "💡 Фонарик" : "💡 Выключить";
-      } catch (e) {
-        statusEl.innerText = "Фонарик не поддерживается";
-      }
-    });
+    // === TOAST ===
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = `fixed bottom-8 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3.5 rounded-2xl shadow-2xl text-sm font-medium z-[9999] flex items-center gap-2`;
+      toast.innerHTML = `
+        <span>${message}</span>
+      `;
+      
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.transition = 'all 0.25s ease';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 200);
+      }, 2300);
+    }
+
+    // Инициализация
+    function init() {
+      initTailwind();
+      
+      // Можно сразу фокусировать input при тапе (удобно на телефоне)
+      const input = document.getElementById('barcode-input');
+      input.addEventListener('focus', () => {
+        input.placeholder = '';
+      });
+    }
+
+    window.onload = init;
   </script>
-
 </body>
 </html>
