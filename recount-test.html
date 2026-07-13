@@ -3,31 +3,124 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Сканер (ZXing)</title>
+  <title>Сканер товаров</title>
   <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
   <style>
-    body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #fff; margin: 0; padding: 12px; }
-    h1 { text-align: center; margin-bottom: 14px; }
-    .top-bar { display: flex; gap: 10px; margin-bottom: 14px; }
-    #search { flex: 1; padding: 12px; font-size: 1rem; border: 2px solid #333; border-radius: 12px; background: #1a1a1a; color: #fff; }
-    #scan-btn { padding: 12px 18px; font-size: 1rem; background: linear-gradient(135deg, #6d28d9, #a78bfa); color: white; border: none; border-radius: 12px; font-weight: 700; }
-    .item { background: #1a1a1a; padding: 13px; margin-bottom: 9px; border-radius: 12px; border-left: 5px solid #555; }
-    .item.duplicate { border-left-color: #22c55e; background: #162d16; }
-    .item-header { display: flex; justify-content: space-between; margin-bottom: 3px; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      margin: 0;
+      padding: 12px;
+    }
+    h1 { text-align: center; margin-bottom: 14px; font-size: 1.25rem; }
+    .top-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    #search {
+      flex: 1;
+      padding: 12px;
+      font-size: 1rem;
+      border: 2px solid #333;
+      border-radius: 12px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    #scan-btn {
+      padding: 12px 18px;
+      font-size: 1rem;
+      background: linear-gradient(135deg, #6d28d9, #a78bfa);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-weight: 700;
+    }
+    .item {
+      background: #1a1a1a;
+      padding: 13px;
+      margin-bottom: 9px;
+      border-radius: 12px;
+      border-left: 5px solid #555;
+    }
+    .item.duplicate {
+      border-left-color: #22c55e;
+      background: #162d16;
+    }
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 3px;
+    }
     .item-code { font-weight: bold; color: #a78bfa; }
-    .item-count { background: #333; padding: 1px 7px; border-radius: 999px; font-size: 0.8rem; }
-    #scanner-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 99999; justify-content: center; align-items: flex-start; padding-top: 25px; }
-    .scanner-box { background: #111; width: 94%; max-width: 420px; border-radius: 18px; padding: 16px; position: relative; }
-    video { width: 100%; border-radius: 14px; background: #000; }
-    #scanner-status { text-align: center; color: #aaa; margin: 8px 0; font-size: 0.9rem; }
-    .tip { text-align: center; color: #888; font-size: 0.8rem; margin-top: 4px; }
-    .close-btn { position: absolute; top: 12px; right: 16px; background: none; border: none; color: #fff; font-size: 26px; cursor: pointer; }
-    #torch-btn { margin-top: 8px; width: 100%; padding: 11px; background: #222; color: #fff; border: none; border-radius: 12px; font-size: 1rem; }
+    .item-count {
+      background: #333;
+      padding: 1px 7px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+    }
+    #scanner-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      z-index: 99999;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 25px;
+    }
+    .scanner-box {
+      background: #111;
+      width: 94%;
+      max-width: 420px;
+      border-radius: 18px;
+      padding: 16px;
+      position: relative;
+    }
+    video {
+      width: 100%;
+      border-radius: 14px;
+      background: #000;
+    }
+    #scanner-status {
+      text-align: center;
+      color: #aaa;
+      margin: 8px 0;
+      font-size: 0.9rem;
+    }
+    .tip {
+      text-align: center;
+      color: #888;
+      font-size: 0.8rem;
+      margin-top: 4px;
+    }
+    .close-btn {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 26px;
+      cursor: pointer;
+    }
+    #torch-btn {
+      margin-top: 8px;
+      width: 100%;
+      padding: 11px;
+      background: #222;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+    }
   </style>
 </head>
 <body>
 
-  <h1>Сканер (ZXing)</h1>
+  <h1>Сканер товаров</h1>
 
   <div class="top-bar">
     <input type="text" id="search" placeholder="Поиск...">
@@ -36,6 +129,7 @@
 
   <div id="list"></div>
 
+  <!-- Модалка сканера -->
   <div id="scanner-modal">
     <div class="scanner-box">
       <button class="close-btn" id="close-scanner">✕</button>
@@ -108,16 +202,18 @@
 
       try {
         if (typeof ZXing === 'undefined') {
-          alert("Библиотека ещё загружается. Подожди 1-2 секунды и нажми ещё раз.");
+          alert("Библиотека ещё загружается. Подожди секунду и попробуй снова.");
           modal.style.display = "none";
           return;
         }
 
         codeReader = new ZXing.BrowserMultiFormatReader();
+
         const hints = new Map();
         hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
         codeReader.setHints(hints);
 
+        // Простой запрос камеры — браузер сам должен спросить разрешение
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" }
         });
@@ -136,7 +232,11 @@
 
       } catch (err) {
         console.error(err);
-        statusEl.innerText = "Камера не доступна. Зайди в настройки браузера → Разрешения → Камера и разреши доступ.";
+        statusEl.innerText = "Не удалось получить доступ к камере";
+        // Через 2 секунды закрываем модалку, чтобы пользователь мог попробовать снова
+        setTimeout(() => {
+          if (!scanning) modal.style.display = "none";
+        }, 2000);
       }
     }
 
@@ -164,8 +264,9 @@
         try { codeReader.reset(); } catch (e) {}
         codeReader = null;
       }
+
       if (stream) {
-        stream.getTracks().forEach(t => t.stop());
+        stream.getTracks().forEach(track => track.stop());
         stream = null;
       }
 
@@ -175,13 +276,17 @@
       torchBtn.innerText = "💡 Фонарик";
     }
 
+    // Фонарик
     torchBtn.addEventListener("click", async () => {
       if (!torchTrack) return;
+
       try {
         const isOn = torchBtn.innerText.includes("Выключить");
         await torchTrack.applyConstraints({ advanced: [{ torch: !isOn }] });
         torchBtn.innerText = isOn ? "💡 Фонарик" : "💡 Выключить";
-      } catch (e) {}
+      } catch (e) {
+        statusEl.innerText = "Фонарик не поддерживается";
+      }
     });
   </script>
 
