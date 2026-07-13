@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Универсальный сканер</title>
+  <title>Сканер (изогнутые упаковки)</title>
   <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; }
@@ -14,11 +14,11 @@
       margin: 0;
       padding: 12px;
     }
-    h1 { text-align: center; margin-bottom: 16px; font-size: 1.3rem; }
+    h1 { text-align: center; margin-bottom: 12px; font-size: 1.25rem; }
     .top-bar {
       display: flex;
       gap: 10px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
     #search {
       flex: 1;
@@ -30,7 +30,7 @@
       color: #fff;
     }
     #scan-btn {
-      padding: 12px 20px;
+      padding: 12px 18px;
       font-size: 1rem;
       background: linear-gradient(135deg, #6d28d9, #a78bfa);
       color: white;
@@ -40,8 +40,8 @@
     }
     .item {
       background: #1a1a1a;
-      padding: 14px;
-      margin-bottom: 10px;
+      padding: 13px;
+      margin-bottom: 9px;
       border-radius: 12px;
       border-left: 5px solid #555;
     }
@@ -52,14 +52,14 @@
     .item-header {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
     }
     .item-code { font-weight: bold; color: #a78bfa; }
     .item-count {
       background: #333;
-      padding: 1px 8px;
+      padding: 1px 7px;
       border-radius: 999px;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
     }
     #scanner-modal {
       display: none;
@@ -69,7 +69,7 @@
       z-index: 99999;
       justify-content: center;
       align-items: flex-start;
-      padding-top: 30px;
+      padding-top: 25px;
     }
     .scanner-box {
       background: #111;
@@ -87,7 +87,14 @@
     #scanner-status {
       text-align: center;
       color: #aaa;
-      margin: 10px 0;
+      margin: 8px 0;
+      font-size: 0.9rem;
+    }
+    .tip {
+      text-align: center;
+      color: #888;
+      font-size: 0.8rem;
+      margin-top: 4px;
     }
     .close-btn {
       position: absolute;
@@ -100,9 +107,9 @@
       cursor: pointer;
     }
     #torch-btn {
-      margin-top: 10px;
+      margin-top: 8px;
       width: 100%;
-      padding: 12px;
+      padding: 11px;
       background: #222;
       color: #fff;
       border: none;
@@ -113,7 +120,7 @@
 </head>
 <body>
 
-  <h1>Универсальный сканер</h1>
+  <h1>Сканер (упаковки)</h1>
 
   <div class="top-bar">
     <input type="text" id="search" placeholder="Поиск...">
@@ -126,9 +133,10 @@
   <div id="scanner-modal">
     <div class="scanner-box">
       <button class="close-btn" id="close-scanner">✕</button>
-      <h3 style="text-align:center; margin:0 0 10px;">Сканирование</h3>
+      <h3 style="text-align:center; margin:0 0 6px;">Сканирование</h3>
       <div id="qr-reader"></div>
       <p id="scanner-status"></p>
+      <p class="tip">Медленно двигай телефон вокруг штрих-кода</p>
       <button id="torch-btn">💡 Фонарик</button>
     </div>
   </div>
@@ -193,16 +201,15 @@
         html5QrCode = new Html5Qrcode("qr-reader");
 
         const config = {
-          fps: 20,                    // Высокая скорость
-          qrbox: { width: 320, height: 220 }, // Большая зона — лучше под углом
-          aspectRatio: 1.4,
+          fps: 25,                              // Высокая скорость
+          qrbox: { width: 340, height: 200 },   // Большая зона — лучше на изогнутых поверхностях
+          aspectRatio: 1.5,
           formatsToSupport: [
             Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.EAN_8,
             Html5QrcodeSupportedFormats.CODE_128,
             Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E
+            Html5QrcodeSupportedFormats.UPC_A
           ]
         };
 
@@ -216,7 +223,7 @@
           }
         );
 
-        statusEl.innerText = "Наведи камеру на штрих-код";
+        statusEl.innerText = "Медленно двигай телефон вокруг кода";
 
       } catch (err) {
         console.error(err);
@@ -245,9 +252,7 @@
       isScanning = false;
 
       if (html5QrCode) {
-        try {
-          await html5QrCode.stop();
-        } catch (e) {}
+        try { await html5QrCode.stop(); } catch (e) {}
         html5QrCode = null;
       }
 
