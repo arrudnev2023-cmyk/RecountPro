@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Сканер (изогнутые упаковки)</title>
-  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <title>Быстрый сканер (BarcodeDetector)</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -14,7 +13,7 @@
       margin: 0;
       padding: 12px;
     }
-    h1 { text-align: center; margin-bottom: 12px; font-size: 1.25rem; }
+    h1 { text-align: center; margin-bottom: 14px; font-size: 1.25rem; }
     .top-bar {
       display: flex;
       gap: 10px;
@@ -79,22 +78,16 @@
       padding: 16px;
       position: relative;
     }
-    #qr-reader {
+    video {
       width: 100%;
       border-radius: 14px;
-      overflow: hidden;
+      background: #000;
     }
     #scanner-status {
       text-align: center;
       color: #aaa;
       margin: 8px 0;
       font-size: 0.9rem;
-    }
-    .tip {
-      text-align: center;
-      color: #888;
-      font-size: 0.8rem;
-      margin-top: 4px;
     }
     .close-btn {
       position: absolute;
@@ -120,7 +113,7 @@
 </head>
 <body>
 
-  <h1>Сканер (упаковки)</h1>
+  <h1>Быстрый сканер</h1>
 
   <div class="top-bar">
     <input type="text" id="search" placeholder="Поиск...">
@@ -133,10 +126,9 @@
   <div id="scanner-modal">
     <div class="scanner-box">
       <button class="close-btn" id="close-scanner">✕</button>
-      <h3 style="text-align:center; margin:0 0 6px;">Сканирование</h3>
-      <div id="qr-reader"></div>
+      <h3 style="text-align:center; margin:0 0 8px;">Сканирование</h3>
+      <video id="video" autoplay playsinline></video>
       <p id="scanner-status"></p>
-      <p class="tip">Медленно двигай телефон вокруг штрих-кода</p>
       <button id="torch-btn">💡 Фонарик</button>
     </div>
   </div>
@@ -148,10 +140,13 @@
     const statusEl = document.getElementById("scanner-status");
     const torchBtn = document.getElementById("torch-btn");
     const scanBtn = document.getElementById("scan-btn");
+    const video = document.getElementById("video");
 
     let items = [];
-    let html5QrCode = null;
-    let isScanning = false;
+    let stream = null;
+    let detector = null;
+    let scanning = false;
+    let animationFrame = null;
 
     function renderList() {
       listContainer.innerHTML = "";
@@ -195,40 +190,53 @@
     async function startScanning() {
       modal.style.display = "flex";
       statusEl.innerText = "Запуск камеры...";
-      isScanning = true;
 
       try {
-        html5QrCode = new Html5Qrcode("qr-reader");
+        // Проверяем поддержку BarcodeDetector
+        if (!('BarcodeDetector' in window)) {
+          statusEl.innerText = "Ваш браузер не поддерживает быстрый сканер";
+          alert("К сожалению, ваш браузер не поддерживает BarcodeDetector. Попробуйте Chrome или Edge.");
+          modal.style.display = "none";
+          return;
+        }
 
-        const config = {
-          fps: 25,                              // Высокая скорость
-          qrbox: { width: 340, height: 200 },   // Большая зона — лучше на изогнутых поверхностях
-          aspectRatio: 1.5,
-          formatsToSupport: [
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.UPC_A
-          ]
-        };
+        detector = new BarcodeDetector({
+          formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e']
+        });
 
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          config,
-          (decodedText) => {
-            if (isScanning) {
-              handleScanSuccess(decodedText.trim());
-            }
-          }
-        );
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" }
+        });
 
-        statusEl.innerText = "Медленно двигай телефон вокруг кода";
+        video.srcObject = stream;
+        await video.play();
+
+        statusEl.innerText = "Наведи камеру на штрих-код";
+        scanning = true;
+        scanLoop();
 
       } catch (err) {
         console.error(err);
-        statusEl.innerText = "Ошибка запуска камеры";
+        statusEl.innerText = "Ошибка доступа к камере";
       }
+    }
+
+    async function scanLoop() {
+      if (!scanning || !detector) return;
+
+      try {
+        const barcodes = await detector.detect(video);
+
+        if (barcodes.length > 0) {
+          const code = barcodes[0].rawValue;
+          handleScanSuccess(code);
+          return; // останавливаем цикл после успешного сканирования
+        }
+      } catch (e) {
+        // игнорируем ошибки детекции
+      }
+
+      animationFrame = requestAnimationFrame(scanLoop);
     }
 
     function handleScanSuccess(code) {
@@ -248,12 +256,17 @@
       }
     }
 
-    async function stopScanning() {
-      isScanning = false;
+    function stopScanning() {
+      scanning = false;
 
-      if (html5QrCode) {
-        try { await html5QrCode.stop(); } catch (e) {}
-        html5QrCode = null;
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+      }
+
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
       }
 
       modal.style.display = "none";
@@ -263,15 +276,23 @@
 
     // Фонарик
     torchBtn.addEventListener("click", async () => {
-      if (!html5QrCode) return;
+      if (!stream) return;
+
+      const track = stream.getVideoTracks()[0];
+      if (!track) return;
+
       try {
+        const capabilities = track.getCapabilities();
+        if (!capabilities.torch) {
+          statusEl.innerText = "Фонарик не поддерживается";
+          return;
+        }
+
         const isOn = torchBtn.innerText.includes("Выключить");
-        await html5QrCode.applyVideoConstraints({
-          advanced: [{ torch: !isOn }]
-        });
+        await track.applyConstraints({ advanced: [{ torch: !isOn }] });
         torchBtn.innerText = isOn ? "💡 Фонарик" : "💡 Выключить";
       } catch (e) {
-        statusEl.innerText = "Фонарик не поддерживается";
+        statusEl.innerText = "Ошибка фонарика";
       }
     });
   </script>
