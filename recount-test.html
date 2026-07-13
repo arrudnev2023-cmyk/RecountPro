@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Сканер товаров</title>
+  <title>Сканер штрих-кодов (ZXing)</title>
   <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
   <style>
-    * { box-sizing: border-box; }
     body {
       font-family: system-ui, sans-serif;
       background: #0f0f0f;
@@ -14,11 +13,11 @@
       margin: 0;
       padding: 12px;
     }
-    h1 { text-align: center; margin-bottom: 14px; font-size: 1.25rem; }
-    .top-bar {
+    h1 { text-align: center; margin-bottom: 16px; }
+    .top {
       display: flex;
       gap: 10px;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
     }
     #search {
       flex: 1;
@@ -30,7 +29,7 @@
       color: #fff;
     }
     #scan-btn {
-      padding: 12px 18px;
+      padding: 12px 20px;
       font-size: 1rem;
       background: linear-gradient(135deg, #6d28d9, #a78bfa);
       color: white;
@@ -40,8 +39,8 @@
     }
     .item {
       background: #1a1a1a;
-      padding: 13px;
-      margin-bottom: 9px;
+      padding: 14px;
+      margin-bottom: 10px;
       border-radius: 12px;
       border-left: 5px solid #555;
     }
@@ -52,14 +51,17 @@
     .item-header {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 3px;
+      margin-bottom: 4px;
     }
-    .item-code { font-weight: bold; color: #a78bfa; }
+    .item-code {
+      font-weight: bold;
+      color: #a78bfa;
+    }
     .item-count {
       background: #333;
-      padding: 1px 7px;
+      padding: 2px 8px;
       border-radius: 999px;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
     }
     #scanner-modal {
       display: none;
@@ -69,7 +71,7 @@
       z-index: 99999;
       justify-content: center;
       align-items: flex-start;
-      padding-top: 25px;
+      padding-top: 30px;
     }
     .scanner-box {
       background: #111;
@@ -87,14 +89,7 @@
     #scanner-status {
       text-align: center;
       color: #aaa;
-      margin: 8px 0;
-      font-size: 0.9rem;
-    }
-    .tip {
-      text-align: center;
-      color: #888;
-      font-size: 0.8rem;
-      margin-top: 4px;
+      margin: 10px 0;
     }
     .close-btn {
       position: absolute;
@@ -107,9 +102,9 @@
       cursor: pointer;
     }
     #torch-btn {
-      margin-top: 8px;
+      margin-top: 10px;
       width: 100%;
-      padding: 11px;
+      padding: 12px;
       background: #222;
       color: #fff;
       border: none;
@@ -120,9 +115,9 @@
 </head>
 <body>
 
-  <h1>Сканер товаров</h1>
+  <h1>Сканер штрих-кодов</h1>
 
-  <div class="top-bar">
+  <div class="top">
     <input type="text" id="search" placeholder="Поиск...">
     <button id="scan-btn">📷 Сканировать</button>
   </div>
@@ -133,10 +128,9 @@
   <div id="scanner-modal">
     <div class="scanner-box">
       <button class="close-btn" id="close-scanner">✕</button>
-      <h3 style="text-align:center; margin:0 0 8px;">Сканирование</h3>
+      <h3 style="text-align:center; margin:0 0 10px;">Сканирование</h3>
       <video id="video" autoplay playsinline></video>
       <p id="scanner-status"></p>
-      <p class="tip">Медленно двигай телефон вокруг штрих-кода</p>
       <button id="torch-btn">💡 Фонарик</button>
     </div>
   </div>
@@ -172,6 +166,7 @@
       });
     }
 
+    // Поиск
     searchInput.addEventListener("input", () => {
       const q = searchInput.value.toLowerCase().trim();
       const filtered = items.filter(i => 
@@ -192,6 +187,7 @@
       });
     });
 
+    // Кнопка сканирования
     scanBtn.addEventListener("click", startScanning);
     document.getElementById("close-scanner").addEventListener("click", stopScanning);
 
@@ -201,19 +197,21 @@
       scanning = true;
 
       try {
+        // Проверка, что библиотека загрузилась
         if (typeof ZXing === 'undefined') {
-          alert("Библиотека ещё загружается. Подожди секунду и попробуй снова.");
+          alert("Библиотека ZXing ещё загружается. Подожди 1 секунду и нажми кнопку снова.");
           modal.style.display = "none";
           return;
         }
 
         codeReader = new ZXing.BrowserMultiFormatReader();
 
+        // Улучшаем качество распознавания
         const hints = new Map();
         hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
         codeReader.setHints(hints);
 
-        // Простой запрос камеры — браузер сам должен спросить разрешение
+        // Запрашиваем камеру (браузер должен показать запрос на разрешение)
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" }
         });
@@ -222,8 +220,9 @@
         await video.play();
 
         torchTrack = stream.getVideoTracks()[0];
-        statusEl.innerText = "Медленно двигай телефон вокруг штрих-кода";
+        statusEl.innerText = "Наведи камеру на штрих-код";
 
+        // Запускаем сканирование
         codeReader.decodeFromVideoDevice(null, video, (result) => {
           if (result && scanning) {
             handleScanSuccess(result.getText());
@@ -232,11 +231,7 @@
 
       } catch (err) {
         console.error(err);
-        statusEl.innerText = "Не удалось получить доступ к камере";
-        // Через 2 секунды закрываем модалку, чтобы пользователь мог попробовать снова
-        setTimeout(() => {
-          if (!scanning) modal.style.display = "none";
-        }, 2000);
+        statusEl.innerText = "Не удалось запустить камеру";
       }
     }
 
@@ -249,7 +244,7 @@
         existing.count++;
         renderList();
       } else {
-        const name = prompt("Введите название товара:", "Товар");
+        const name = prompt("Введите название для этого штрих-кода:", "Товар");
         if (name) {
           items.push({ code, name: name.trim(), count: 1 });
           renderList();
