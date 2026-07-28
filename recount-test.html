@@ -38,6 +38,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
 
   <style>
    :root {
@@ -1516,33 +1517,30 @@ animate();
   const closeBtn = document.getElementById('close-scanner');
   const video = document.getElementById('camera');
 
-  let stream = null;
+  let codeReader = null;
   let scanning = false;
-
-  let detector = null;
-  if ('BarcodeDetector' in window) {
-    detector = new BarcodeDetector({
-      formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e']
-    });
-  }
 
   async function startScanner() {
     modal.style.display = 'flex';
 
+    scanning = true;
+    scanBtn.classList.add('recording');
+
+    codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { exact: 'environment' } }
-      });
-
-      video.srcObject = stream;
-      await video.play();
-
-      scanning = true;
-      scanBtn.classList.add('recording');
-
-      scanLoop();
-    } catch (err) {
-      console.error('Ошибка камеры:', err);
+      await codeReader.decodeFromVideoDevice(
+        null,       // автоматически выбрать заднюю камеру
+        video,
+        (result, err) => {
+          if (result) {
+            searchInput.value = result.text;
+            stopScanner();
+          }
+        }
+      );
+    } catch (e) {
+      console.error("Ошибка камеры:", e);
     }
   }
 
@@ -1551,38 +1549,10 @@ animate();
     scanBtn.classList.remove('recording');
     modal.style.display = 'none';
 
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
-      stream = null;
+    if (codeReader) {
+      codeReader.reset();
+      codeReader = null;
     }
-  }
-
-  function scanLoop() {
-    if (!scanning || !detector) return;
-
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    function frame() {
-      if (!scanning) return;
-
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      detector.detect(canvas).then(codes => {
-        if (codes.length > 0) {
-          const code = codes[0].rawValue;
-          searchInput.value = code;
-          stopScanner();
-        } else {
-          requestAnimationFrame(frame);
-        }
-      }).catch(() => requestAnimationFrame(frame));
-    }
-
-    requestAnimationFrame(frame);
   }
 
   scanBtn.addEventListener('click', startScanner);
@@ -1594,6 +1564,8 @@ animate();
     }
   });
 })();
+
+
 
 
 
