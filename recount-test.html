@@ -1506,32 +1506,115 @@ function animate() {
 }
 animate();
   // Голосовой поиск для поля #search с предобработкой, фуззи-поиском и авто-заменой
-(function() {
-  // Элемент для вывода камеры
+(function () {
+  const searchInput = document.getElementById('search');
+  const scanBtn = document.getElementById('voice-search-btn'); // кнопка сканера
+
+  if (!searchInput || !scanBtn) return;
+
+  // Проверяем поддержку камеры и BarcodeDetector
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    console.warn('Камера не поддерживается');
+    return;
+  }
+
   let video = document.getElementById('camera');
   if (!video) {
     video = document.createElement('video');
     video.id = 'camera';
     video.autoplay = true;
     video.playsInline = true;
-    video.style.width = '300px';
+    video.style.display = 'none'; // можно показать, если нужно
     document.body.appendChild(video);
   }
 
-  // Горячая клавиша: Ctrl + Shift + M
-  document.addEventListener('keydown', async (e) => {
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'm') {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { exact: "environment" } }
+  let stream = null;
+  let scanning = false;
+  let detector = null;
+
+  if ('BarcodeDetector' in window) {
+    detector = new BarcodeDetector({
+      formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e']
+    });
+  } else {
+    console.warn('BarcodeDetector не поддерживается в этом браузере');
+  }
+
+  async function startCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: 'environment' } }
+      });
+      video.srcObject = stream;
+      await video.play();
+      scanning = true;
+      scanBtn.classList.add('recording');
+      scanLoop();
+    } catch (err) {
+      console.error('Ошибка доступа к камере:', err);
+    }
+  }
+
+  function stopCamera() {
+    scanning = false;
+    scanBtn.classList.remove('recording');
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+  }
+
+  async function scanLoop() {
+    if (!scanning || !detector) return;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    function frame() {
+      if (!scanning) return;
+
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      detector
+        .detect(canvas)
+        .then(codes => {
+          if (codes && codes.length > 0) {
+            const code = codes[0].rawValue;
+            searchInput.value = code;
+            stopCamera();
+          } else {
+            requestAnimationFrame(frame);
+          }
+        })
+        .catch(err => {
+          console.error('Ошибка детектора штрих-кодов:', err);
+          requestAnimationFrame(frame);
         });
-        video.srcObject = stream;
-      } catch (err) {
-        console.error("Ошибка доступа к задней камере:", err);
-      }
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  // Кнопка сканера
+  scanBtn.addEventListener('click', () => {
+    if (scanning) {
+      stopCamera();
+    } else {
+      startCamera();
+    }
+  });
+
+  // Горячая клавиша: Ctrl + Shift + M
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'm') {
+      scanBtn.click();
     }
   });
 })();
+
 
 
 
