@@ -139,9 +139,45 @@
 }
     /* Голосовой поиск: индикатор записи */
 /* Кнопка сканера вместо голосового поиска */
+/* Модальное окно */
+#scanner-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+#scanner-content {
+  background: #111;
+  padding: 10px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+#camera {
+  width: 300px;
+  max-width: 90vw;
+  border-radius: 8px;
+}
+
+/* Кнопка закрытия */
+#close-scanner {
+  margin-top: 10px;
+  padding: 8px 14px;
+  border: none;
+  background: #ff4444;
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Твои стили кнопки сканера */
 #voice-search-btn {
   position: absolute;
-  right: 2.6rem; /* согласуется с правкой #clear-search */
+  right: 2.6rem;
   top: 50%;
   transform: translateY(-50%);
   background: none;
@@ -151,13 +187,6 @@
   z-index: 2;
 }
 
-/* Активное состояние (например, когда камера включена) */
-#voice-search-btn[aria-pressed="true"] #voice-icon path {
-  stroke: var(--accent);
-  transition: stroke 0.15s ease;
-}
-
-/* Анимация "сканирования" */
 #voice-search-btn.recording #voice-icon {
   animation: pulse 1s infinite;
 }
@@ -167,6 +196,7 @@
   50% { transform: scale(1.08); opacity: 0.85; }
   100% { transform: scale(1); opacity: 1; }
 }
+
 
 /* Hover для кнопки очистки */
 #clear-search:hover {
@@ -412,15 +442,22 @@ input[data-code] {
   <button id="clear-search" type="button" aria-label="Очистить поиск">×</button>
 
   <!-- Кнопка голосового поиска -->
-  <button id="voice-search-btn" type="button" aria-label="Голосовой поиск" aria-pressed="false"
-          style="position:absolute; right:2.6rem; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:4px;">
-    <svg id="voice-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z" stroke="#aaa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M19 11v1a7 7 0 0 1-14 0v-1" stroke="#aaa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M12 19v3" stroke="#aaa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  </button>
+ <!-- Кнопка сканера (твоя кнопка голосового поиска) -->
+<button id="voice-search-btn">
+  <svg id="voice-icon" width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <path d="M4 4h4v2H6v2H4V4zm12 0h4v4h-2V6h-2V4zM4 16h2v2h2v2H4v-4zm14 2v-2h2v4h-4v-2h2zM7 9h10v6H7V9z"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</button>
+
+<!-- Модальное окно камеры -->
+<div id="scanner-modal">
+  <div id="scanner-content">
+    <video id="camera" autoplay playsinline></video>
+    <button id="close-scanner">Закрыть</button>
+  </div>
 </div>
+
 
     </div>
   </div>
@@ -1508,63 +1545,54 @@ animate();
   // Голосовой поиск для поля #search с предобработкой, фуззи-поиском и авто-заменой
 (function () {
   const searchInput = document.getElementById('search');
-  const scanBtn = document.getElementById('voice-search-btn'); // кнопка сканера
+  const scanBtn = document.getElementById('voice-search-btn');
 
-  if (!searchInput || !scanBtn) return;
-
-  // Проверяем поддержку камеры и BarcodeDetector
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    console.warn('Камера не поддерживается');
-    return;
-  }
-
-  let video = document.getElementById('camera');
-  if (!video) {
-    video = document.createElement('video');
-    video.id = 'camera';
-    video.autoplay = true;
-    video.playsInline = true;
-    video.style.display = 'none'; // можно показать, если нужно
-    document.body.appendChild(video);
-  }
+  const modal = document.getElementById('scanner-modal');
+  const closeBtn = document.getElementById('close-scanner');
+  const video = document.getElementById('camera');
 
   let stream = null;
   let scanning = false;
-  let detector = null;
 
+  let detector = null;
   if ('BarcodeDetector' in window) {
     detector = new BarcodeDetector({
       formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e']
     });
-  } else {
-    console.warn('BarcodeDetector не поддерживается в этом браузере');
   }
 
-  async function startCamera() {
+  async function startScanner() {
+    modal.style.display = 'flex';
+
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { exact: 'environment' } }
       });
+
       video.srcObject = stream;
       await video.play();
+
       scanning = true;
       scanBtn.classList.add('recording');
+
       scanLoop();
     } catch (err) {
-      console.error('Ошибка доступа к камере:', err);
+      console.error('Ошибка камеры:', err);
     }
   }
 
-  function stopCamera() {
+  function stopScanner() {
     scanning = false;
     scanBtn.classList.remove('recording');
+    modal.style.display = 'none';
+
     if (stream) {
       stream.getTracks().forEach(t => t.stop());
       stream = null;
     }
   }
 
-  async function scanLoop() {
+  function scanLoop() {
     if (!scanning || !detector) return;
 
     const canvas = document.createElement('canvas');
@@ -1578,39 +1606,26 @@ animate();
 
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      detector
-        .detect(canvas)
-        .then(codes => {
-          if (codes && codes.length > 0) {
-            const code = codes[0].rawValue;
-            searchInput.value = code;
-            stopCamera();
-          } else {
-            requestAnimationFrame(frame);
-          }
-        })
-        .catch(err => {
-          console.error('Ошибка детектора штрих-кодов:', err);
+      detector.detect(canvas).then(codes => {
+        if (codes.length > 0) {
+          const code = codes[0].rawValue;
+          searchInput.value = code;
+          stopScanner();
+        } else {
           requestAnimationFrame(frame);
-        });
+        }
+      }).catch(() => requestAnimationFrame(frame));
     }
 
     requestAnimationFrame(frame);
   }
 
-  // Кнопка сканера
-  scanBtn.addEventListener('click', () => {
-    if (scanning) {
-      stopCamera();
-    } else {
-      startCamera();
-    }
-  });
+  scanBtn.addEventListener('click', startScanner);
+  closeBtn.addEventListener('click', stopScanner);
 
-  // Горячая клавиша: Ctrl + Shift + M
   document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'm') {
-      scanBtn.click();
+      startScanner();
     }
   });
 })();
