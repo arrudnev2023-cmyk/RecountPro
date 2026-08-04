@@ -777,12 +777,10 @@ function attachInputHandlers() {
   document.querySelectorAll('input[data-code]').forEach(input => {
     input.addEventListener('focus', () => {
 
-      // 🔥 снимаем подсветку со всех
       document.querySelectorAll('input[data-code]').forEach(i => 
         i.classList.remove('active-input')
       );
 
-      // 🔥 включаем подсветку на активном
       input.classList.add('active-input');
 
       activeInput = input;
@@ -793,7 +791,6 @@ function attachInputHandlers() {
 
     input.addEventListener('click', () => {
 
-      // 🔥 то же самое для клика
       document.querySelectorAll('input[data-code]').forEach(i => 
         i.classList.remove('active-input')
       );
@@ -806,7 +803,6 @@ function attachInputHandlers() {
     });
   });
 
-  // Клики по кнопкам клавиатуры
   keyboard.querySelectorAll('button').forEach(btn => {
     btn.onclick = () => {
       if (!activeInput) return;
@@ -818,14 +814,11 @@ function attachInputHandlers() {
         activeInput.value += val;
       }
 
-      // 🔥 подсветка остаётся активной
       activeInput.classList.add('active-input');
 
       activeInput.dispatchEvent(new Event("input", { bubbles: true }));
     };
   });
-}
-
 
   // Скрытие клавиатуры при клике вне
   document.addEventListener("click", e => {
@@ -835,6 +828,7 @@ function attachInputHandlers() {
       activeInput = null;
     }
   });
+}   // ← правильное закрытие функции
 
 
 
