@@ -1524,52 +1524,22 @@ animate();
   let codeReader = null;
   let scanning = false;
 
-  async function getBackCameraId() {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videos = devices.filter(d => d.kind === "videoinput");
-
-    // Ищем заднюю камеру по имени
-    const backCam = videos.find(d =>
-      d.label.toLowerCase().includes("back") ||
-      d.label.toLowerCase().includes("rear")
-    );
-
-    return backCam ? backCam.deviceId : videos[0].deviceId;
-  }
-
   async function startScanner() {
-    modal.style.display = 'flex';   // модалка должна быть видимой
+    modal.style.display = 'flex';
+
     scanning = true;
     scanBtn.classList.add('recording');
 
-    const backCamId = await getBackCameraId();
-
-    const hints = new Map();
-    hints.set(ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS, [
-      ZXingBrowser.BarcodeFormat.EAN_13,
-      ZXingBrowser.BarcodeFormat.EAN_8,
-      ZXingBrowser.BarcodeFormat.UPC_A,
-      ZXingBrowser.BarcodeFormat.UPC_E
-    ]);
-    hints.set(ZXingBrowser.DecodeHintType.TRY_HARDER, true);
-
-    codeReader = new ZXingBrowser.BrowserMultiFormatReader(hints);
+    codeReader = new ZXingBrowser.BrowserMultiFormatReader();
 
     try {
       await codeReader.decodeFromVideoDevice(
-        backCamId,   // ← теперь ВСЕГДА задняя камера
+        null,       // автоматически выбрать заднюю камеру
         video,
         (result, err) => {
           if (result) {
             searchInput.value = result.text;
             stopScanner();
-          }
-        },
-        {
-          video: {
-            facingMode: "environment",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
           }
         }
       );
