@@ -1526,20 +1526,35 @@ animate();
 
   async function startScanner() {
     modal.style.display = 'flex';
-
     scanning = true;
     scanBtn.classList.add('recording');
 
-    codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+    // 🔥 Прокачанные настройки ZXing
+    const hints = new Map();
+    hints.set(ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXingBrowser.BarcodeFormat.EAN_13
+    ]);
+    hints.set(ZXingBrowser.DecodeHintType.TRY_HARDER, true);
+    hints.set(ZXingBrowser.DecodeHintType.PURE_BARCODE, false);
+
+    codeReader = new ZXingBrowser.BrowserMultiFormatReader(hints);
 
     try {
       await codeReader.decodeFromVideoDevice(
-        null,       // автоматически выбрать заднюю камеру
+        null,       // у тебя это работает — оставляю
         video,
         (result, err) => {
           if (result) {
             searchInput.value = result.text;
             stopScanner();
+          }
+        },
+        {
+          // 🔥 Оптимальные параметры камеры
+          video: {
+            facingMode: "environment",
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           }
         }
       );
@@ -1568,6 +1583,7 @@ animate();
     }
   });
 })();
+
 
 
 
