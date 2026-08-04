@@ -1390,128 +1390,31 @@ function resizeCanvas() {
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
-// --- Звёзды с параллаксом ---
-let stars = [];
-for (let i = 0; i < 200; i++) {
-  stars.push({
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height,
-    r: Math.random() * 1.5 + 0.5,
-    alpha: Math.random(),
-    speed: Math.random() * 0.2 + 0.05
-  });
-}
+// --- Современный неоновый фон ---
+let t = 0;
 
-// --- Несколько комет ---
-let comets = [];
-function spawnComet() {
-  comets.push({
-    x: -100,
-    y: Math.random() * canvas.height * 0.5,
-    vx: 6 + Math.random() * 2,
-    vy: 2 + Math.random(),
-    life: 0,
-    maxLife: 300
-  });
-}
-
-// --- Частицы от кликов ---
-let clickParticles = [];
-canvas.addEventListener("click", e => {
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-
-  for (let i = 0; i < 20; i++) {
-    clickParticles.push({
-      x,
-      y,
-      vx: (Math.random() - 0.5) * 4,
-      vy: (Math.random() - 0.5) * 4,
-      life: 0,
-      maxLife: 60,
-      r: Math.random() * 2 + 1
-    });
-  }
-});
-
-function drawClickParticles() {
-  clickParticles.forEach((p, i) => {
-    ctx.fillStyle = `rgba(255,255,200,${1 - p.life / p.maxLife})`;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fill();
-
-    p.x += p.vx;
-    p.y += p.vy;
-    p.life++;
-
-    if (p.life > p.maxLife) {
-      clickParticles.splice(i, 1);
-    }
-  });
-}
-
-// --- Анимация ---
 function animate() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  t += 0.005;
 
-  // Звёзды
-  stars.forEach(s => {
-    s.alpha += (Math.random() - 0.5) * 0.05;
-    if (s.alpha < 0) s.alpha = 0;
-    if (s.alpha > 1) s.alpha = 1;
+  const w = canvas.width;
+  const h = canvas.height;
 
-    s.y += s.speed;
-    if (s.y > canvas.height) {
-      s.y = 0;
-      s.x = Math.random() * canvas.width;
-    }
+  const g = ctx.createLinearGradient(
+    0, 0,
+    w * Math.sin(t), h * Math.cos(t * 0.7)
+  );
 
-    ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-    ctx.fill();
-  });
+  g.addColorStop(0, `hsl(${(t * 40) % 360}, 80%, 55%)`);
+  g.addColorStop(1, `hsl(${(t * 40 + 120) % 360}, 80%, 45%)`);
 
-  // Случайный запуск кометы
-  if (Math.random() < 0.005) {
-    spawnComet();
-  }
-
-  // Кометы
-  comets.forEach((c, i) => {
-    let grad = ctx.createLinearGradient(c.x, c.y, c.x - 120, c.y - 60);
-    grad.addColorStop(0, "rgba(255,255,255,0.8)");
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(c.x, c.y);
-    ctx.lineTo(c.x - 120, c.y - 60);
-    ctx.stroke();
-
-    ctx.fillStyle = "#fff";
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, 3.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    c.x += c.vx;
-    c.y += c.vy;
-    c.life++;
-
-    if (c.x > canvas.width + 150 || c.y > canvas.height + 150 || c.life > c.maxLife) {
-      comets.splice(i, 1);
-    }
-  });
-
-  // Частицы от кликов
-  drawClickParticles();
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
 
   requestAnimationFrame(animate);
 }
+
 animate();
+
   // Голосовой поиск для поля #search с предобработкой, фуззи-поиском и авто-заменой
 (function () {
   const searchInput = document.getElementById('search');
