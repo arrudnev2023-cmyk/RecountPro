@@ -1530,25 +1530,23 @@ animate();
     scanning = true;
     scanBtn.classList.add('recording');
 
-    // 🔥 Единственное, что нужно, чтобы ZXing начал видеть штрих‑коды
+    // 🔥 Единственное безопасное улучшение — добавить форматы
     const hints = new Map();
     hints.set(ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS, [
       ZXingBrowser.BarcodeFormat.EAN_13
     ]);
-    hints.set(ZXingBrowser.DecodeHintType.TRY_HARDER, true);
 
     codeReader = new ZXingBrowser.BrowserMultiFormatReader(hints);
 
     try {
       await codeReader.decodeFromVideoDevice(
-        null,       // НЕ трогаю — у тебя работает
+        null,       // НЕ ТРОГАЮ — у тебя работает
         video,
         (result, err) => {
           if (result) {
             const raw = result.text || "";
             const digits = raw.replace(/\D/g, "");
 
-            // 🔥 Только EAN‑13
             if (digits.length === 13) {
               searchInput.value = digits;
               stopScanner();
