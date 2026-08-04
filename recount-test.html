@@ -776,26 +776,12 @@ function render(items) {
 function attachInputHandlers() {
   document.querySelectorAll('input[data-code]').forEach(input => {
     input.addEventListener('focus', () => {
-
-      document.querySelectorAll('input[data-code]').forEach(i => 
-        i.classList.remove('active-input')
-      );
-
-      input.classList.add('active-input');
-
       activeInput = input;
       keyboard.classList.add("show");
       document.getElementById("content").classList.add("with-keyboard");
       setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
     });
-
     input.addEventListener('click', () => {
-
-      document.querySelectorAll('input[data-code]').forEach(i => 
-        i.classList.remove('active-input')
-      );
-      input.classList.add('active-input');
-
       activeInput = input;
       keyboard.classList.add("show");
       document.getElementById("content").classList.add("with-keyboard");
@@ -803,32 +789,20 @@ function attachInputHandlers() {
     });
   });
 
+  // Клики по кнопкам клавиатуры
   keyboard.querySelectorAll('button').forEach(btn => {
     btn.onclick = () => {
       if (!activeInput) return;
       const val = btn.textContent;
-
       if (val === "←") {
         activeInput.value = activeInput.value.slice(0, -1);
       } else {
         activeInput.value += val;
       }
-
-      activeInput.classList.add('active-input');
-
+      // 🔥 теперь событие всплывает и ловится глобальным обработчиком
       activeInput.dispatchEvent(new Event("input", { bubbles: true }));
     };
   });
-
-  // Скрытие клавиатуры при клике вне
-  document.addEventListener("click", e => {
-    if (!e.target.closest("#custom-keyboard") && !e.target.matches("input[data-code]")) {
-      keyboard.classList.remove("show");
-      document.getElementById("content").classList.remove("with-keyboard");
-      activeInput = null;
-    }
-  });
-}   // ← правильное закрытие функции
 
 
 
