@@ -392,6 +392,13 @@ input[data-code] {
   padding: 2px 3px;
 }
 
+    input[data-code].active-input {
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 12px rgba(106, 17, 203, 0.7);
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
 
   </style>
 </head>
@@ -769,12 +776,29 @@ function render(items) {
 function attachInputHandlers() {
   document.querySelectorAll('input[data-code]').forEach(input => {
     input.addEventListener('focus', () => {
+
+      // 🔥 снимаем подсветку со всех
+      document.querySelectorAll('input[data-code]').forEach(i => 
+        i.classList.remove('active-input')
+      );
+
+      // 🔥 включаем подсветку на активном
+      input.classList.add('active-input');
+
       activeInput = input;
       keyboard.classList.add("show");
       document.getElementById("content").classList.add("with-keyboard");
       setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
     });
+
     input.addEventListener('click', () => {
+
+      // 🔥 то же самое для клика
+      document.querySelectorAll('input[data-code]').forEach(i => 
+        i.classList.remove('active-input')
+      );
+      input.classList.add('active-input');
+
       activeInput = input;
       keyboard.classList.add("show");
       document.getElementById("content").classList.add("with-keyboard");
@@ -787,15 +811,21 @@ function attachInputHandlers() {
     btn.onclick = () => {
       if (!activeInput) return;
       const val = btn.textContent;
+
       if (val === "←") {
         activeInput.value = activeInput.value.slice(0, -1);
       } else {
         activeInput.value += val;
       }
-      // 🔥 теперь событие всплывает и ловится глобальным обработчиком
+
+      // 🔥 подсветка остаётся активной
+      activeInput.classList.add('active-input');
+
       activeInput.dispatchEvent(new Event("input", { bubbles: true }));
     };
   });
+}
+
 
   // Скрытие клавиатуры при клике вне
   document.addEventListener("click", e => {
