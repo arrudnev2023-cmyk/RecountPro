@@ -1530,26 +1530,29 @@ animate();
     scanning = true;
     scanBtn.classList.add('recording');
 
-    // ровно как у тебя было
-    codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+    // 🔥 Единственное, что нужно, чтобы ZXing начал видеть штрих‑коды
+    const hints = new Map();
+    hints.set(ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXingBrowser.BarcodeFormat.EAN_13
+    ]);
+    hints.set(ZXingBrowser.DecodeHintType.TRY_HARDER, true);
+
+    codeReader = new ZXingBrowser.BrowserMultiFormatReader(hints);
 
     try {
       await codeReader.decodeFromVideoDevice(
-        null,       // автоматически выбрать заднюю камеру
+        null,       // НЕ трогаю — у тебя работает
         video,
         (result, err) => {
           if (result) {
-            const raw = result.text || '';
+            const raw = result.text || "";
+            const digits = raw.replace(/\D/g, "");
 
-            // оставляем только цифры
-            const digits = raw.replace(/\D/g, '');
-
-            // если это EAN‑13 — используем, иначе игнорим
+            // 🔥 Только EAN‑13
             if (digits.length === 13) {
               searchInput.value = digits;
               stopScanner();
             }
-            // если не 13 цифр — просто продолжаем сканировать
           }
         }
       );
@@ -1578,6 +1581,7 @@ animate();
     }
   });
 })();
+
 
 
 </script>
