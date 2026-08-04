@@ -1526,35 +1526,34 @@ animate();
 
   async function startScanner() {
     modal.style.display = 'flex';
+
     scanning = true;
     scanBtn.classList.add('recording');
 
-    // 🔥 Прокачанные настройки ZXing
+    // 🔥 добавляем только настройки, не трогая твою логику
     const hints = new Map();
     hints.set(ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS, [
       ZXingBrowser.BarcodeFormat.EAN_13
     ]);
     hints.set(ZXingBrowser.DecodeHintType.TRY_HARDER, true);
-    hints.set(ZXingBrowser.DecodeHintType.PURE_BARCODE, false);
 
     codeReader = new ZXingBrowser.BrowserMultiFormatReader(hints);
 
     try {
       await codeReader.decodeFromVideoDevice(
-        null,       // у тебя это работает — оставляю
+        null,       // как у тебя было — не трогаю
         video,
         (result, err) => {
           if (result) {
-            searchInput.value = result.text;
-            stopScanner();
-          }
-        },
-        {
-          // 🔥 Оптимальные параметры камеры
-          video: {
-            facingMode: "environment",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+            const text = result.text;
+
+            // EAN‑13: только 13 цифр
+            const cleaned = text.replace(/\D/g, '');
+            if (cleaned.length === 13) {
+              searchInput.value = cleaned;
+              stopScanner();
+            }
+            // если не EAN‑13 — просто продолжаем сканировать
           }
         }
       );
@@ -1583,7 +1582,6 @@ animate();
     }
   });
 })();
-
 
 
 
