@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -390,13 +390,6 @@ input[data-code] {
 #export-area th,
 #export-area td {
   padding: 2px 3px;
-}
-
-    input[data-code].active-input {
-  border: 2px solid var(--accent);
-  box-shadow: 0 0 12px rgba(106, 17, 203, 0.7);
-  background: #fff;
-  transition: all 0.2s ease;
 }
 
 
@@ -804,6 +797,15 @@ function attachInputHandlers() {
     };
   });
 
+  // Скрытие клавиатуры при клике вне
+  document.addEventListener("click", e => {
+    if (!e.target.closest("#custom-keyboard") && !e.target.matches("input[data-code]")) {
+      keyboard.classList.remove("show");
+      document.getElementById("content").classList.remove("with-keyboard");
+      activeInput = null;
+    }
+  });
+}
 
 
 // Поиск
