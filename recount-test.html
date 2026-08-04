@@ -1522,20 +1522,43 @@ animate();
 
   async function startScanner() {
     modal.style.display = 'flex';
-
     scanning = true;
     scanBtn.classList.add('recording');
 
-    codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+    // Настройки для максимальной скорости
+    const hints = new Map();
+    hints.set(ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXingBrowser.BarcodeFormat.EAN_13,
+      ZXingBrowser.BarcodeFormat.EAN_8,
+      ZXingBrowser.BarcodeFormat.UPC_A,
+      ZXingBrowser.BarcodeFormat.UPC_E
+    ]);
+    hints.set(ZXingBrowser.DecodeHintType.TRY_HARDER, true);     // агрессивный режим
+    hints.set(ZXingBrowser.DecodeHintType.ASSUME_GS1, true);     // ускоряет EAN/UPC
+
+    codeReader = new ZXingBrowser.BrowserMultiFormatReader(hints);
 
     try {
       await codeReader.decodeFromVideoDevice(
-        null,       // автоматически выбрать заднюю камеру
+        null,
         video,
         (result, err) => {
           if (result) {
             searchInput.value = result.text;
             stopScanner();
+          }
+        },
+        {
+          // Максимальное качество камеры
+          video: {
+            facingMode: { exact: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            focusMode: "continuous",     // автофокус
+            advanced: [
+              { focusMode: "continuous" },
+              { torch: false }
+            ]
           }
         }
       );
