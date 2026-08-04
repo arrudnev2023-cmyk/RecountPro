@@ -1525,7 +1525,7 @@ animate();
     scanning = true;
     scanBtn.classList.add('recording');
 
-    // Настройки для максимальной скорости
+    // Только нужные форматы — ускоряет сканирование
     const hints = new Map();
     hints.set(ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS, [
       ZXingBrowser.BarcodeFormat.EAN_13,
@@ -1533,14 +1533,13 @@ animate();
       ZXingBrowser.BarcodeFormat.UPC_A,
       ZXingBrowser.BarcodeFormat.UPC_E
     ]);
-    hints.set(ZXingBrowser.DecodeHintType.TRY_HARDER, true);     // агрессивный режим
-    hints.set(ZXingBrowser.DecodeHintType.ASSUME_GS1, true);     // ускоряет EAN/UPC
+    hints.set(ZXingBrowser.DecodeHintType.TRY_HARDER, true);
 
     codeReader = new ZXingBrowser.BrowserMultiFormatReader(hints);
 
     try {
       await codeReader.decodeFromVideoDevice(
-        null,
+        undefined,   // ZXing сам выберет заднюю камеру
         video,
         (result, err) => {
           if (result) {
@@ -1549,16 +1548,11 @@ animate();
           }
         },
         {
-          // Максимальное качество камеры
+          // Рабочие параметры, которые поддерживаются ВСЕМИ браузерами
           video: {
-            facingMode: { exact: "environment" },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-            focusMode: "continuous",     // автофокус
-            advanced: [
-              { focusMode: "continuous" },
-              { torch: false }
-            ]
+            facingMode: "environment",   // без exact
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           }
         }
       );
@@ -1587,10 +1581,6 @@ animate();
     }
   });
 })();
-
-
-
-
 
 
 </script>
